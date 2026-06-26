@@ -38,7 +38,9 @@ import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/signal_chip
-import scrumbringer_client/ui/task_status_utils
+import scrumbringer_client/ui/task_metric
+import scrumbringer_client/ui/task_metric_chip
+import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/tone
 import scrumbringer_client/utils/card_queries
 
@@ -132,25 +134,25 @@ fn view_surface_header(
         int.to_string(list.length(visible_cards(config, include_closed))),
         tone.Neutral,
       ),
-      work_surface.summary_chip(
-        "Tareas",
-        int.to_string(summary.total_tasks),
-        tone.Neutral,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Total,
+        summary.total_tasks,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.MetricsAvailable),
-        int.to_string(summary.available_tasks),
-        tone.Available,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Available,
+        summary.available_tasks,
       ),
       work_surface.summary_chip(
         "Preparadas",
         int.to_string(summary.pool_impact),
         tone.Warning,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.Blocked),
-        int.to_string(summary.blocked_tasks),
-        tone.Blocked,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Blocked,
+        summary.blocked_tasks,
       ),
     ],
     actions: move_header_actions(config),
@@ -967,7 +969,7 @@ fn view_detail(
         text(card_queries.card_path(card, config.cards)),
       ]),
       view_detail_context(config, card, direct_subcards, direct_tasks, rollup),
-      view_detail_rollup(card, rollup),
+      view_detail_rollup(config.locale, card, rollup),
       h4([attribute.class("plan-detail-section-title")], [text(title)]),
       body,
       div([attribute.class("plan-detail-actions")], [
@@ -1044,12 +1046,10 @@ fn view_detail_tasks(
     list.map(tasks, fn(task) {
       li([], [
         span([attribute.class("plan-detail-task-title")], [text(task.title)]),
-        span([], [
-          text(task_status_utils.label(
-            locale,
-            task_execution_state.to_status(task.state),
-          )),
-        ]),
+        task_status_indicator.full(
+          locale,
+          task_execution_state.to_status(task.state),
+        ),
       ])
     }),
   )
@@ -1061,21 +1061,27 @@ fn view_detail_empty(_rollup: types.CardRollup) -> Element(msg) {
   ])
 }
 
-fn view_detail_rollup(card: Card, rollup: types.CardRollup) -> Element(msg) {
+fn view_detail_rollup(
+  locale: Locale,
+  card: Card,
+  rollup: types.CardRollup,
+) -> Element(msg) {
   div(
     [attribute.class("plan-detail-rollup")],
     list.append(
       [
-        signal_chip.metric_int("tareas", rollup.total_tasks, tone.Neutral)
-          |> signal_chip.view,
-        signal_chip.metric_int(
-          "disponibles",
-          rollup.available_tasks,
-          tone.Available,
-        )
-          |> signal_chip.view,
-        signal_chip.metric_int("bloqueadas", rollup.blocked_tasks, tone.Blocked)
-          |> signal_chip.view,
+        task_metric_chip.compact(
+          locale,
+          task_metric.metric(task_metric.Total, rollup.total_tasks),
+        ),
+        task_metric_chip.compact(
+          locale,
+          task_metric.metric(task_metric.Available, rollup.available_tasks),
+        ),
+        task_metric_chip.compact(
+          locale,
+          task_metric.metric(task_metric.Blocked, rollup.blocked_tasks),
+        ),
       ],
       view_detail_pool_impact(card, rollup),
     ),

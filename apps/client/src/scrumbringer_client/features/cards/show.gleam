@@ -65,6 +65,9 @@ import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_metric
+import scrumbringer_client/ui/task_metric_chip
+import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 // =============================================================================
@@ -664,23 +667,23 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         due_date_chip(model, card),
       ]),
       div([attribute.class("detail-meta-group")], [
-        card_health_chip(
-          "card-health-total",
-          int.to_string(card.task_count),
-          t(model.locale, i18n_text.CardTasks),
-          "",
+        card_task_metric(
+          model.locale,
+          task_metric.Total,
+          card.task_count,
+          "card-task-metric-total",
         ),
-        card_health_chip(
-          "card-health-done",
-          int.to_string(card.closed_count),
-          t(model.locale, i18n_text.CardTasksClosed),
-          "closed",
+        card_task_metric(
+          model.locale,
+          task_metric.Closed,
+          card.closed_count,
+          "card-task-metric-closed",
         ),
-        card_health_chip(
-          "card-health-blocked",
-          int.to_string(blocked_count(model)),
-          t(model.locale, i18n_text.PoolBlockedCount),
-          "blocked",
+        card_task_metric(
+          model.locale,
+          task_metric.Blocked,
+          blocked_count(model),
+          "card-task-metric-blocked",
         ),
       ]),
       card_progress.view(
@@ -772,22 +775,19 @@ fn due_date_chip(model: Model, card: Card) -> Element(Msg) {
   }
 }
 
-fn card_health_chip(
+fn card_task_metric(
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
+  value: Int,
   testid: String,
-  value: String,
-  label: String,
-  tone: String,
 ) -> Element(Msg) {
-  span(
-    [
-      attribute.class("card-health-chip " <> tone),
-      attribute.attribute("data-testid", testid),
-    ],
-    [
-      span([attribute.class("card-health-value")], [text(value)]),
-      span([attribute.class("card-health-label")], [text(label)]),
-    ],
-  )
+  task_metric_chip.view(task_metric_chip.Config(
+    locale: locale,
+    metric: task_metric.metric(kind, value),
+    variant: task_metric_chip.Full,
+    extra_class: option.Some("card-task-metric"),
+    testid: option.Some(testid),
+  ))
 }
 
 fn blocked_count(model: Model) -> Int {
@@ -1071,13 +1071,17 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
 
   div([attribute.class("card-summary-section detail-section")], [
     div([attribute.class("detail-summary-grid")], [
-      summary_item(
-        t(model.locale, i18n_text.CardTasks),
-        int.to_string(card.task_count),
+      summary_task_metric(
+        model.locale,
+        task_metric.Total,
+        card.task_count,
+        "card-summary-task-metric-total",
       ),
-      summary_item(
-        t(model.locale, i18n_text.MetricsTasksClosed),
-        int.to_string(card.closed_count),
+      summary_task_metric(
+        model.locale,
+        task_metric.Closed,
+        card.closed_count,
+        "card-summary-task-metric-closed",
       ),
       summary_item(
         t(model.locale, i18n_text.MetricsProgress),
@@ -1158,6 +1162,21 @@ fn summary_item(label: String, value: String) -> Element(Msg) {
     span([attribute.class("detail-summary-label")], [text(label)]),
     span([attribute.class("detail-summary-value")], [text(value)]),
   ])
+}
+
+fn summary_task_metric(
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
+  value: Int,
+  testid: String,
+) -> Element(Msg) {
+  task_metric_chip.view(task_metric_chip.Config(
+    locale: locale,
+    metric: task_metric.metric(kind, value),
+    variant: task_metric_chip.Full,
+    extra_class: option.Some("detail-summary-task-metric"),
+    testid: option.Some(testid),
+  ))
 }
 
 fn progress_text(card: Card) -> String {
@@ -1326,7 +1345,7 @@ fn view_card_tasks_section(model: Model, card: Card) -> Element(Msg) {
       _ ->
         case list.is_empty(tasks) {
           True -> view_empty_tasks(model)
-          False -> view_task_list(tasks)
+          False -> view_task_list(model.locale, tasks)
         }
     },
   ])
@@ -1365,16 +1384,19 @@ fn view_empty_tasks(model: Model) -> Element(Msg) {
   ])
 }
 
-fn view_task_list(tasks: List(Task)) -> Element(Msg) {
-  div([attribute.class("card-task-list")], list.map(tasks, view_task_item))
+fn view_task_list(locale: Locale, tasks: List(Task)) -> Element(Msg) {
+  div(
+    [attribute.class("card-task-list")],
+    list.map(tasks, fn(task) { view_task_item(locale, task) }),
+  )
 }
 
-fn view_task_item(task: Task) -> Element(Msg) {
+fn view_task_item(locale: Locale, task: Task) -> Element(Msg) {
   task_item.view(
     task_item.Config(
       container_class: "card-task-item detail-item-row",
       content_class: "card-task-content",
-      leading: option.Some(view_task_status(task)),
+      leading: option.Some(view_task_status(locale, task)),
       on_click: option.None,
       content_title: option.None,
       content_label: option.None,
@@ -1382,7 +1404,7 @@ fn view_task_item(task: Task) -> Element(Msg) {
       icon_class: option.None,
       title: task.title,
       title_class: option.Some("card-task-title"),
-      secondary: view_task_claim_status(task),
+      secondary: task_item.empty_secondary(),
       actions: task_item.no_actions(),
       reserve_actions_slot: False,
       action_slot_class: option.None,
@@ -1393,23 +1415,16 @@ fn view_task_item(task: Task) -> Element(Msg) {
   )
 }
 
-fn view_task_status(task: Task) -> Element(Msg) {
-  let status_icon = case task.state {
-    task_state.Closed(..) -> "\u{2705}"
-    task_state.Claimed(..) -> "\u{1F7E1}"
-    task_state.Available -> "\u{26AA}"
-  }
-
-  span([attribute.class("card-task-status")], [text(status_icon)])
-}
-
-fn view_task_claim_status(task: Task) -> Element(Msg) {
-  let claimed_text = case task_state.claimed_by(task.state) {
-    option.Some(_id) -> " (claimed)"
-    option.None -> ""
-  }
-
-  span([attribute.class("card-task-info")], [text(claimed_text)])
+fn view_task_status(locale: Locale, task: Task) -> Element(Msg) {
+  task_status_indicator.view(task_status_indicator.Config(
+    locale: locale,
+    status: task_state.to_status(task.state),
+    variant: task_status_indicator.InlineCompact,
+    label: option.None,
+    title: option.None,
+    extra_class: option.Some("card-task-status-indicator"),
+    testid: option.None,
+  ))
 }
 
 fn action_policy(model: Model, card: Card) -> card_policy.Policy {

@@ -17,7 +17,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
-import scrumbringer_client/ui/task_state
+import scrumbringer_client/ui/task_status_indicator
 
 pub type Config(msg) {
   Config(
@@ -95,12 +95,15 @@ fn task_meta(config: Config(msg), task: domain_task.Task) -> Element(msg) {
       ]),
     ]),
     div([attribute.class("detail-meta-group")], [
-      span([attribute.class("task-meta-chip task-meta-status")], [
-        text(task_state.label(
-          config.locale,
-          task_execution_state.to_status(task.state),
-        )),
-      ]),
+      task_status_indicator.view(task_status_indicator.Config(
+        locale: config.locale,
+        status: task_execution_state.to_status(task.state),
+        variant: task_status_indicator.InlineFull,
+        label: opt.None,
+        title: opt.None,
+        extra_class: opt.Some("task-meta-chip task-meta-status"),
+        testid: opt.Some("task-show-status-indicator"),
+      )),
       assignee(config, task),
       due_date(config, task),
       blocking_chip(config, blockers),

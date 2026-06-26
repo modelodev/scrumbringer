@@ -375,7 +375,7 @@ pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "kanban-health-chip")
+  assert_contains(html, "kanban-card-task-metric-chip")
   assert_contains(html, "title=\"Available: 2\"")
   assert_contains(html, "title=\"Claimed: 1\"")
   assert_contains(html, "title=\"Ongoing: 1\"")

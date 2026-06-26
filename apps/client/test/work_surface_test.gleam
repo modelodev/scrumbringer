@@ -4,6 +4,8 @@ import lustre/element
 import lustre/element/html.{button, div, text}
 
 import scrumbringer_client/features/layout/work_surface
+import scrumbringer_client/i18n/locale
+import scrumbringer_client/ui/task_metric
 import scrumbringer_client/ui/tone
 
 fn assert_contains(html: String, fragment: String) {
@@ -48,6 +50,32 @@ pub fn work_surface_header_renders_contract_test() {
   assert_contains(html, ">Available<")
   assert_contains(html, "work-surface-actions")
   assert_contains(html, ">Create<")
+}
+
+pub fn work_surface_header_renders_task_summary_chip_test() {
+  let html =
+    work_surface.HeaderConfig(
+      title: "Kanban",
+      purpose: "Track work.",
+      summary: [
+        work_surface.task_summary_chip(locale.En, task_metric.Available, 3),
+        work_surface.task_summary_chip(locale.En, task_metric.Blocked, 1),
+      ],
+      actions: [],
+      extra_class: Some("kanban-header"),
+      testid: Some("surface-header"),
+    )
+    |> work_surface.header
+    |> element.to_document_string
+
+  assert_contains(html, "task-metric-chip is-full available")
+  assert_contains(html, "task-metric-chip is-full blocked")
+  assert_contains(html, "data-testid=\"work-surface-chip\"")
+  assert_contains(html, "title=\"Available: 3\"")
+  assert_contains(html, "aria-label=\"Blocked: 1\"")
+  assert_contains(html, "task-metric-chip-icon")
+  assert_contains(html, ">Available<")
+  assert_contains(html, ">Blocked<")
 }
 
 pub fn work_surface_surface_renders_optional_slots_in_order_test() {

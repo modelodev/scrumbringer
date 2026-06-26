@@ -36,13 +36,12 @@ import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/expand_toggle
-import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state as task_state_ui
-import scrumbringer_client/ui/task_status_utils
+import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/task_type_icon
 
 // =============================================================================
@@ -225,48 +224,22 @@ fn view_task_item(
           |> claimed_email_or_unknown(config)
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
-      let status_icon = task_status_utils.claimed_icon(status)
-      span(
-        [
-          attribute.class("task-claimed-by"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [
-          text(
-            i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_email,
-          ),
-          span([attribute.class("task-claimed-icon")], [
-            icons.nav_icon(status_icon, icons.XSmall),
-          ]),
-        ],
-      )
+      task_status_indicator.view(task_status_indicator.Config(
+        locale: config.locale,
+        status: status,
+        variant: task_status_indicator.InlineFull,
+        label: Some(
+          i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_email,
+        ),
+        title: None,
+        extra_class: Some("task-claimed-by"),
+        testid: None,
+      ))
     }
     task_execution_state.Available ->
-      span(
-        [
-          attribute.class("task-status-muted"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [text(task_status_utils.label(config.locale, status))],
-      )
+      task_status_indicator.full(config.locale, status)
     task_execution_state.Closed(..) ->
-      // Closed - show status label
-      span(
-        [
-          attribute.class("task-status"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [text(task_status_utils.label(config.locale, status))],
-      )
+      task_status_indicator.full(config.locale, status)
     // Available tasks: no label needed (claim icon is sufficient indicator)
   }
 

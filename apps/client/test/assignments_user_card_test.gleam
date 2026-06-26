@@ -84,7 +84,8 @@ pub fn user_card_renders_expanded_projects_from_config_test() {
   assert_contains(html, "1 project")
   assert_contains(html, "Platform")
   assert_contains(html, "Add to project")
-  assert_contains(html, "Claimed: 2")
+  assert_contains(html, "assignments-task-metric")
+  assert_contains(html, "title=\"Claimed: 2\"")
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-entity-action")
 }

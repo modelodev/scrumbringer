@@ -1182,7 +1182,7 @@ fn view_task_secondary(
   div([attribute.class("task-item-meta people-task-meta")], [
     span(
       [
-        attribute.class("task-status-muted"),
+        attribute.class("people-task-status-meta"),
         attribute.attribute("title", label),
       ],
       [text(label)],

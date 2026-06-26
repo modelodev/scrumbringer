@@ -4,6 +4,7 @@ import gleam/dict
 import gleam/option as opt
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/pool_prefs
 
@@ -23,6 +24,11 @@ pub fn try_update(
       opt.Some(#(handle_hide_closed_toggled(model), NoPersistence))
     pool_messages.MemberListCardToggled(card_id) ->
       opt.Some(#(handle_list_card_toggled(model, card_id), NoPersistence))
+    pool_messages.MemberCapabilityTaskPreviewToggled(preview_key) ->
+      opt.Some(#(
+        handle_capability_task_preview_toggled(model, preview_key),
+        NoPersistence,
+      ))
     _ -> opt.None
   }
 }
@@ -65,4 +71,17 @@ fn list_card_expanded_or_default(expanded: opt.Option(Bool)) -> Bool {
     opt.None -> True
     opt.Some(value) -> value
   }
+}
+
+pub fn handle_capability_task_preview_toggled(
+  model: member_pool.Model,
+  preview_key: task_preview_state.Key,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_capability_task_previews: task_preview_state.toggle(
+      model.member_capability_task_previews,
+      preview_key,
+    ),
+  )
 }

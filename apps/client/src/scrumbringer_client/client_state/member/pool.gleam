@@ -11,6 +11,7 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/pool/visibility.{type PoolVisibility}
 import scrumbringer_client/pool_prefs
@@ -138,6 +139,7 @@ pub type Model {
     member_pool_view_mode: pool_prefs.ViewMode,
     member_list_hide_closed: Bool,
     member_list_expanded_cards: Dict(Int, Bool),
+    member_capability_task_previews: task_preview_state.State,
     member_panel_expanded: Bool,
     member_create_dialog_mode: dialog_mode.DialogMode,
     member_create_title: String,
@@ -201,6 +203,7 @@ pub fn default_model() -> Model {
     member_pool_view_mode: pool_prefs.Canvas,
     member_list_hide_closed: True,
     member_list_expanded_cards: dict.new(),
+    member_capability_task_previews: task_preview_state.new(),
     member_panel_expanded: False,
     member_create_dialog_mode: dialog_mode.DialogClosed,
     member_create_title: "",

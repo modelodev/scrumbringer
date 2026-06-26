@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/option.{type Option, None, Some}
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/preferences
 import scrumbringer_client/pool_prefs
@@ -98,6 +99,53 @@ pub fn list_card_toggled_preserves_other_card_values_test() {
   let assert None =
     dict.get(next.member_list_expanded_cards, 99)
     |> option_from_result
+}
+
+pub fn capability_task_preview_toggled_expands_missing_preview_by_default_test() {
+  let pool =
+    preferences.handle_capability_task_preview_toggled(
+      default_pool(),
+      "1-capability-2",
+    )
+
+  let assert True =
+    task_preview_state.is_expanded(
+      pool.member_capability_task_previews,
+      "1-capability-2",
+    )
+}
+
+pub fn capability_task_preview_toggled_flips_existing_preview_test() {
+  let pool =
+    member_pool.Model(
+      ..default_pool(),
+      member_capability_task_previews: task_preview_state.from_list([
+        #("1-capability-2", True),
+      ]),
+    )
+
+  let next =
+    preferences.handle_capability_task_preview_toggled(pool, "1-capability-2")
+
+  let assert False =
+    task_preview_state.is_expanded(
+      next.member_capability_task_previews,
+      "1-capability-2",
+    )
+}
+
+pub fn try_update_handles_capability_task_preview_toggle_without_persistence_test() {
+  let assert Some(#(pool, preferences.NoPersistence)) =
+    preferences.try_update(
+      default_pool(),
+      pool_messages.MemberCapabilityTaskPreviewToggled("1-capability-2"),
+    )
+
+  let assert True =
+    task_preview_state.is_expanded(
+      pool.member_capability_task_previews,
+      "1-capability-2",
+    )
 }
 
 fn option_from_result(result: Result(a, b)) -> Option(a) {

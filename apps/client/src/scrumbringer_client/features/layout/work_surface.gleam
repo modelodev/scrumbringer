@@ -6,11 +6,15 @@ import lustre/attribute
 import lustre/element.{type Element, none}
 import lustre/element/html.{div, h3, p, text}
 
+import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/ui/signal_chip
+import scrumbringer_client/ui/task_metric
+import scrumbringer_client/ui/task_metric_chip
 import scrumbringer_client/ui/tone
 
 pub type SummaryChip {
   SummaryChip(label: String, value: String, tone: tone.Tone)
+  TaskSummaryChip(locale: Locale, metric: task_metric.TaskMetric)
 }
 
 pub type HeaderConfig(msg) {
@@ -65,6 +69,14 @@ pub fn summary_chip(
   tone_value: tone.Tone,
 ) -> SummaryChip {
   SummaryChip(label: label, value: value, tone: tone_value)
+}
+
+pub fn task_summary_chip(
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
+  value: Int,
+) -> SummaryChip {
+  TaskSummaryChip(locale: locale, metric: task_metric.metric(kind, value))
 }
 
 pub fn with_filters(
@@ -163,12 +175,24 @@ fn view_actions(actions: List(Element(msg))) -> Element(msg) {
 }
 
 fn view_summary_chip(chip: SummaryChip) -> Element(msg) {
-  signal_chip.metric(chip.label, chip.value, chip.tone)
-  |> signal_chip.with_class("work-surface-chip")
-  |> signal_chip.with_parts(
-    "work-surface-chip-value",
-    "work-surface-chip-label",
-  )
-  |> signal_chip.with_testid("work-surface-chip")
-  |> signal_chip.view
+  case chip {
+    SummaryChip(label:, value:, tone:) ->
+      signal_chip.metric(label, value, tone)
+      |> signal_chip.with_class("work-surface-chip")
+      |> signal_chip.with_parts(
+        "work-surface-chip-value",
+        "work-surface-chip-label",
+      )
+      |> signal_chip.with_testid("work-surface-chip")
+      |> signal_chip.view
+
+    TaskSummaryChip(locale:, metric:) ->
+      task_metric_chip.view(task_metric_chip.Config(
+        locale: locale,
+        metric: metric,
+        variant: task_metric_chip.Full,
+        extra_class: Some("work-surface-chip"),
+        testid: Some("work-surface-chip"),
+      ))
+  }
 }

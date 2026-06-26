@@ -37,9 +37,9 @@ pub fn task_filters(
   capability_id: opt.Option(Int),
   search: String,
 ) -> task_operations_api.TaskFilters {
-  case surface {
-    PeopleRefresh | PlanStructureRefresh -> unfiltered()
-    PoolRefresh | CapabilitiesRefresh | PlanKanbanRefresh ->
+  case uses_task_filters(surface) {
+    False -> unfiltered()
+    True ->
       task_operations_api.TaskFilters(
         status: opt.None,
         type_id: type_id,
@@ -47,6 +47,38 @@ pub fn task_filters(
         q: helpers_options.search_to_opt(search),
         blocked: opt.None,
       )
+  }
+}
+
+pub fn task_filters_for_pool(
+  surface: TaskRefreshSurface,
+  pool: member_pool.Model,
+) -> task_operations_api.TaskFilters {
+  task_filters(
+    surface,
+    pool.member_filters_type_id,
+    pool.member_filters_capability_id,
+    pool.member_filters_q,
+  )
+}
+
+pub fn uses_task_filters(surface: TaskRefreshSurface) -> Bool {
+  case surface {
+    PoolRefresh | CapabilitiesRefresh | PlanKanbanRefresh -> True
+    PeopleRefresh | PlanStructureRefresh -> False
+  }
+}
+
+pub fn has_active_task_filters(
+  surface: TaskRefreshSurface,
+  pool: member_pool.Model,
+) -> Bool {
+  case uses_task_filters(surface) {
+    False -> False
+    True ->
+      pool.member_filters_type_id != opt.None
+      || pool.member_filters_capability_id != opt.None
+      || helpers_options.search_to_opt(pool.member_filters_q) != opt.None
   }
 }
 

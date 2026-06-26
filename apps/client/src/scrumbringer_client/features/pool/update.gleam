@@ -952,7 +952,11 @@ fn update_without_view_mode(
     // Handled by pool_preferences.try_update before this dispatch.
     pool_messages.MemberPoolViewModeSet(_)
     | pool_messages.MemberListHideClosedToggled
-    | pool_messages.MemberListCardToggled(_) -> #(model, effect.none())
+    | pool_messages.MemberListCardToggled(_)
+    | pool_messages.MemberCapabilityTaskPreviewToggled(_) -> #(
+      model,
+      effect.none(),
+    )
 
     // Handled by people_workflow.try_update before this dispatch.
     pool_messages.MemberPeopleWorkloadFetched(_)

@@ -14,11 +14,11 @@ pub fn try_update(
     #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> opt.Option(#(client_state.Model, effect.Effect(client_state.Msg))) {
   case filters.try_update(model.member.pool, inner) {
-    opt.Some(#(pool, should_refresh)) -> {
+    opt.Some(#(pool, refresh_policy)) -> {
       let next = root.set_member_pool(model, pool)
-      case should_refresh {
-        True -> opt.Some(member_refresh(next))
-        False -> opt.Some(#(next, effect.none()))
+      case refresh_policy {
+        filters.RefreshMemberData -> opt.Some(member_refresh(next))
+        filters.LocalOnly -> opt.Some(#(next, effect.none()))
       }
     }
     opt.None -> opt.None

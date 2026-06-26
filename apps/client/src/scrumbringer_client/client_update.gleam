@@ -1986,14 +1986,12 @@ fn refresh_member_data(
 fn task_filters_for_member_route(
   model: client_state.Model,
 ) -> task_operations_api.TaskFilters {
-  member_refresh_filters.task_filters(
+  member_refresh_filters.task_filters_for_pool(
     member_refresh_filters.surface(
       model.member.pool.view_mode,
       model.member.pool.member_plan_mode,
     ),
-    model.member.pool.member_filters_type_id,
-    model.member.pool.member_filters_capability_id,
-    model.member.pool.member_filters_q,
+    model.member.pool,
   )
 }
 

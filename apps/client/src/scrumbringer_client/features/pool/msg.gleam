@@ -24,6 +24,7 @@ import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
+import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/pool_prefs
@@ -70,6 +71,7 @@ pub type Msg {
   MemberTaskHoverNotesFetched(Int, ApiResult(List(note_entity.Note)))
   MemberListHideClosedToggled
   MemberListCardToggled(Int)
+  MemberCapabilityTaskPreviewToggled(task_preview_state.Key)
   ViewModeChanged(view_mode.ViewMode)
   GlobalKeyDown(pool_prefs.KeyEvent)
   MemberProjectTasksFetched(Int, ApiResult(List(Task)))

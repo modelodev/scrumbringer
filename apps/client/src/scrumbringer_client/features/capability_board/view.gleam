@@ -13,13 +13,15 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{div, h4, span, text}
+import lustre/element/html.{button, div, h4, span, text}
 import lustre/element/keyed
+import lustre/event
 
 import scrumbringer_client/capability_scope.{
   type CapabilityScope, to_string as capability_scope_to_string,
 }
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
@@ -30,17 +32,18 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_metric
+import scrumbringer_client/ui/task_metric_chip
 import scrumbringer_client/ui/task_state as task_state_ui
-import scrumbringer_client/ui/task_status_utils
+import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/ui/tone
-import scrumbringer_client/ui/workload_breakdown
 import scrumbringer_client/utils/card_queries
 
 pub type Config(msg) {
@@ -70,12 +73,14 @@ pub type Config(msg) {
     selected_card_id: Option(Int),
     card_query: String,
     show_closed: Option(Bool),
+    expanded_task_previews: task_preview_state.State,
     on_scope_kind_change: fn(String) -> msg,
     on_scope_depth_change: fn(String) -> msg,
     on_scope_card_change: fn(String) -> msg,
     on_scope_card_search_change: fn(String) -> msg,
     on_closed_toggled: fn(Bool) -> msg,
     on_capability_mode_change: fn(String) -> msg,
+    on_task_preview_toggle: fn(task_preview_state.Key) -> msg,
   )
 }
 
@@ -122,6 +127,15 @@ type CapabilityData {
     rows: List(CapabilityRow),
     columns: List(CapabilityColumn),
     health: CapabilityHealth,
+  )
+}
+
+type TaskPreview {
+  TaskPreview(
+    key: task_preview_state.Key,
+    visible_tasks: List(domain_task.Task),
+    hidden_tasks: List(domain_task.Task),
+    is_expanded: Bool,
   )
 }
 
@@ -222,25 +236,25 @@ fn capability_summary(
         int.to_string(list.length(columns)),
         tone.Neutral,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.MetricsAvailable),
-        int.to_string(health.available),
-        tone.Available,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Available,
+        health.available,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.MetricsClaimed),
-        int.to_string(health.claimed),
-        tone.Claimed,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Claimed,
+        health.claimed,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.MetricsOngoing),
-        int.to_string(health.ongoing),
-        tone.Ongoing,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Ongoing,
+        health.ongoing,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.Blocked),
-        int.to_string(health.blocked),
-        tone.Blocked,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Blocked,
+        health.blocked,
       ),
     ]
     _ -> []
@@ -599,22 +613,22 @@ fn view_list_section(
       div([attribute.class("capability-list-section-header")], [
         h4([], [text(column.name)]),
         div([attribute.class("capability-board-row-summary")], [
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.CapabilityBoardTotal),
+          view_metric_chip(
+            config.locale,
+            task_metric.Total,
             health_total(health),
-            tone.Neutral,
             "total",
           ),
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.CapabilityBoardClosed),
+          view_metric_chip(
+            config.locale,
+            task_metric.Closed,
             health.closed,
-            tone.Neutral,
             "closed",
           ),
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.Blocked),
+          view_metric_chip(
+            config.locale,
+            task_metric.Blocked,
             health.blocked,
-            tone.Blocked,
             "blocked",
           ),
         ]),
@@ -658,61 +672,115 @@ fn view_list_row(
           h4([], [text(row.title)]),
         ]),
         div([attribute.class("capability-board-row-summary")], [
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.MetricsAvailable),
+          view_metric_chip(
+            config.locale,
+            task_metric.Available,
             cell.health.available,
-            tone.Available,
             "",
           ),
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.MetricsClaimed),
+          view_metric_chip(
+            config.locale,
+            task_metric.Claimed,
             cell.health.claimed,
-            tone.Claimed,
             "",
           ),
-          view_summary_chip(
-            i18n.t(config.locale, i18n_text.MetricsOngoing),
+          view_metric_chip(
+            config.locale,
+            task_metric.Ongoing,
             cell.health.ongoing,
-            tone.Ongoing,
             "",
           ),
         ]),
       ]),
-      view_task_preview(config, cell.tasks),
+      view_task_preview(config, task_preview(config, row, cell)),
     ],
   )
 }
 
 fn view_task_preview(
   config: Config(msg),
-  tasks: List(domain_task.Task),
+  preview: TaskPreview,
 ) -> element.Element(msg) {
-  let sorted_tasks = sort_tasks(tasks)
-  let hidden_count = int.max(0, list.length(sorted_tasks) - 3)
-
   keyed.div(
     [attribute.class("capability-list-task-preview")],
     list.append(
-      sorted_tasks
-        |> list.take(3)
+      task_preview_visible_tasks(preview)
         |> list.map(fn(task) {
           #(int.to_string(task.id), view_task_item(config, task))
         }),
-      case hidden_count {
-        0 -> []
-        _ -> [#("more", view_more_tasks(config.locale, hidden_count))]
+      case preview.hidden_tasks {
+        [] -> []
+        _ -> [
+          #(
+            "more",
+            view_more_tasks_toggle(
+              config,
+              preview.key,
+              list.length(preview.hidden_tasks),
+              preview.is_expanded,
+            ),
+          ),
+        ]
       },
     ),
   )
 }
 
-fn view_more_tasks(locale: Locale, count: Int) -> element.Element(msg) {
+fn task_preview(
+  config: Config(msg),
+  row: CapabilityRow,
+  cell: CapabilityCell,
+) -> TaskPreview {
+  let sorted_tasks = sort_tasks(cell.tasks)
+  let key = task_preview_state.key(row.card.id, cell.column.key)
+
+  TaskPreview(
+    key: key,
+    visible_tasks: list.take(sorted_tasks, 3),
+    hidden_tasks: list.drop(sorted_tasks, 3),
+    is_expanded: task_preview_state.is_expanded(
+      config.expanded_task_previews,
+      key,
+    ),
+  )
+}
+
+fn task_preview_visible_tasks(preview: TaskPreview) -> List(domain_task.Task) {
+  list.append(preview.visible_tasks, case preview.is_expanded {
+    True -> preview.hidden_tasks
+    False -> []
+  })
+}
+
+fn view_more_tasks_toggle(
+  config: Config(msg),
+  preview_key: task_preview_state.Key,
+  count: Int,
+  is_expanded: Bool,
+) -> element.Element(msg) {
   div(
     [
-      attribute.class("capability-list-more"),
+      attribute.class("capability-list-more-control"),
       attribute.attribute("data-testid", "capability-list-more"),
     ],
-    [text(more_tasks_label(locale, count))],
+    [
+      button(
+        [
+          attribute.type_("button"),
+          attribute.class(case is_expanded {
+            True -> "capability-list-more is-expanded"
+            False -> "capability-list-more"
+          }),
+          attribute.attribute(
+            "aria-expanded",
+            attribute_value.boolean(is_expanded),
+          ),
+          attribute.attribute("data-testid", "capability-list-more-link"),
+          event.on_click(config.on_task_preview_toggle(preview_key)),
+        ],
+        [text(task_preview_toggle_label(config.locale, count, is_expanded))],
+      ),
+    ],
   )
 }
 
@@ -888,7 +956,7 @@ fn view_matrix_health_cell(
       span([attribute.class("capability-matrix-total")], [
         text(int.to_string(health_total(health))),
       ]),
-      view_workload_breakdown(config.locale, health),
+      view_task_metric_breakdown(config.locale, health),
     ],
   )
 }
@@ -943,26 +1011,24 @@ fn view_no_tasks(config: Config(msg)) -> element.Element(msg) {
   )
 }
 
-fn view_summary_chip(
-  label: String,
+fn view_metric_chip(
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
   value: Int,
-  tone_value: tone.Tone,
   extra_class: String,
 ) -> element.Element(msg) {
-  let chip =
-    signal_chip.metric_int(label, value, tone_value)
-    |> signal_chip.with_class("capability-summary-chip")
-    |> signal_chip.with_parts(
-      "capability-summary-value",
-      "capability-summary-label",
-    )
-    |> signal_chip.with_testid("capability-summary-chip")
-
-  case extra_class {
-    "" -> chip
-    _ -> signal_chip.with_extra_class(chip, extra_class)
+  let extra = case extra_class {
+    "" -> None
+    _ -> Some(extra_class)
   }
-  |> signal_chip.view
+
+  task_metric_chip.view(task_metric_chip.Config(
+    locale: locale,
+    metric: task_metric.metric(kind, value),
+    variant: task_metric_chip.Compact,
+    extra_class: extra,
+    testid: Some("task-metric-chip"),
+  ))
 }
 
 fn view_task_item(
@@ -981,34 +1047,20 @@ fn view_task_item(
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
 
-      let status_icon = task_status_utils.claimed_icon(status)
-      span(
-        [
-          attribute.class("task-claimed-by"),
-          attribute.attribute(
-            "title",
-            i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_label,
-          ),
-        ],
-        [
-          text(claimed_label),
-          span([attribute.class("task-claimed-icon")], [
-            icons.nav_icon(status_icon, icons.XSmall),
-          ]),
-        ],
-      )
+      task_status_indicator.view(task_status_indicator.Config(
+        locale: config.locale,
+        status: status,
+        variant: task_status_indicator.InlineFull,
+        label: Some(claimed_label),
+        title: Some(
+          i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_label,
+        ),
+        extra_class: Some("task-claimed-by"),
+        testid: None,
+      ))
     }
     task_execution_state.Available ->
-      span(
-        [
-          attribute.class("task-status-muted"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [text(task_status_utils.label(config.locale, status))],
-      )
+      task_status_indicator.full(config.locale, status)
     task_execution_state.Closed(..) -> task_item.empty_secondary()
   }
 
@@ -1147,91 +1199,52 @@ fn health_total(health: CapabilityHealth) -> Int {
   health.available + health.claimed + health.ongoing + health.closed
 }
 
-fn view_workload_breakdown(
+fn view_task_metric_breakdown(
   locale: Locale,
   health: CapabilityHealth,
 ) -> element.Element(msg) {
-  workload_breakdown.view(compact_metrics(locale, health))
+  span(
+    [
+      attribute.class("task-metric-breakdown"),
+      attribute.attribute("data-testid", "task-metric-breakdown"),
+    ],
+    compact_metrics(health)
+      |> list.filter_map(fn(metric) {
+        case metric.value > 0 {
+          True ->
+            Ok(
+              task_metric_chip.view(task_metric_chip.Config(
+                locale: locale,
+                metric: metric,
+                variant: task_metric_chip.Compact,
+                extra_class: None,
+                testid: None,
+              )),
+            )
+          False -> Error(Nil)
+        }
+      }),
+  )
 }
 
-fn compact_metrics(
-  locale: Locale,
-  health: CapabilityHealth,
-) -> List(workload_breakdown.Metric) {
+fn compact_metrics(health: CapabilityHealth) -> List(task_metric.TaskMetric) {
   [
-    #(
-      health.available,
-      i18n.t(locale, i18n_text.MetricsAvailable),
-      compact_available_label(locale),
-      tone.Available,
-    ),
-    #(
-      health.claimed,
-      i18n.t(locale, i18n_text.MetricsClaimed),
-      compact_claimed_label(locale),
-      tone.Claimed,
-    ),
-    #(
-      health.ongoing,
-      i18n.t(locale, i18n_text.MetricsOngoing),
-      compact_ongoing_label(locale),
-      tone.Ongoing,
-    ),
-    #(
-      health.blocked,
-      i18n.t(locale, i18n_text.Blocked),
-      compact_blocked_label(locale),
-      tone.Blocked,
-    ),
-    #(
-      health.closed,
-      i18n.t(locale, i18n_text.CapabilityBoardClosed),
-      compact_closed_label(locale),
-      tone.Neutral,
-    ),
+    task_metric.metric(task_metric.Available, health.available),
+    task_metric.metric(task_metric.Claimed, health.claimed),
+    task_metric.metric(task_metric.Ongoing, health.ongoing),
+    task_metric.metric(task_metric.Blocked, health.blocked),
+    task_metric.metric(task_metric.Closed, health.closed),
   ]
-  |> list.filter_map(fn(metric) {
-    let #(value, label, compact_label, tone_value) = metric
-    case value > 0 {
-      True ->
-        Ok(workload_breakdown.metric(label, compact_label, value, tone_value))
-      False -> Error(Nil)
-    }
-  })
 }
 
-fn compact_available_label(locale: Locale) -> String {
-  case locale {
-    locale.Es -> "disp"
-    locale.En -> "avail"
-  }
-}
-
-fn compact_claimed_label(locale: Locale) -> String {
-  case locale {
-    locale.Es -> "recl"
-    locale.En -> "claim"
-  }
-}
-
-fn compact_ongoing_label(locale: Locale) -> String {
-  case locale {
-    locale.Es -> "curso"
-    locale.En -> "now"
-  }
-}
-
-fn compact_blocked_label(locale: Locale) -> String {
-  case locale {
-    locale.Es -> "bloq"
-    locale.En -> "block"
-  }
-}
-
-fn compact_closed_label(locale: Locale) -> String {
-  case locale {
-    locale.Es -> "cerr"
-    locale.En -> "closed"
+fn task_preview_toggle_label(
+  locale: Locale,
+  count: Int,
+  is_expanded: Bool,
+) -> String {
+  case is_expanded {
+    True -> collapse_tasks_label(locale)
+    False -> more_tasks_label(locale, count)
   }
 }
 
@@ -1245,6 +1258,13 @@ fn more_tasks_label(locale: Locale, count: Int) -> String {
         1 -> " more task"
         _ -> " more tasks"
       }
+  }
+}
+
+fn collapse_tasks_label(locale: Locale) -> String {
+  case locale {
+    locale.Es -> "Mostrar menos"
+    locale.En -> "Show fewer"
   }
 }
 

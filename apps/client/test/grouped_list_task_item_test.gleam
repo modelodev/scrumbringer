@@ -129,7 +129,8 @@ pub fn grouped_list_renders_claimed_by_and_border_class_test() {
     |> element.to_document_string
 
   assert_contains(html, "Claimed by admin@example.com")
-  assert_contains(html, "task-claimed-icon")
+  assert_contains(html, "task-status-indicator")
+  assert_contains(html, "task-claimed-by")
   assert_contains(html, "task-item card-border-blue")
   assert_contains(html, "task-type-icon")
 }

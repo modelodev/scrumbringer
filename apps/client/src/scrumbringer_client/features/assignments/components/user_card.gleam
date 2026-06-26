@@ -30,6 +30,8 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
+import scrumbringer_client/ui/task_metric
+import scrumbringer_client/ui/task_metric_chip
 
 pub type Config(msg) {
   Config(
@@ -213,22 +215,30 @@ fn user_metrics_view(
   ) = metrics
 
   div([attribute.class("assignments-metrics")], [
-    div([attribute.class("assignments-metrics-item")], [
-      text(t(i18n_text.Claimed) <> ": " <> int.to_string(claimed_count)),
-    ]),
+    assignment_task_metric(locale, task_metric.Claimed, claimed_count),
     div([attribute.class("assignments-metrics-item")], [
       text(t(i18n_text.Released) <> ": " <> int.to_string(released_count)),
     ]),
-    div([attribute.class("assignments-metrics-item")], [
-      text(t(i18n_text.Closed) <> ": " <> int.to_string(closed_count)),
-    ]),
-    div([attribute.class("assignments-metrics-item")], [
-      text(t(i18n_text.OngoingCount) <> ": " <> int.to_string(ongoing_count)),
-    ]),
+    assignment_task_metric(locale, task_metric.Closed, closed_count),
+    assignment_task_metric(locale, task_metric.Ongoing, ongoing_count),
     div([attribute.class("assignments-metrics-item")], [
       text(t(i18n_text.LastClaim) <> ": " <> option_string_label(last_claim_at)),
     ]),
   ])
+}
+
+fn assignment_task_metric(
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
+  value: Int,
+) -> element.Element(msg) {
+  task_metric_chip.view(task_metric_chip.Config(
+    locale: locale,
+    metric: task_metric.metric(kind, value),
+    variant: task_metric_chip.Full,
+    extra_class: opt.Some("assignments-task-metric"),
+    testid: opt.None,
+  ))
 }
 
 fn option_string_label(value: opt.Option(String)) -> String {

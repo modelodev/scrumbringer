@@ -57,16 +57,16 @@ pub fn metric_if_positive_hides_zero_test() {
 pub fn custom_class_preserves_view_contract_test() {
   let html =
     signal_chip.metric_int("Blocked", 1, tone.Blocked)
-    |> signal_chip.with_class("kanban-health-chip")
-    |> signal_chip.with_parts("kanban-health-value", "kanban-health-label")
-    |> signal_chip.with_testid("kanban-health-chip")
+    |> signal_chip.with_class("custom-health-chip")
+    |> signal_chip.with_parts("custom-health-value", "custom-health-label")
+    |> signal_chip.with_testid("custom-health-chip")
     |> signal_chip.with_title("Blocked: 1")
     |> signal_chip.view
     |> element.to_document_string
 
-  assert_contains(html, "kanban-health-chip blocked")
-  assert_contains(html, "kanban-health-value")
-  assert_contains(html, "kanban-health-label")
-  assert_contains(html, "data-testid=\"kanban-health-chip\"")
+  assert_contains(html, "custom-health-chip blocked")
+  assert_contains(html, "custom-health-value")
+  assert_contains(html, "custom-health-label")
+  assert_contains(html, "data-testid=\"custom-health-chip\"")
   assert_contains(html, "title=\"Blocked: 1\"")
 }

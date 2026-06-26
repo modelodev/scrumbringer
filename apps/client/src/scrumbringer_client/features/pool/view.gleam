@@ -43,6 +43,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
+import scrumbringer_client/ui/task_metric
 import scrumbringer_client/ui/tone
 
 pub type MainConfig(msg) {
@@ -220,16 +221,8 @@ fn pool_summary(
       int.to_string(open),
       tone.Available,
     ),
-    work_surface.summary_chip(
-      i18n.t(config.locale, i18n_text.PoolReadyCount),
-      int.to_string(ready),
-      tone.Success,
-    ),
-    work_surface.summary_chip(
-      i18n.t(config.locale, i18n_text.PoolBlockedCount),
-      int.to_string(blocked),
-      tone.Blocked,
-    ),
+    work_surface.task_summary_chip(config.locale, task_metric.Available, ready),
+    work_surface.task_summary_chip(config.locale, task_metric.Blocked, blocked),
     work_surface.summary_chip(
       i18n.t(config.locale, i18n_text.PoolHealthyLimit),
       int.to_string(config.healthy_pool_limit),

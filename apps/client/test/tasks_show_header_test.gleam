@@ -31,6 +31,8 @@ pub fn task_show_header_renders_loaded_task_test() {
   assert_contains(html, "Backend")
   assert_contains(html, "task-meta-capability")
   assert_contains(html, "P2")
+  assert_contains(html, "data-testid=\"task-show-status-indicator\"")
+  assert_contains(html, "task-status-indicator")
   assert_contains(html, "Available")
   assert_contains(html, "Unassigned")
   assert_contains(html, "No due date")
@@ -49,6 +51,7 @@ pub fn task_show_header_renders_assigned_task_test() {
     ))
     |> element.to_document_string
 
+  assert_contains(html, "data-testid=\"task-show-status-indicator\"")
   assert_contains(html, "Claimed")
   assert_contains(html, "Assigned")
   assert_contains(html, "task-meta-assignee")

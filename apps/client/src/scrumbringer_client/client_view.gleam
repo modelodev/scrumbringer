@@ -1977,6 +1977,7 @@ fn capability_board_config(
     selected_card_id: model.member.pool.member_plan_scope_card_id,
     card_query: model.member.pool.member_plan_scope_card_query,
     show_closed: model.member.pool.member_plan_show_closed,
+    expanded_task_previews: model.member.pool.member_capability_task_previews,
     on_scope_kind_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanScopeKindChanged(value))
     },
@@ -1996,6 +1997,11 @@ fn capability_board_config(
     },
     on_capability_mode_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPlanCapabilityModeChanged(value))
+    },
+    on_task_preview_toggle: fn(preview_key) {
+      client_state.pool_msg(pool_messages.MemberCapabilityTaskPreviewToggled(
+        preview_key,
+      ))
     },
   )
 }

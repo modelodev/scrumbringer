@@ -20,7 +20,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
-import scrumbringer_client/ui/task_state
+import scrumbringer_client/ui/task_status_indicator
 
 pub type Config {
   Config(
@@ -42,14 +42,7 @@ pub fn view(config: Config) -> Element(msg) {
     div(
       [attribute.class("task-show-summary-grid")],
       [
-        summary_item(
-          t(config.locale, i18n_text.Status),
-          task_state.label(
-            config.locale,
-            task_execution_state.to_status(config.task.state),
-          ),
-          False,
-        ),
+        status_summary_item(config, t(config.locale, i18n_text.Status)),
         summary_item(
           t(config.locale, i18n_text.Priority),
           t(config.locale, i18n_text.PriorityShort(config.task.priority)),
@@ -82,6 +75,32 @@ pub fn view(config: Config) -> Element(msg) {
 }
 
 fn summary_item(label: String, value: String, muted: Bool) -> Element(msg) {
+  summary_element_item(label, [text(value)], muted)
+}
+
+fn status_summary_item(config: Config, label: String) -> Element(msg) {
+  summary_element_item(
+    label,
+    [
+      task_status_indicator.view(task_status_indicator.Config(
+        locale: config.locale,
+        status: task_execution_state.to_status(config.task.state),
+        variant: task_status_indicator.InlineFull,
+        label: opt.None,
+        title: opt.None,
+        extra_class: opt.Some("task-show-summary-status"),
+        testid: opt.Some("task-show-summary-status-indicator"),
+      )),
+    ],
+    False,
+  )
+}
+
+fn summary_element_item(
+  label: String,
+  children: List(Element(msg)),
+  muted: Bool,
+) -> Element(msg) {
   div([attribute.class("task-show-summary-item")], [
     div([attribute.class("task-show-summary-label")], [text(label)]),
     div(
@@ -91,7 +110,7 @@ fn summary_item(label: String, value: String, muted: Bool) -> Element(msg) {
           False -> "task-show-summary-value"
         }),
       ],
-      [text(value)],
+      children,
     ),
   ])
 }

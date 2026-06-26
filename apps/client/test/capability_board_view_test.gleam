@@ -13,6 +13,7 @@ import lustre/element
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/capability_board/view as capability_board
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
@@ -92,12 +93,14 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
     selected_card_id: None,
     card_query: "",
     show_closed: None,
+    expanded_task_previews: task_preview_state.new(),
     on_scope_kind_change: fn(_) { 0 },
     on_scope_depth_change: fn(_) { 0 },
     on_scope_card_change: fn(_) { 0 },
     on_scope_card_search_change: fn(_) { 0 },
     on_closed_toggled: fn(_) { 0 },
     on_capability_mode_change: fn(_) { 0 },
+    on_task_preview_toggle: fn(_) { 0 },
   )
 }
 
@@ -242,9 +245,9 @@ pub fn capability_board_matrix_is_read_only_and_hides_empty_affordances_test() {
   assert_contains(html, "data-testid=\"capability-matrix-empty-cell\"")
   assert_contains(html, "grid-template-columns")
   assert_contains(html, "repeat(2, minmax(112px, 1fr))")
-  assert_contains(html, "data-testid=\"workload-breakdown\"")
-  assert_contains(html, ">avail<")
-  assert_contains(html, ">now<")
+  assert_contains(html, "data-testid=\"task-metric-breakdown\"")
+  assert_contains(html, "data-testid=\"task-metric-available\"")
+  assert_contains(html, "data-testid=\"task-metric-ongoing\"")
   assert_not_contains(html, ">claim<")
   assert_not_contains(html, "auto-fit")
   assert_contains(html, ">Level<")
@@ -270,8 +273,57 @@ pub fn capability_board_list_marks_hidden_preview_tasks_test() {
   assert_contains(html, "Task two")
   assert_contains(html, "Task three")
   assert_not_contains(html, "Task four")
+  assert_not_contains(html, "<details")
+  assert_not_contains(html, "<summary")
   assert_contains(html, "data-testid=\"capability-list-more\"")
+  assert_contains(html, "data-testid=\"capability-list-more-link\"")
+  assert_contains(html, "aria-expanded=\"false\"")
   assert_contains(html, "+1 more task")
+}
+
+pub fn capability_board_list_expands_hidden_preview_tasks_below_link_test() {
+  let html =
+    capability_board.Config(
+      ..base_config(
+        remote.Loaded([
+          available_task(1, "Task one", 1, 1),
+          available_task(2, "Task two", 1, 1),
+          available_task(3, "Task three", 1, 1),
+          available_task(4, "Task four", 1, 1),
+        ]),
+      ),
+      expanded_task_previews: task_preview_state.from_list([
+        #("1-capability-2", True),
+      ]),
+    )
+    |> capability_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "Task four")
+  assert_contains(html, "aria-expanded=\"true\"")
+  assert_contains(html, "Show fewer")
+  assert_true(string.contains(html, "Task four</span>"))
+  let assert Ok(before_toggle) = string.split_once(html, "Task four")
+  let assert True = string.contains(before_toggle.1, "Show fewer")
+}
+
+pub fn capability_board_more_tasks_link_counts_multiple_hidden_tasks_test() {
+  let html =
+    base_config(
+      remote.Loaded([
+        available_task(1, "Task one", 1, 1),
+        available_task(2, "Task two", 1, 1),
+        available_task(3, "Task three", 1, 1),
+        available_task(4, "Task four", 1, 1),
+        available_task(5, "Task five", 1, 1),
+      ]),
+    )
+    |> capability_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "+2 more tasks")
+  assert_not_contains(html, "Task four")
+  assert_not_contains(html, "Task five")
 }
 
 pub fn capability_board_card_scope_rows_direct_children_test() {

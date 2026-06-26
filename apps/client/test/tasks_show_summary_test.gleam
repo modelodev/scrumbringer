@@ -30,6 +30,8 @@ pub fn task_show_summary_renders_operational_context_test() {
     |> element.to_document_string
 
   assert_contains(html, "Operational summary")
+  assert_contains(html, "data-testid=\"task-show-summary-status-indicator\"")
+  assert_contains(html, "task-status-indicator")
   assert_contains(html, "Available")
   assert_contains(html, "P2")
   assert_contains(html, "Feature")

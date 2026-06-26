@@ -46,7 +46,8 @@ import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_with_tasks_surface
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/signal_chip
+import scrumbringer_client/ui/task_metric
+import scrumbringer_client/ui/task_metric_chip
 import scrumbringer_client/ui/tone
 import scrumbringer_client/utils/card_queries
 
@@ -263,25 +264,25 @@ fn view_surface_header(
         int.to_string(summary.cards),
         tone.Neutral,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.MetricsAvailable),
-        int.to_string(summary.available),
-        tone.Available,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Available,
+        summary.available,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.MetricsClaimed),
-        int.to_string(summary.claimed),
-        tone.Claimed,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Claimed,
+        summary.claimed,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
-        int.to_string(summary.ongoing),
-        tone.Ongoing,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Ongoing,
+        summary.ongoing,
       ),
-      work_surface.summary_chip(
-        i18n.t(config.locale, i18n_text.Blocked),
-        int.to_string(summary.blocked),
-        tone.Blocked,
+      work_surface.task_summary_chip(
+        config.locale,
+        task_metric.Blocked,
+        summary.blocked,
       ),
     ],
     actions: [],
@@ -482,47 +483,40 @@ fn view_health_items(
   health: TaskHealth,
 ) -> List(element.Element(msg)) {
   let core_items = [
-    view_health_chip(
-      i18n.t(config.locale, i18n_text.MetricsAvailable),
+    view_task_metric_chip(
+      config.locale,
+      task_metric.Available,
       health.available,
-      tone.Available,
     ),
-    view_health_chip(
-      i18n.t(config.locale, i18n_text.MetricsClaimed),
-      health.claimed,
-      tone.Claimed,
-    ),
-    view_health_chip(
-      i18n.t(config.locale, i18n_text.KanbanSummaryOngoing),
-      health.ongoing,
-      tone.Ongoing,
-    ),
+    view_task_metric_chip(config.locale, task_metric.Claimed, health.claimed),
+    view_task_metric_chip(config.locale, task_metric.Ongoing, health.ongoing),
   ]
 
   case health.blocked > 0 {
     True ->
       list.append(core_items, [
-        view_health_chip(
-          i18n.t(config.locale, i18n_text.Blocked),
+        view_task_metric_chip(
+          config.locale,
+          task_metric.Blocked,
           health.blocked,
-          tone.Blocked,
         ),
       ])
     False -> core_items
   }
 }
 
-fn view_health_chip(
-  label: String,
+fn view_task_metric_chip(
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
   value: Int,
-  tone_value: tone.Tone,
 ) -> element.Element(msg) {
-  signal_chip.metric_int(label, value, tone_value)
-  |> signal_chip.with_class("kanban-health-chip")
-  |> signal_chip.with_parts("kanban-health-value", "kanban-health-label")
-  |> signal_chip.with_testid("kanban-health-chip")
-  |> signal_chip.with_title(label <> ": " <> int.to_string(value))
-  |> signal_chip.view
+  task_metric_chip.view(task_metric_chip.Config(
+    locale: locale,
+    metric: task_metric.metric(kind, value),
+    variant: task_metric_chip.Compact,
+    extra_class: Some("kanban-card-task-metric-chip"),
+    testid: Some("task-metric-chip"),
+  ))
 }
 
 fn header_actions(

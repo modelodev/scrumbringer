@@ -9,7 +9,7 @@ import gleam/order
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{button, div, li, p, span, text, ul}
+import lustre/element/html.{button, div, li, p, text, ul}
 import lustre/event
 
 import scrumbringer_client/i18n/i18n
@@ -25,7 +25,7 @@ import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state as task_state_ui
-import scrumbringer_client/ui/task_status_utils
+import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/utils/text as text_utils
 
@@ -248,38 +248,19 @@ fn status_display(config: Config(msg), task: domain_task.Task) -> Element(msg) {
 
   case task.state {
     task_execution_state.Claimed(..) ->
-      span(
-        [
-          attribute.class("task-claimed-by"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [text(compact_claimed_name(config, task))],
-      )
+      task_status_indicator.view(task_status_indicator.Config(
+        locale: config.locale,
+        status: status,
+        variant: task_status_indicator.InlineFull,
+        label: option.Some(compact_claimed_name(config, task)),
+        title: option.None,
+        extra_class: option.Some("task-claimed-by"),
+        testid: option.None,
+      ))
     task_execution_state.Available ->
-      span(
-        [
-          attribute.class("task-status-muted"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [text(task_status_utils.label(config.locale, status))],
-      )
+      task_status_indicator.full(config.locale, status)
     task_execution_state.Closed(..) ->
-      span(
-        [
-          attribute.class("task-status"),
-          attribute.attribute(
-            "title",
-            task_state_ui.hint(config.locale, status),
-          ),
-        ],
-        [text(task_status_utils.label(config.locale, status))],
-      )
+      task_status_indicator.full(config.locale, status)
   }
 }
 
@@ -379,7 +360,7 @@ fn progress_class() -> String {
 }
 
 fn status_items_class() -> String {
-  "card-surface-status-items kanban-card-health"
+  "card-surface-status-items card-surface-task-metrics"
 }
 
 fn body_class() -> String {

@@ -85,6 +85,70 @@ pub fn plan_structure_refresh_ignores_invisible_work_filters_test() {
     )
 }
 
+pub fn task_filter_usage_matches_refresh_surface_test() {
+  let assert False =
+    member_refresh_filters.uses_task_filters(
+      member_refresh_filters.PeopleRefresh,
+    )
+  let assert True =
+    member_refresh_filters.uses_task_filters(member_refresh_filters.PoolRefresh)
+  let assert True =
+    member_refresh_filters.uses_task_filters(
+      member_refresh_filters.CapabilitiesRefresh,
+    )
+  let assert True =
+    member_refresh_filters.uses_task_filters(
+      member_refresh_filters.PlanKanbanRefresh,
+    )
+  let assert False =
+    member_refresh_filters.uses_task_filters(
+      member_refresh_filters.PlanStructureRefresh,
+    )
+}
+
+pub fn active_task_filters_are_surface_aware_test() {
+  let pool =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_filters_type_id: opt.Some(2),
+      member_filters_capability_id: opt.Some(7),
+      member_filters_q: " rollout ",
+    )
+
+  let assert True =
+    member_refresh_filters.has_active_task_filters(
+      member_refresh_filters.PoolRefresh,
+      pool,
+    )
+  let assert False =
+    member_refresh_filters.has_active_task_filters(
+      member_refresh_filters.PlanStructureRefresh,
+      pool,
+    )
+}
+
+pub fn task_filters_for_pool_uses_pool_work_filters_test() {
+  let pool =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_filters_type_id: opt.Some(2),
+      member_filters_capability_id: opt.Some(7),
+      member_filters_q: " rollout ",
+    )
+
+  let assert task_operations_api.TaskFilters(
+    status: opt.None,
+    type_id: opt.Some(2),
+    capability_id: opt.Some(7),
+    q: opt.Some("rollout"),
+    blocked: opt.None,
+  ) =
+    member_refresh_filters.task_filters_for_pool(
+      member_refresh_filters.PlanKanbanRefresh,
+      pool,
+    )
+}
+
 pub fn refresh_surface_distinguishes_plan_structure_from_kanban_test() {
   let assert member_refresh_filters.PlanStructureRefresh =
     member_refresh_filters.surface(view_mode.Cards, member_pool.PlanStructure)
