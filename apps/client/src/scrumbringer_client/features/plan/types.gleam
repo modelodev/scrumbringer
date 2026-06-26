@@ -43,9 +43,17 @@ pub type PlannedAction {
   PlannedAction(action: CardAction, availability: ActionAvailability)
 }
 
+pub type TreeRail {
+  TreeBlank
+  TreeContinue
+  TreeElbow
+  TreeEnd
+}
+
 pub type StructureRow {
   CardRow(
     depth: Int,
+    outline: List(TreeRail),
     card: Card,
     path: String,
     level_name: String,

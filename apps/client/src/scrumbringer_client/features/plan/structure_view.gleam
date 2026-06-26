@@ -543,7 +543,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
 }
 
 fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) {
-  let types.CardRow(depth:, card:, path:, level_name:, ..) = row
+  let types.CardRow(depth:, outline:, card:, path:, level_name:, ..) = row
   let depth_class = case depth > 1 {
     True -> " is-nested"
     False -> ""
@@ -567,7 +567,7 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
       ..move_drop_attributes(config, card)
     ],
     [
-      view_tree_gutter(config, card, depth),
+      view_tree_gutter(config, card, outline),
       button(
         [
           attribute.type_("button"),
@@ -583,30 +583,44 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
   )
 }
 
-fn view_tree_gutter(config: Config(msg), card: Card, depth: Int) -> Element(msg) {
+fn view_tree_gutter(
+  config: Config(msg),
+  card: Card,
+  outline: List(types.TreeRail),
+) -> Element(msg) {
   div(
     [attribute.class("plan-tree-gutter")],
-    list.append(view_tree_rails(depth - 1), [view_tree_toggle(config, card)]),
+    list.append(view_tree_rails(outline), [
+      view_tree_node(config, card),
+    ]),
   )
 }
 
-fn view_tree_rails(count: Int) -> List(Element(msg)) {
-  case count <= 0 {
-    True -> []
-    False -> [
-      span(
-        [
-          attribute.class(case count == 1 {
-            True -> "plan-tree-rail is-current"
-            False -> "plan-tree-rail"
-          }),
-          attribute.attribute("aria-hidden", "true"),
-        ],
-        [],
-      ),
-      ..view_tree_rails(count - 1)
-    ]
+fn view_tree_rails(outline: List(types.TreeRail)) -> List(Element(msg)) {
+  list.map(outline, fn(rail) {
+    span(
+      [
+        attribute.class("plan-tree-rail " <> tree_rail_class(rail)),
+        attribute.attribute("aria-hidden", "true"),
+      ],
+      [],
+    )
+  })
+}
+
+fn tree_rail_class(rail: types.TreeRail) -> String {
+  case rail {
+    types.TreeBlank -> "is-blank"
+    types.TreeContinue -> "is-continue"
+    types.TreeElbow -> "is-elbow"
+    types.TreeEnd -> "is-end"
   }
+}
+
+fn view_tree_node(config: Config(msg), card: Card) -> Element(msg) {
+  span([attribute.class("plan-tree-node")], [
+    view_tree_toggle(config, card),
+  ])
 }
 
 fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
@@ -629,21 +643,19 @@ fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {
           event.on_click(config.on_card_toggle(card.id)),
         ],
         [
-          span([attribute.class("plan-tree-marker")], [
-            text(case collapsed {
-              True -> "▸"
-              False -> "▾"
-            }),
-          ]),
+          text(case collapsed {
+            True -> "▸"
+            False -> "▾"
+          }),
         ],
       )
     False ->
       span(
         [
-          attribute.class("plan-tree-leaf"),
+          attribute.class("plan-tree-toggle-placeholder"),
           attribute.attribute("aria-hidden", "true"),
         ],
-        [],
+        [span([attribute.class("plan-tree-terminal-dot")], [])],
       )
   }
 }
@@ -1193,10 +1205,12 @@ fn structure_rows(
         member_pool.PlanScopeLevel, Some(_) ->
           scoped_cards
           |> list.sort(fn(a, b) { compare_cards(config, cards, a, b) })
-          |> list.map(fn(card) { row_for_card(config, card, 1) })
+          |> list.map(fn(card) { row_for_card(config, card, 1, []) })
         _, _ ->
           roots_for_scope(scoped_cards, config)
-          |> list.flat_map(fn(card) { tree_rows(config, scoped_cards, card, 1) })
+          |> list.flat_map(fn(card) {
+            tree_rows(config, scoped_cards, card, 1, [], None)
+          })
       }
     }
   }
@@ -1207,6 +1221,8 @@ fn tree_rows(
   scoped_cards: List(Card),
   card: Card,
   depth: Int,
+  prefix: List(types.TreeRail),
+  branch: Option(Bool),
 ) -> List(types.StructureRow) {
   let children =
     scoped_cards
@@ -1221,13 +1237,57 @@ fn tree_rows(
     |> list.sort(fn(a, b) { compare_cards(config, config.cards, a, b) })
 
   case is_collapsed(config, card.id) {
-    True -> [row_for_card(config, card, depth)]
+    True -> [row_for_card(config, card, depth, row_outline(prefix, branch))]
     False -> [
-      row_for_card(config, card, depth),
-      ..list.flat_map(children, fn(child) {
-        tree_rows(config, scoped_cards, child, depth + 1)
-      })
+      row_for_card(config, card, depth, row_outline(prefix, branch)),
+      ..child_tree_rows(
+        config,
+        scoped_cards,
+        children,
+        depth + 1,
+        child_prefix(prefix, branch),
+      )
     ]
+  }
+}
+
+fn child_tree_rows(
+  config: Config(msg),
+  scoped_cards: List(Card),
+  children: List(Card),
+  depth: Int,
+  prefix: List(types.TreeRail),
+) -> List(types.StructureRow) {
+  case children {
+    [] -> []
+    [child] -> tree_rows(config, scoped_cards, child, depth, prefix, Some(True))
+    [child, ..rest] ->
+      list.append(
+        tree_rows(config, scoped_cards, child, depth, prefix, Some(False)),
+        child_tree_rows(config, scoped_cards, rest, depth, prefix),
+      )
+  }
+}
+
+fn row_outline(
+  prefix: List(types.TreeRail),
+  branch: Option(Bool),
+) -> List(types.TreeRail) {
+  case branch {
+    None -> []
+    Some(True) -> list.append(prefix, [types.TreeEnd])
+    Some(False) -> list.append(prefix, [types.TreeElbow])
+  }
+}
+
+fn child_prefix(
+  prefix: List(types.TreeRail),
+  branch: Option(Bool),
+) -> List(types.TreeRail) {
+  case branch {
+    None -> []
+    Some(True) -> list.append(prefix, [types.TreeBlank])
+    Some(False) -> list.append(prefix, [types.TreeContinue])
   }
 }
 
@@ -1254,10 +1314,12 @@ fn row_for_card(
   config: Config(msg),
   card: Card,
   relative_depth: Int,
+  outline: List(types.TreeRail),
 ) -> types.StructureRow {
   let absolute_depth = card_queries.card_depth(card, config.cards)
   types.CardRow(
     depth: relative_depth,
+    outline: outline,
     card: card,
     path: card_queries.parent_path(card, config.cards),
     level_name: card_queries.depth_singular_label(

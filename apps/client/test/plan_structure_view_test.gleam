@@ -16,11 +16,17 @@ import scrumbringer_client/features/plan/structure_view
 import scrumbringer_client/i18n/locale
 
 fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
+  case string.contains(text, fragment) {
+    True -> Nil
+    False -> panic as { "expected HTML to contain: " <> fragment }
+  }
 }
 
 fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
+  case string.contains(text, fragment) {
+    False -> Nil
+    True -> panic as { "expected HTML not to contain: " <> fragment }
+  }
 }
 
 fn assert_before(text: String, first: String, second: String) {
@@ -58,10 +64,16 @@ pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   assert_not_contains(html, "Lente")
   assert_contains(html, "plan-tree-cell is-nested")
   assert_contains(html, "plan-tree-gutter")
-  assert_contains(html, "plan-tree-rail")
-  assert_contains(html, "plan-tree-rail is-current")
-  assert_contains(html, "class=\"plan-tree-marker\">▾</span>")
-  assert_contains(html, "class=\"plan-tree-leaf\"></span>")
+  assert_contains(html, "plan-tree-node")
+  assert_contains(html, "plan-tree-rail is-elbow")
+  assert_contains(html, "plan-tree-rail is-end")
+  assert_contains(html, ">▾</button>")
+  assert_contains(html, "plan-tree-toggle-placeholder")
+  assert_contains(html, "plan-tree-terminal-dot")
+  assert_not_contains(html, "plan-tree-chevron")
+  assert_not_contains(html, "plan-tree-toggle-slot")
+  assert_not_contains(html, "plan-tree-marker")
+  assert_not_contains(html, "plan-tree-leaf")
   assert_not_contains(html, "plan-tree-path")
   assert_contains(html, "plan-detail-context")
   assert_contains(html, "Tareas descendientes")
@@ -71,17 +83,20 @@ pub fn tree_gutter_scales_for_deep_card_nesting_test() {
   let html =
     render(
       structure_view.Config(..base_config(), cards: [
-        card(9, Some(3), "Deep Delivery Slice", Active),
+        card(10, Some(1), "Zeta Feature", Active),
+        card(9, Some(4), "Deep Delivery Slice", Active),
         ..cards()
       ]),
     )
 
   assert_contains(html, "Deep Delivery Slice")
-  assert_contains(html, "Root Initiative / Portal Feature / API Story")
+  assert_contains(html, "Root Initiative / Portal Feature / Draft Checkout")
   assert_contains(html, "plan-tree-gutter")
-  assert_contains(html, "plan-tree-rail")
-  assert_contains(html, "plan-tree-rail is-current")
-  assert_contains(html, "class=\"plan-tree-leaf\"></span>")
+  assert_contains(html, "plan-tree-rail is-continue")
+  assert_contains(html, "plan-tree-rail is-blank")
+  assert_contains(html, "plan-tree-rail is-end")
+  assert_contains(html, "plan-tree-toggle-placeholder")
+  assert_contains(html, "plan-tree-terminal-dot")
 }
 
 pub fn collapsed_card_hides_descendant_rows_and_marks_toggle_test() {
@@ -89,7 +104,7 @@ pub fn collapsed_card_hides_descendant_rows_and_marks_toggle_test() {
     render(structure_view.Config(..base_config(), collapsed_card_ids: [1]))
 
   assert_contains(html, "aria-expanded=\"false\"")
-  assert_contains(html, "class=\"plan-tree-marker\">▸</span>")
+  assert_contains(html, ">▸</button>")
   assert_contains(html, "Root Initiative")
   assert_not_contains(html, "Portal Feature")
   assert_not_contains(html, "API Story")
