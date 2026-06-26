@@ -618,9 +618,20 @@ fn tree_rail_class(rail: types.TreeRail) -> String {
 }
 
 fn view_tree_node(config: Config(msg), card: Card) -> Element(msg) {
-  span([attribute.class("plan-tree-node")], [
+  span([attribute.class(tree_node_class(config, card))], [
     view_tree_toggle(config, card),
   ])
+}
+
+fn tree_node_class(config: Config(msg), card: Card) -> String {
+  let has_children =
+    card_queries.direct_child_cards(card.id, config.cards) != []
+  let open = has_children && !is_collapsed(config, card.id)
+
+  case open {
+    True -> "plan-tree-node is-open"
+    False -> "plan-tree-node"
+  }
 }
 
 fn view_tree_toggle(config: Config(msg), card: Card) -> Element(msg) {

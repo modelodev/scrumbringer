@@ -65,6 +65,7 @@ pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   assert_contains(html, "plan-tree-cell is-nested")
   assert_contains(html, "plan-tree-gutter")
   assert_contains(html, "plan-tree-node")
+  assert_contains(html, "plan-tree-node is-open")
   assert_contains(html, "plan-tree-rail is-elbow")
   assert_contains(html, "plan-tree-rail is-end")
   assert_contains(html, ">▾</button>")
@@ -105,6 +106,7 @@ pub fn collapsed_card_hides_descendant_rows_and_marks_toggle_test() {
 
   assert_contains(html, "aria-expanded=\"false\"")
   assert_contains(html, ">▸</button>")
+  assert_not_contains(html, "plan-tree-node is-open")
   assert_contains(html, "Root Initiative")
   assert_not_contains(html, "Portal Feature")
   assert_not_contains(html, "API Story")
