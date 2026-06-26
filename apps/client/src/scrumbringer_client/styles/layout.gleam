@@ -424,7 +424,7 @@ pub fn css() -> List(String) {
     ".plan-tree-rail, .plan-tree-node { position: relative; min-height: 40px; }",
     ".plan-tree-rail { flex: 0 0 22px; width: 22px; }",
     ".plan-tree-node { display: inline-flex; align-items: flex-start; justify-content: center; flex: 0 0 20px; width: 20px; }",
-    ".plan-tree-node.is-open::after { content: \"\"; position: absolute; left: 10px; top: 13px; bottom: -12px; width: 1px; transform: translateX(-0.5px); background: color-mix(in oklab, var(--sb-muted) 34%, var(--sb-border)); pointer-events: none; }",
+    ".plan-tree-node.is-open::after { content: \"\"; position: absolute; left: 11px; top: 13px; bottom: -12px; width: 1px; transform: translateX(-0.5px); background: color-mix(in oklab, var(--sb-muted) 34%, var(--sb-border)); pointer-events: none; }",
     ".plan-tree-rail::before, .plan-tree-rail::after { content: \"\"; position: absolute; background: color-mix(in oklab, var(--sb-muted) 34%, var(--sb-border)); pointer-events: none; }",
     ".plan-tree-rail.is-blank::before, .plan-tree-rail.is-blank::after { display: none; }",
     ".plan-tree-rail.is-continue::before, .plan-tree-rail.is-elbow::before { left: 11px; top: -12px; bottom: -12px; width: 1px; transform: translateX(-0.5px); }",

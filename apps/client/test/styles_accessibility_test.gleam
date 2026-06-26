@@ -115,7 +115,7 @@ pub fn plan_tree_branch_rows_do_not_shift_tree_geometry_test() {
   )
   assert_contains(
     css,
-    ".plan-tree-node.is-open::after { content: \"\"; position: absolute; left: 10px; top: 13px; bottom: -12px",
+    ".plan-tree-node.is-open::after { content: \"\"; position: absolute; left: 11px; top: 13px; bottom: -12px",
   )
   assert_contains(
     css,
