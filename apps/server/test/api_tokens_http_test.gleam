@@ -53,6 +53,8 @@ pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
     )
   expect.expect_status(list_res, 200)
 
+  let assert Ok(card_id) =
+    create_active_card(handler, admin_session, project_id, "Imported task card")
   let create_res =
     handler(
       simulate.request(
@@ -66,6 +68,7 @@ pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
           #("description", json.string("Created by integration")),
           #("type_id", json.int(type_id)),
           #("priority", json.int(3)),
+          #("card_id", json.int(card_id)),
         ]),
       ),
     )
@@ -404,6 +407,8 @@ pub fn project_api_token_grants_access_without_membership_test() {
   )
   |> expect.expect_status(200)
 
+  let assert Ok(card_id) =
+    create_active_card(handler, admin_session, project_id, "Imported task card")
   handler(
     simulate.request(
       http.Post,
@@ -416,6 +421,7 @@ pub fn project_api_token_grants_access_without_membership_test() {
         #("description", json.string("Created by integration")),
         #("type_id", json.int(type_id)),
         #("priority", json.int(3)),
+        #("card_id", json.int(card_id)),
       ]),
     ),
   )
@@ -727,6 +733,22 @@ pub fn bearer_revoked_expired_and_unsupported_routes_are_rejected_test() {
     |> fixtures.with_bearer(token_to_revoke),
   )
   |> expect.expect_status(401)
+}
+
+fn create_active_card(
+  handler: fixtures.Handler,
+  session: fixtures.Session,
+  project_id: Int,
+  title: String,
+) -> Result(Int, String) {
+  use card_id <- result.try(fixtures.create_card(
+    handler,
+    session,
+    project_id,
+    title,
+  ))
+  use Nil <- result.try(fixtures.activate_card(handler, session, card_id))
+  Ok(card_id)
 }
 
 fn create_integration_user(

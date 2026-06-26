@@ -85,10 +85,6 @@ fn task_decoder() -> decode.Decoder(PersonWorkloadTask) {
   )
   use blocked <- decode.field("blocked", decode.bool)
   use ongoing <- decode.field("ongoing", decode.bool)
-  use outside_active_work_scope <- decode.field(
-    "outside_active_work_scope",
-    decode.bool,
-  )
   decode.success(PersonWorkloadTask(
     task_id: task_id,
     task_version: task_version,
@@ -101,7 +97,6 @@ fn task_decoder() -> decode.Decoder(PersonWorkloadTask) {
     card_state: card_state,
     blocked: blocked,
     ongoing: ongoing,
-    outside_active_work_scope: outside_active_work_scope,
   ))
 }
 
@@ -160,7 +155,6 @@ fn task_to_json(task: PersonWorkloadTask) -> json.Json {
     card_state: card_state,
     blocked: blocked,
     ongoing: ongoing,
-    outside_active_work_scope: outside_active_work_scope,
   ) = task
 
   json.object([
@@ -175,7 +169,6 @@ fn task_to_json(task: PersonWorkloadTask) -> json.Json {
     #("card_state", optional_card_state_to_json(card_state)),
     #("blocked", json.bool(blocked)),
     #("ongoing", json.bool(ongoing)),
-    #("outside_active_work_scope", json.bool(outside_active_work_scope)),
   ])
 }
 

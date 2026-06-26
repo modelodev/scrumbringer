@@ -53,6 +53,49 @@ pub fn upsert_empty_list_no_changes_test() {
     == normalized_store.get_by_project(store, 10)
 }
 
+pub fn upsert_one_inserts_new_item_first_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a], card_id)
+    |> normalized_store.upsert_one(10, card_b, card_id)
+
+  let assert [first, second] = normalized_store.get_by_project(store, 10)
+  let assert 2 = first.id
+  let assert 1 = second.id
+}
+
+pub fn upsert_one_replaces_existing_item_without_moving_it_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+  let updated = make_card(1, 10, "A updated")
+
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a, card_b], card_id)
+    |> normalized_store.upsert_one(10, updated, card_id)
+
+  let assert [first, second] = normalized_store.get_by_project(store, 10)
+  let assert "A updated" = first.title
+  let assert 2 = second.id
+}
+
+pub fn remove_one_deletes_item_from_project_index_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a, card_b], card_id)
+    |> normalized_store.remove_one(10, 1)
+
+  let assert [remaining] = normalized_store.get_by_project(store, 10)
+  let assert 2 = remaining.id
+  let assert option.None = normalized_store.get_by_id(store, 1)
+}
+
 pub fn to_list_preserves_project_order_test() {
   let card_a = make_card(1, 10, "A")
   let card_b = make_card(2, 10, "B")

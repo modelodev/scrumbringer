@@ -106,8 +106,9 @@ pub fn card_show_secondary_actions_render_as_menu_items_test() {
     show_entry.view(config(Some(sample_card())))
     |> element.to_document_string
 
+  assert_contains(html, "data-testid=\"card-primary-activate-action\"")
   assert_contains(html, "data-testid=\"card-secondary-actions-trigger\"")
-  assert_contains(html, "data-testid=\"card-secondary-activate-action\"")
+  assert_not_contains(html, "data-testid=\"card-secondary-activate-action\"")
   assert_contains(html, "data-testid=\"card-secondary-move-action\"")
   assert_contains(html, "data-testid=\"card-secondary-delete-action\"")
   assert_not_contains(html, "data-testid=\"card-activate-action\"")

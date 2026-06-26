@@ -864,14 +864,9 @@ fn view_contextual_create_action(
       let types.PlannedAction(action: action_kind, availability:) = action
       let #(label, msg) = action_event(config, card, action_kind)
       let #(disabled, title) = availability_attrs(availability)
+      let #(icon, intent) = contextual_action_style(action_kind)
 
-      ui_button.icon_text(
-        label,
-        msg,
-        icons.Plus,
-        ui_button.Secondary,
-        ui_button.EntityAction,
-      )
+      ui_button.icon_text(label, msg, icon, intent, ui_button.EntityAction)
       |> ui_button.with_size(ui_button.ExtraSmall)
       |> ui_button.with_disabled(disabled)
       |> ui_button.with_tooltip(contextual_action_title(label, title))
@@ -893,9 +888,22 @@ fn contextual_action_title(label: String, title: String) -> String {
 fn primary_create_action(
   actions: List(types.PlannedAction),
 ) -> Option(types.PlannedAction) {
-  case find_available_action(actions, types.CreateSubcard) {
+  case find_available_action(actions, types.ActivateSubtree) {
     Some(action) -> Some(action)
-    None -> find_available_action(actions, types.CreateTask)
+    None ->
+      case find_available_action(actions, types.CreateSubcard) {
+        Some(action) -> Some(action)
+        None -> find_available_action(actions, types.CreateTask)
+      }
+  }
+}
+
+fn contextual_action_style(
+  action: types.CardAction,
+) -> #(icons.NavIcon, ui_button.Intent) {
+  case action {
+    types.ActivateSubtree -> #(icons.Play, ui_button.Primary)
+    _ -> #(icons.Plus, ui_button.Secondary)
   }
 }
 

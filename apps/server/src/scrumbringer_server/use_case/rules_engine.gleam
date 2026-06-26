@@ -374,41 +374,95 @@ fn apply_rule_with_template(
     automation.trigger_to_event_key(trigger, event_resource_id(event))
 
   pog.transaction(db, fn(tx) {
-    use reservation <- result.try(reserve_execution(
-      tx,
-      rule.id,
-      event_key,
-      event,
-      template,
-    ))
-
-    case reservation {
-      DuplicateExecution -> {
-        log("  Suppressed: already executed for this event")
-        Ok(RuleResult(rule.id, automation.DuplicateEvent))
-      }
-      ReservedExecution(execution_id) -> {
-        use task_id <- result.try(create_task_from_template(
+    case event_accepts_created_task(event) {
+      False ->
+        suppress_rule_for_unavailable_target(
           tx,
-          rule.id,
+          rule,
           template,
+          event_key,
           event,
-          get_project_name(tx, event_project_id(event)),
-          get_user_name(tx, event_user_id(event)),
-        ))
-
-        use _ <- result.try(mark_execution_created_task(
-          tx,
-          execution_id,
-          task_id,
-        ))
-
-        log("  Applied: created task #" <> int.to_string(task_id))
-        Ok(RuleResult(rule.id, automation.Executed(execution_id)))
-      }
+        )
+      True ->
+        apply_template_to_available_target(tx, rule, template, event_key, event)
     }
   })
   |> result.map_error(transaction_error_to_rule_engine_error)
+}
+
+fn apply_template_to_available_target(
+  tx: pog.Connection,
+  rule: MatchingRule,
+  template: ExecutionTemplate,
+  event_key: String,
+  event: StateChange,
+) -> Result(RuleResult, RuleEngineError) {
+  use reservation <- result.try(reserve_execution(
+    tx,
+    rule.id,
+    event_key,
+    event,
+    template,
+  ))
+
+  case reservation {
+    DuplicateExecution -> {
+      log("  Suppressed: already executed for this event")
+      Ok(RuleResult(rule.id, automation.DuplicateEvent))
+    }
+    ReservedExecution(execution_id) -> {
+      use task_id <- result.try(create_task_from_template(
+        tx,
+        rule.id,
+        template,
+        event,
+        get_project_name(tx, event_project_id(event)),
+        get_user_name(tx, event_user_id(event)),
+      ))
+
+      use _ <- result.try(mark_execution_created_task(tx, execution_id, task_id))
+
+      log("  Applied: created task #" <> int.to_string(task_id))
+      Ok(RuleResult(rule.id, automation.Executed(execution_id)))
+    }
+  }
+}
+
+fn suppress_rule_for_unavailable_target(
+  tx: pog.Connection,
+  rule: MatchingRule,
+  template: ExecutionTemplate,
+  event_key: String,
+  event: StateChange,
+) -> Result(RuleResult, RuleEngineError) {
+  use reservation <- result.try(reserve_suppressed_execution(
+    tx,
+    rule.id,
+    event_key,
+    event,
+    template,
+  ))
+
+  case reservation {
+    DuplicateExecution -> {
+      log("  Suppressed: already executed for this event")
+      Ok(RuleResult(rule.id, automation.DuplicateEvent))
+    }
+    ReservedExecution(_) -> {
+      log("  Suppressed: target no longer accepts tasks")
+      Ok(RuleResult(
+        rule.id,
+        automation.Skipped(automation.TargetNoLongerAcceptsTasks),
+      ))
+    }
+  }
+}
+
+fn event_accepts_created_task(event: StateChange) -> Bool {
+  case event {
+    CardChange(to_state: domain_card.Closed, ..) -> False
+    TaskChange(..) | CardChange(..) -> True
+  }
 }
 
 fn transaction_error_to_rule_engine_error(
@@ -470,8 +524,10 @@ fn create_task_from_template(
   let description =
     rules_templates.substitute(template_description_text(template), context)
 
-  // Inherit card_id from triggering task (None means no card)
-  let card_id_param = event_card_id(event)
+  // Tasks created by automations inherit the card scope of the triggering
+  // resource. Task events derive it from the persisted task when old callers
+  // omit it from the in-memory context.
+  use card_id_param <- result.try(event_card_id(db, event))
   let card_label = case card_id_param {
     option.None -> "none"
     option.Some(value) -> int.to_string(value)
@@ -669,6 +725,39 @@ fn reserve_execution(
   }
 }
 
+fn reserve_suppressed_execution(
+  db: pog.Connection,
+  rule_id: Int,
+  event_key: String,
+  event: StateChange,
+  template: ExecutionTemplate,
+) -> Result(RuleExecutionReservation, RuleEngineError) {
+  let suppression_reason =
+    automation.rule_suppression_reason_to_string(
+      automation.TargetNoLongerAcceptsTasksSuppression,
+    )
+
+  case
+    sql.rule_executions_log(
+      db,
+      rule_id,
+      event_key,
+      execution_task_id(event),
+      execution_card_id(event),
+      "suppressed",
+      suppression_reason,
+      event_user_id(event),
+      template.id,
+      template.version,
+      no_created_task_id,
+    )
+  {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(ReservedExecution(row.id))
+    Ok(pog.Returned(rows: [], ..)) -> Ok(DuplicateExecution)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
 fn mark_execution_created_task(
   db: pog.Connection,
   execution_id: Int,
@@ -777,11 +866,41 @@ fn event_task_type_label(event: StateChange) -> String {
   }
 }
 
-fn event_card_id(event: StateChange) -> option.Option(Int) {
+fn event_card_id(
+  db: pog.Connection,
+  event: StateChange,
+) -> Result(option.Option(Int), RuleEngineError) {
   case event {
-    TaskChange(ctx: ctx, ..) -> ctx.card_id
-    CardChange(..) -> option.None
+    TaskChange(ctx: ctx, ..) ->
+      case ctx.card_id {
+        option.Some(_) -> Ok(ctx.card_id)
+        option.None -> task_card_id(db, ctx.task_id)
+      }
+    CardChange(card_id: card_id, ..) -> Ok(option.Some(card_id))
   }
+}
+
+fn task_card_id(
+  db: pog.Connection,
+  task_id: Int,
+) -> Result(option.Option(Int), RuleEngineError) {
+  pog.query("select coalesce(card_id, 0)::int from tasks where id = $1")
+  |> pog.parameter(pog.int(task_id))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(DbError)
+  |> result.try(fn(returned) {
+    case returned.rows {
+      [id] if id > 0 -> Ok(option.Some(id))
+      [_] -> Ok(option.None)
+      _ -> Ok(option.None)
+    }
+  })
+}
+
+fn int_decoder() {
+  use value <- decode.field(0, decode.int)
+  decode.success(value)
 }
 
 fn event_card_depth(

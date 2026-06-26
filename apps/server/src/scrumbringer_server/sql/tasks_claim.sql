@@ -27,21 +27,16 @@ with recursive claim_target as (
   where id = $1
     and execution_state = 'available'
     and version = $3
-    and (
-      tasks.card_id is null
-      or (
-        exists (
-          select 1
-          from ancestors target
-          where target.id = tasks.card_id
-            and target.execution_state = 'active'
-        )
-        and not exists (
-          select 1
-          from ancestors
-          where execution_state = 'closed'
-        )
-      )
+    and exists (
+      select 1
+      from ancestors target
+      where target.id = tasks.card_id
+        and target.execution_state = 'active'
+    )
+    and not exists (
+      select 1
+      from ancestors
+      where execution_state = 'closed'
     )
     and not exists (
       select 1

@@ -7068,21 +7068,16 @@ with recursive claim_target as (
   where id = $1
     and execution_state = 'available'
     and version = $3
-    and (
-      tasks.card_id is null
-      or (
-        exists (
-          select 1
-          from ancestors target
-          where target.id = tasks.card_id
-            and target.execution_state = 'active'
-        )
-        and not exists (
-          select 1
-          from ancestors
-          where execution_state = 'closed'
-        )
-      )
+    and exists (
+      select 1
+      from ancestors target
+      where target.id = tasks.card_id
+        and target.execution_state = 'active'
+    )
+    and not exists (
+      select 1
+      from ancestors
+      where execution_state = 'closed'
     )
     and not exists (
       select 1
@@ -7485,7 +7480,7 @@ pub type TasksCreateRow {
 
 /// name: create_task
 /// Create a new task in a project, ensuring the task type belongs to the project
-/// and optionally associating with a card (if card_id is provided and belongs to same project).
+/// and associating it with a non-closed leaf card in the same project.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -7577,7 +7572,7 @@ pub fn tasks_create(
 
   "-- name: create_task
 -- Create a new task in a project, ensuring the task type belongs to the project
--- and optionally associating with a card (if card_id is provided and belongs to same project).
+-- and associating it with a non-closed leaf card in the same project.
 with type_ok as (
   select id
   from task_types
@@ -7585,16 +7580,15 @@ with type_ok as (
     and project_id = $2
 ), card_ok as (
   select c.id, c.execution_state
-  from (select 1) seed
-  left join cards c
-    on c.id = $7 and c.project_id = $2
+  from cards c
+  where c.id = $7
+    and c.project_id = $2
     and c.execution_state <> 'closed'
     and not exists (
       select 1
       from cards child
       where child.parent_card_id = c.id
     )
-  where $7 <= 0 or c.id is not null
 ), inserted as (
   insert into tasks (
     project_id,
@@ -7615,17 +7609,16 @@ with type_ok as (
     nullif($4, ''),
     $5,
     $6,
-    case when $7 <= 0 then null else card_ok.id end,
+    card_ok.id,
     case when $9 <= 0 then null else $9 end,
     'available',
     case
-      when $7 <= 0 then now()
       when card_ok.execution_state = 'active' then now()
       else null
     end
   from type_ok, card_ok
   where type_ok.id is not null
-    and ($7 <= 0 or card_ok.id is not null)
+    and $7 > 0
     and ($8 <= 0 or $8 > 0)
   returning
     id,
@@ -8262,7 +8255,10 @@ left join lateral (
   where d.task_id = t.id
 ) deps on true
 where t.project_id = $1
-  and (t.card_id is null or c.execution_state = 'active')
+  and (
+    t.execution_state = 'closed'
+    or c.execution_state = 'active'
+  )
   and (
     $2 = ''
     or t.execution_state = $2

@@ -30,8 +30,11 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, form, input, span, text}
 import lustre/event
 
+import api/cards/contracts as card_contracts
 import domain/api_error.{type ApiError, type ApiResult}
-import domain/card.{type Card, all_colors, color_to_string, state_to_string}
+import domain/card.{
+  type Card, Active, Card, all_colors, color_to_string, state_to_string,
+}
 import domain/card/card_codec
 import scrumbringer_client/ui/attribute_value
 
@@ -41,6 +44,7 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
@@ -53,6 +57,11 @@ import scrumbringer_client/ui/modal_header
 /// Dialog mode determines which view to show.
 pub type DialogMode =
   crud_dialog_base.DialogLifecycle(Card)
+
+pub type CreatePendingAction {
+  CreateDraftPending
+  CreateAndActivatePending
+}
 
 /// Internal component model - encapsulates all 17 CRUD fields.
 pub type Model {
@@ -68,6 +77,7 @@ pub type Model {
     create_color: Option(String),
     create_color_open: Bool,
     create_in_flight: Bool,
+    create_pending_action: Option(CreatePendingAction),
     create_error: Option(String),
     // Edit dialog fields
     edit_title: String,
@@ -96,6 +106,9 @@ pub type Msg {
   CreateColorChanged(Option(String))
   CreateSubmitted
   CreateResult(ApiResult(Card))
+  CreateAndActivateSubmitted
+  CreateForActivationResult(ApiResult(Card))
+  CreateActivationResult(Card, ApiResult(card_contracts.CardActionResponse))
   // Edit form
   EditTitleChanged(String)
   EditDescriptionChanged(String)
@@ -198,6 +211,7 @@ fn default_model() -> Model {
     create_color: option.None,
     create_color_open: False,
     create_in_flight: False,
+    create_pending_action: option.None,
     create_error: option.None,
     edit_title: "",
     edit_description: "",
@@ -251,7 +265,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    CreateSubmitted -> handle_create_submitted(model)
+    CreateSubmitted ->
+      handle_create_submitted(model, CreateDraftPending, CreateResult)
 
     CreateResult(Ok(card)) -> handle_create_success(model, card)
 
@@ -259,10 +274,41 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         create_in_flight: False,
+        create_pending_action: option.None,
         create_error: option.Some(err.message),
       ),
       effect.none(),
     )
+
+    CreateAndActivateSubmitted ->
+      handle_create_submitted(
+        model,
+        CreateAndActivatePending,
+        CreateForActivationResult,
+      )
+
+    CreateForActivationResult(Ok(card)) -> #(
+      model,
+      api_cards.activate_card(card.id, fn(result) {
+        CreateActivationResult(card, result)
+      }),
+    )
+
+    CreateForActivationResult(Error(err)) -> #(
+      Model(
+        ..model,
+        create_in_flight: False,
+        create_pending_action: option.None,
+        create_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
+
+    CreateActivationResult(card, Ok(_)) ->
+      handle_create_success(model, Card(..card, state: Active))
+
+    CreateActivationResult(card, Error(_err)) ->
+      handle_create_success(model, card)
 
     // Edit form handlers
     EditTitleChanged(title) -> #(
@@ -334,6 +380,7 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
         create_color: option.None,
         create_color_open: False,
         create_in_flight: False,
+        create_pending_action: option.None,
         create_error: option.None,
       ),
       effect.none(),
@@ -365,15 +412,21 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
   }
 }
 
-fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  crud_dialog_base.submit_if_idle(
-    model,
-    model.create_in_flight,
-    submit_create_title,
-  )
+fn handle_create_submitted(
+  model: Model,
+  pending_action: CreatePendingAction,
+  to_msg: fn(ApiResult(Card)) -> Msg,
+) -> #(Model, Effect(Msg)) {
+  crud_dialog_base.submit_if_idle(model, model.create_in_flight, fn(model) {
+    submit_create_title(model, pending_action, to_msg)
+  })
 }
 
-fn submit_create_title(model: Model) -> #(Model, Effect(Msg)) {
+fn submit_create_title(
+  model: Model,
+  pending_action: CreatePendingAction,
+  to_msg: fn(ApiResult(Card)) -> Msg,
+) -> #(Model, Effect(Msg)) {
   case crud_dialog_base.required_text(model.create_title) {
     Error(_) -> #(
       Model(
@@ -382,30 +435,38 @@ fn submit_create_title(model: Model) -> #(Model, Effect(Msg)) {
       ),
       effect.none(),
     )
-    Ok(title) -> submit_create_with_title(model, title)
+    Ok(title) -> submit_create_with_title(model, title, pending_action, to_msg)
   }
 }
 
 fn submit_create_with_title(
   model: Model,
   title: String,
+  pending_action: CreatePendingAction,
+  to_msg: fn(ApiResult(Card)) -> Msg,
 ) -> #(Model, Effect(Msg)) {
   case model.project_id {
     option.Some(project_id) -> #(
-      Model(..model, create_in_flight: True, create_error: option.None),
+      Model(
+        ..model,
+        create_in_flight: True,
+        create_pending_action: option.Some(pending_action),
+        create_error: option.None,
+      ),
       api_cards.create_card(
         project_id,
         title,
         model.create_description,
         form_color_to_domain(model.create_color),
         model.create_parent_card_id,
-        CreateResult,
+        to_msg,
       ),
     )
     option.None -> #(
       Model(
         ..model,
         create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst)),
+        create_pending_action: option.None,
       ),
       effect.none(),
     )
@@ -423,6 +484,7 @@ fn handle_create_success(model: Model, card: Card) -> #(Model, Effect(Msg)) {
       create_color_open: False,
       create_parent_card_id: option.None,
       create_in_flight: False,
+      create_pending_action: option.None,
       create_error: option.None,
     ),
     emit_card_created(card),
@@ -673,7 +735,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) { CreateSubmitted }),
+          event.on_submit(fn(_) { CreateAndActivateSubmitted }),
           attribute.id("card-create-form"),
         ],
         view_card_fields(
@@ -694,14 +756,70 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
     ],
     [
       crud_dialog_base.view_cancel_button(model.locale, CloseRequested),
-      crud_dialog_base.view_submit_button(
-        "card-create-form",
-        model.create_in_flight,
-        t(model.locale, i18n_text.Create),
-        t(model.locale, i18n_text.Creating),
-      ),
+      view_create_draft_button(model),
+      view_create_and_activate_button(model),
     ],
   )
+}
+
+fn view_create_draft_button(model: Model) -> Element(Msg) {
+  let pending = create_pending_action_is(model, CreateDraftPending)
+  ui_button.text(
+    loading_label(
+      pending,
+      t(model.locale, i18n_text.SaveDraftCard),
+      t(model.locale, i18n_text.Creating),
+    ),
+    CreateSubmitted,
+    ui_button.Secondary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.with_disabled(model.create_in_flight)
+  |> with_loading_class(pending)
+  |> ui_button.view
+}
+
+fn view_create_and_activate_button(model: Model) -> Element(Msg) {
+  ui_button.submit_icon_text(
+    loading_label(
+      create_pending_action_is(model, CreateAndActivatePending),
+      t(model.locale, i18n_text.CreateAndActivateCard),
+      t(model.locale, i18n_text.CreatingAndActivating),
+    ),
+    icons.Play,
+    ui_button.Primary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.with_form("card-create-form")
+  |> ui_button.with_disabled(model.create_in_flight)
+  |> with_loading_class(create_pending_action_is(
+    model,
+    CreateAndActivatePending,
+  ))
+  |> ui_button.with_testid("card-create-and-activate")
+  |> ui_button.with_tooltip(t(model.locale, i18n_text.CreateAndActivateCard))
+  |> ui_button.view
+}
+
+fn create_pending_action_is(model: Model, action: CreatePendingAction) -> Bool {
+  model.create_pending_action == option.Some(action)
+}
+
+fn loading_label(in_flight: Bool, idle_label: String, in_flight_label: String) {
+  case in_flight {
+    True -> in_flight_label
+    False -> idle_label
+  }
+}
+
+fn with_loading_class(
+  button: ui_button.Config(msg),
+  in_flight: Bool,
+) -> ui_button.Config(msg) {
+  case in_flight {
+    True -> button |> ui_button.with_class("btn-loading")
+    False -> button
+  }
 }
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {

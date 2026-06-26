@@ -432,10 +432,7 @@ fn activate_open_card(
        LEFT JOIN cards card ON card.id = task.card_id
        WHERE task.project_id = (SELECT project_id FROM target)
          AND task.execution_state = 'available'
-         AND (
-           task.card_id IS NULL
-           OR card.execution_state = 'active'
-         )
+         AND card.execution_state = 'active'
      ),
      subtree AS (
        SELECT id
@@ -563,10 +560,7 @@ fn close_open_card(
            LEFT JOIN cards card ON card.id = task.card_id
            WHERE task.project_id = (SELECT project_id FROM target)
              AND task.execution_state = 'available'
-             AND (
-               task.card_id IS NULL
-               OR card.execution_state = 'active'
-             )
+             AND card.execution_state = 'active'
          ),
          subtree AS (
            SELECT id
@@ -794,10 +788,7 @@ pub fn move_card(
        LEFT JOIN cards card ON card.id = task.card_id
        WHERE task.project_id = (SELECT project_id FROM target)
          AND task.execution_state = 'available'
-         AND (
-           task.card_id IS NULL
-           OR card.execution_state = 'active'
-         )
+         AND card.execution_state = 'active'
      ),
      moved AS (
        UPDATE cards

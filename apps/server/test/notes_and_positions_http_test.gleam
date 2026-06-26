@@ -83,8 +83,8 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let task_id =
     create_task(
       handler,
-      member1_session,
-      member1_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -238,8 +238,8 @@ pub fn task_notes_list_requires_task_membership_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -336,8 +336,8 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -477,8 +477,8 @@ pub fn task_notes_create_requires_csrf_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -980,8 +980,8 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Task",
       "",
@@ -1076,8 +1076,8 @@ pub fn task_positions_upsert_requires_csrf_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -1185,8 +1185,8 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let core_task_id =
     create_task(
       handler,
-      member1_session,
-      member1_csrf,
+      admin_session,
+      admin_csrf,
       core_id,
       "Core",
       "",
@@ -1196,8 +1196,8 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let other_task_id =
     create_task(
       handler,
-      member1_session,
-      member1_csrf,
+      admin_session,
+      admin_csrf,
       other_id,
       "Other",
       "",
@@ -1293,11 +1293,6 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
-
   let outsider_login_res =
     login_as(handler, "outsider@example.com", "passwordpassword")
   let outsider_session =
@@ -1307,8 +1302,8 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -1721,6 +1716,33 @@ fn create_task(
   priority: Int,
   type_id: Int,
 ) -> Int {
+  let card_id =
+    create_card(handler, session, csrf, project_id, title <> " card")
+  activate_card(handler, session, csrf, card_id)
+  create_task_with_card(
+    handler,
+    session,
+    csrf,
+    project_id,
+    title,
+    description,
+    priority,
+    type_id,
+    card_id,
+  )
+}
+
+fn create_task_with_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  card_id: Int,
+) -> Int {
   let req =
     simulate.request(
       http.Post,
@@ -1735,6 +1757,7 @@ fn create_task(
         #("description", json.string(description)),
         #("priority", json.int(priority)),
         #("type_id", json.int(type_id)),
+        #("card_id", json.int(card_id)),
       ]),
     )
 
@@ -1789,6 +1812,24 @@ fn create_card(
   expect.expect_status(res, 200)
 
   decode_card_id(simulate.read_body(res))
+}
+
+fn activate_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  card_id: Int,
+) {
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int_to_string(card_id) <> "/activate",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  expect.expect_status(handler(req), 200)
 }
 
 fn add_member(

@@ -11,6 +11,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/create_state
 import scrumbringer_client/pool_prefs
 
 pub type Model {
@@ -72,10 +73,7 @@ fn open_create(model: Model) -> #(Model, Effect(parent_msg)) {
     _ -> #(
       Model(
         ..model,
-        pool: member_pool.Model(
-          ..model.pool,
-          member_create_dialog_mode: dialog_mode.DialogCreate,
-        ),
+        pool: create_state.open_for_context(model.pool, model.card_show_open),
       ),
       effect.none(),
     )

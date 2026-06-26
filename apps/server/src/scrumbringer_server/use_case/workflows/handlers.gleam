@@ -39,15 +39,17 @@ import scrumbringer_server/use_case/service_error
 import scrumbringer_server/use_case/task_types_db
 import scrumbringer_server/use_case/work_sessions_db
 import scrumbringer_server/use_case/workflows/authorization
+import scrumbringer_server/use_case/workflows/claimable_task
 import scrumbringer_server/use_case/workflows/types.{
   type Error, type Message, type Response, type TaskFilters, type TaskUpdates,
   AlreadyClaimed, CardHasChildCards, ClaimOwnershipConflict, ClaimTask,
   CloseTask, CreateTask, CreateTaskType, DbError, DeleteTask, DeleteTaskType,
   GetTask, InvalidTransition, ListTaskTypes, ListTasks, NotAuthorized, NotFound,
-  ReleaseTask, TaskBlockedByDependencies, TaskDeleted, TaskHasOperationalHistory,
-  TaskNotClaimable, TaskResult, TaskTypeAlreadyExists, TaskTypeCreated,
-  TaskTypeDeleted, TaskTypeInUse, TaskTypeUpdated, TaskTypesList, TasksList,
-  UpdateTask, UpdateTaskType, ValidationError, VersionConflict,
+  ReleaseTask, TaskBlockedByDependencies, TaskCardNotActive, TaskDeleted,
+  TaskHasOperationalHistory, TaskNotClaimable, TaskResult, TaskTypeAlreadyExists,
+  TaskTypeCreated, TaskTypeDeleted, TaskTypeInUse, TaskTypeUpdated,
+  TaskTypesList, TasksList, UpdateTask, UpdateTaskType, ValidationError,
+  VersionConflict,
 }
 import scrumbringer_server/use_case/workflows/validation
 
@@ -364,7 +366,7 @@ fn validate_task_create_card(
   card_id: Option(Int),
 ) -> Result(Nil, Error) {
   case card_id {
-    None -> Ok(Nil)
+    None -> Error(ValidationError("Invalid card_id"))
     Some(id) -> {
       use outcome <- result.try(task_create_card_outcome(db, project_id, id))
       case outcome {
@@ -701,9 +703,9 @@ fn claim_available_task(
   version: Int,
   current: domain_task.Task,
 ) -> Result(Response, Error) {
-  use _ <- result.try(require_task_claimable(db, current))
+  use claimable <- result.try(require_task_claimable(db, current))
 
-  case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
+  case tasks_queries.claim_task(db, org_id, claimable, user_id, version) {
     Ok(task) -> claim_task_success(db, task_id, user_id, org_id, current, task)
     Error(service_error.NotFound) -> detect_conflict(db, task_id, user_id)
     Error(service_error.DbError(e)) -> Error(DbError(e))
@@ -720,60 +722,15 @@ fn claim_available_task(
 fn require_task_claimable(
   db: pog.Connection,
   task: domain_task.Task,
-) -> Result(Nil, Error) {
-  case task.card_id {
-    None -> Ok(Nil)
-    Some(card_id) -> {
-      use claimable <- result.try(card_task_is_claimable(db, card_id))
-      case claimable {
-        True -> Ok(Nil)
-        False -> Error(TaskNotClaimable)
-      }
-    }
-  }
-}
-
-fn card_task_is_claimable(
-  db: pog.Connection,
-  card_id: Int,
-) -> Result(Bool, Error) {
-  pog.query(
-    "WITH RECURSIVE ancestors AS (
-       SELECT id, parent_card_id, execution_state
-       FROM cards
-       WHERE id = $1
-       UNION ALL
-       SELECT parent.id, parent.parent_card_id, parent.execution_state
-       FROM cards parent
-       JOIN ancestors child ON child.parent_card_id = parent.id
-     )
-     SELECT EXISTS (
-       SELECT 1
-       FROM ancestors target
-       WHERE target.id = $1
-         AND target.execution_state = 'active'
-     )
-     AND NOT EXISTS (
-       SELECT 1
-       FROM ancestors
-       WHERE execution_state = 'closed'
-     )",
-  )
-  |> pog.parameter(pog.int(card_id))
-  |> pog.returning(bool_decoder())
-  |> pog.execute(db)
-  |> result.map_error(DbError)
-  |> result.try(fn(returned) {
-    case returned.rows {
-      [claimable] -> Ok(claimable)
-      _ -> Ok(False)
+) -> Result(claimable_task.ClaimableTask, Error) {
+  claimable_task.from_task(db, task)
+  |> result.map_error(fn(error) {
+    case error {
+      claimable_task.MissingCard | claimable_task.InactiveCardLineage ->
+        TaskCardNotActive
+      claimable_task.DbError(e) -> DbError(e)
     }
   })
-}
-
-fn bool_decoder() {
-  use value <- decode.field(0, decode.bool)
-  decode.success(value)
 }
 
 fn claim_task_success(
@@ -1063,17 +1020,26 @@ fn detect_conflict(
     Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
     Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
-    Ok(current) -> conflict_from_task(current)
+    Ok(current) -> conflict_from_task(db, current)
   }
 }
 
-fn conflict_from_task(current: domain_task.Task) -> Result(Response, Error) {
+fn conflict_from_task(
+  db: pog.Connection,
+  current: domain_task.Task,
+) -> Result(Response, Error) {
   case current.state, current.blocked_count {
     task_state.Claimed(..), _ ->
       Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))
     task_state.Available, count if count > 0 ->
       Error(TaskBlockedByDependencies(count))
-    task_state.Available, _ -> Error(TaskNotClaimable)
+    task_state.Available, _ ->
+      case require_task_claimable(db, current) {
+        Ok(_) -> Error(VersionConflict)
+        Error(TaskCardNotActive) -> Error(TaskCardNotActive)
+        Error(DbError(e)) -> Error(DbError(e))
+        Error(_) -> Error(TaskNotClaimable)
+      }
     _, _ -> Error(VersionConflict)
   }
 }

@@ -69,6 +69,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/api_tokens as admin_api_tokens
 import scrumbringer_client/client_state/admin/assignments as assignments_state
+import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
@@ -79,6 +80,7 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
 import scrumbringer_client/features/plan/url as plan_url
@@ -2007,6 +2009,51 @@ pub fn should_pause_active_task_on_project_change(
   }
 }
 
+fn reset_project_scoped_resources(
+  model: client_state.Model,
+  project_changed: Bool,
+) -> client_state.Model {
+  case project_changed {
+    False -> model
+    True ->
+      model
+      |> client_state.update_admin(fn(admin) {
+        let capabilities = admin.capabilities
+        admin_state.AdminModel(
+          ..admin,
+          capabilities: admin_capabilities.Model(
+            ..capabilities,
+            capabilities: NotAsked,
+            member_capabilities_dialog_user_id: opt.None,
+            member_capabilities_loading: False,
+            member_capabilities_saving: False,
+            member_capabilities_cache: dict.new(),
+            member_capabilities_selected: [],
+            member_capabilities_error: opt.None,
+            capability_members_dialog_capability_id: opt.None,
+            capability_members_loading: False,
+            capability_members_saving: False,
+            capability_members_cache: dict.new(),
+            capability_members_selected: [],
+            capability_members_error: opt.None,
+          ),
+        )
+      })
+      |> client_state.update_member(fn(member) {
+        member_state.MemberModel(
+          ..member,
+          skills: member_skills.Model(
+            member_capabilities: NotAsked,
+            member_my_capability_ids: NotAsked,
+            member_my_capability_ids_edit: dict.new(),
+            member_my_capabilities_in_flight: False,
+            member_my_capabilities_error: opt.None,
+          ),
+        )
+      })
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main update function
 // ---------------------------------------------------------------------------
@@ -2223,6 +2270,8 @@ pub fn update(
         Error(_) -> opt.None
       }
 
+      let project_changed = model.core.selected_project_id != selected
+
       let should_pause =
         should_pause_active_task_on_project_change(
           model.core.page == client_state.Member,
@@ -2254,6 +2303,7 @@ pub fn update(
             client_state.CoreModel(..core, selected_project_id: selected)
           })
       }
+      let model = reset_project_scoped_resources(model, project_changed)
 
       case model.core.page {
         client_state.Member ->
@@ -2344,8 +2394,9 @@ fn refresh_member_after_project_change(
   should_pause: Bool,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let #(next, fx) = member_refresh(model)
+  let #(next, hyd_fx) = hydrate_model(next)
   let pause_fx = pause_fx_for_project_change(next, should_pause)
-  #(next, effect.batch([fx, pause_fx, replace_url(next)]))
+  #(next, effect.batch([fx, hyd_fx, pause_fx, replace_url(next)]))
 }
 
 fn pause_fx_for_project_change(
@@ -2375,5 +2426,6 @@ fn refresh_admin_after_project_change(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let #(next, fx) = refresh_section_for_test(model)
-  #(next, effect.batch([fx, replace_url(next)]))
+  let #(next, hyd_fx) = hydrate_model(next)
+  #(next, effect.batch([fx, hyd_fx, replace_url(next)]))
 }

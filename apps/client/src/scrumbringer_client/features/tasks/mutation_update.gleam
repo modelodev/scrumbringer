@@ -423,12 +423,14 @@ fn conflict_message(err: ApiError, labels: ErrorLabels) -> String {
   case
     string.contains(err.code, "BLOCKED"),
     string.contains(err.code, "CLAIMED"),
-    string.contains(err.code, "OPERATIONAL_HISTORY")
+    string.contains(err.code, "OPERATIONAL_HISTORY"),
+    string.contains(err.code, "CARD_NOT_ACTIVE")
   {
-    True, _, _ -> labels.task_blocked_by_dependencies
-    _, True, _ -> labels.task_already_claimed
-    _, _, True -> labels.task_has_operational_history
-    False, False, False -> labels.task_version_conflict
+    True, _, _, _ -> labels.task_blocked_by_dependencies
+    _, True, _, _ -> labels.task_already_claimed
+    _, _, True, _ -> labels.task_has_operational_history
+    _, _, _, True -> err.message
+    False, False, False, False -> labels.task_version_conflict
   }
 }
 

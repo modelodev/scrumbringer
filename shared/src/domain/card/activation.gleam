@@ -95,7 +95,6 @@ pub fn task_is_claimable_in_tree(task: task_entity.Task, tree: WorkTree) -> Bool
     task.capability_allowed,
     task.placement
   {
-    task_state.Available, False, True, placement.RootPool -> True
     task_state.Available, False, True, placement.UnderCard(parent_id) ->
       card_allows_claim(parent_id, tree)
     _, _, _, _ -> False

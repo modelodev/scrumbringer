@@ -404,6 +404,26 @@ pub fn insert_project(
   })
 }
 
+/// Find a project id by organization and name.
+pub fn project_id_by_name(
+  db: pog.Connection,
+  org_id: Int,
+  name: String,
+) -> Result(Int, String) {
+  pog.query("SELECT id FROM projects WHERE org_id = $1 AND name = $2")
+  |> pog.parameter(pog.int(org_id))
+  |> pog.parameter(pog.text(name))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "project_id_by_name: " <> string.inspect(e) })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      _ -> Error("No project named " <> name)
+    }
+  })
+}
+
 /// Insert or update seed-specific project settings.
 pub fn upsert_project_settings(
   db: pog.Connection,
@@ -828,6 +848,25 @@ pub fn insert_card_simple(
   )
 }
 
+/// Mark a seed card as active so operational views can show its tasks.
+pub fn activate_card_for_seed(
+  db: pog.Connection,
+  card_id: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "UPDATE cards
+     SET execution_state = 'active',
+         activated_at = coalesce(activated_at, created_at, now()),
+         activated_by = coalesce(activated_by, created_by),
+         activation_source = coalesce(activation_source, 'direct_activation')
+     WHERE id = $1",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) { "activate_card_for_seed: " <> string.inspect(e) })
+}
+
 // =============================================================================
 // Root hierarchy card operations
 // =============================================================================
@@ -961,93 +1000,6 @@ pub fn assign_card_to_parent_card(
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) {
     "assign_card_to_parent_card: " <> string.inspect(e)
-  })
-}
-
-/// Assign available root-pool tasks (card_id is null) to a card.
-pub fn assign_available_pool_tasks_to_parent_card(
-  db: pog.Connection,
-  project_id: Int,
-  card_id: Int,
-  limit: Int,
-) -> Result(Nil, String) {
-  assign_pool_tasks_to_parent_card_by_status(
-    db,
-    project_id,
-    card_id,
-    "available",
-    None,
-    limit,
-  )
-}
-
-/// Assign claimed root-pool tasks (card_id is null) to a card.
-pub fn assign_claimed_pool_tasks_to_parent_card(
-  db: pog.Connection,
-  project_id: Int,
-  card_id: Int,
-  limit: Int,
-) -> Result(Nil, String) {
-  assign_pool_tasks_to_parent_card_by_status(
-    db,
-    project_id,
-    card_id,
-    "claimed",
-    Some("taken"),
-    limit,
-  )
-}
-
-/// Assign closed root-pool tasks (card_id is null) to a card.
-pub fn assign_closed_pool_tasks_to_parent_card(
-  db: pog.Connection,
-  project_id: Int,
-  card_id: Int,
-  limit: Int,
-) -> Result(Nil, String) {
-  assign_pool_tasks_to_parent_card_by_status(
-    db,
-    project_id,
-    card_id,
-    "closed",
-    None,
-    limit,
-  )
-}
-
-fn assign_pool_tasks_to_parent_card_by_status(
-  db: pog.Connection,
-  project_id: Int,
-  card_id: Int,
-  execution_state: String,
-  claimed_mode: Option(String),
-  limit: Int,
-) -> Result(Nil, String) {
-  use _ <- result.try(require_parent_card_accepts_tasks(db, card_id))
-
-  pog.query(
-    "UPDATE tasks
-     SET card_id = $2
-     WHERE id IN (
-       SELECT id
-       FROM tasks
-       WHERE project_id = $1
-         AND card_id IS NULL
-         AND execution_state = $3
-         AND coalesce(claimed_mode, '') = coalesce($4, '')
-       ORDER BY id
-       LIMIT $5
-     )",
-  )
-  |> pog.parameter(pog.int(project_id))
-  |> pog.parameter(pog.int(card_id))
-  |> pog.parameter(pog.text(execution_state))
-  |> pog.parameter(pog.nullable(pog.text, claimed_mode))
-  |> pog.parameter(pog.int(limit))
-  |> pog.execute(db)
-  |> result.map(fn(_) { Nil })
-  |> result.map_error(fn(e) {
-    "assign_pool_tasks_to_parent_card_by_status: " <> string.inspect(e)
   })
 }
 
@@ -1747,6 +1699,38 @@ pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
   })
 }
 
+/// Reset all dev seed data and recreate the minimum workspace seed expects.
+pub fn reset_seed_database(db: pog.Connection) -> Result(#(Int, Int), String) {
+  use _ <- result.try(
+    pog.query("TRUNCATE organizations RESTART IDENTITY CASCADE")
+    |> pog.execute(db)
+    |> result.map(fn(_) { Nil })
+    |> result.map_error(fn(e) { "reset_seed_database: " <> string.inspect(e) }),
+  )
+
+  use org_id <- result.try(insert_organization(db, "Acme"))
+  use admin_id <- result.try(insert_user_simple(
+    db,
+    org_id,
+    "admin@example.com",
+    org_role.Admin,
+  ))
+  use default_project_id <- result.try(insert_project(
+    db,
+    org_id,
+    "Default",
+    None,
+  ))
+  use _ <- result.try(insert_member(
+    db,
+    default_project_id,
+    admin_id,
+    project_role.Manager,
+  ))
+
+  Ok(#(org_id, admin_id))
+}
+
 // =============================================================================
 // Internal Helpers
 // =============================================================================
@@ -1773,21 +1757,6 @@ fn require_parent_card_accepts_cards(
      )",
     "require_parent_card_accepts_cards",
     "parent card already contains tasks",
-  )
-}
-
-fn require_parent_card_accepts_tasks(
-  db: pog.Connection,
-  parent_card_id: Int,
-) -> Result(Nil, String) {
-  require_parent_child_kind(
-    db,
-    parent_card_id,
-    "SELECT NOT EXISTS (
-       SELECT 1 FROM cards WHERE parent_card_id = $1
-     )",
-    "require_parent_card_accepts_tasks",
-    "parent card already contains child cards",
   )
 }
 

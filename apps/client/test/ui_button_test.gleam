@@ -99,6 +99,28 @@ pub fn submit_button_can_target_external_form_test() {
   let assert False = string.contains(html, "data-")
 }
 
+pub fn submit_icon_text_button_keeps_submit_semantics_test() {
+  let html =
+    button.submit_icon_text(
+      "Create and activate",
+      icons.Play,
+      button.Primary,
+      button.EntityAction,
+    )
+    |> button.with_form("card-create-form")
+    |> button.with_testid("card-create-and-activate")
+    |> button.view
+    |> element.to_document_string
+
+  assert_contains(html, "type=\"submit\"")
+  assert_contains(html, "form=\"card-create-form\"")
+  assert_contains(html, "btn-primary")
+  assert_contains(html, "btn-icon-text")
+  assert_contains(html, "btn-icon-prefix")
+  assert_contains(html, "data-testid=\"card-create-and-activate\"")
+  assert_contains(html, "Create and activate")
+}
+
 pub fn extra_classes_are_accumulated_test() {
   let html =
     button.text("Save", "msg", button.Primary, button.EntityAction)

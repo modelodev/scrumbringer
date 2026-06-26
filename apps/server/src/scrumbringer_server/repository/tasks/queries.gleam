@@ -36,6 +36,7 @@ import scrumbringer_server/sql
 import scrumbringer_server/use_case/audit_events_db
 import scrumbringer_server/use_case/service_error
 import scrumbringer_server/use_case/work_sessions_db
+import scrumbringer_server/use_case/workflows/claimable_task.{type ClaimableTask}
 
 /// Result of releasing all claimed tasks for a user within a project.
 pub type ReleaseAllResult {
@@ -277,11 +278,12 @@ pub fn update_editable_task(
 pub fn claim_task(
   db: pog.Connection,
   org_id: Int,
-  task_id: Int,
+  task: ClaimableTask,
   user_id: Int,
   version: Int,
 ) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
+    let task_id = claimable_task.id(task)
     case sql.tasks_claim(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
         use task <- result.try(mappers.from_claim_row(row))

@@ -77,6 +77,8 @@ pub fn build(db: pog.Connection, context: Context) -> Result(CardResult, String)
           )
         }),
       )
+      use _ <- result.try(activate_seed_cards(db, card_ids))
+      use _ <- result.try(assign_seed_hierarchy(db, card_ids))
       Ok(#(project_id, card_ids))
     }),
   )
@@ -85,6 +87,59 @@ pub fn build(db: pog.Connection, context: Context) -> Result(CardResult, String)
     card_ids: flatten_ids(card_ids_by_project),
     card_ids_by_project: card_ids_by_project,
   ))
+}
+
+fn activate_seed_cards(
+  db: pog.Connection,
+  card_ids: List(Int),
+) -> Result(Nil, String) {
+  card_ids
+  |> list.try_map(fn(card_id) { seed_db.activate_card_for_seed(db, card_id) })
+  |> result.map(fn(_) { Nil })
+}
+
+fn assign_seed_hierarchy(
+  db: pog.Connection,
+  card_ids: List(Int),
+) -> Result(Nil, String) {
+  case card_ids {
+    [
+      root_card_id,
+      branch_card_id,
+      first_leaf_id,
+      second_leaf_id,
+      ..root_child_ids
+    ] -> {
+      use _ <- result.try(seed_db.assign_card_to_parent_card(
+        db,
+        branch_card_id,
+        root_card_id,
+      ))
+      use _ <- result.try(seed_db.assign_card_to_parent_card(
+        db,
+        first_leaf_id,
+        branch_card_id,
+      ))
+      use _ <- result.try(seed_db.assign_card_to_parent_card(
+        db,
+        second_leaf_id,
+        branch_card_id,
+      ))
+
+      root_child_ids
+      |> list.try_map(fn(card_id) {
+        seed_db.assign_card_to_parent_card(db, card_id, root_card_id)
+      })
+      |> result.map(fn(_) { Nil })
+    }
+    [root_card_id, ..child_card_ids] ->
+      child_card_ids
+      |> list.try_map(fn(card_id) {
+        seed_db.assign_card_to_parent_card(db, card_id, root_card_id)
+      })
+      |> result.map(fn(_) { Nil })
+    _ -> Ok(Nil)
+  }
 }
 
 fn flatten_ids(ids_by_project: List(#(Int, List(Int)))) -> List(Int) {

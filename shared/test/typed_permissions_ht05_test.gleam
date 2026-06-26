@@ -45,15 +45,6 @@ pub fn activate_card_requires_manage_flow_test() {
   let assert True = permissions.project_id(auth) == project_id.new(1)
 }
 
-pub fn create_root_pool_task_requires_manage_flow_test() {
-  let assert Ok(auth) =
-    permissions.require_manage_flow(manager_actor(), project_id.new(1))
-
-  let task = task_creation.create_root_pool_task(task_id.new(1), auth)
-
-  let assert placement.RootPool = task.placement
-}
-
 pub fn create_task_in_draft_card_requires_manage_flow_test() {
   let card = draft_card()
   let assert Ok(auth) =

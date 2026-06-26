@@ -151,6 +151,34 @@ pub fn card_show_update_try_update_handles_open_message_test() {
   let assert False = fx == effect.none()
 }
 
+pub fn card_show_create_task_click_dispatches_when_card_is_open_test() {
+  let model = card_show_update.Model(..local_model(), card_show_open: Some(7))
+
+  let assert Some(#(next, fx)) =
+    card_show_update.try_update(
+      model,
+      pool_messages.CardShowMsg(card_show.CreateTaskClicked),
+      context(),
+    )
+
+  let assert True = next == model
+  let assert False = fx == effect.none()
+}
+
+pub fn card_show_create_task_click_without_open_card_is_noop_test() {
+  let model = local_model()
+
+  let assert Some(#(next, fx)) =
+    card_show_update.try_update(
+      model,
+      pool_messages.CardShowMsg(card_show.CreateTaskClicked),
+      context(),
+    )
+
+  let assert True = next == model
+  let assert True = fx == effect.none()
+}
+
 pub fn card_show_update_try_update_ignores_non_card_show_message_test() {
   let assert None =
     card_show_update.try_update(

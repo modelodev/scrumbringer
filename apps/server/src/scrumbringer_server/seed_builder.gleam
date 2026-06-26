@@ -100,8 +100,8 @@ type BuildState {
     project_ids: List(Int),
     empty_project_ids: List(Int),
     project_member_ids: List(#(Int, List(Int))),
-    capability_ids: List(#(Int, Int, Int, Int)),
-    task_type_ids: List(#(Int, Int, Int, Int)),
+    capability_ids: List(#(Int, List(Int))),
+    task_type_ids: List(#(Int, List(Int))),
     card_ids: List(Int),
     card_ids_by_project: List(#(Int, List(Int))),
     task_ids: List(Int),
@@ -128,7 +128,7 @@ pub fn realistic_config() -> SeedConfig {
       closed: 25,
     ),
     cards_per_project: 6,
-    empty_card_count: 1,
+    empty_card_count: 2,
     workflows_per_project: 2,
     inactive_workflow_count: 1,
     empty_workflow_count: 1,
@@ -177,7 +177,7 @@ pub fn build_seed(
   Ok(SeedResult(
     projects: list.length(state.project_ids),
     users: list.length(state.user_ids),
-    task_types: list.length(state.task_type_ids),
+    task_types: count_grouped_ids(state.task_type_ids),
     workflows: 0,
     rules: 0,
     tasks: list.length(state.task_ids),
@@ -318,11 +318,18 @@ fn active_project_ids(state: BuildState) -> List(Int) {
   })
 }
 
-fn task_types_for_active_projects(
-  state: BuildState,
-) -> List(#(Int, Int, Int, Int)) {
+fn count_grouped_ids(groups: List(#(Int, List(Int)))) -> Int {
+  groups
+  |> list.map(fn(group) {
+    let #(_, ids) = group
+    list.length(ids)
+  })
+  |> list.fold(0, fn(total, count) { total + count })
+}
+
+fn task_types_for_active_projects(state: BuildState) -> List(#(Int, List(Int))) {
   list.filter(state.task_type_ids, fn(entry) {
-    let #(project_id, _, _, _) = entry
+    let #(project_id, _) = entry
     !list.contains(state.empty_project_ids, project_id)
   })
 }

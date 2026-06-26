@@ -101,7 +101,6 @@ fn task_from_row(row: sql.PeopleWorkloadListRow) -> Option(PersonWorkloadTask) {
         card_state: card_phase(row.card_state),
         blocked: row.blocked_count > 0,
         ongoing: row.ongoing_by_user_id > 0,
-        outside_active_work_scope: outside_active_work_scope(row.card_state),
       ))
   }
 }
@@ -175,12 +174,5 @@ fn card_phase(value: String) -> Option(CardPhase) {
     "active" -> Some(Active)
     "closed" -> Some(Closed)
     _ -> None
-  }
-}
-
-fn outside_active_work_scope(card_state: String) -> Bool {
-  case card_state {
-    "" | "active" -> False
-    _ -> True
   }
 }

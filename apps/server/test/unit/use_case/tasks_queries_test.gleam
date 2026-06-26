@@ -12,6 +12,7 @@ import pog
 import scrumbringer_server
 import scrumbringer_server/repository/tasks/queries as tasks_queries
 import scrumbringer_server/use_case/service_error
+import scrumbringer_server/use_case/workflows/claimable_task
 import support/assertions as expect
 import wisp/simulate
 
@@ -164,8 +165,10 @@ pub fn claim_task_query_rejects_open_dependencies_test() {
       [pog.int(task_id), pog.int(blocker_id), pog.int(user_id)],
     )
 
+  let assert Ok(task) = tasks_queries.get_task_for_user(db, task_id, user_id)
+  let assert Ok(claimable) = claimable_task.from_task(db, task)
   let assert Error(service_error.NotFound) =
-    tasks_queries.claim_task(db, org_id, task_id, user_id, 1)
+    tasks_queries.claim_task(db, org_id, claimable, user_id, 1)
 
   let assert Ok(status) =
     fixtures.query_string(db, task_status_query(), [pog.int(task_id)])

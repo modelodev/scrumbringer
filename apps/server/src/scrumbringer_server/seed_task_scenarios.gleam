@@ -20,7 +20,7 @@ pub type Context {
   Context(
     admin_id: Int,
     user_ids: List(Int),
-    active_task_types: List(#(Int, Int, Int, Int)),
+    active_task_types: List(#(Int, List(Int))),
     card_ids_by_project: List(#(Int, List(Int))),
     project_member_ids: List(#(Int, List(Int))),
     rule_ids_by_project: List(#(Int, List(Int))),
@@ -54,12 +54,13 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
 
   use task_results_nested <- result.try(
     list.index_map(context.active_task_types, fn(types, project_idx) {
-      let #(project_id, bug_id, feature_id, task_id) = types
+      let #(project_id, task_type_ids) = types
       let cards = cards_for_project(context.card_ids_by_project, project_id)
       let usable_cards = case context.empty_card_count > 0 {
         True -> list.drop(cards, context.empty_card_count)
         False -> cards
       }
+      let fallback_type_id = list_at_int(task_type_ids, 0, 0)
 
       let card_closed_outcomes = list_at_int(usable_cards, 0, 0)
       let card_mixed = list_at_int(usable_cards, 1, 0)
@@ -93,40 +94,45 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
       let base_tasks = [
         #(
           title_for(base_idx, "Task A"),
-          bug_id,
+          task_type_for_index(task_type_ids, 0, fallback_type_id),
           closed_outcome_state_template(),
           Some(card_closed_outcomes),
         ),
         #(
           title_for(base_idx + 1, "Task B"),
-          feature_id,
+          task_type_for_index(task_type_ids, 1, fallback_type_id),
           closed_outcome_state_template(),
           Some(card_closed_outcomes),
         ),
         #(
           title_for(base_idx + 2, "Task C"),
-          bug_id,
+          task_type_for_index(task_type_ids, 2, fallback_type_id),
           closed_outcome_state_template(),
           Some(card_mixed),
         ),
         #(
           title_for(base_idx + 3, "Task D"),
-          feature_id,
+          task_type_for_index(task_type_ids, 3, fallback_type_id),
           claimed_state_template(task_state.Taken),
           Some(card_mixed),
         ),
         #(
           title_for(base_idx + 4, "Task E"),
-          task_id,
+          task_type_for_index(task_type_ids, 4, fallback_type_id),
           task_state.Available,
           Some(card_single),
         ),
-        #(title_for(base_idx + 5, "Task F"), bug_id, task_state.Available, None),
+        #(
+          title_for(base_idx + 5, "Task F"),
+          task_type_for_index(task_type_ids, 5, fallback_type_id),
+          task_state.Available,
+          Some(card_single),
+        ),
         #(
           title_for(base_idx + 6, "Task G"),
-          feature_id,
+          task_type_for_index(task_type_ids, 6, fallback_type_id),
           task_state.Available,
-          None,
+          Some(card_mixed),
         ),
       ]
 
@@ -134,17 +140,14 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
         extra_task_indexes(context.tasks_per_project, list.length(base_tasks))
         |> list.map(fn(extra_idx) {
           let idx = base_idx + list.length(base_tasks) + extra_idx
-          let type_id = case extra_idx % 3 {
-            0 -> bug_id
-            1 -> feature_id
-            _ -> task_id
-          }
+          let type_id =
+            task_type_for_index(task_type_ids, idx, fallback_type_id)
           let execution_state =
             execution_state_from_pool(execution_state_pool, idx)
           let card_id = case extra_idx % 4 {
             0 -> Some(card_mixed)
             1 -> Some(card_single)
-            _ -> None
+            _ -> Some(card_single)
           }
           #(title_for(idx, "Task Extra"), type_id, execution_state, card_id)
         })
@@ -383,6 +386,13 @@ fn repeat_value(value: a, count: Int) -> List(a) {
   case count <= 0 {
     True -> []
     False -> [value, ..repeat_value(value, count - 1)]
+  }
+}
+
+fn task_type_for_index(task_type_ids: List(Int), idx: Int, fallback: Int) -> Int {
+  case task_type_ids {
+    [] -> fallback
+    _ -> list_at_int(task_type_ids, idx % list.length(task_type_ids), fallback)
   }
 }
 

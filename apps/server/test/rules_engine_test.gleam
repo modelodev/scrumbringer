@@ -223,12 +223,13 @@ pub fn evaluate_rules_card_resource_type_test() {
       handler,
       session,
       workflow_id,
-      "Card Closed",
-      domain_card.Closed,
+      "Card Activated",
+      domain_card.Active,
       template_id,
     )
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Test Card")
+  set_card_active(db, card_id)
 
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
@@ -240,7 +241,7 @@ pub fn evaluate_rules_card_resource_type_test() {
       org_id,
       user_id,
       Some(domain_card.Draft),
-      domain_card.Closed,
+      domain_card.Active,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -305,6 +306,7 @@ pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
       Some(domain_card.Draft),
       domain_card.Active,
     )
+  set_card_active(db, child_card_id)
   let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
     rules_engine.evaluate_rules(db, child_event)
 }
@@ -321,7 +323,7 @@ pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
     fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Card Closed WF")
-  let assert Ok(_rule_id) =
+  let assert Ok(rule_id) =
     fixtures.create_rule_card_at_depth(
       handler,
       session,
@@ -365,8 +367,19 @@ pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
       Some(domain_card.Draft),
       domain_card.Closed,
     )
-  let assert Ok([RuleResult(rule_id: _, outcome: automation.Executed(_))]) =
-    rules_engine.evaluate_rules(db, child_event)
+  let assert Ok([
+    RuleResult(
+      rule_id: _,
+      outcome: automation.Skipped(automation.TargetNoLongerAcceptsTasks),
+    ),
+  ]) = rules_engine.evaluate_rules(db, child_event)
+
+  let assert Ok(execution) =
+    fixtures.fetch_rule_execution(db, rule_id, "card", child_card_id)
+  execution.outcome |> expect.equal("suppressed")
+  execution.suppression_reason
+  |> expect.equal("target_no_longer_accepts_tasks")
+  execution.created_task_id |> expect.equal(0)
 }
 
 // =============================================================================
@@ -476,19 +489,20 @@ pub fn variable_origin_card_resolves_to_link_test() {
       project_id,
       task_type_id,
       "Followup for {{card_title}} L{{card_level}}",
-      "Card {{origin}} was closed: {{card_title}}",
+      "Card {{origin}} was activated: {{card_title}}",
     )
   let assert Ok(_rule_id) =
     fixtures.create_rule_card(
       handler,
       session,
       workflow_id,
-      "Card Closed",
-      domain_card.Closed,
+      "Card Activated",
+      domain_card.Active,
       template_id,
     )
   let assert Ok(card_id) =
-    fixtures.create_card(handler, session, project_id, "Card to Close")
+    fixtures.create_card(handler, session, project_id, "Card to Activate")
+  set_card_active(db, card_id)
 
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
@@ -500,7 +514,7 @@ pub fn variable_origin_card_resolves_to_link_test() {
       org_id,
       user_id,
       Some(domain_card.Draft),
-      domain_card.Closed,
+      domain_card.Active,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -513,7 +527,7 @@ pub fn variable_origin_card_resolves_to_link_test() {
       [],
     )
 
-  created_title |> expect.equal("Followup for Card to Close L1")
+  created_title |> expect.equal("Followup for Card to Activate L1")
 
   let assert Ok(created_desc) =
     fixtures.query_string(
@@ -525,7 +539,7 @@ pub fn variable_origin_card_resolves_to_link_test() {
   created_desc
   |> string.contains("[Card #" <> int.to_string(card_id))
   |> expect.is_true
-  created_desc |> string.contains("Card to Close") |> expect.is_true
+  created_desc |> string.contains("Card to Activate") |> expect.is_true
 }
 
 pub fn variable_trigger_resolves_test() {
@@ -1325,6 +1339,9 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
 
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+  let assert Ok(card_id) =
+    fixtures.insert_card_db(db, project_id, "Source Card", None, user_id)
+  set_card_active(db, card_id)
   let assert Ok(task_id) =
     fixtures.insert_task_db_simple(
       db,
@@ -1332,7 +1349,7 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
       type_id,
       "Source Task",
       user_id,
-      None,
+      Some(card_id),
     )
 
   let created_event =
@@ -1699,4 +1716,13 @@ pub fn rule_execution_idempotency_enforced_test() {
   let assert Ok(execution) =
     fixtures.fetch_rule_execution(db, rule_id, "task", task_id)
   execution.outcome |> expect.equal("applied")
+}
+
+fn set_card_active(db: pog.Connection, card_id: Int) {
+  let assert Ok(_) =
+    pog.query("update cards set execution_state = 'active' where id = $1")
+    |> pog.parameter(pog.int(card_id))
+    |> pog.execute(db)
+
+  Nil
 }

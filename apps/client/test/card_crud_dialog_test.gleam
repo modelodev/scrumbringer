@@ -5,6 +5,7 @@
 import lustre/effect
 import lustre/element
 
+import api/cards/contracts as card_contracts
 import domain/api_error.{ApiError}
 import domain/card.{
   type Card, type CardColor, Blue, Card, Draft, Gray, Green, Orange, Pink,
@@ -13,11 +14,12 @@ import domain/card.{
 import gleam/option
 import gleam/string
 import scrumbringer_client/components/card_crud_dialog.{
-  CreateColorChanged, CreateColorToggle, CreateDescriptionChanged, CreateResult,
-  CreateSubmitted, CreateTitleChanged, DeleteCancelled, DeleteConfirmed,
-  EditCancelled, EditTitleChanged, LocaleReceived, ModeReceived, Model,
-  ProjectIdReceived, update_for_test, view_create_dialog_for_test,
-  view_edit_dialog_for_test,
+  type Model, CreateActivationResult, CreateAndActivatePending,
+  CreateAndActivateSubmitted, CreateColorChanged, CreateColorToggle,
+  CreateDescriptionChanged, CreateResult, CreateSubmitted, CreateTitleChanged,
+  DeleteCancelled, DeleteConfirmed, EditCancelled, EditTitleChanged,
+  LocaleReceived, ModeReceived, Model, ProjectIdReceived, update_for_test,
+  view_create_dialog_for_test, view_edit_dialog_for_test,
 }
 import scrumbringer_client/components/crud_dialog_base.{
   Closed, Creating, Deleting, Editing,
@@ -30,6 +32,10 @@ fn assert_equal(actual: a, expected: a) {
 
 fn assert_contains(text: String, fragment: String) {
   let assert True = string.contains(text, fragment)
+}
+
+fn assert_not_contains(text: String, fragment: String) {
+  let assert False = string.contains(text, fragment)
 }
 
 // =============================================================================
@@ -48,6 +54,7 @@ pub fn model_default_values_test() {
       create_color: option.None,
       create_color_open: False,
       create_in_flight: False,
+      create_pending_action: option.None,
       create_error: option.None,
       edit_title: "",
       edit_description: "",
@@ -78,6 +85,7 @@ pub fn model_with_spanish_locale_test() {
       create_color: option.Some("blue"),
       create_color_open: True,
       create_in_flight: False,
+      create_pending_action: option.None,
       create_error: option.None,
       edit_title: "",
       edit_description: "",
@@ -161,6 +169,11 @@ pub fn msg_create_submitted_test() {
   assert_equal(msg, CreateSubmitted)
 }
 
+pub fn msg_create_and_activate_submitted_test() {
+  let msg = CreateAndActivateSubmitted
+  assert_equal(msg, CreateAndActivateSubmitted)
+}
+
 pub fn msg_edit_title_changed_test() {
   let msg = EditTitleChanged("Updated Title")
   assert_equal(msg, EditTitleChanged("Updated Title"))
@@ -193,6 +206,7 @@ pub fn create_error_keeps_dialog_open_for_retry_test() {
       create_color: option.None,
       create_color_open: False,
       create_in_flight: True,
+      create_pending_action: option.Some(CreateAndActivatePending),
       create_error: option.None,
       edit_title: "",
       edit_description: "",
@@ -222,6 +236,74 @@ pub fn create_error_keeps_dialog_open_for_retry_test() {
   let assert True = fx == effect.none()
 }
 
+pub fn create_and_activate_submit_marks_activation_pending_test() {
+  let model =
+    Model(
+      locale: En,
+      project_id: option.Some(10),
+      mode: Creating,
+      create_parent_card_id: option.Some(7),
+      create_title: "Release card",
+      create_description: "",
+      create_color: option.None,
+      create_color_open: False,
+      create_in_flight: False,
+      create_pending_action: option.None,
+      create_error: option.None,
+      edit_title: "",
+      edit_description: "",
+      edit_color: option.None,
+      edit_color_open: False,
+      edit_in_flight: False,
+      edit_error: option.None,
+      delete_in_flight: False,
+      delete_error: option.None,
+    )
+
+  let #(next, fx) = update_for_test(model, CreateAndActivateSubmitted)
+
+  let assert True = next.create_in_flight
+  let assert option.Some(CreateAndActivatePending) = next.create_pending_action
+  let assert False = fx == effect.none()
+}
+
+pub fn create_activation_success_closes_with_active_card_test() {
+  let model = creating_and_activating_model()
+
+  let #(next, fx) =
+    update_for_test(
+      model,
+      CreateActivationResult(make_test_card(), Ok(action_response())),
+    )
+
+  let assert Closed = next.mode
+  let assert False = next.create_in_flight
+  let assert option.None = next.create_pending_action
+  let assert False = fx == effect.none()
+}
+
+pub fn create_activation_failure_closes_with_created_draft_test() {
+  let model = creating_and_activating_model()
+
+  let #(next, fx) =
+    update_for_test(
+      model,
+      CreateActivationResult(
+        make_test_card(),
+        Error(ApiError(
+          status: 409,
+          code: "CARD_CONFLICT",
+          message: "cannot activate",
+        )),
+      ),
+    )
+
+  let assert Closed = next.mode
+  let assert False = next.create_in_flight
+  let assert option.None = next.create_pending_action
+  let assert False = fx == effect.none()
+}
+
 // =============================================================================
 // View Tests
 // =============================================================================
@@ -237,6 +319,12 @@ pub fn create_dialog_renders_shared_card_fields_test() {
   assert_contains(html, "Card description")
   assert_contains(html, "Color")
   assert_contains(html, "None")
+  assert_contains(html, "Save draft")
+  assert_contains(html, "Create and activate")
+  assert_contains(html, "data-testid=\"card-create-and-activate\"")
+  assert_contains(html, "btn-icon-text")
+  assert_contains(html, "form=\"card-create-form\"")
+  assert_not_contains(html, "Create draft")
 }
 
 pub fn edit_dialog_renders_shared_card_fields_test() {
@@ -295,5 +383,39 @@ fn make_test_card() -> Card {
     created_at: "2026-01-20T00:00:00Z",
     due_date: option.None,
     has_new_notes: False,
+  )
+}
+
+fn creating_and_activating_model() -> Model {
+  Model(
+    locale: En,
+    project_id: option.Some(10),
+    mode: Creating,
+    create_parent_card_id: option.None,
+    create_title: "Test Card",
+    create_description: "Test Description",
+    create_color: option.None,
+    create_color_open: False,
+    create_in_flight: True,
+    create_pending_action: option.Some(CreateAndActivatePending),
+    create_error: option.None,
+    edit_title: "",
+    edit_description: "",
+    edit_color: option.None,
+    edit_color_open: False,
+    edit_in_flight: False,
+    edit_error: option.None,
+    delete_in_flight: False,
+    delete_error: option.None,
+  )
+}
+
+fn action_response() -> card_contracts.CardActionResponse {
+  card_contracts.CardActionResponse(
+    card_id: 1,
+    pool_impact: 0,
+    pool_open_after: 0,
+    healthy_pool_limit: 10,
+    pool_health: card_contracts.PoolWithinHealthyLimit,
   )
 }

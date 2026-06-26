@@ -77,7 +77,11 @@ fn build_projects(
   context: Context,
   user_ids: List(Int),
 ) -> Result(WorkspaceResult, String) {
-  let default_project_id = 1
+  use default_project_id <- result.try(seed_db.project_id_by_name(
+    db,
+    context.org_id,
+    "Default",
+  ))
   let project_names = [
     "Healthy Validation Project",
     "Stress Validation Project",

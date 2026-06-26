@@ -195,6 +195,7 @@ fn claim_error_response(
     workflow_types.AlreadyClaimed -> claimed_conflict_response()
     workflow_types.TaskBlockedByDependencies(_) -> blocked_conflict_response()
     workflow_types.TaskNotClaimable -> not_claimable_response()
+    workflow_types.TaskCardNotActive -> card_not_active_response()
     workflow_types.InvalidTransition -> invalid_transition_response()
     workflow_types.ClaimOwnershipConflict(_) -> claimed_conflict_response()
     workflow_types.VersionConflict ->
@@ -226,6 +227,7 @@ fn release_or_close_error_response(
       conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
     workflow_types.DbError(_) -> database_error_response()
     workflow_types.TaskNotClaimable
+    | workflow_types.TaskCardNotActive
     | workflow_types.ValidationError(_)
     | workflow_types.TaskParentCardInheritedFromCard
     | workflow_types.CardHasChildCards
@@ -253,6 +255,10 @@ fn blocked_conflict_response() -> wisp.Response {
 
 fn not_claimable_response() -> wisp.Response {
   api.error(409, "TASK_NOT_CLAIMABLE", "Task is not currently in the Pool")
+}
+
+fn card_not_active_response() -> wisp.Response {
+  api.error(409, "TASK_CARD_NOT_ACTIVE", "Task card is not active")
 }
 
 fn invalid_transition_response() -> wisp.Response {

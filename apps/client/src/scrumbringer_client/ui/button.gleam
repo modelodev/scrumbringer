@@ -126,6 +126,35 @@ pub fn submit(label: String, intent: Intent, scope: Scope) -> Config(msg) {
   )
 }
 
+/// Creates a submit button with icon and visible text.
+pub fn submit_icon_text(
+  label: String,
+  icon: icons.NavIcon,
+  intent: Intent,
+  scope: Scope,
+) -> Config(msg) {
+  Config(
+    label:,
+    on_click: None,
+    intent:,
+    scope:,
+    shape: IconText(icon),
+    size: Small,
+    button_type: SubmitButton,
+    disabled: False,
+    autofocus: False,
+    extra_class: None,
+    form_id: None,
+    accessible_label: None,
+    id: None,
+    testid: None,
+    tooltip: None,
+    aria_disabled: False,
+    stop_propagation: False,
+    extra_attrs: [],
+  )
+}
+
 /// Creates an icon-only button. The label is used as `title` and `aria-label`.
 pub fn icon(
   label: String,

@@ -3,6 +3,8 @@ import lustre/attribute
 import lustre/element
 import lustre/element/html
 
+import scrumbringer_client/styles/base
+
 fn assert_contains(haystack: String, needle: String) {
   let assert True = string.contains(haystack, needle)
 }
@@ -26,4 +28,11 @@ pub fn button_without_loading_class_test() {
 
   let html_str = element.to_document_string(rendered)
   assert_not_contains(html_str, "btn-loading")
+}
+
+pub fn base_css_does_not_force_submit_buttons_to_primary_test() {
+  let css = base.css() |> string.join("\n")
+
+  assert_not_contains(css, "button[type=\"submit\"]")
+  assert_contains(css, ".btn-icon-prefix")
 }

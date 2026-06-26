@@ -296,6 +296,7 @@ fn list_task_types_error_response(error: workflow_types.Error) -> wisp.Response 
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.TaskNotClaimable
+    | workflow_types.TaskCardNotActive
     | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
@@ -319,6 +320,7 @@ fn create_task_type_error_response(error: workflow_types.Error) -> wisp.Response
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.TaskNotClaimable
+    | workflow_types.TaskCardNotActive
     | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
@@ -342,6 +344,7 @@ fn update_task_type_error_response(error: workflow_types.Error) -> wisp.Response
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.TaskNotClaimable
+    | workflow_types.TaskCardNotActive
     | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict
@@ -364,6 +367,7 @@ fn delete_task_type_error_response(error: workflow_types.Error) -> wisp.Response
     | workflow_types.AlreadyClaimed
     | workflow_types.TaskBlockedByDependencies(_)
     | workflow_types.TaskNotClaimable
+    | workflow_types.TaskCardNotActive
     | workflow_types.TaskHasOperationalHistory
     | workflow_types.InvalidTransition
     | workflow_types.VersionConflict

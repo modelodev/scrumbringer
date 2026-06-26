@@ -50,8 +50,8 @@ select
   e.event_type,
   e.actor_user_id::int as actor_user_id,
   coalesce(nullif(u.email, ''), 'Unknown user') as actor_label,
-  case when t.card_id is null then '' else 'card' end as related_subject_type,
-  coalesce(t.card_id, 0)::int as related_subject_id,
+  'card' as related_subject_type,
+  t.card_id::int as related_subject_id,
   to_char(e.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
 from audit_events e
 join tasks t on t.id = e.task_id

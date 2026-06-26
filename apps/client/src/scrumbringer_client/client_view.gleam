@@ -76,6 +76,7 @@ import scrumbringer_client/features/automations/rule_list_config as automation_r
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
+import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/features/hierarchy/scope_view
@@ -1402,7 +1403,7 @@ fn build_left_panel(
     ),
     // Event handlers
     on_project_change: client_state.ProjectSelected,
-    on_new_task: client_state.pool_msg(pool_messages.MemberCreateDialogOpened),
+    on_new_task: new_task_msg(model),
     on_new_card: client_state.pool_msg(
       pool_messages.OpenCardDialog(admin_cards.CardDialogCreate(opt.None)),
     ),
@@ -1479,6 +1480,32 @@ fn build_left_panel(
     ),
     on_toggle_org: client_state.layout_msg(layout_messages.SidebarOrgToggled),
   ))
+}
+
+/// Build the New Task message for the current workspace context.
+pub fn new_task_msg(model: client_state.Model) -> client_state.Msg {
+  case model.member.card_show_open {
+    opt.Some(card_id) ->
+      case card_can_receive_tasks(project_cards(model), card_id) {
+        True ->
+          client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
+            card_id,
+          ))
+        False -> client_state.pool_msg(pool_messages.MemberCreateDialogOpened)
+      }
+    opt.None -> client_state.pool_msg(pool_messages.MemberCreateDialogOpened)
+  }
+}
+
+fn card_can_receive_tasks(cards: List(Card), card_id: Int) -> Bool {
+  case list.find(cards, fn(card) { card.id == card_id }) {
+    Ok(card) ->
+      card_policy.card_accepts_direct_tasks(
+        card,
+        card_queries.direct_child_cards(card.id, cards),
+      )
+    Error(_) -> False
+  }
 }
 
 fn configured_depth_names(

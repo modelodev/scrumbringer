@@ -2,7 +2,8 @@
 
 ## Status
 
-Active implementation plan.
+Superseded by `task-claim-active-card-invariant-plan.md` for any behavior that
+allowed claimed work outside active card lineage.
 
 This plan replaces the current accidental composition used by the `Personas`
 view. `Personas` must not infer team workload from the generic Pool task list.
@@ -117,8 +118,12 @@ The endpoint returns one row per project member, including:
 - attention signals;
 - available/free state;
 - task summaries needed by the UI;
-- card context, even when the card is outside the active Pool scope;
-- explicit scope flags instead of hiding work.
+- card context for valid active-card work.
+
+The earlier version of this plan proposed a scope flag for claimed tasks in
+draft or closed cards. That proposal is obsolete: those states are invalid under
+the final claim invariant and must be prevented or cleaned, not explained in
+the People payload.
 
 Suggested payload shape:
 
@@ -139,7 +144,6 @@ Suggested payload shape:
             "card_id": 3,
             "card_title": "P1 - Retrospective #3",
             "card_state": "draft",
-            "outside_active_work_scope": true,
             "blocked": false
           }
         ],
@@ -207,8 +211,8 @@ blocks inside the work surface.
 4. Keep authorization aligned with the current people view: project members can
    read workload for their project, with existing capability visibility rules
    applied only where they are product requirements.
-5. Encode `outside_active_work_scope` when work exists outside the Pool active
-   card filter.
+5. Reject or clean invalid claimed work outside active card lineage before it
+   reaches the workload read model.
 6. Preserve deterministic ordering: attention, working now, reserved,
    available, then email/name.
 
@@ -350,9 +354,10 @@ small and focused.
 Add tests for `GET /api/v1/projects/:id/people/workload`:
 
 - claimed task in an active card returns the person as `reserved`;
-- claimed task without a card returns the person as `reserved`;
-- claimed task in a draft card returns the person as `reserved` with
-  `outside_active_work_scope = true`;
+- claimed task without a card is rejected by lower-level invariants and is not
+  represented as reserved work;
+- claimed task in a draft card is rejected by lower-level invariants and is not
+  represented as reserved work;
 - ongoing task returns the person as `working_now`;
 - claimed blocked task returns the person in `attention`;
 - person with no claimed or ongoing tasks returns as `available`;
@@ -363,10 +368,7 @@ Regression test name to include:
 
 ```gleam
 pub fn people_workload_includes_claimed_tasks_in_draft_cards_test() {
-  // member beta
-  // draft card
-  // task claimed by beta
-  // endpoint returns beta as reserved with outside_active_work_scope = True
+  // obsolete: draft-card claimed work is invalid under the final invariant
 }
 ```
 

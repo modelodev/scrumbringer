@@ -240,10 +240,38 @@ pub fn capability_board_matrix_is_read_only_and_hides_empty_affordances_test() {
 
   assert_contains(html, "data-testid=\"capability-matrix\"")
   assert_contains(html, "data-testid=\"capability-matrix-empty-cell\"")
+  assert_contains(html, "grid-template-columns")
+  assert_contains(html, "repeat(2, minmax(112px, 1fr))")
+  assert_contains(html, "data-testid=\"workload-breakdown\"")
+  assert_contains(html, ">avail<")
+  assert_contains(html, ">now<")
+  assert_not_contains(html, ">claim<")
+  assert_not_contains(html, "auto-fit")
   assert_contains(html, ">Level<")
   assert_contains(html, ">Total<")
   assert_not_contains(html, "chevron")
   assert_not_contains(html, "expand-icon")
+}
+
+pub fn capability_board_list_marks_hidden_preview_tasks_test() {
+  let html =
+    base_config(
+      remote.Loaded([
+        available_task(1, "Task one", 1, 1),
+        available_task(2, "Task two", 1, 1),
+        available_task(3, "Task three", 1, 1),
+        available_task(4, "Task four", 1, 1),
+      ]),
+    )
+    |> capability_board.view
+    |> element.to_document_string
+
+  assert_contains(html, "Task one")
+  assert_contains(html, "Task two")
+  assert_contains(html, "Task three")
+  assert_not_contains(html, "Task four")
+  assert_contains(html, "data-testid=\"capability-list-more\"")
+  assert_contains(html, "+1 more task")
 }
 
 pub fn capability_board_card_scope_rows_direct_children_test() {

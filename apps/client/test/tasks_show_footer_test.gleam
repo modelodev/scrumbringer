@@ -23,7 +23,8 @@ pub fn task_show_footer_renders_close_only_without_task_test() {
 
   assert_contains(html, "task-show-footer")
   assert_contains(html, "task-action-bar")
-  assert_not_contains(html, ">Close<")
+  assert_contains(html, ">Close<")
+  assert_contains(html, "data-testid=\"task-show-footer-close\"")
   assert_not_contains(html, "Claim task")
   assert_not_contains(html, "Release")
   assert_not_contains(html, "Complete")
@@ -38,6 +39,8 @@ pub fn task_show_footer_disables_claim_for_blocked_task_test() {
     |> element.to_document_string
 
   assert_contains(html, "Claim task")
+  assert_contains(html, ">Close<")
+  assert_contains(html, "data-testid=\"task-show-footer-close\"")
   assert_contains(html, "data-testid=\"secondary-actions-menu\"")
   assert_contains(html, "data-testid=\"task-show-secondary-delete\"")
   assert_contains(html, "data-tooltip=\"Task has open dependencies\"")
@@ -55,7 +58,8 @@ pub fn task_show_footer_renders_owner_claimed_actions_test() {
     ))
     |> element.to_document_string
 
-  assert_not_contains(html, ">Close<")
+  assert_contains(html, ">Close<")
+  assert_contains(html, "data-testid=\"task-show-footer-close\"")
   assert_not_contains(html, "data-testid=\"task-show-primary-close\"")
   assert_contains(html, "Start working")
   assert_contains(html, "data-testid=\"task-show-primary-start\"")
@@ -77,10 +81,10 @@ pub fn task_show_footer_renders_owner_ongoing_close_as_primary_test() {
     |> element.to_document_string
 
   assert_contains(html, "Close task")
+  assert_contains(html, ">Close<")
   assert_contains(html, "data-testid=\"task-show-primary-close\"")
   assert_contains(html, "Release back to Pool")
   assert_not_contains(html, "Start working")
-  assert_not_contains(html, ">Close<")
 }
 
 pub fn task_show_footer_hides_claimed_actions_for_other_owner_test() {
@@ -91,7 +95,7 @@ pub fn task_show_footer_hides_claimed_actions_for_other_owner_test() {
     ))
     |> element.to_document_string
 
-  assert_not_contains(html, ">Close<")
+  assert_contains(html, ">Close<")
   assert_contains(html, "data-testid=\"task-show-secondary-delete\"")
   assert_not_contains(html, "Start working")
   assert_not_contains(html, "Release")
@@ -128,6 +132,25 @@ pub fn task_show_footer_disables_save_without_edit_changes_test() {
 
   assert_contains(html, "Save")
   assert_contains(html, "disabled")
+}
+
+pub fn task_show_footer_marks_save_loading_while_edit_submit_in_flight_test() {
+  let html =
+    task_show_footer.view(
+      task_show_footer.Config(
+        ..config(Some(claimed_task(claimed_by: 7)), current_user_id: Some(7)),
+        editing: True,
+        edit_dirty: True,
+        edit_in_flight: True,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "Save")
+  assert_contains(html, "btn-loading task-show-save")
+  assert_contains(html, "disabled")
+  assert_not_contains(html, "Release")
+  assert_not_contains(html, "Complete")
 }
 
 fn config(

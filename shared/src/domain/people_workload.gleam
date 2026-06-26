@@ -32,7 +32,6 @@ pub type PersonWorkloadTask {
     card_state: Option(CardPhase),
     blocked: Bool,
     ongoing: Bool,
-    outside_active_work_scope: Bool,
   )
 }
 

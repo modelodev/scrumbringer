@@ -26,11 +26,11 @@ pub fn card_is_never_claimable_test() {
   let assert False = claimability.card_is_claimable(card)
 }
 
-pub fn root_pool_task_is_claimable_without_card_activation_test() {
-  let task = root_task(1, task_state.Available)
+pub fn task_under_missing_card_is_not_claimable_test() {
+  let task = card_task(1, card_id.new(99), task_state.Available)
   let tree = activation.WorkTree(cards: [], tasks: [task])
 
-  let assert True = claimability.task_is_claimable(task, tree)
+  let assert False = claimability.task_is_claimable(task, tree)
 }
 
 pub fn task_under_draft_card_is_not_claimable_test() {
@@ -197,10 +197,15 @@ pub fn activation_excludes_closed_blocked_and_unclaimable_tasks_test() {
 
 pub fn activation_warns_when_pool_exceeds_project_healthy_limit_test() {
   let card =
-    draft_card(1, option.None, card_structure.TaskGroup([task_id.new(1)]))
-  let root = root_task(2, task_state.Available)
+    draft_card(
+      1,
+      option.None,
+      card_structure.TaskGroup([task_id.new(1), task_id.new(2)]),
+    )
   let under_card = card_task(1, card_id.new(1), task_state.Available)
-  let tree = activation.WorkTree(cards: [card], tasks: [root, under_card])
+  let second_under_card = card_task(2, card_id.new(1), task_state.Available)
+  let tree =
+    activation.WorkTree(cards: [card], tasks: [under_card, second_under_card])
 
   let assert Ok(plan) =
     activation.activate_card(
@@ -244,20 +249,6 @@ fn active_card(
       activated_by: user_id.new(7),
       source: card_state.DirectActivation,
     ),
-  )
-}
-
-fn root_task(
-  raw_id: Int,
-  state: task_state.TaskExecutionState,
-) -> task_entity.Task {
-  task_entity.Task(
-    id: task_id.new(raw_id),
-    project_id: project_id.new(1),
-    placement: placement.RootPool,
-    execution_state: state,
-    blocked: False,
-    capability_allowed: True,
   )
 }
 

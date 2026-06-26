@@ -64,13 +64,23 @@ pub fn rollup_closes_parent_when_all_direct_children_closed_test() {
 }
 
 pub fn closed_done_counts_as_done_close_test() {
-  let task = root_task(task_state.Closed(task_state.ClosedByClaimant, now, 7))
+  let task =
+    card_task(
+      1,
+      card_id.new(1),
+      task_state.Closed(task_state.ClosedByClaimant, now, 7),
+    )
 
   let assert True = closure.task_closed_with_done_reason(task)
 }
 
 pub fn closed_manually_does_not_count_as_done_close_test() {
-  let task = root_task(task_state.Closed(task_state.ManuallyClosed, now, 7))
+  let task =
+    card_task(
+      1,
+      card_id.new(1),
+      task_state.Closed(task_state.ManuallyClosed, now, 7),
+    )
 
   let assert False = closure.task_closed_with_done_reason(task)
 }
@@ -166,7 +176,12 @@ pub fn closed_card_cannot_be_reopened_test() {
 }
 
 pub fn closed_task_cannot_be_claimed_or_closed_again_test() {
-  let task = root_task(task_state.Closed(task_state.ClosedByClaimant, now, 7))
+  let task =
+    card_task(
+      1,
+      card_id.new(1),
+      task_state.Closed(task_state.ClosedByClaimant, now, 7),
+    )
 
   let assert Error(transitions.TaskAlreadyClosed) =
     transitions.claim_task(task, user_id.new(9), now, task_state.Taken)
@@ -222,17 +237,6 @@ fn closed_card_with_structure(
       closed_at: now,
       closed_by: card_state.ClosedByUser(user_id.new(7)),
     ),
-  )
-}
-
-fn root_task(state: task_state.TaskExecutionState) -> task_entity.Task {
-  task_entity.Task(
-    id: task_id.new(1),
-    project_id: project_id.new(1),
-    placement: placement.RootPool,
-    execution_state: state,
-    blocked: False,
-    capability_allowed: True,
   )
 }
 

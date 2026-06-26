@@ -120,6 +120,74 @@ pub fn upsert(
   }
 }
 
+pub fn upsert_one(
+  store: NormalizedStore(id, data),
+  project_id: id,
+  item: data,
+  to_id: fn(data) -> id,
+) -> NormalizedStore(id, data) {
+  let NormalizedStore(
+    items: current_items,
+    project_index: project_index,
+    project_order: project_order,
+    pending: pending,
+  ) = store
+
+  let item_id = to_id(item)
+  let next_items = dict.insert(current_items, item_id, item)
+  let current_ids = case dict.get(project_index, project_id) {
+    Ok(ids) -> ids
+    Error(_) -> []
+  }
+  let next_ids = case list.any(current_ids, fn(id) { id == item_id }) {
+    True -> current_ids
+    False -> [item_id, ..current_ids]
+  }
+  let next_index = dict.insert(project_index, project_id, next_ids)
+  let next_order = case list.any(project_order, fn(id) { id == project_id }) {
+    True -> project_order
+    False -> list.append(project_order, [project_id])
+  }
+
+  NormalizedStore(
+    items: next_items,
+    project_index: next_index,
+    project_order: next_order,
+    pending: pending,
+  )
+}
+
+pub fn remove_one(
+  store: NormalizedStore(id, data),
+  project_id: id,
+  item_id: id,
+) -> NormalizedStore(id, data) {
+  let NormalizedStore(
+    items: current_items,
+    project_index: project_index,
+    project_order: project_order,
+    pending: pending,
+  ) = store
+
+  let next_items = dict.delete(current_items, item_id)
+  let next_index = case dict.get(project_index, project_id) {
+    Ok(ids) ->
+      dict.insert(
+        project_index,
+        project_id,
+        list.filter(ids, fn(id) { id != item_id }),
+      )
+    Error(_) -> project_index
+  }
+
+  NormalizedStore(
+    items: next_items,
+    project_index: next_index,
+    project_order: project_order,
+    pending: pending,
+  )
+}
+
 pub fn get_by_id(store: NormalizedStore(id, data), item_id: id) -> Option(data) {
   let NormalizedStore(items: items, ..) = store
   case dict.get(items, item_id) {

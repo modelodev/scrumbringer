@@ -1,4 +1,4 @@
-//// Typed task creation entry points for RootPool and card contexts.
+//// Typed task creation entry points for card contexts.
 
 import domain/card/entity as card_entity
 import domain/card/state as card_state
@@ -16,20 +16,6 @@ pub type CreateTaskError {
   CardIsNotDraft
   CardIsNotActive
   CardDoesNotAcceptTasks
-}
-
-pub fn create_root_pool_task(
-  id: task_id.TaskId,
-  actor: permissions.Authorized(permissions.ManageFlow),
-) -> task_entity.Task {
-  task_entity.Task(
-    id: id,
-    project_id: permissions.project_id(actor),
-    placement: placement.RootPool,
-    execution_state: task_state.Available,
-    blocked: False,
-    capability_allowed: True,
-  )
 }
 
 pub fn create_task_in_draft_card(

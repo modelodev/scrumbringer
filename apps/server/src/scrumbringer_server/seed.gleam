@@ -67,23 +67,14 @@ fn run_seed(
   let scrumbringer_server.App(db: db, ..) = app
   io.println("[OK] Connected to database")
 
-  use org_id <- result.try(seed_db.query_int(
-    db,
-    "SELECT id FROM organizations LIMIT 1",
-  ))
-  use admin_id <- result.try(seed_db.query_int(
-    db,
-    "SELECT id FROM users WHERE email = 'admin@example.com'",
-  ))
+  use ids <- result.try(seed_db.reset_seed_database(db))
+  let #(org_id, admin_id) = ids
   io.println(
-    "[OK] Org ID: "
+    "[OK] Reset seed database. Org ID: "
     <> int.to_string(org_id)
     <> ", Admin ID: "
     <> int.to_string(admin_id),
   )
-
-  use _ <- result.try(seed_db.reset_workflow_tables(db))
-  io.println("[OK] Reset workflow tables")
 
   use stats <- result.try(seed_builder.build_seed(db, org_id, admin_id, config))
 

@@ -14,12 +14,14 @@
 //// conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
 //// ```
 
+import domain/task as domain_task
 import domain/task/state as task_state
 import gleam/option.{type Option, Some}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/repository/tasks/queries as tasks_queries
+import scrumbringer_server/use_case/workflows/claimable_task
 import wisp
 
 // =============================================================================
@@ -53,8 +55,22 @@ pub fn handle_claim_conflict(
         task_state.Available, count if count > 0 ->
           api.error(409, "CONFLICT_BLOCKED", "Task has open dependencies")
         task_state.Available, _ ->
-          api.error(409, "CONFLICT_VERSION", "Version conflict")
+          available_claim_conflict_response(db, current)
       }
+  }
+}
+
+fn available_claim_conflict_response(
+  db: pog.Connection,
+  task: domain_task.Task,
+) -> wisp.Response {
+  case claimable_task.from_task(db, task) {
+    Ok(_) -> api.error(409, "CONFLICT_VERSION", "Version conflict")
+    Error(claimable_task.MissingCard)
+    | Error(claimable_task.InactiveCardLineage) ->
+      api.error(409, "TASK_CARD_NOT_ACTIVE", "Task card is not active")
+    Error(claimable_task.DbError(_)) ->
+      api.error(500, "DATABASE_ERROR", "Database error")
   }
 }
 

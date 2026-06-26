@@ -590,8 +590,8 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -1515,16 +1515,16 @@ pub fn task_dependencies_schema_indices_present_test() {
   index_count |> expect.equal(2)
 }
 
-pub fn pool_includes_available_root_pool_task_test() {
+pub fn pool_includes_available_active_card_task_test() {
   let #(_, handler, session, csrf, project_id, type_id) =
-    ht08_project("HT08 RootPool")
+    ht08_project("HT08 Active Card Pool")
 
   create_task(
     handler,
     session,
     csrf,
     project_id,
-    "RootPool task",
+    "Active card task",
     "",
     3,
     type_id,
@@ -1532,7 +1532,8 @@ pub fn pool_includes_available_root_pool_task_test() {
 
   let res = list_project_tasks(handler, session, csrf, project_id, "")
   expect.expect_status(res, 200)
-  decode_task_titles(simulate.read_body(res)) |> expect.equal(["RootPool task"])
+  decode_task_titles(simulate.read_body(res))
+  |> expect.equal(["Active card task"])
 }
 
 pub fn pool_excludes_task_under_draft_card_test() {
@@ -1725,8 +1726,8 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
   let task_id =
     create_task(
       handler,
-      owner_session,
-      owner_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Owned",
       "",
@@ -2530,8 +2531,8 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let task_id =
     create_task(
       handler,
-      member_session,
-      member_csrf,
+      admin_session,
+      admin_csrf,
       project_id,
       "Core",
       "",
@@ -3403,10 +3404,44 @@ fn create_task(
   priority: Int,
   type_id: Int,
 ) -> Int {
+  let card_id = create_active_card(handler, session, csrf, project_id, title)
+  create_task_with_card(
+    handler,
+    session,
+    csrf,
+    project_id,
+    title,
+    description,
+    priority,
+    type_id,
+    card_id,
+  )
+}
+
+fn create_active_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  title: String,
+) -> Int {
+  let card_id =
+    create_card(handler, session, csrf, project_id, title <> " card")
+  try_activate_card(handler, session, csrf, card_id)
+  card_id
+}
+
+fn create_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  title: String,
+) -> Int {
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/cards",
     )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
@@ -3414,9 +3449,7 @@ fn create_task(
     |> simulate.json_body(
       json.object([
         #("title", json.string(title)),
-        #("description", json.string(description)),
-        #("priority", json.int(priority)),
-        #("type_id", json.int(type_id)),
+        #("description", json.string("Test card")),
       ]),
     )
 
@@ -3426,14 +3459,14 @@ fn create_task(
   let body = simulate.read_body(res)
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
-  let task_decoder = {
+  let card_decoder = {
     use id <- decode.field("id", decode.int)
     decode.success(id)
   }
 
   let data_decoder = {
-    use task <- decode.field("task", task_decoder)
-    decode.success(task)
+    use card <- decode.field("card", card_decoder)
+    decode.success(card)
   }
 
   let response_decoder = {
@@ -3443,6 +3476,29 @@ fn create_task(
 
   let assert Ok(id) = decode.run(dynamic, response_decoder)
   id
+}
+
+fn try_activate_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  card_id: Int,
+) {
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int_to_string(card_id) <> "/activate",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([]))
+
+  let res = handler(req)
+  case res.status {
+    200 | 403 -> Nil
+    _ -> expect.expect_status(res, 200)
+  }
 }
 
 fn create_task_with_card(

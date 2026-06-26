@@ -302,6 +302,7 @@ fn view_project_selector(config: LeftPanelConfig(msg)) -> Element(msg) {
           attribute.class("project-selector-dropdown"),
           attribute.value(selected_value),
           event.on_input(config.on_project_change),
+          event.on_change(config.on_project_change),
         ],
         [
           option(

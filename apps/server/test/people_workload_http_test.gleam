@@ -17,7 +17,7 @@ import wisp/simulate
 
 import fixtures
 
-pub fn people_workload_includes_claimed_tasks_in_draft_cards_test() {
+pub fn people_workload_includes_claimed_tasks_in_active_cards_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(project_id) =
@@ -25,7 +25,7 @@ pub fn people_workload_includes_claimed_tasks_in_draft_cards_test() {
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(card_id) =
-    fixtures.create_card(handler, session, project_id, "Draft card")
+    fixtures.create_card(handler, session, project_id, "Active card")
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -33,8 +33,9 @@ pub fn people_workload_includes_claimed_tasks_in_draft_cards_test() {
       project_id,
       type_id,
       card_id,
-      "Draft claimed task",
+      "Active claimed task",
     )
+  set_card_active(db, card_id)
 
   let assert Ok(admin_id) =
     fixtures.query_int(db, "select id from users where email = $1", [
@@ -53,11 +54,10 @@ pub fn people_workload_includes_claimed_tasks_in_draft_cards_test() {
     reserved: [
       PersonWorkloadTask(
         task_id: returned_task_id,
-        title: "Draft claimed task",
+        title: "Active claimed task",
         card_id: option.Some(returned_card_id),
-        card_title: option.Some("Draft card"),
-        card_state: option.Some(card.Draft),
-        outside_active_work_scope: True,
+        card_title: option.Some("Active card"),
+        card_state: option.Some(card.Active),
         blocked: False,
         ongoing: False,
         ..,
@@ -122,6 +122,15 @@ fn mark_task_claimed(db: pog.Connection, task_id: Int, user_id: Int) {
     )
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.int(task_id))
+    |> pog.execute(db)
+
+  Nil
+}
+
+fn set_card_active(db: pog.Connection, card_id: Int) {
+  let assert Ok(_) =
+    pog.query("update cards set execution_state = 'active' where id = $1")
+    |> pog.parameter(pog.int(card_id))
     |> pog.execute(db)
 
   Nil

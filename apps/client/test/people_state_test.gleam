@@ -22,7 +22,6 @@ fn task(id: Int) -> PersonWorkloadTask {
     card_state: None,
     blocked: False,
     ongoing: False,
-    outside_active_work_scope: False,
   )
 }
 

@@ -37,11 +37,19 @@ pub fn action_availability(
         _, True -> types.Disabled("Esta tarjeta ya contiene tareas directas")
         _, False -> types.Available
       }
-    types.CreateTask ->
-      case has_subcards {
-        True -> types.Disabled("Esta tarjeta contiene subtarjetas")
-        False -> types.Available
+    types.CreateTask -> {
+      let accepts_tasks =
+        card_policy.card_accepts_direct_tasks(
+          card,
+          card_queries.direct_child_cards(card.id, cards),
+        )
+      case card.state, accepts_tasks {
+        Draft, _ -> types.Disabled("Activa la tarjeta para crear tareas")
+        Closed, _ -> types.Disabled("La tarjeta está cerrada")
+        _, False -> types.Disabled("Esta tarjeta contiene subtarjetas")
+        Active, True -> types.Available
       }
+    }
     types.ActivateSubtree ->
       case is_pm_or_admin, card.state {
         False, _ -> types.Disabled("Solo managers pueden activar subárboles")

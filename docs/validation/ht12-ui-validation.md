@@ -46,11 +46,11 @@ AGENT_BROWSER_EXECUTABLE_PATH=/path/to/chrome make ht12-sweep-lan
 ```
 
 The script performs preflight checks, logs in through the public API, creates a
-fresh project with a three-level card hierarchy, creates RootPool and card-scoped
-tasks, exercises activation, move, claim, release, close, task delete,
+fresh project with a three-level card hierarchy, creates card-scoped tasks,
+exercises activation, move, claim, release, close, task delete,
 task-delete-with-history, card delete, card-delete-with-children, and
-card-delete-with-history paths. It also creates enough RootPool pressure to push
-the project over `healthy_pool_limit`, verifies the activation response reports
+card-delete-with-history paths. It also creates enough active-card pool pressure
+to push the project over `healthy_pool_limit`, verifies the activation response reports
 `pool_open_after`, `healthy_pool_limit`, and `pool_health`, and checks that a
 manual card close is rejected while a descendant task is claimed. It creates a
 task under an already active card and proves that task enters the Pool
@@ -99,7 +99,7 @@ surface:
 | `seed_workspace_scenarios.gleam` | Users, active/inactive membership, healthy and saturated project pool limits | Project switch, Pool health, People, Assignments |
 | `seed_capability_scenarios.gleam` | Capabilities, task types, project member capability assignments | Capability Board and People filters |
 | `seed_card_scenarios.gleam` | Card profile colors and per-project card inventory | Plan all-cards and Card Show inspection |
-| `seed_task_scenarios.gleam` | Available, claimed, closed, RootPool, card-scoped, workflow-origin, and pool-lifetime task states | Pool, Task Show, Kanban, People ownership |
+| `seed_task_scenarios.gleam` | Available, claimed, closed, card-scoped, workflow-origin, and pool-lifetime task states | Pool, Task Show, Kanban, People ownership |
 | `seed_plan_scenarios.gleam` | Direct-task cards, capability matrix cards, blockers, due dates, draft activation impact | Plan structure, card-scoped Kanban, activation impact, blocked work |
 | `seed_people_scenarios.gleam` | Distributed ownership, overloaded members, ongoing work, blocked claimed work, free-person states | People route and scoped People view |
 | `seed_root_card_scenarios.gleam` | Draft, active, closed, empty, card-heavy, and task-leaf root cards | Plan depth routes, all-cards route, root-card hierarchy inspection |
@@ -184,13 +184,14 @@ Latest LAN evidence on this host:
 
 ### 3. Task Creation Contexts
 
-- From `Pool`, create a `RootPool` task.
+- From `Pool`, try to create a task without a card and confirm submit is blocked
+  until an active card context is chosen.
 - From a `Draft` card that accepts tasks, create a prepared task.
 - From an `Active` card that accepts tasks, create a task that should enter the
   Pool immediately.
-- Expected: the create dialog is contextual. Opening it from `Pool` creates a
-  `RootPool` task; opening it from a card keeps that card as the fixed context.
-  The dialog does not expose a central card selector.
+- Expected: the create dialog is contextual. Opening it without a card requires
+  an active card context; opening it from a card keeps that card as the fixed
+  context. The dialog does not expose a central card selector.
 - Expected: the create UI explains whether the task enters the Pool now or stays
   prepared until activation. No task is auto-claimed after creation.
 - Expected: the active card Pool case is asserted in the automated sweep by
@@ -205,7 +206,7 @@ Latest LAN evidence on this host:
 - Confirm the impact dialog shows descendant cards and tasks entering the Pool.
 - Confirm the activation response includes Pool health: `pool_open_after`,
   `healthy_pool_limit`, and `pool_health`.
-- With RootPool pressure above the default healthy limit, expected:
+- With active-card task pressure above the default healthy limit, expected:
   `pool_health` is `exceeds_healthy_limit` and the UI warns without blocking the
   action.
 - Navigate to `Pool`.
@@ -344,13 +345,13 @@ hardening pass also normalizes defaults/not-null constraints for
 `project_settings.healthy_pool_limit`, and replaces stale lifecycle constraints
 when they do not admit the HT-12 states and closed reasons.
 
-The task creation UI now follows contextual creation from D5.1: Pool creation
-has no card selector and creates RootPool tasks, while card creation keeps the
-origin card as fixed context. If that context becomes invalid before submit
-because the card is closed, missing, or already contains child cards, the dialog
-explains the problem and disables submit. The API still returns explicit errors
-such as `CARD_HAS_CHILD_CARDS` and `TASK_PARENT_CARD_CONFLICT` if a stale or
-crafted request bypasses the UI.
+The task creation UI now follows contextual creation from the final active-card
+claim invariant: creation without a card disables submit and asks for an active
+card, while card creation keeps the origin card as fixed context. If that
+context becomes invalid before submit because the card is closed, missing, or
+already contains child cards, the dialog explains the problem and disables
+submit. The API still returns explicit errors such as `CARD_HAS_CHILD_CARDS` and
+`TASK_PARENT_CARD_CONFLICT` if a stale or crafted request bypasses the UI.
 
 The task delete UI now has a second client-side guard below the visible footer:
 the mutation handler only submits hard delete for locally visible available and

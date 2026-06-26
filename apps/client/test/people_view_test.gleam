@@ -425,7 +425,6 @@ fn task_to_workload_task(task: Task) -> PersonWorkloadTask {
     card_state: None,
     blocked: task.blocked_count > 0,
     ongoing: task_is_ongoing(task),
-    outside_active_work_scope: False,
   )
 }
 
@@ -580,13 +579,14 @@ pub fn people_view_availability_rules_test() {
     people_view.view(people_config(model)) |> element.to_document_string
 
   assert_contains(html, "Working now")
-  assert_contains(html, "Reserved")
+  assert_contains(html, "Claimed")
   assert_contains(html, "Available")
   assert_contains(html, "Person")
-  assert_contains(html, "State")
-  assert_contains(html, "Focus")
-  assert_contains(html, "Scope")
+  assert_contains(html, "Work")
   assert_contains(html, "Load")
+  assert_not_contains(html, "people-roster-state")
+  assert_not_contains(html, "people-roster-focus")
+  assert_not_contains(html, "people-roster-scope")
   assert_not_contains(html, ">Action<")
   assert_not_contains(html, "0 ongoing")
 }
@@ -653,11 +653,11 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
     html,
     "Operational team state by owned work, blockers, and availability.",
   )
-  assert_contains(html, "work-surface-guidance")
-  assert_contains(html, "main operating situation")
-  assert_contains(html, "task explaining the row")
-  assert_contains(html, "dominant card or capability")
-  assert_contains(html, "total work volume")
+  assert_not_contains(html, "work-surface-guidance")
+  assert_not_contains(html, "main operating situation")
+  assert_not_contains(html, "task explaining the row")
+  assert_not_contains(html, "dominant card or capability")
+  assert_not_contains(html, "total work volume")
   assert_contains(html, "work-surface-chip success")
   assert_contains(html, ">Available<")
   assert_contains(html, "work-surface-chip claimed")
@@ -666,12 +666,11 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
   assert_contains(html, ">Working now<")
   assert_contains(html, "work-surface-chip blocked")
   assert_contains(html, ">Attention<")
-  assert_contains(html, "Reserved · 1")
   assert_contains(html, "Next: Review logs")
-  assert_contains(html, "Checkout +1 card")
+  assert_contains(html, "Checkout")
   assert_contains(html, "Observability")
-  assert_contains(html, "1 ongoing · 1 reserved · 2 cards")
-  assert_contains(html, "4 reserved")
+  assert_contains(html, "1 ongoing · 1 claimed · 2 cards")
+  assert_contains(html, "4 claimed")
   assert_contains(html, "High load")
   assert_not_contains(html, "people-roster-action")
   assert_not_contains(html, "people-roster-open")
@@ -708,14 +707,55 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
   assert_contains(html, "Onboarding")
   assert_contains(html, "Billing")
   assert_contains(html, "Work for ana@example.com")
-  assert_contains(html, "1 ongoing · 2 reserved · 2 cards")
-  assert_contains(html, "Working now · 2 reserved")
+  assert_contains(html, "1 ongoing · 2 claimed · 2 cards")
+  assert_contains(html, "Working now · 2 claimed")
   assert_contains(html, "Now")
-  assert_contains(html, "Reserved")
+  assert_contains(html, "Claimed, not started")
   assert_contains(html, "In progress · Checkout")
-  assert_contains(html, "Reserved · Onboarding")
-  assert_not_contains(html, "people-task-group")
+  assert_contains(html, "people-task-group")
+  assert_occurrences(html, "Open card", 2)
   assert_not_contains(html, "people-task-card-meta")
+}
+
+pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
+  let tasks = [
+    make_task(1, "Patch alert", 10, task_state.Taken)
+    |> task_on_card(101, "Observability", card.Purple),
+  ]
+
+  let model =
+    base_model()
+    |> with_people_workload(remote.Loaded([person(10)]))
+    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_workload_tasks(tasks)
+    |> with_people_expanded(10)
+
+  let html = render_people(model)
+
+  assert_contains(html, "people-task-groups")
+  assert_contains(html, "people-task-group")
+  assert_contains(html, "Observability")
+  assert_contains(html, "1 task")
+  assert_occurrences(html, "Open card", 1)
+  assert_occurrences(html, "Open task", 1)
+}
+
+pub fn people_view_single_reserved_task_without_card_has_no_card_cta_test() {
+  let tasks = [make_task(1, "Unscoped follow-up", 10, task_state.Taken)]
+
+  let model =
+    base_model()
+    |> with_people_workload(remote.Loaded([person(10)]))
+    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_workload_tasks(tasks)
+    |> with_people_expanded(10)
+
+  let html = render_people(model)
+
+  assert_contains(html, "people-task-groups")
+  assert_contains(html, "No card")
+  assert_occurrences(html, "Open card", 0)
+  assert_occurrences(html, "Open task", 1)
 }
 
 pub fn people_view_groups_many_reserved_tasks_by_card_test() {
@@ -773,7 +813,7 @@ pub fn people_view_grouped_reserved_cta_matrix_test() {
   assert_occurrences(html, "Open card", 2)
 }
 
-pub fn people_view_grouped_reserved_tasks_lift_scope_to_group_header_test() {
+pub fn people_view_grouped_reserved_tasks_use_card_header_without_legacy_scope_badge_test() {
   let task =
     PersonWorkloadTask(
       ..task_to_workload_task(
@@ -781,7 +821,6 @@ pub fn people_view_grouped_reserved_tasks_lift_scope_to_group_header_test() {
         |> task_on_card(101, "Release", card.Blue),
       ),
       capability_name: Some("Security"),
-      outside_active_work_scope: True,
     )
   let person =
     PersonWorkload(
@@ -807,10 +846,9 @@ pub fn people_view_grouped_reserved_tasks_lift_scope_to_group_header_test() {
   let html = render_people(model)
 
   assert_contains(html, "Release")
-  assert_contains(html, "outside active work")
-  assert_contains(html, "Reserved · Security")
+  assert_not_contains(html, "outside active work")
+  assert_contains(html, "Claimed · Security")
   assert_contains(html, "Open card")
-  assert_not_contains(html, "Reserved · Security · outside active work")
 }
 
 pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
@@ -831,7 +869,7 @@ pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
     people_view.view(people_config(model)) |> element.to_document_string
 
   assert_contains(html, "No active focus")
-  assert_contains(html, "No reserved work")
+  assert_contains(html, "No claimed work")
   assert_contains(html, "Available")
 }
 
@@ -882,7 +920,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
   assert_contains(html, "aria-controls=\"person-details-10\"")
   assert_contains(html, "Collapse status for ana@example.com")
   assert_contains(html, "Now")
-  assert_contains(html, "Reserved")
+  assert_contains(html, "Claimed, not started")
   assert_contains(html, "task-item-content")
 }
 
@@ -949,7 +987,7 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
     people_view.view(people_config(model)) |> element.to_document_string
 
   assert_contains(html, "Now")
-  assert_contains(html, "Reserved")
+  assert_contains(html, "Claimed, not started")
 
   assert_contains(html, "Ongoing one")
   assert_contains(html, "Ongoing via canonical state")
@@ -1206,7 +1244,7 @@ pub fn people_view_card_scope_without_work_uses_empty_state_test() {
 
   let html = render_people_with_cards(model, cards)
 
-  assert_contains(html, "No reserved work in this card scope")
+  assert_contains(html, "No claimed work in this card scope")
   assert_contains(html, "people-card-scope-no-work")
   assert_not_contains(html, "data-testid=\"people-view\"")
 }

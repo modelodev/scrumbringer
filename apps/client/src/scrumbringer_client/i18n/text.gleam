@@ -105,7 +105,10 @@ pub type Text {
   Continue
   Skip
   Create
+  SaveDraftCard
+  CreateAndActivateCard
   Creating
+  CreatingAndActivating
   Copy
   Copied
   Copying
@@ -297,38 +300,23 @@ pub type Text {
   PeopleNoReservedWork
   PeopleNoCardContext
   PeopleColumnPerson
-  PeopleColumnState
-  PeopleColumnFocus
-  PeopleColumnScope
+  PeopleColumnWork
   PeopleColumnLoad
-  PeopleGuidanceStateTerm
-  PeopleGuidanceStateDescription
-  PeopleGuidanceFocusTerm
-  PeopleGuidanceFocusDescription
-  PeopleGuidanceScopeTerm
-  PeopleGuidanceScopeDescription
-  PeopleGuidanceLoadTerm
-  PeopleGuidanceLoadDescription
   PeopleSectionNeedsAttention
   PeopleSectionWorkingNow
   PeopleSectionReservedWork
   PeopleSectionAvailable
-  PeopleOngoingWorkBlocked
-  PeopleReservedWorkBlocked
   PeopleWorkingNowState
   PeopleAvailableState
   PeopleNeedsAttentionState
-  PeopleBlockedDetail
   PeopleNoOwnedWork
   PeopleNextWork(title: String)
   PeopleReservedGroupCount(count: Int)
   PeopleTaskNowMeta(context: String)
   PeopleTaskReservedMeta(context: String)
   PeopleTaskBlockedMeta(context: String)
-  PeopleOutsideActiveWorkScope
   PeopleBlockedBy(title: String)
   PeopleOpenDependencies
-  PeopleScopeAdditionalCards(title: String, count: Int)
   PeopleShowLabel
   PeopleFilterEveryone
   PeopleFilterWithWork

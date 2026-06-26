@@ -134,7 +134,10 @@ pub fn translate(text: Text) -> String {
     text.Continue -> "Continuar"
     text.Skip -> "Saltar"
     text.Create -> "Crear"
+    text.SaveDraftCard -> "Guardar borrador"
+    text.CreateAndActivateCard -> "Crear y activar"
     text.Creating -> "Creando…"
+    text.CreatingAndActivating -> "Creando y activando…"
     text.Copy -> "Copiar"
     text.Save -> "Guardar"
     text.Saved -> "Guardado"
@@ -337,8 +340,8 @@ pub fn translate(text: Text) -> String {
     text.PeopleOngoingCount(count) -> int.to_string(count) <> " en curso"
     text.PeopleReservedCount(count) ->
       case count {
-        1 -> "1 reservada"
-        _ -> int.to_string(count) <> " reservadas"
+        1 -> "1 reclamada"
+        _ -> int.to_string(count) <> " reclamadas"
       }
     text.PeopleBlockedCount(count) ->
       case count {
@@ -350,37 +353,24 @@ pub fn translate(text: Text) -> String {
     text.PeopleTrayTitle(person) -> "Trabajo de " <> person
     text.PeopleNowSection -> "Ahora"
     text.PeopleNowDescription ->
-      "Foco activo. Las reservadas esperan hasta pausar, cerrar o liberar."
-    text.PeopleReservedSection -> "Reservadas"
+      "Foco activo. Las reclamadas esperan hasta pausar, cerrar o liberar."
+    text.PeopleReservedSection -> "Reclamadas, no iniciadas"
     text.PeopleReservedDescription ->
       "Reclamadas por esta persona; todavía no son foco activo."
     text.PeopleNoActiveFocus -> "Sin foco activo"
-    text.PeopleNoReservedWork -> "Sin trabajo reservado"
+    text.PeopleNoReservedWork -> "Sin trabajo reclamado"
     text.PeopleNoCardContext -> "Sin tarjeta"
     text.PeopleColumnPerson -> "Persona"
-    text.PeopleColumnState -> "Estado"
-    text.PeopleColumnFocus -> "Foco"
-    text.PeopleColumnScope -> "Alcance"
+    text.PeopleColumnWork -> "Trabajo"
     text.PeopleColumnLoad -> "Carga"
-    text.PeopleGuidanceStateTerm -> "Estado"
-    text.PeopleGuidanceStateDescription -> "situación principal"
-    text.PeopleGuidanceFocusTerm -> "Foco"
-    text.PeopleGuidanceFocusDescription -> "tarea que explica la fila"
-    text.PeopleGuidanceScopeTerm -> "Alcance"
-    text.PeopleGuidanceScopeDescription -> "tarjeta o capacidad dominante"
-    text.PeopleGuidanceLoadTerm -> "Carga"
-    text.PeopleGuidanceLoadDescription -> "volumen total de trabajo"
     text.PeopleSectionNeedsAttention -> "Requiere atención"
     text.PeopleSectionWorkingNow -> "Trabajando ahora"
-    text.PeopleSectionReservedWork -> "Reservadas"
+    text.PeopleSectionReservedWork -> "Reclamadas"
     text.PeopleSectionAvailable -> "Disponibles"
-    text.PeopleOngoingWorkBlocked -> "Trabajo en curso bloqueado"
-    text.PeopleReservedWorkBlocked -> "Trabajo reservado bloqueado"
     text.PeopleWorkingNowState -> "Trabajando ahora"
     text.PeopleAvailableState -> "Disponible"
     text.PeopleNeedsAttentionState -> "Requiere atención"
-    text.PeopleBlockedDetail -> "Bloqueado por dependencias abiertas"
-    text.PeopleNoOwnedWork -> "Sin trabajo reservado"
+    text.PeopleNoOwnedWork -> "Sin trabajo reclamado"
     text.PeopleNextWork(title) -> "Siguiente: " <> title
     text.PeopleReservedGroupCount(count) ->
       int.to_string(count)
@@ -389,19 +379,10 @@ pub fn translate(text: Text) -> String {
         _ -> " tareas"
       }
     text.PeopleTaskNowMeta(context) -> "En curso · " <> context
-    text.PeopleTaskReservedMeta(context) -> "Reservada · " <> context
+    text.PeopleTaskReservedMeta(context) -> "Reclamada · " <> context
     text.PeopleTaskBlockedMeta(context) -> "Bloqueada · " <> context
-    text.PeopleOutsideActiveWorkScope -> "fuera del trabajo activo"
     text.PeopleBlockedBy(title) -> "Bloqueada por: " <> title
     text.PeopleOpenDependencies -> "dependencias abiertas"
-    text.PeopleScopeAdditionalCards(title, count) ->
-      title
-      <> " +"
-      <> int.to_string(count)
-      <> case count {
-        1 -> " tarjeta"
-        _ -> " tarjetas"
-      }
     text.PeopleShowLabel -> "Mostrar"
     text.PeopleFilterEveryone -> "Todos"
     text.PeopleFilterWithWork -> "Con trabajo"
@@ -410,9 +391,9 @@ pub fn translate(text: Text) -> String {
     text.PeopleSortLabel -> "Orden"
     text.PeopleSortAttention -> "Atención"
     text.PeopleSortName -> "Nombre"
-    text.PeopleSortClaimed -> "Más reservadas"
+    text.PeopleSortClaimed -> "Más reclamadas"
     text.PeopleCardScopeNoWork ->
-      "Sin trabajo reservado en este alcance de tarjeta"
+      "Sin trabajo reclamado en este alcance de tarjeta"
     text.CapabilityBoardLoading -> "Cargando capacidades..."
     text.CapabilityBoardEmpty -> "No hay tareas activas por capacidad"
     text.CapabilityBoardNoResults ->

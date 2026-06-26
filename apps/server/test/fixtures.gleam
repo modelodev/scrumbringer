@@ -548,8 +548,8 @@ fn task_trigger_type(to_state: String) -> String {
 
 fn card_trigger_type(to_state: String) -> String {
   case to_state {
-    "en_curso" -> "card_activated"
-    "cerrada" -> "card_closed"
+    "en_curso" | "active" -> "card_activated"
+    "cerrada" | "closed" -> "card_closed"
     _ -> "card_closed"
   }
 }
@@ -709,31 +709,39 @@ pub fn create_task(
   type_id: Int,
   title: String,
 ) -> Result(Int, String) {
+  use card_id <- result.try(create_card(
+    handler,
+    session,
+    project_id,
+    title <> " card",
+  ))
+  use Nil <- result.try(activate_card(handler, session, card_id))
+  create_task_with_card(handler, session, project_id, type_id, card_id, title)
+}
+
+pub fn activate_card(
+  handler: Handler,
+  session: Session,
+  card_id: Int,
+) -> Result(Nil, String) {
   let res =
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
       )
       |> with_auth(session)
-      |> simulate.json_body(
-        json.object([
-          #("title", json.string(title)),
-          #("description", json.string("Test task")),
-          #("type_id", json.int(type_id)),
-          #("priority", json.int(3)),
-        ]),
-      ),
+      |> simulate.json_body(json.object([])),
     )
 
   case res.status {
-    200 -> decode_entity_id(simulate.read_body(res), TaskEntity)
+    200 -> Ok(Nil)
     status ->
       Error(
-        "create_task failed: status="
+        "activate_card failed: status="
         <> int.to_string(status)
-        <> " title="
-        <> title
+        <> " card_id="
+        <> int.to_string(card_id)
         <> " body="
         <> simulate.read_body(res),
       )

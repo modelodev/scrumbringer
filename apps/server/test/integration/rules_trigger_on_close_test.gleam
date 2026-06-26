@@ -851,7 +851,14 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
       "SELECT count(*)::int FROM tasks WHERE created_from_rule_id = $1",
       [pog.int(close_rule_id)],
     )
-  close_match_count |> expect.equal(1)
+  close_match_count |> expect.equal(0)
+
+  let assert Ok(close_execution) =
+    fixtures.fetch_rule_execution(db, close_rule_id, "card", child_card_id)
+  close_execution.outcome |> expect.equal("suppressed")
+  close_execution.suppression_reason
+  |> expect.equal("target_no_longer_accepts_tasks")
+  close_execution.created_task_id |> expect.equal(0)
 
   let assert Ok(followup_count) =
     fixtures.query_int(
@@ -859,7 +866,7 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
       "SELECT count(*)::int FROM tasks WHERE type_id = $1",
       [pog.int(followup_type_id)],
     )
-  followup_count |> expect.equal(2)
+  followup_count |> expect.equal(1)
 }
 
 // =============================================================================
@@ -981,11 +988,11 @@ pub fn close_task_with_card_creates_child_tasks_with_same_card_test() {
 }
 
 /// Verifies that closing a task without a card creates child tasks without a card.
-pub fn close_task_without_card_creates_child_tasks_without_card_test() {
+pub fn close_task_with_card_creates_child_tasks_in_same_card_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  // Create project and task types (no card)
+  // Create project and task types.
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "No Card Test")
   let assert Ok(bug_type_id) =
@@ -1021,22 +1028,22 @@ pub fn close_task_without_card_creates_child_tasks_without_card_test() {
       template_id,
     )
 
-  // Create the bug task WITHOUT a card
+  // Create the bug task under a card.
   let assert Ok(bug_task_id) =
     fixtures.create_task(
       handler,
       session,
       project_id,
       bug_type_id,
-      "Fix Bug No Card",
+      "Fix Bug With Card",
     )
 
-  // Verify bug task has no card
+  // Verify bug task has a card.
   let assert Ok(bug_card_id) =
     fixtures.query_nullable_int(db, "SELECT card_id FROM tasks WHERE id = $1", [
       pog.int(bug_task_id),
     ])
-  bug_card_id |> expect.equal(None)
+  let assert Some(card_id) = bug_card_id
 
   // Claim and close the task
   let claim_res =
@@ -1070,12 +1077,12 @@ pub fn close_task_without_card_creates_child_tasks_without_card_test() {
     )
   review_count |> expect.equal(1)
 
-  // CRITICAL: Verify the created review task has NO card
+  // CRITICAL: Verify the created review task inherits the same card.
   let assert Ok(created_card_id) =
     fixtures.query_nullable_int(
       db,
       "SELECT card_id FROM tasks WHERE type_id = $1 ORDER BY id DESC LIMIT 1",
       [pog.int(review_type_id)],
     )
-  created_card_id |> expect.equal(None)
+  created_card_id |> expect.equal(Some(card_id))
 }

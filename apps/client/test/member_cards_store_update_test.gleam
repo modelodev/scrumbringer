@@ -1,5 +1,5 @@
 import domain/api_error.{type ApiError, ApiError}
-import domain/card.{type Card, Card, Draft}
+import domain/card.{type Card, Active, Card, Draft}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import gleam/option
 import scrumbringer_client/client_state
@@ -214,4 +214,103 @@ pub fn pending_counts_across_multi_project_refresh_test() {
   normalized_store.pending(next_b.member.pool.member_cards_store)
   |> assert_equal(0)
   next_b.member.pool.member_cards |> assert_not_equal(Loading)
+}
+
+pub fn card_crud_created_syncs_member_card_store_test() {
+  let card_a = make_card(1, 10, "A")
+  let created = Card(..make_card(2, 10, "Created"), state: Active)
+  let store =
+    normalized_store.new() |> normalized_store.upsert(10, [card_a], card_id)
+
+  let model =
+    base_model_with_store(store)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards: Loaded([card_a])),
+      )
+    })
+
+  let #(next, _fx) =
+    client_update.update(
+      model,
+      client_state.pool_msg(pool_messages.CardCrudCreated(created)),
+    )
+
+  let assert [first, second] =
+    normalized_store.get_by_project(next.member.pool.member_cards_store, 10)
+  let assert 2 = first.id
+  let assert 1 = second.id
+  let assert Loaded([loaded_first, loaded_second]) =
+    next.member.pool.member_cards
+  let assert 2 = loaded_first.id
+  let assert 1 = loaded_second.id
+}
+
+pub fn card_crud_updated_syncs_member_card_store_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+  let updated = Card(..card_a, title: "A updated", state: Active)
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a, card_b], card_id)
+
+  let model =
+    base_model_with_store(store)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards: Loaded([card_a, card_b])),
+      )
+    })
+
+  let #(next, _fx) =
+    client_update.update(
+      model,
+      client_state.pool_msg(pool_messages.CardCrudUpdated(updated)),
+    )
+
+  let assert [first, second] =
+    normalized_store.get_by_project(next.member.pool.member_cards_store, 10)
+  let assert "A updated" = first.title
+  let assert 2 = second.id
+  let assert Loaded([loaded_first, loaded_second]) =
+    next.member.pool.member_cards
+  let assert "A updated" = loaded_first.title
+  let assert 2 = loaded_second.id
+}
+
+pub fn card_crud_deleted_syncs_member_card_store_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a, card_b], card_id)
+
+  let model =
+    base_model_with_store(store)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards: Loaded([card_a, card_b])),
+      )
+    })
+
+  let #(next, _fx) =
+    client_update.update(
+      model,
+      client_state.pool_msg(pool_messages.CardCrudDeleted(1)),
+    )
+
+  let assert [remaining] =
+    normalized_store.get_by_project(next.member.pool.member_cards_store, 10)
+  let assert 2 = remaining.id
+  let assert Loaded([loaded_remaining]) = next.member.pool.member_cards
+  let assert 2 = loaded_remaining.id
 }

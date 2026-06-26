@@ -639,7 +639,7 @@ pub fn claim_task_rejects_draft_card_task_until_activation_test() {
   let draft_claim = claim_task(handler, session, task_id)
 
   expect.expect_status(draft_claim, 409)
-  string.contains(simulate.read_body(draft_claim), "TASK_NOT_CLAIMABLE")
+  string.contains(simulate.read_body(draft_claim), "TASK_CARD_NOT_ACTIVE")
   |> expect.is_true
 
   expect.expect_status(activate_card(handler, session, card_id), 200)

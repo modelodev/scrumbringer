@@ -316,6 +316,7 @@ pub fn row_actions_are_title_and_contextual_create_test() {
 
   assert_contains(html, "data-testid=\"card-show-open\"")
   assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
+  assert_contains(html, "Activar subárbol")
   assert_not_contains(html, "data-testid=\"plan-action-move-card\"")
   assert_not_contains(html, "data-testid=\"plan-card-show-action\"")
   assert_not_contains(html, "data-testid=\"plan-action-menu\"")

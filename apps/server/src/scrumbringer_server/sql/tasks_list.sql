@@ -117,7 +117,10 @@ left join lateral (
   where d.task_id = t.id
 ) deps on true
 where t.project_id = $1
-  and (t.card_id is null or c.execution_state = 'active')
+  and (
+    t.execution_state = 'closed'
+    or c.execution_state = 'active'
+  )
   and (
     $2 = ''
     or t.execution_state = $2

@@ -177,6 +177,9 @@ pub type Error {
   /// Task is not currently released to the Pool.
   TaskNotClaimable
 
+  /// Task card lineage is not active and cannot be claimed.
+  TaskCardNotActive
+
   /// Task has operational history and must be closed instead of deleted.
   TaskHasOperationalHistory
 

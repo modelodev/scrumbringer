@@ -2,6 +2,11 @@
 
 Fecha: 2026-06-19
 
+Nota de vigencia, 2026-06-26: las secciones antiguas de este documento que
+permiten tasks sin card o `RootPool` quedan superadas por
+`task-claim-active-card-invariant-plan.md`. El modelo vigente es task como hoja
+bajo card activa para cualquier trabajo operativo reclamable.
+
 Este documento registra las decisiones de producto y dominio para evolucionar
 ScrumBringer hacia un modelo jerarquico configurable sin perder la ejecucion
 pull simple.
@@ -232,8 +237,8 @@ elegir ubicacion en cada caso.
 
 Reglas de producto:
 
-- Desde el Pool, `+ Task` crea una `RootPool` task. Requiere `ManageFlow` porque
-  publica trabajo directamente en el Pool raiz.
+- Desde el Pool no se crean tasks sin card. La accion debe pedir una card
+  activa o abrir el flujo contextual de card.
 - Desde una card `Active`, `+ Task` crea una task bajo esa card y entra al Pool
   al crearse. Requiere `ExecuteWork`, porque el espacio de trabajo ya fue
   abierto por gestion.
@@ -245,8 +250,7 @@ La interfaz debe explicar el efecto en el lugar donde ocurre la accion:
 
 ```text
 Pool
-[+ Task]  Crear en Pool raiz
-          Requiere gestionar flujo
+[+ Task]  Elegir card activa
 
 Card Active
 [+ Task]  Entrara al Pool al crearla
@@ -1172,26 +1176,18 @@ project_card_depth_names
   plural_name
 ```
 
-`tasks.card_id NULL` representa una task sin card padre. Decision cerrada: se
-permiten tasks sin card padre. No son legacy; son tasks de Pool raiz.
+Decision superada por `task-claim-active-card-invariant-plan.md`:
+`tasks.card_id NULL` no representa trabajo operativo valido. Las tasks
+operativas son hojas bajo card.
 
 En dominio deben modelarse de forma explicita para evitar que `None` sea
 ambiguo:
 
 ```gleam
 pub type TaskPlacement {
-  RootPool
   UnderCard(CardId)
 }
 ```
-
-Reglas de `RootPool`:
-
-- aparece en el Pool si esta `Available`, no bloqueada y el usuario cumple las
-  reglas de capacidad/permisos;
-- no depende de activacion ni cierre de ninguna card;
-- no cuenta en rollups de cards;
-- si cuenta en metricas de proyecto, persona y capacidad.
 
 Estrategia de migracion de datos:
 

@@ -283,7 +283,6 @@ fn task_in_scope(
   tree: WorkTree,
 ) -> Bool {
   case task.placement {
-    placement.RootPool -> False
     placement.UnderCard(parent_id) -> {
       case find_card(tree, parent_id) {
         Error(_) -> False

@@ -86,6 +86,20 @@ pub fn rule_execution_outcome_parses_suppressed_known_reason_test() {
     automation.rule_execution_suppression_reason_name(outcome)
 }
 
+pub fn rule_execution_outcome_parses_target_unavailable_reason_test() {
+  let outcome =
+    automation.rule_execution_outcome_from_strings(
+      "suppressed",
+      "target_no_longer_accepts_tasks",
+    )
+
+  let assert automation.SuppressedRuleExecution(Some(
+    automation.TargetNoLongerAcceptsTasksSuppression,
+  )) = outcome
+  let assert Some("target_no_longer_accepts_tasks") =
+    automation.rule_execution_suppression_reason_name(outcome)
+}
+
 pub fn rule_execution_outcome_preserves_unknown_values_test() {
   let outcome =
     automation.rule_execution_outcome_from_strings("queued", "manual")

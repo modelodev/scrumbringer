@@ -9,18 +9,6 @@ import domain/task/state as task_state
 import domain/task/state_codec as task_state_codec
 import domain/user/id as user_id
 
-pub fn task_placement_root_pool_roundtrip_test() {
-  let placement = task_placement.RootPool
-
-  let encoded =
-    placement
-    |> task_placement_codec.to_json
-    |> json.to_string
-
-  let assert Ok(task_placement.RootPool) =
-    json.parse(encoded, task_placement_codec.decoder())
-}
-
 pub fn task_placement_under_card_roundtrip_test() {
   let placement = task_placement.UnderCard(card_id.new(42))
 
@@ -31,6 +19,11 @@ pub fn task_placement_under_card_roundtrip_test() {
 
   let assert Ok(decoded) = json.parse(encoded, task_placement_codec.decoder())
   let assert True = decoded == placement
+}
+
+pub fn task_placement_root_pool_is_not_decoded_test() {
+  let assert Error(_) =
+    json.parse("{\"type\":\"root_pool\"}", task_placement_codec.decoder())
 }
 
 pub fn card_execution_state_roundtrip_test() {

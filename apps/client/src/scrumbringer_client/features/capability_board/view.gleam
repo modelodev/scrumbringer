@@ -40,6 +40,7 @@ import scrumbringer_client/ui/task_state as task_state_ui
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/ui/tone
+import scrumbringer_client/ui/workload_breakdown
 import scrumbringer_client/utils/card_queries
 
 pub type Config(msg) {
@@ -737,16 +738,41 @@ fn view_list_row(
           ),
         ]),
       ]),
-      keyed.div(
-        [attribute.class("capability-list-task-preview")],
-        cell.tasks
-          |> sort_tasks
-          |> list.take(3)
-          |> list.map(fn(task) {
-            #(int.to_string(task.id), view_task_item(config, task))
-          }),
-      ),
+      view_task_preview(config, cell.tasks),
     ],
+  )
+}
+
+fn view_task_preview(
+  config: Config(msg),
+  tasks: List(domain_task.Task),
+) -> element.Element(msg) {
+  let sorted_tasks = sort_tasks(tasks)
+  let hidden_count = int.max(0, list.length(sorted_tasks) - 3)
+
+  keyed.div(
+    [attribute.class("capability-list-task-preview")],
+    list.append(
+      sorted_tasks
+        |> list.take(3)
+        |> list.map(fn(task) {
+          #(int.to_string(task.id), view_task_item(config, task))
+        }),
+      case hidden_count {
+        0 -> []
+        _ -> [#("more", view_more_tasks(config.locale, hidden_count))]
+      },
+    ),
+  )
+}
+
+fn view_more_tasks(locale: Locale, count: Int) -> element.Element(msg) {
+  div(
+    [
+      attribute.class("capability-list-more"),
+      attribute.attribute("data-testid", "capability-list-more"),
+    ],
+    [text(more_tasks_label(locale, count))],
   )
 }
 
@@ -754,6 +780,8 @@ fn view_matrix(
   config: Config(msg),
   data: CapabilityData,
 ) -> element.Element(msg) {
+  let grid_template = matrix_grid_template(data.columns)
+
   div(
     [
       attribute.class("capability-matrix"),
@@ -765,18 +793,22 @@ fn view_matrix(
         [
           attribute.class("capability-matrix-row capability-matrix-header-row"),
           attribute.attribute("role", "row"),
+          attribute.style("grid-template-columns", grid_template),
         ],
         [
-          view_matrix_header_cell(row_label(config)),
+          view_matrix_header_cell(
+            row_label(config),
+            "capability-matrix-card-cell",
+          ),
           ..list.append(
             list.map(data.columns, fn(column) {
-              view_matrix_header_cell(column.name)
+              view_matrix_header_cell(column.name, "")
             }),
             [
-              view_matrix_header_cell(i18n.t(
-                config.locale,
-                i18n_text.CapabilityBoardTotal,
-              )),
+              view_matrix_header_cell(
+                i18n.t(config.locale, i18n_text.CapabilityBoardTotal),
+                "capability-matrix-total-cell",
+              ),
             ],
           )
         ],
@@ -787,18 +819,26 @@ fn view_matrix(
           attribute.attribute("role", "rowgroup"),
         ],
         list.map(data.rows, fn(row) {
-          #(row.id, view_matrix_row(config, row, data.columns))
+          #(row.id, view_matrix_row(config, row, data.columns, grid_template))
         }),
       ),
-      view_matrix_total_row(config, data),
+      view_matrix_total_row(config, data, grid_template),
     ],
   )
 }
 
-fn view_matrix_header_cell(label_text: String) -> element.Element(msg) {
+fn view_matrix_header_cell(
+  label_text: String,
+  extra_class: String,
+) -> element.Element(msg) {
+  let class_name = case extra_class {
+    "" -> "capability-matrix-cell capability-matrix-header-cell"
+    _ -> "capability-matrix-cell capability-matrix-header-cell " <> extra_class
+  }
+
   div(
     [
-      attribute.class("capability-matrix-cell capability-matrix-header-cell"),
+      attribute.class(class_name),
       attribute.attribute("role", "columnheader"),
     ],
     [text(label_text)],
@@ -809,12 +849,14 @@ fn view_matrix_row(
   config: Config(msg),
   row: CapabilityRow,
   columns: List(CapabilityColumn),
+  grid_template: String,
 ) -> element.Element(msg) {
   div(
     [
       attribute.class("capability-matrix-row"),
       attribute.attribute("role", "row"),
       attribute.attribute("data-testid", "capability-matrix-row"),
+      attribute.style("grid-template-columns", grid_template),
     ],
     [
       div(
@@ -906,17 +948,7 @@ fn view_matrix_health_cell(
       span([attribute.class("capability-matrix-total")], [
         text(int.to_string(health_total(health))),
       ]),
-      span([attribute.class("capability-matrix-breakdown")], [
-        text(
-          i18n.t(config.locale, i18n_text.MetricsOngoing)
-          <> " "
-          <> int.to_string(health.ongoing)
-          <> " / "
-          <> i18n.t(config.locale, i18n_text.CapabilityBoardClosed)
-          <> " "
-          <> int.to_string(health.closed),
-        ),
-      ]),
+      view_workload_breakdown(config.locale, health),
     ],
   )
 }
@@ -924,12 +956,14 @@ fn view_matrix_health_cell(
 fn view_matrix_total_row(
   config: Config(msg),
   data: CapabilityData,
+  grid_template: String,
 ) -> element.Element(msg) {
   div(
     [
       attribute.class("capability-matrix-row capability-matrix-total-row"),
       attribute.attribute("role", "row"),
       attribute.attribute("data-testid", "capability-matrix-total-row"),
+      attribute.style("grid-template-columns", grid_template),
     ],
     [
       div(
@@ -1171,6 +1205,113 @@ fn is_closed_task(task: domain_task.Task) -> Bool {
 
 fn health_total(health: CapabilityHealth) -> Int {
   health.available + health.claimed + health.ongoing + health.closed
+}
+
+fn view_workload_breakdown(
+  locale: Locale,
+  health: CapabilityHealth,
+) -> element.Element(msg) {
+  workload_breakdown.view(compact_metrics(locale, health))
+}
+
+fn compact_metrics(
+  locale: Locale,
+  health: CapabilityHealth,
+) -> List(workload_breakdown.Metric) {
+  [
+    #(
+      health.available,
+      i18n.t(locale, i18n_text.MetricsAvailable),
+      compact_available_label(locale),
+      tone.Available,
+    ),
+    #(
+      health.claimed,
+      i18n.t(locale, i18n_text.MetricsClaimed),
+      compact_claimed_label(locale),
+      tone.Claimed,
+    ),
+    #(
+      health.ongoing,
+      i18n.t(locale, i18n_text.MetricsOngoing),
+      compact_ongoing_label(locale),
+      tone.Ongoing,
+    ),
+    #(
+      health.blocked,
+      i18n.t(locale, i18n_text.Blocked),
+      compact_blocked_label(locale),
+      tone.Blocked,
+    ),
+    #(
+      health.closed,
+      i18n.t(locale, i18n_text.CapabilityBoardClosed),
+      compact_closed_label(locale),
+      tone.Neutral,
+    ),
+  ]
+  |> list.filter_map(fn(metric) {
+    let #(value, label, compact_label, tone_value) = metric
+    case value > 0 {
+      True ->
+        Ok(workload_breakdown.metric(label, compact_label, value, tone_value))
+      False -> Error(Nil)
+    }
+  })
+}
+
+fn compact_available_label(locale: Locale) -> String {
+  case locale {
+    locale.Es -> "disp"
+    locale.En -> "avail"
+  }
+}
+
+fn compact_claimed_label(locale: Locale) -> String {
+  case locale {
+    locale.Es -> "recl"
+    locale.En -> "claim"
+  }
+}
+
+fn compact_ongoing_label(locale: Locale) -> String {
+  case locale {
+    locale.Es -> "curso"
+    locale.En -> "now"
+  }
+}
+
+fn compact_blocked_label(locale: Locale) -> String {
+  case locale {
+    locale.Es -> "bloq"
+    locale.En -> "block"
+  }
+}
+
+fn compact_closed_label(locale: Locale) -> String {
+  case locale {
+    locale.Es -> "cerr"
+    locale.En -> "closed"
+  }
+}
+
+fn more_tasks_label(locale: Locale, count: Int) -> String {
+  case locale {
+    locale.Es -> "+" <> int.to_string(count) <> " más"
+    locale.En ->
+      "+"
+      <> int.to_string(count)
+      <> case count {
+        1 -> " more task"
+        _ -> " more tasks"
+      }
+  }
+}
+
+fn matrix_grid_template(columns: List(CapabilityColumn)) -> String {
+  "minmax(190px, 230px) repeat("
+  <> int.to_string(list.length(columns))
+  <> ", minmax(112px, 1fr)) minmax(112px, 1fr)"
 }
 
 fn compare_rows(a: CapabilityRow, b: CapabilityRow) -> order.Order {

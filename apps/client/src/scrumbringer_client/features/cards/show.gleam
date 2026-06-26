@@ -848,7 +848,7 @@ fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
 
   div([attribute.class("card-show-actions")], [
     div([attribute.class("card-show-primary-action")], [
-      view_quick_create_action(model, policy),
+      view_quick_create_action(model, card, policy),
     ]),
     view_scoped_navigation(model, card),
     view_secondary_action_menu(model, card, policy),
@@ -857,12 +857,40 @@ fn view_card_action_bar(model: Model, card: Card) -> Element(Msg) {
 
 fn view_quick_create_action(
   model: Model,
+  card: Card,
   policy: card_policy.Policy,
 ) -> Element(Msg) {
-  case policy.structure {
-    card_policy.CardGroup -> view_create_card_action(model, policy)
-    card_policy.TaskGroup -> view_create_task_action(model, policy)
-    card_policy.EmptyCard -> element.none()
+  case card.state {
+    Draft -> view_activate_card_action(model)
+    _ ->
+      case policy.structure {
+        card_policy.CardGroup -> view_create_card_action(model, policy)
+        card_policy.TaskGroup -> view_create_task_action(model, policy)
+        card_policy.EmptyCard -> element.none()
+      }
+  }
+}
+
+fn view_activate_card_action(model: Model) -> Element(Msg) {
+  case model.can_manage_structure {
+    True ->
+      ui_button.icon_text(
+        t(model.locale, i18n_text.ActivateHierarchy),
+        ActivateCardClicked,
+        icons.Play,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-primary-activate-action")
+      |> ui_button.view
+    False ->
+      blocked_action(
+        t(model.locale, i18n_text.ActivateHierarchy),
+        ActivateCardClicked,
+        icons.Play,
+        "card-primary-activate-action",
+        t(model.locale, i18n_text.ActivateHierarchyManagerOnly),
+      )
   }
 }
 
@@ -947,21 +975,7 @@ fn activate_action_items(
   card: Card,
 ) -> List(action_menu.Item(Msg)) {
   case card.state, model.can_manage_structure {
-    Draft, True -> [
-      action_menu.item(
-        t(model.locale, i18n_text.ActivateHierarchy),
-        "card-secondary-activate-action",
-        ActivateCardClicked,
-      ),
-    ]
-    Draft, False -> [
-      action_menu.disabled_item(
-        t(model.locale, i18n_text.ActivateHierarchy),
-        "card-secondary-activate-action",
-        t(model.locale, i18n_text.ActivateHierarchyManagerOnly),
-        ActivateCardClicked,
-      ),
-    ]
+    Draft, _ -> []
     _, _ -> []
   }
 }

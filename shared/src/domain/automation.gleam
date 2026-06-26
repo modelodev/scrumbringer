@@ -207,6 +207,7 @@ pub type AutomationSkipReason {
   SkippedEnginePaused
   RulePaused
   RuleRequiresReview(reason: RuleReviewReason)
+  TargetNoLongerAcceptsTasks
   CreatedByAutomation
 }
 
@@ -224,6 +225,7 @@ pub type RuleSuppressionReason {
   NotUserTriggeredSuppression
   NotMatchingSuppression
   InactiveSuppression
+  TargetNoLongerAcceptsTasksSuppression
   UnknownSuppressionReason(raw: String)
 }
 
@@ -437,6 +439,7 @@ pub fn rule_suppression_reason_to_string(
     NotUserTriggeredSuppression -> "not_user_triggered"
     NotMatchingSuppression -> "not_matching"
     InactiveSuppression -> "inactive"
+    TargetNoLongerAcceptsTasksSuppression -> "target_no_longer_accepts_tasks"
     UnknownSuppressionReason(raw) -> raw
   }
 }
@@ -450,6 +453,8 @@ fn rule_suppression_reason_from_string(
     "not_user_triggered" -> Some(NotUserTriggeredSuppression)
     "not_matching" -> Some(NotMatchingSuppression)
     "inactive" -> Some(InactiveSuppression)
+    "target_no_longer_accepts_tasks" ->
+      Some(TargetNoLongerAcceptsTasksSuppression)
     other -> Some(UnknownSuppressionReason(other))
   }
 }

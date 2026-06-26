@@ -419,6 +419,21 @@ pub fn mutation_error_409_blocked_uses_blocked_warning_test() {
   let assert toast.Warning = variant
 }
 
+pub fn mutation_error_409_card_not_active_uses_server_message_test() {
+  let #(message, variant) =
+    mutation_update.error_feedback(
+      ApiError(
+        status: 409,
+        code: "TASK_CARD_NOT_ACTIVE",
+        message: "Task card is not active",
+      ),
+      labels(),
+    )
+
+  let assert "Task card is not active" = message
+  let assert toast.Warning = variant
+}
+
 pub fn mutation_error_409_other_uses_version_warning_test() {
   let #(message, variant) =
     mutation_update.error_feedback(

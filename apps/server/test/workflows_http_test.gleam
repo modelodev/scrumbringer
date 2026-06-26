@@ -525,10 +525,11 @@ fn insert_task_type(db: pog.Connection, project_id: Int) -> Int {
 }
 
 fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
+  let card_id = insert_active_card(db, project_id, "Automation origin card")
   single_int(
     db,
-    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, now()) returning id",
-    [pog.int(project_id), pog.int(type_id)],
+    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, $3, now()) returning id",
+    [pog.int(project_id), pog.int(type_id), pog.int(card_id)],
   )
 }
 
@@ -538,10 +539,19 @@ fn insert_created_task_from_rule(
   type_id: Int,
   rule_id: Int,
 ) -> Int {
+  let card_id = insert_active_card(db, project_id, "Generated task card")
   single_int(
     db,
-    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, now()) returning id",
-    [pog.int(project_id), pog.int(type_id), pog.int(rule_id)],
+    "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, $4, now()) returning id",
+    [pog.int(project_id), pog.int(type_id), pog.int(card_id), pog.int(rule_id)],
+  )
+}
+
+fn insert_active_card(db: pog.Connection, project_id: Int, title: String) -> Int {
+  single_int(
+    db,
+    "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, 'active') returning id",
+    [pog.int(project_id), pog.text(title)],
   )
 }
 

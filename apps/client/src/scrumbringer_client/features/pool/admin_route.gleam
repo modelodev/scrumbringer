@@ -16,6 +16,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
 import scrumbringer_client/features/admin/workflows as automations_update
 import scrumbringer_client/features/automations/focus_target as automation_focus
+import scrumbringer_client/features/cards/cache as card_cache
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
 import scrumbringer_client/features/route_support
@@ -66,13 +67,14 @@ fn try_cards_update(
     )
   {
     opt.Some(update) ->
-      opt.Some(apply_cards_update(model, update, close_focus_target))
+      opt.Some(apply_cards_update(model, inner, update, close_focus_target))
     opt.None -> opt.None
   }
 }
 
 fn apply_cards_update(
   model: client_state.Model,
+  inner: client_state.PoolMsg,
   update: cards_workflow.Update(client_state.Msg),
   close_focus_target: fn(client_state.Model) -> opt.Option(String),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
@@ -82,12 +84,34 @@ fn apply_cards_update(
     model,
     route_support.auth_check_before(cards_auth_error(auth_policy)),
     fn() {
+      let next =
+        root.set_admin_cards(model, cards)
+        |> sync_member_card_cache(inner)
+
       #(
-        root.set_admin_cards(model, cards),
+        next,
         apply_cards_focus_policy(model, focus_policy, fx, close_focus_target),
       )
     },
   )
+}
+
+fn sync_member_card_cache(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+) -> client_state.Model {
+  case inner {
+    pool_messages.CardCrudCreated(card) ->
+      root.set_member_pool(model, card_cache.created(model.member.pool, card))
+    pool_messages.CardCrudUpdated(card) ->
+      root.set_member_pool(model, card_cache.updated(model.member.pool, card))
+    pool_messages.CardCrudDeleted(card_id) ->
+      root.set_member_pool(
+        model,
+        card_cache.deleted(model.member.pool, card_id),
+      )
+    _ -> model
+  }
 }
 
 fn apply_cards_focus_policy(

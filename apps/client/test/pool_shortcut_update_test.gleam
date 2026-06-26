@@ -84,9 +84,30 @@ pub fn shortcut_try_update_ignores_non_shortcut_message_test() {
 pub fn shortcut_update_open_and_close_create_dialog_test() {
   let opened = shortcut(local_model(), "n")
   let assert dialog_mode.DialogCreate = opened.pool.member_create_dialog_mode
+  let assert None = opened.pool.member_create_card_id
 
   let closed = shortcut(opened, "Escape")
   let assert dialog_mode.DialogClosed = closed.pool.member_create_dialog_mode
+}
+
+pub fn shortcut_update_open_create_uses_open_card_context_test() {
+  let model =
+    shortcut_update.Model(
+      ..local_model(),
+      card_show_open: Some(42),
+      pool: member_pool.Model(
+        ..member_pool.default_model(),
+        member_create_error: Some("boom"),
+        member_create_card_query: "old query",
+      ),
+    )
+
+  let opened = shortcut(model, "n")
+
+  let assert dialog_mode.DialogCreate = opened.pool.member_create_dialog_mode
+  let assert Some(42) = opened.pool.member_create_card_id
+  let assert None = opened.pool.member_create_error
+  let assert "" = opened.pool.member_create_card_query
 }
 
 pub fn shortcut_update_escape_closes_notes_detail_test() {

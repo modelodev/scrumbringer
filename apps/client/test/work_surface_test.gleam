@@ -65,7 +65,6 @@ pub fn work_surface_surface_renders_optional_slots_in_order_test() {
   let html =
     work_surface.new_surface(header)
     |> work_surface.with_filters(div([], [text("Filters")]))
-    |> work_surface.with_guidance(div([], [text("Guidance")]))
     |> work_surface.with_state(div([], [text("Loading")]))
     |> work_surface.with_content(div([], [text("Tasks")]))
     |> work_surface.surface_with_class("pool-surface")
@@ -76,11 +75,9 @@ pub fn work_surface_surface_renders_optional_slots_in_order_test() {
   assert_contains(html, "work-surface pool-surface")
   assert_contains(html, "data-testid=\"pool-surface\"")
   assert_contains(html, "work-surface-filters")
-  assert_contains(html, "work-surface-guidance")
   assert_contains(html, "work-surface-state")
   assert_contains(html, "work-surface-content")
-  let assert True = appears_before(html, ">Filters<", ">Guidance<")
-  let assert True = appears_before(html, ">Guidance<", ">Loading<")
+  let assert True = appears_before(html, ">Filters<", ">Loading<")
   let assert True = appears_before(html, ">Loading<", ">Tasks<")
 }
 
@@ -103,7 +100,6 @@ pub fn work_surface_surface_omits_missing_slots_test() {
 
   assert_contains(html, "work-surface-header")
   assert_not_contains(html, "work-surface-filters")
-  assert_not_contains(html, "work-surface-guidance")
   assert_not_contains(html, "work-surface-state")
   assert_not_contains(html, "work-surface-content")
 }

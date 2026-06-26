@@ -178,6 +178,10 @@ pub fn project_create_persists_default_task_type_test() {
       "select id from task_types where project_id = $1 and name = 'General'",
       [pog.int(project_id)],
     )
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+  let card_id = insert_card(db, project_id, admin_id, "First task card", 0)
+  set_card_active(db, card_id)
 
   let create_task_res =
     handler(
@@ -194,6 +198,7 @@ pub fn project_create_persists_default_task_type_test() {
           #("description", json.string("")),
           #("priority", json.int(3)),
           #("type_id", json.int(task_type_id)),
+          #("card_id", json.int(card_id)),
         ]),
       ),
     )
@@ -1454,6 +1459,15 @@ fn insert_card(
       pog.int(parent_card_id),
     ],
   )
+}
+
+fn set_card_active(db: pog.Connection, card_id: Int) {
+  let assert Ok(_) =
+    pog.query("update cards set execution_state = 'active' where id = $1")
+    |> pog.parameter(pog.int(card_id))
+    |> pog.execute(db)
+
+  Nil
 }
 
 fn insert_workflow(

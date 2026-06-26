@@ -52,9 +52,19 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn reading_actions(config: Config(msg)) -> List(Element(msg)) {
+  let close =
+    text_button(
+      t(config, i18n_text.Close),
+      config.on_close,
+      button.Secondary,
+      False,
+    )
+    |> button.with_testid("task-show-footer-close")
+    |> button.view
+
   case config.task {
-    opt.None -> []
-    opt.Some(task) -> task_actions(config, task)
+    opt.None -> [close]
+    opt.Some(task) -> [close, ..task_actions(config, task)]
   }
 }
 
