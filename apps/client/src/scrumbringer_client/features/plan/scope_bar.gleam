@@ -82,7 +82,14 @@ fn view_closed_toggle(config: Config(msg)) -> Element(msg) {
 fn view_refinement_controls(config: Config(msg)) -> Element(msg) {
   case config.refinement_controls {
     [] -> element.none()
-    controls -> div([attribute.class("plan-refinement-controls")], controls)
+    controls ->
+      div(
+        [
+          attribute.class("plan-refinement-controls work-filter-bar"),
+          attribute.attribute("data-testid", "work-filter-bar"),
+        ],
+        controls,
+      )
   }
 }
 

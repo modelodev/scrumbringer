@@ -1,5 +1,4 @@
 import gleam/int
-import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import domain/capability.{type Capability}
@@ -48,10 +47,10 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       attribute.class("pool-control-bar"),
       attribute.attribute("data-testid", "pool-control-bar"),
     ],
-    list.append(
-      work_filters_bar.view_bar_controls(work_filters_config(config)),
-      [view_mode_toggle(config)],
-    ),
+    [
+      work_filters_bar.view_bar(work_filters_config(config)),
+      view_mode_toggle(config),
+    ],
   )
 }
 

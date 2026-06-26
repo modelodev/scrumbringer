@@ -110,6 +110,7 @@ pub fn css() -> List(String) {
     "@media (max-width: 768px) { .view-mode-label { display: none; } }",
     ".center-panel-content { display: flex; flex-direction: column; gap: var(--sb-gap-section); height: 100%; }",
     ".pool-control-bar { display: grid; grid-template-columns: minmax(118px, 1.1fr) minmax(98px, 0.8fr) minmax(98px, 0.8fr) minmax(108px, auto) minmax(112px, 0.8fr) minmax(124px, auto); align-items: end; gap: var(--sb-gap-related) 8px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: var(--sb-gap-related) var(--sb-gap-group); width: 100%; min-width: 0; }",
+    ".pool-control-bar > .work-filter-bar { display: contents; }",
     ".pool-control-bar .filter-field label, .pool-control-bar .filter-label { font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); color: var(--sb-text); }",
     ".pool-control-bar .filter-field select, .pool-control-bar .filter-field input { width: 100%; min-width: 0; background: var(--sb-surface); }",
     ".pool-control-bar .filter-field { min-width: 0; }",

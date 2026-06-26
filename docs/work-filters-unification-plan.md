@@ -116,7 +116,7 @@ Usar un namespace comun para los controles nuevos:
 - `work-filter-capability-scope-mine`;
 - `work-filter-visibility`.
 
-Pool puede conservar temporalmente `pool-filter-*` como aliases si evita un cambio masivo de tests, pero el objetivo final es que las pruebas de filtros de trabajo apunten al namespace `work-filter-*`. No mantener dos namespaces indefinidamente.
+No mantener aliases `pool-filter-*` salvo bloqueo real durante la migracion. Como los tests son internos, la opcion preferente es migrar directamente a `work-filter-*`. Si se introduce un alias transitorio, debe retirarse dentro del mismo corte y quedar cubierto por una asercion negativa.
 
 ### i18n
 
@@ -181,7 +181,7 @@ pub type WorkFilterControls {
 }
 ```
 
-Si al implementarlo se ve que los `Bool` de `WorkFilterControls` generan demasiadas combinaciones, elevarlos a variantes de superficie:
+No crear de entrada un ADT de superficie si `WorkFilterControls` + `VisibilityControl` expresa el contrato sin estados invalidos importantes. Elevar a variantes de superficie solo si durante la implementacion aparecen combinaciones invalidas reales que el compilador deberia impedir:
 
 ```gleam
 pub type WorkFilterSurface {
@@ -192,7 +192,11 @@ pub type WorkFilterSurface {
 }
 ```
 
-El criterio es pragmatico: usar ADT cuando reduzca estados invalidos reales; no crear un framework generico.
+El criterio es pragmatico:
+
+- usar `WorkFilterControls` para visibilidad simple de controles;
+- usar `VisibilityControl` para evitar el caso invalido de visibilidad Pool sin datos/callback;
+- usar `WorkFilterSurface` solo si elimina ramas repetidas o estados invalidos que ya hayan aparecido en codigo.
 
 ### Lustre
 
@@ -214,12 +218,42 @@ El criterio es pragmatico: usar ADT cuando reduzca estados invalidos reales; no 
 - Reutilizar constructores y tipos de dominio en fixtures; no crear fixtures que representen tareas/capacidades con estructuras paralelas.
 - Priorizar tests puros para politica y filtrado, y tests de render pequenos para HTML/testids/accesibilidad.
 - Evitar snapshots grandes. Si se usa Birdie para HTML, las snapshots quedan sujetas a revision humana; no deben ser la unica prueba del comportamiento.
+- Crear helpers de test pequenos para configs repetidas, por ejemplo `work_filters_bar_test_config()` o `kanban_config_with_filters()`, siempre usando tipos de dominio reales.
+- Los helpers de test deben aceptar overrides por record update para que anadir un campo a `Config` no obligue a reescribir todos los tests.
 - Cada paquete debe cubrir:
   - happy path;
   - edge case relevante;
   - ausencia de estado invalido;
   - regresion del comportamiento anterior que se elimina;
   - contrato DRY: el comportamiento vive en una funcion/componente comun, no duplicado.
+
+## Alcance recomendado
+
+Para evitar que la unificacion derive en un refactor demasiado amplio, separar el trabajo en nucleo obligatorio y follow-ups condicionados.
+
+### Nucleo obligatorio
+
+Este nucleo debe cerrarse en la primera ejecucion del plan:
+
+- Crear `work_filters_bar` stateless, controlado y con callbacks tipados.
+- Migrar Pool, Capacidades, Kanban de ejecucion y Plan Kanban al componente comun.
+- Eliminar el boton unidireccional `Mis capacidades`.
+- Corregir rutas/refresco para que ninguna superficie aplique filtros de trabajo invisibles.
+- Consolidar testids de filtros de trabajo en `work-filter-*`.
+- Anadir tests de componente, tests de vistas y tests de navegacion/rutas para el flujo `scope=mine`.
+- Eliminar render duplicado del control `Capacidades [Todas | Mias]`.
+
+### Follow-ups condicionados
+
+Estos puntos aportan valor, pero no deben bloquear el nucleo si aumentan demasiado el riesgo del cambio:
+
+- Unificar wrappers API de capacidades de miembro.
+- Normalizar globalmente busqueda si afecta a usos no relacionados con filtros de trabajo.
+- Limpiar la rama de edicion personal de capacidades si se confirma que no hay UI viva.
+- Ajustar de forma fina el reset de filtros en cambio de proyecto mas alla de IDs claramente dependientes del proyecto.
+- Introducir `WorkFilterSurface` si los controles simples no bastan.
+
+Criterio de decision: si un follow-up no es necesario para garantizar lenguaje visual unificado, DRY del control de scope y testabilidad del flujo `scope=mine`, queda fuera del primer corte.
 
 ## Paquetes de trabajo detallados
 
@@ -340,6 +374,7 @@ Tests:
 - conserva los valores seleccionados en selects;
 - `view_refinement_controls` devuelve controles sin envolverlos en una segunda barra visual incompatible con `plan_scope_bar`;
 - los testids `work-filter-*` aparecen una sola vez en un render normal.
+- crear helper de test `base_work_filters_config()` o equivalente, con overrides por record update para evitar fixtures fragiles.
 
 Criterio de salida:
 
@@ -367,14 +402,15 @@ Cambios:
 - eliminar `view_capability_scope_filter`;
 - eliminar `view_scope_button`;
 - eliminar clases CSS que solo existan para esos renders locales si no las usa el componente comun;
-- durante una fase corta, se pueden mantener aliases `pool-filter-*` solo si evita un cambio masivo de tests, pero no deben quedar como API final.
+- migrar directamente de `pool-filter-*` a `work-filter-*` en tests internos;
+- mantener aliases `pool-filter-*` solo si hay bloqueo real, y retirarlos antes de cerrar el paquete.
 
 Tests:
 
 - `pool_control_bar_renders_pool_owned_work_filters_test` debe pasar a validar `work-filter-search`, `work-filter-type`, `work-filter-capability`, `work-filter-capability-scope`;
 - mantener test de `pool-view-mode-toggle`, porque no pertenece al componente comun;
 - anadir test de que `work-filter-visibility` se renderiza en Pool;
-- anadir test de que `pool-filter-capability-scope` ya no aparece cuando se retire el alias.
+- anadir test de que `pool-filter-capability-scope` ya no aparece.
 
 Criterio de salida:
 
@@ -803,7 +839,7 @@ Testeabilidad:
 
 - Tests de Pool validan que el adaptador pasa valores al componente comun.
 - Tests de Pool siguen cubriendo visibilidad y toggle de vista como comportamiento propio.
-- Hay asercion negativa para el namespace antiguo cuando se retire el alias.
+- Hay asercion negativa para el namespace antiguo.
 
 ### Paquete 3: Capacidades
 
@@ -1096,12 +1132,19 @@ Condicion importante: los contratos actuales no son identicos. `api/projects.gle
 
 ## Fases de implementacion
 
+### Fase 0: cierre de alcance
+
+- Confirmar que el primer corte cubre solo el nucleo obligatorio.
+- Registrar como follow-up cualquier cambio que no sea necesario para hacer visible, reversible y comun el filtro `Capacidades [Todas | Mias]`.
+- Decidir si `WorkFilterControls` + `VisibilityControl` bastan; no introducir `WorkFilterSurface` salvo necesidad demostrada.
+
 ### Fase 1: componente comun y Pool
 
 - Crear `features/work_filters_bar.gleam`.
 - Migrar el render de busqueda, tipo, capacidad, scope y visibilidad desde `features/pool/control_bar.gleam`.
 - Mantener `Lienzo / Lista` en `control_bar.gleam`, fuera del componente comun.
 - Añadir tests de componente para `work_filters_bar`.
+- Migrar testids internos de Pool directamente a `work-filter-*`.
 
 ### Fase 2: Capacidades
 
@@ -1122,10 +1165,13 @@ Condicion importante: los contratos actuales no son identicos. `api/projects.gle
 - Registrar las metricas de calidad finales descritas en esta seccion.
 - Ejecutar suite cliente y tests backend relevantes.
 
-### Fase 5 opcional: API cliente
+### Fase 5: follow-ups condicionados
 
 - Unificar wrappers API de capacidades de miembro solo si se puede escoger un contrato canonico sin ampliar el riesgo del cambio visual.
-- Si no se hace en este refactor, dejar un follow-up explicito.
+- Normalizar busqueda de forma global solo si el cambio queda acotado y no altera usos no relacionados.
+- Revisar limpieza de edicion personal de capacidades solo si se confirma que no hay UI viva.
+- Afinar reset de filtros al cambiar de proyecto si no retrasa el nucleo obligatorio.
+- Si no se hacen en este refactor, dejar follow-ups explicitos con motivo.
 
 ## Metricas de calidad esperadas
 
@@ -1180,6 +1226,16 @@ Validar con revision o busqueda:
 - no aparecen nuevos campos de estado para `capability_scope`, `type_filter`, `capability_filter` o `search_query`;
 - los callbacks siguen escribiendo en el estado existente de `member.pool`;
 - no se duplica la logica de filtrado de `features/work_filters.gleam` dentro de componentes de vista.
+
+### Control de sobreingenieria
+
+Validar que el refactor no introduce abstraccion sin uso real:
+
+- `work_filters_bar` no tiene `Model`, `Msg`, `init`, `update` ni efectos;
+- no existe `WorkFilterSurface` salvo que haya reemplazado combinaciones invalidas reales documentadas en el cambio;
+- no hay aliases permanentes `pool-filter-*`;
+- no se crea un modulo generico nuevo de formularios paralelo a `ui/filter_bar.gleam`;
+- los follow-ups condicionados no bloquean el nucleo obligatorio.
 
 ### Medicion de diffs
 
@@ -1288,13 +1344,45 @@ Validaciones ejecutadas:
 
 - `cd apps/client && gleam format --check src test`;
 - `cd apps/client && gleam check`;
-- `cd apps/client && gleam test --target javascript`: 1856 tests pasan;
+- `cd apps/client && gleam test --target javascript`: 1857 tests pasan;
 - `cd apps/server && gleam format --check src test`;
 - `cd apps/server && gleam check`;
+- `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable gleam test`: 557 tests pasan;
 - `git diff --check`.
 
-Validaciones no completadas por entorno:
+Validaciones de runtime ejecutadas:
 
-- `cd apps/server && gleam test` no pudo completarse porque falta `DATABASE_URL`;
+- PostgreSQL local usado: `localhost:5433`, bases `scrumbringer_test` y `scrumbringer_dev`;
+- migraciones aplicadas con `dbmate --url "$DATABASE_URL" migrate`;
+- seed dev recargado con `cd apps/server && DATABASE_URL=... gleam run -m scrumbringer_server/seed`;
+- stack dev levantado con `scripts/dev-hot.sh` en `http://127.0.0.1:18443`;
+- healthcheck de runtime: `APP_ORIGIN=http://127.0.0.1:18443 scripts/dev-hot-health.sh`.
+
+Validacion visual con agent-browser:
+
+- login seed: `admin@example.com` / `passwordpassword`;
+- Pool: `/app/pool?project=1&view=pool`;
+  - desktop `1280`: `work-filter-bar=1`, `work-filter-search=1`, `work-filter-type=1`, `work-filter-capability=1`, `work-filter-capability-scope=1`, `work-filter-capability-scope-all=1`, `work-filter-capability-scope-mine=1`, `work-filter-visibility=1`;
+  - `documentElement.scrollWidth=1265`, `viewport=1280`;
+  - mobile `390`: `scrollWidth=375`, `ok=true`;
+- Capacidades: `/app/pool?project=1&view=capabilities`;
+  - `work-filter-bar=1`, `work-filter-search=1`, `work-filter-type=1`, `work-filter-capability=1`, `work-filter-capability-scope=1`, `work-filter-capability-scope-all=1`, `work-filter-capability-scope-mine=1`, `work-filter-visibility=0`;
+  - `capability-my-capabilities-action=0`;
+  - mobile `390`: `scrollWidth=375`, `ok=true`;
+- Kanban / Plan Kanban: `/app/pool?project=1&view=cards&plan_mode=kanban`;
+  - `work-filter-bar=1`, `work-filter-search=1`, `work-filter-type=1`, `work-filter-capability=1`, `work-filter-capability-scope=1`, `work-filter-capability-scope-all=1`, `work-filter-capability-scope-mine=1`, `work-filter-visibility=0`;
+  - mobile `390`: `scrollWidth=375`, `ok=true`;
+- capturas locales:
+  - `.tmp/validation-shots/screenshot-1782507884175.png` (Pool desktop);
+  - `.tmp/validation-shots/screenshot-1782507888840.png` (Kanban mobile).
+
+Hallazgo de cierre corregido durante la validacion:
+
+- Pool renderizaba los controles comunes con `view_bar_controls`, por lo que faltaba el wrapper `work-filter-bar` en DOM. Se migro a `work_filters_bar.view_bar` y se conservo la grid con `display: contents`;
+- `plan_scope_bar` ahora marca el wrapper de refinamiento como `work-filter-bar`, de modo que Capacidades y Kanban tambien exponen el mismo contenedor raiz;
+- se anadio `scope_bar_marks_refinement_controls_as_work_filter_bar_test`.
+
+Notas:
+
 - `cd apps/client && gleam test --target erlang` no aplica al cliente porque el paquete usa target JavaScript y FFI DOM/JS sin implementacion Erlang;
-- la validacion visual con agent-browser requiere runtime autenticado y backend con base de datos; queda pendiente de un entorno con `DATABASE_URL` y servidor levantado.
+- `docker` no estaba disponible, pero no fue necesario porque existia PostgreSQL local funcional en `localhost:5433`.

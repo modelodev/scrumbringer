@@ -106,6 +106,34 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
   assert_contains(html, "data-testid=\"plan-scope-depth\"")
 }
 
+pub fn scope_bar_marks_refinement_controls_as_work_filter_bar_test() {
+  let html =
+    scope_bar.Config(
+      locale: locale.En,
+      cards: [],
+      depth_names: [scope_view.DepthName(1, "Feature", "Features")],
+      scope_kind: member_pool.PlanScopeLevel,
+      selected_depth: Some(1),
+      selected_card_id: None,
+      card_query: "",
+      show_closed: False,
+      id_prefix: "test-plan",
+      mode_controls: [],
+      refinement_controls: [element.text("Filter")],
+      show_closed_control: True,
+      on_scope_kind_change: fn(_) { 0 },
+      on_scope_depth_change: fn(_) { 0 },
+      on_scope_card_change: fn(_) { 0 },
+      on_scope_card_search_change: fn(_) { 0 },
+      on_closed_toggled: fn(_) { 0 },
+    )
+    |> scope_bar.view
+    |> element.to_document_string
+
+  assert_contains(html, "class=\"plan-refinement-controls work-filter-bar\"")
+  assert_contains(html, "data-testid=\"work-filter-bar\"")
+}
+
 pub fn scope_bar_filters_card_options_by_query_test() {
   let html =
     scope_bar.Config(
