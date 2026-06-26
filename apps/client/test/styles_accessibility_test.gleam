@@ -103,3 +103,18 @@ pub fn card_show_uses_wide_panel_and_mobile_fullscreen_test() {
   assert_contains(css, ".card-show { padding: 0; align-items: stretch")
   assert_contains(css, "height: 100dvh; max-height: 100dvh")
 }
+
+pub fn plan_tree_branch_rows_do_not_shift_tree_geometry_test() {
+  let css = styles.base_css()
+
+  assert_contains(css, ".plan-tree-cell.has-children .plan-tree-title")
+  assert_not_contains(css, ".plan-tree-cell.has-children {")
+  assert_contains(
+    css,
+    ".plan-tree-gutter { display: inline-flex; align-items: stretch; align-self: stretch",
+  )
+  assert_contains(
+    css,
+    ".plan-tree-rail.is-continue::before, .plan-tree-rail.is-elbow::before { left: 11px; top: -12px; bottom: -12px",
+  )
+}
