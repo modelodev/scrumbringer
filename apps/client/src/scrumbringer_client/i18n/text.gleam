@@ -82,6 +82,11 @@ pub type Text {
   TaskCreateRequiresCard
   TaskCreateActiveCardLabel
   TaskCreateNoActiveCards
+  TaskCreateCardsLoadFailed
+  TaskCreateDraftCardTarget
+  CardPickerSearchAllCardsHint
+  CardPickerRefineSearchHint
+  TaskEditCardLabel
   TaskCreateMissingCard
   TaskCreateInactiveCard
   TaskCreateClosedCard

@@ -94,6 +94,7 @@ pub type Msg {
   MemberCreateCardChanged(String)
   MemberCreateCardSearchChanged(String)
   MemberCreateTypeOptionsRetryClicked
+  MemberCreateCardOptionsRetryClicked
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
   MemberTaskCreatedFeedback(Int)

@@ -1,6 +1,6 @@
 //// Shared card target option helpers.
 
-import domain/card.{type Card, Active}
+import domain/card.{type Card, Active, Closed, Draft}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -8,7 +8,15 @@ import gleam/string
 
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/utils/card_queries
+
+pub type DisabledReason {
+  StaticReason(String)
+  DraftTaskTargetCannotReceiveTasks
+}
 
 pub type CardTargetOption {
   CardTargetOption(
@@ -17,19 +25,24 @@ pub type CardTargetOption {
     path: String,
     level_name: String,
     label: String,
-    disabled_reason: Option(String),
+    disabled_reason: Option(DisabledReason),
   )
 }
 
-pub fn active_task_targets(
+pub fn task_card_targets(
   cards: List(Card),
   depth_names: List(scope_view.DepthName),
 ) -> List(CardTargetOption) {
   cards
   |> list.filter(fn(card) {
-    card.state == Active && !card_has_child_cards(cards, card)
+    let direct_child_cards = card_queries.direct_child_cards(card.id, cards)
+    case card.state {
+      Active -> card_policy.card_accepts_direct_tasks(card, direct_child_cards)
+      Draft -> list.is_empty(direct_child_cards)
+      Closed -> False
+    }
   })
-  |> sorted_options(cards, depth_names)
+  |> sorted_task_options(cards, depth_names)
 }
 
 pub fn plan_scope_targets(
@@ -54,10 +67,20 @@ pub fn move_destination_targets(
       card_policy.InvalidDestination(card, reason) ->
         CardTargetOption(
           ..option_for_card(card, cards, depth_names),
-          disabled_reason: Some(card_policy.move_blocked_reason_label(reason)),
+          disabled_reason: Some(
+            StaticReason(card_policy.move_blocked_reason_label(reason)),
+          ),
         )
     }
   })
+}
+
+pub fn disabled_reason_label(locale: Locale, reason: DisabledReason) -> String {
+  case reason {
+    StaticReason(label) -> label
+    DraftTaskTargetCannotReceiveTasks ->
+      i18n.t(locale, i18n_text.TaskCreateDraftCardTarget)
+  }
 }
 
 pub fn filter_options(
@@ -128,8 +151,19 @@ fn sorted_options(
   |> list.map(fn(card) { option_for_card(card, all_cards, depth_names) })
 }
 
-fn card_has_child_cards(cards: List(Card), card: Card) -> Bool {
-  list.any(cards, fn(candidate) { candidate.parent_card_id == Some(card.id) })
+fn sorted_task_options(
+  target_cards: List(Card),
+  all_cards: List(Card),
+  depth_names: List(scope_view.DepthName),
+) -> List(CardTargetOption) {
+  target_cards
+  |> list.sort(fn(a, b) {
+    string.compare(
+      card_queries.card_path(a, all_cards),
+      card_queries.card_path(b, all_cards),
+    )
+  })
+  |> list.map(fn(card) { task_option_for_card(card, all_cards, depth_names) })
 }
 
 fn option_for_card(
@@ -167,6 +201,23 @@ fn option_for_card(
     level_name: level_name,
     label: label,
     disabled_reason: None,
+  )
+}
+
+fn task_option_for_card(
+  card: Card,
+  cards: List(Card),
+  depth_names: List(scope_view.DepthName),
+) -> CardTargetOption {
+  let disabled_reason = case card.state {
+    Active -> None
+    Draft -> Some(DraftTaskTargetCannotReceiveTasks)
+    Closed -> None
+  }
+
+  CardTargetOption(
+    ..option_for_card(card, cards, depth_names),
+    disabled_reason: disabled_reason,
   )
 }
 

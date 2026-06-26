@@ -1,12 +1,13 @@
 //// Task creation update handlers.
 
+import gleam/list
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/card.{type Card}
-import domain/remote.{Failed, NotAsked}
+import domain/remote.{Failed, Loading, NotAsked}
 import domain/task.{type Task}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/api/cards as cards_api
@@ -16,6 +17,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/create_form
 import scrumbringer_client/features/tasks/create_state
+import scrumbringer_client/state/normalized_store
 
 pub type Context(parent_msg) {
   Context(
@@ -90,6 +92,10 @@ pub fn try_update(
       handle_type_options_retry_clicked(model, context)
       |> without_policy
 
+    pool_messages.MemberCreateCardOptionsRetryClicked ->
+      handle_card_options_retry_clicked(model, context)
+      |> without_policy
+
     pool_messages.MemberCreateSubmitted ->
       handle_submitted(model, context)
       |> without_policy
@@ -124,7 +130,7 @@ fn handle_dialog_opened(
   model: member_pool.Model,
   context: Context(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  let next = create_state.open(model)
+  let next = create_state.open_for_context(model, opt.None)
 
   #(next, fetch_create_resources_if_needed(next, context))
 }
@@ -134,7 +140,7 @@ fn handle_dialog_opened_with_card(
   card_id: Int,
   context: Context(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  let next = create_state.open_with_card(model, card_id)
+  let next = create_state.open_for_context(model, opt.Some(card_id))
 
   #(next, fetch_create_resources_if_needed(next, context))
 }
@@ -144,6 +150,13 @@ fn handle_type_options_retry_clicked(
   context: Context(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   #(model, fetch_task_types(context))
+}
+
+fn handle_card_options_retry_clicked(
+  model: member_pool.Model,
+  context: Context(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(model, fetch_cards(context))
 }
 
 fn fetch_task_types_if_needed(
@@ -167,10 +180,22 @@ fn fetch_create_resources_if_needed(
 }
 
 fn fetch_cards_if_needed(
-  _model: member_pool.Model,
+  model: member_pool.Model,
   context: Context(parent_msg),
 ) -> Effect(parent_msg) {
-  fetch_cards(context)
+  case model.member_cards, context.selected_project_id {
+    Loading, _ -> effect.none()
+    _, opt.Some(project_id) -> {
+      let project_cards =
+        normalized_store.get_by_project(model.member_cards_store, project_id)
+
+      case list.is_empty(project_cards) {
+        True -> fetch_cards(context)
+        False -> effect.none()
+      }
+    }
+    _, opt.None -> effect.none()
+  }
 }
 
 fn fetch_cards(context: Context(parent_msg)) -> Effect(parent_msg) {

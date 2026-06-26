@@ -391,6 +391,7 @@ pub fn css() -> List(String) {
     ".card-target-empty { display: grid; gap: 2px; min-width: 0; border: 1px dashed var(--sb-border); border-radius: var(--sb-radius-md); background: var(--sb-elevated); color: var(--sb-muted-strong); padding: 8px 9px; font-size: var(--sb-font-sm); }",
     ".card-target-empty-title { color: var(--sb-text); font-weight: var(--sb-weight-semibold); }",
     ".card-target-empty-body { font-size: var(--sb-font-xs); line-height: var(--sb-line-tight); }",
+    ".card-target-hint { color: var(--sb-muted-strong); font-size: var(--sb-font-xs); line-height: var(--sb-line-tight); padding: 2px 1px 0; }",
     ".plan-mode-btn { min-height: 34px; border: 1px solid var(--sb-border); border-radius: var(--sb-radius-md); background: var(--sb-surface); color: var(--sb-text); padding: 6px 10px; font-size: var(--sb-font-sm); font-weight: var(--sb-weight-medium); cursor: pointer; }",
     ".plan-mode-btn:hover, .plan-mode-btn:focus-visible, .plan-scope-controls select:focus-visible { border-color: var(--sb-primary); outline: 2px solid color-mix(in oklab, var(--sb-primary) 28%, transparent); outline-offset: 1px; }",
     ".plan-mode-btn.is-active { border-color: color-mix(in oklab, var(--sb-primary) 42%, var(--sb-border)); background: var(--sb-primary-subtle-bg); color: var(--sb-primary); }",

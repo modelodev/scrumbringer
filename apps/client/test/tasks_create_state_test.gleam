@@ -27,6 +27,28 @@ pub fn create_state_open_with_card_keeps_card_context_test() {
   let assert None = next.member_create_error
 }
 
+pub fn create_state_open_for_context_uses_optional_card_test() {
+  let dirty =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_error: Some("boom"),
+      member_create_card_id: Some(7),
+      member_create_card_query: "old query",
+    )
+
+  let global = create_state.open_for_context(dirty, None)
+  let assert dialog_mode.DialogCreate = global.member_create_dialog_mode
+  let assert None = global.member_create_error
+  let assert None = global.member_create_card_id
+  let assert "" = global.member_create_card_query
+
+  let contextual = create_state.open_for_context(dirty, Some(42))
+  let assert dialog_mode.DialogCreate = contextual.member_create_dialog_mode
+  let assert None = contextual.member_create_error
+  let assert Some(42) = contextual.member_create_card_id
+  let assert "" = contextual.member_create_card_query
+}
+
 pub fn create_state_field_changes_update_only_form_fields_test() {
   let model =
     member_pool.Model(

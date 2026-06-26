@@ -94,6 +94,7 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
     task_types: Loaded([task_type()]),
     cards: cards,
     cards_loading: False,
+    cards_error: opt.None,
     depth_names: depth_names(),
     on_close: "close",
     on_submit: "submit",
@@ -104,15 +105,16 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
     on_card_id_changed: fn(value) { "card-" <> value },
     on_card_query_changed: fn(value) { "card-query-" <> value },
     on_type_options_retry_clicked: "retry",
+    on_card_options_retry_clicked: "retry-cards",
   )
 }
 
-pub fn empty_card_show_offers_create_card_or_task_test() {
+pub fn draft_empty_card_show_offers_structure_but_not_task_creation_test() {
   let policy =
     card_policy.policy_for(card(1, opt.None, Draft), [], [], True, True)
 
   let assert True = policy.can_create_card
-  let assert True = policy.can_create_task
+  let assert False = policy.can_create_task
 }
 
 pub fn card_group_show_offers_create_card_only_test() {
@@ -124,8 +126,8 @@ pub fn card_group_show_offers_create_card_only_test() {
   let assert False = policy.can_create_task
 }
 
-pub fn task_group_show_offers_create_task_only_test() {
-  let parent = card(1, opt.None, Draft)
+pub fn active_task_group_show_offers_create_task_only_test() {
+  let parent = card(1, opt.None, Active)
   let policy =
     card_policy.policy_for(parent, [], [task(9, opt.Some(1), 4)], True, True)
 

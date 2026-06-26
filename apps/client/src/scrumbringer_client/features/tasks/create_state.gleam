@@ -30,6 +30,16 @@ pub fn open_with_card(
   )
 }
 
+pub fn open_for_context(
+  model: member_pool.Model,
+  card_id: opt.Option(Int),
+) -> member_pool.Model {
+  case card_id {
+    opt.Some(card_id) -> open_with_card(model, card_id)
+    opt.None -> open(model)
+  }
+}
+
 pub fn close(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(
     ..model,

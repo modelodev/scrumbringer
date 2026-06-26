@@ -10,9 +10,8 @@ import lustre/element/html.{
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/features/cards/card_target
-import scrumbringer_client/features/cards/card_target_field
 import scrumbringer_client/features/hierarchy/scope_view
+import scrumbringer_client/features/plan/scope_card_field
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -149,28 +148,14 @@ fn view_depth_selector(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_card_search(config: Config(msg)) -> Element(msg) {
-  let listbox_id = config.id_prefix <> "-active-card-options"
-  let options = card_target.plan_scope_targets(config.cards, config.depth_names)
-  let filtered_options = card_target.filter_options(options, config.card_query)
-
   div([attribute.class("plan-card-scope-control")], [
-    card_target_field.view(card_target_field.Config(
-      label: i18n.t(config.locale, i18n_text.PlanScopeCard),
-      placeholder: i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
-      selected_label: card_target.selected_label(
-        options,
-        config.selected_card_id,
-      ),
+    scope_card_field.view(scope_card_field.Config(
+      locale: config.locale,
+      cards: config.cards,
+      depth_names: config.depth_names,
+      selected_card_id: config.selected_card_id,
       query: config.card_query,
-      options: filtered_options,
-      loading: False,
-      disabled: False,
-      empty_title: i18n.t(config.locale, i18n_text.PlanScopeNoActiveCards),
-      empty_body: i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
-      loading_label: i18n.t(config.locale, i18n_text.LoadingEllipsis),
-      listbox_id: listbox_id,
-      testid_prefix: "plan-scope-card",
-      show_options_when_empty: config.selected_card_id == None,
+      id_prefix: config.id_prefix,
       on_query_changed: config.on_scope_card_search_change,
       on_selected: config.on_scope_card_change,
     )),

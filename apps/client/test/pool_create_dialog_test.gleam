@@ -77,6 +77,7 @@ fn config() -> create_dialog.Config(String) {
     task_types: Loaded([task_type()]),
     cards: [card()],
     cards_loading: False,
+    cards_error: opt.None,
     depth_names: depth_names(),
     on_close: "close",
     on_submit: "submit",
@@ -87,6 +88,7 @@ fn config() -> create_dialog.Config(String) {
     on_card_id_changed: fn(value) { "card-" <> value },
     on_card_query_changed: fn(value) { "card-query-" <> value },
     on_type_options_retry_clicked: "retry",
+    on_card_options_retry_clicked: "retry-cards",
   )
 }
 
@@ -122,8 +124,27 @@ pub fn create_dialog_opened_without_card_requires_card_and_blocks_submit_test() 
     |> element.to_document_string
 
   assert_contains(html, "Choose an active card to create the task")
-  assert_contains(html, "data-testid=\"task-create-card-option\"")
+  assert_contains(html, "Type to search all active cards in this project.")
+  assert_not_contains(html, "data-testid=\"task-create-card-option\"")
+  assert_not_contains(html, "Release card - Story #8")
   assert_contains(html, "disabled")
+}
+
+pub fn create_dialog_card_target_search_shows_matching_cards_test() {
+  let html =
+    create_dialog.view(
+      create_dialog.Config(
+        ..config(),
+        card_id: opt.None,
+        card_query: "Release",
+        cards: [card()],
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "data-testid=\"task-create-card-option\"")
+  assert_contains(html, "Release card")
+  assert_contains(html, "Initiative #8")
 }
 
 pub fn create_dialog_card_target_uses_spanish_locale_test() {

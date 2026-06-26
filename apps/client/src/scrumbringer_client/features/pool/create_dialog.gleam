@@ -14,9 +14,8 @@ import domain/card.{type Card, Active, Draft}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_type.{type TaskType}
 
-import scrumbringer_client/features/cards/card_target
-import scrumbringer_client/features/cards/card_target_field
 import scrumbringer_client/features/hierarchy/scope_view
+import scrumbringer_client/features/tasks/task_create_card_field
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -39,6 +38,7 @@ pub type Config(msg) {
     task_types: Remote(List(TaskType)),
     cards: List(Card),
     cards_loading: Bool,
+    cards_error: opt.Option(String),
     depth_names: List(scope_view.DepthName),
     on_close: msg,
     on_submit: msg,
@@ -49,6 +49,7 @@ pub type Config(msg) {
     on_card_id_changed: fn(String) -> msg,
     on_card_query_changed: fn(String) -> msg,
     on_type_options_retry_clicked: msg,
+    on_card_options_retry_clicked: msg,
   )
 }
 
@@ -97,27 +98,19 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 }
 
 fn view_card_field(config: Config(msg)) -> Element(msg) {
-  let options =
-    card_target.active_task_targets(config.cards, config.depth_names)
-  let filtered_options = card_target.filter_options(options, config.card_query)
-
   div([attribute.class("task-create-card-target")], [
-    card_target_field.view(card_target_field.Config(
-      label: t(config, i18n_text.TaskCreateActiveCardLabel),
-      placeholder: t(config, i18n_text.TaskCreateRequiresCard),
-      selected_label: card_target.selected_label(options, config.card_id),
+    task_create_card_field.view(task_create_card_field.Config(
+      locale: config.locale,
+      cards: config.cards,
+      depth_names: config.depth_names,
+      selected_card_id: config.card_id,
       query: config.card_query,
-      options: filtered_options,
       loading: config.cards_loading,
+      error: config.cards_error,
       disabled: config.in_flight,
-      empty_title: t(config, i18n_text.TaskCreateNoActiveCards),
-      empty_body: t(config, i18n_text.TaskCreateRequiresCard),
-      loading_label: t(config, i18n_text.LoadingEllipsis),
-      listbox_id: "task-create-card-options",
-      testid_prefix: "task-create-card",
-      show_options_when_empty: config.card_id == opt.None,
       on_query_changed: config.on_card_query_changed,
       on_selected: config.on_card_id_changed,
+      on_retry: opt.Some(config.on_card_options_retry_clicked),
     )),
     view_invalid_card_hint(config),
   ])

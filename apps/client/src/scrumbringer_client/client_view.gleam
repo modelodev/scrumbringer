@@ -203,6 +203,9 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           client_state.pool_msg(
             pool_messages.MemberCreateTypeOptionsRetryClicked,
           ),
+          client_state.pool_msg(
+            pool_messages.MemberCreateCardOptionsRetryClicked,
+          ),
         )
       _ -> element.none()
     },

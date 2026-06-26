@@ -324,7 +324,7 @@ fn view_move_destination_option(
       case option.disabled_reason {
         Some(reason) ->
           span([attribute.class("plan-move-destination-reason")], [
-            text(reason),
+            text(card_target.disabled_reason_label(config.locale, reason)),
           ])
         None -> element.none()
       },

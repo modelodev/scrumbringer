@@ -94,6 +94,13 @@ pub fn translate(text: Text) -> String {
     text.TaskCreateRequiresCard -> "Choose an active card to create the task."
     text.TaskCreateActiveCardLabel -> "Active card"
     text.TaskCreateNoActiveCards -> "No active cards can receive tasks"
+    text.TaskCreateCardsLoadFailed -> "Could not load active cards"
+    text.TaskCreateDraftCardTarget -> "Draft · activate it to create tasks here"
+    text.CardPickerSearchAllCardsHint ->
+      "Type to search all active cards in this project."
+    text.CardPickerRefineSearchHint ->
+      "More cards match this search. Keep typing to narrow results."
+    text.TaskEditCardLabel -> "Move task to card"
     text.TaskCreateMissingCard ->
       "Selected card is not available. Close this dialog and try again."
     text.TaskCreateInactiveCard -> "Only active cards can receive new tasks."

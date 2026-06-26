@@ -2,13 +2,16 @@ import gleam/option.{None, Some}
 import lustre/effect
 
 import domain/api_error.{ApiError}
+import domain/card.{type Card, Active, Card}
+import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
+import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/create_update
+import scrumbringer_client/state/normalized_store
 
 fn local_context(selected_project_id) -> create_update.Context(Nil) {
   create_update.Context(
@@ -54,6 +57,34 @@ fn sample_task() -> Task {
   )
 }
 
+fn sample_card() -> Card {
+  Card(
+    id: 7,
+    project_id: 1,
+    parent_card_id: None,
+    title: "Checkout",
+    description: "",
+    color: None,
+    state: Active,
+    task_count: 0,
+    closed_count: 0,
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    due_date: None,
+    has_new_notes: False,
+  )
+}
+
+fn sample_type() -> TaskType {
+  TaskType(
+    id: 1,
+    name: "Bug",
+    icon: "bug-ant",
+    capability_id: None,
+    tasks_count: 0,
+  )
+}
+
 pub fn try_task_create_update_opened_returns_local_update_test() {
   let assert Some(create_update.Update(next, fx, policy)) =
     create_update.try_update(
@@ -65,6 +96,45 @@ pub fn try_task_create_update_opened_returns_local_update_test() {
   let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
   let assert create_update.NoPolicy = policy
   let assert True = fx == effect.none()
+}
+
+pub fn create_dialog_opened_uses_cached_cards_without_refetching_test() {
+  let card = sample_card()
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_task_types: Loaded([sample_type()]),
+      member_cards_store: normalized_store.upsert(
+        normalized_store.new(),
+        1,
+        [card],
+        fn(card) { card.id },
+      ),
+    )
+
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberCreateDialogOpened,
+      local_context(Some(1)),
+    )
+
+  let assert dialog_mode.DialogCreate = next.member_create_dialog_mode
+  let assert create_update.NoPolicy = policy
+  let assert True = fx == effect.none()
+}
+
+pub fn create_dialog_card_retry_fetches_card_options_test() {
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      member_pool.default_model(),
+      pool_messages.MemberCreateCardOptionsRetryClicked,
+      local_context(Some(1)),
+    )
+
+  let assert create_update.NoPolicy = policy
+  let assert True = next == member_pool.default_model()
+  let assert True = fx != effect.none()
 }
 
 pub fn try_task_create_update_success_requests_refresh_with_task_test() {

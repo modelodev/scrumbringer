@@ -976,6 +976,7 @@ fn update_without_view_mode(
     | pool_messages.MemberCreateCardChanged(_)
     | pool_messages.MemberCreateCardSearchChanged(_)
     | pool_messages.MemberCreateTypeOptionsRetryClicked
+    | pool_messages.MemberCreateCardOptionsRetryClicked
     | pool_messages.MemberCreateSubmitted
     | pool_messages.MemberTaskCreated(_) -> #(model, effect.none())
 

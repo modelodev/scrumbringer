@@ -3,7 +3,7 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-import domain/card.{type Card, Closed}
+import domain/card.{type Card, Active, Closed}
 import domain/task.{type Task, claimed_by}
 
 pub type CardStructure {
@@ -66,6 +66,7 @@ pub fn policy_for(
     }
   let can_create_task =
     !is_closed
+    && card_accepts_direct_tasks(card, direct_child_cards)
     && can_execute_work
     && case structure {
       EmptyCard | TaskGroup -> True
@@ -86,6 +87,13 @@ pub fn policy_for(
     create_disabled_reason: create_disabled_reason,
     delete_disabled_reason: delete_disabled_reason,
   )
+}
+
+pub fn card_accepts_direct_tasks(
+  card: Card,
+  direct_child_cards: List(Card),
+) -> Bool {
+  card.state == Active && list.is_empty(direct_child_cards)
 }
 
 pub fn structure_for(
