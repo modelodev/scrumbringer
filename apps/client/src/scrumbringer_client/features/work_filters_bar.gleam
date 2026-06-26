@@ -66,10 +66,6 @@ pub fn view_bar(config: Config(msg)) -> Element(msg) {
   )
 }
 
-pub fn view_bar_controls(config: Config(msg)) -> List(Element(msg)) {
-  view_controls(config, Bar)
-}
-
 pub fn view_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
   view_controls(config, Refinement)
 }

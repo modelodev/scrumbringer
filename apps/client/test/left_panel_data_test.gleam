@@ -38,11 +38,12 @@ fn invite_link(email: String, used_at: Option(String)) {
 }
 
 pub fn member_route_preserves_project_filters_and_search_test() {
-  let route = left_panel_data.member_route(base_config(), view_mode.Cards)
+  let route =
+    left_panel_data.member_route(base_config(), view_mode.Capabilities)
   let assert router.Member(state) = route
 
   state |> url_state.project |> assert_equal(Some(42))
-  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.view |> assert_equal(view_mode.Capabilities)
   state
   |> url_state.capability_scope
   |> assert_equal(capability_scope.MyCapabilities)
@@ -52,12 +53,65 @@ pub fn member_route_preserves_project_filters_and_search_test() {
   state |> url_state.card_depth |> assert_equal(None)
 }
 
+pub fn member_route_omits_work_filters_for_people_test() {
+  let route = left_panel_data.member_route(base_config(), view_mode.People)
+  let assert router.Member(state) = route
+
+  state |> url_state.project |> assert_equal(Some(42))
+  state |> url_state.view |> assert_equal(view_mode.People)
+  state
+  |> url_state.capability_scope
+  |> assert_equal(capability_scope.AllCapabilities)
+  state |> url_state.type_filter |> assert_equal(None)
+  state |> url_state.capability_filter |> assert_equal(None)
+  state |> url_state.search |> assert_equal(None)
+}
+
+pub fn member_plan_route_omits_scope_type_and_capability_filters_test() {
+  let config =
+    left_panel_data.MemberRouteConfig(
+      ..base_config(),
+      plan_mode: url_state.PlanKanbanParam,
+    )
+  let route = left_panel_data.member_plan_route(config)
+  let assert router.Member(state) = route
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
+  state
+  |> url_state.capability_scope
+  |> assert_equal(capability_scope.AllCapabilities)
+  state |> url_state.type_filter |> assert_equal(None)
+  state |> url_state.capability_filter |> assert_equal(None)
+  state |> url_state.search |> assert_equal(Some("sync"))
+}
+
+pub fn member_kanban_route_preserves_work_filters_test() {
+  let route = left_panel_data.member_kanban_route(base_config())
+  let assert router.Member(state) = route
+
+  state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanKanbanParam)
+  state
+  |> url_state.capability_scope
+  |> assert_equal(capability_scope.MyCapabilities)
+  state |> url_state.type_filter |> assert_equal(Some(7))
+  state |> url_state.capability_filter |> assert_equal(Some(9))
+  state |> url_state.search |> assert_equal(Some("sync"))
+}
+
 pub fn member_depth_route_sets_cards_view_and_depth_test() {
-  let route = left_panel_data.member_depth_route(base_config(), 2)
+  let config =
+    left_panel_data.MemberRouteConfig(
+      ..base_config(),
+      plan_mode: url_state.PlanKanbanParam,
+    )
+  let route = left_panel_data.member_depth_route(config, 2)
   let assert router.Member(state) = route
 
   state |> url_state.project |> assert_equal(Some(42))
   state |> url_state.view |> assert_equal(view_mode.Cards)
+  state |> url_state.plan_mode |> assert_equal(url_state.PlanStructureParam)
   state |> url_state.card_depth |> assert_equal(Some(2))
 }
 

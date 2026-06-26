@@ -8,7 +8,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/project.{type ProjectMember}
 import domain/remote.{Failed, Loaded}
-import scrumbringer_client/api/projects as api_projects
+import scrumbringer_client/api/member_capabilities
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/features/admin/msg as admin_messages
 
@@ -16,7 +16,7 @@ pub type Context(parent_msg) {
   Context(
     selected_project_id: opt.Option(Int),
     on_member_capabilities_fetched: fn(
-      ApiResult(api_projects.MemberCapabilities),
+      ApiResult(member_capabilities.MemberCapabilities),
     ) ->
       parent_msg,
   )
@@ -79,7 +79,7 @@ fn handle_members_fetched_ok(
     opt.Some(project_id) ->
       members
       |> list.map(fn(member) {
-        api_projects.get_member_capabilities(
+        member_capabilities.get_member_capabilities(
           project_id,
           member.user_id,
           context.on_member_capabilities_fetched,

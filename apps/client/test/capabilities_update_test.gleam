@@ -6,6 +6,7 @@ import lustre/effect
 import domain/api_error.{type ApiError, ApiError}
 import domain/capability.{type Capability, Capability}
 import domain/remote
+import scrumbringer_client/api/member_capabilities
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/dialog_mode
@@ -134,7 +135,7 @@ fn handle_member_capabilities_save_clicked(
 
 fn handle_member_capabilities_fetched_ok(
   model: admin_capabilities.Model,
-  result: api_projects.MemberCapabilities,
+  result: member_capabilities.MemberCapabilities,
 ) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
   run_default(model, admin_messages.MemberCapabilitiesFetched(Ok(result)))
 }
@@ -151,7 +152,7 @@ fn handle_member_capabilities_fetched_error(
 
 fn handle_member_capabilities_saved_ok(
   model: admin_capabilities.Model,
-  result: api_projects.MemberCapabilities,
+  result: member_capabilities.MemberCapabilities,
   feedback: capability_types.FeedbackContext(Nil),
 ) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
   run(
@@ -392,7 +393,7 @@ pub fn member_capabilities_fetched_ok_updates_cache_and_selection_test() {
   let #(next, fx) =
     handle_member_capabilities_fetched_ok(
       model,
-      api_projects.MemberCapabilities(user_id: 7, capability_ids: [1, 2]),
+      member_capabilities.MemberCapabilities(user_id: 7, capability_ids: [1, 2]),
     )
 
   let assert False = next.member_capabilities_loading
@@ -413,7 +414,7 @@ pub fn member_capabilities_saved_ok_closes_dialog_and_updates_cache_test() {
   let #(next, fx) =
     handle_member_capabilities_saved_ok(
       model,
-      api_projects.MemberCapabilities(user_id: 7, capability_ids: [1, 2]),
+      member_capabilities.MemberCapabilities(user_id: 7, capability_ids: [1, 2]),
       feedback_context(),
     )
 

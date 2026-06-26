@@ -8,10 +8,12 @@ import domain/project_role
 import domain/remote.{Loaded, Loading}
 import domain/user.{type User, User}
 
+import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/client_update
 
@@ -46,6 +48,41 @@ pub fn project_change_reloads_project_scoped_capability_resources_test() {
   let assert Loading = next.member.skills.member_my_capability_ids
   let assert Error(_) =
     dict.get(next.member.skills.member_my_capability_ids_edit, 11)
+}
+
+pub fn project_change_clears_project_scoped_member_filters_test() {
+  let model =
+    model_with_loaded_project_scoped_capability_resources(opt.Some(1))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_filters_type_id: opt.Some(11),
+          member_filters_capability_id: opt.Some(12),
+          member_capability_scope: capability_scope.MyCapabilities,
+          member_card_depth_filter: opt.Some(2),
+          member_plan_scope_card_id: opt.Some(99),
+          member_plan_scope_card_query: "old card",
+          member_create_card_id: opt.Some(88),
+          member_create_card_query: "old create",
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    client_update.update(model, client_state.ProjectSelected("2"))
+
+  let pool = next.member.pool
+  let assert opt.None = pool.member_filters_type_id
+  let assert opt.None = pool.member_filters_capability_id
+  let assert capability_scope.AllCapabilities = pool.member_capability_scope
+  let assert opt.None = pool.member_card_depth_filter
+  let assert opt.None = pool.member_plan_scope_card_id
+  let assert "" = pool.member_plan_scope_card_query
+  let assert opt.None = pool.member_create_card_id
+  let assert "" = pool.member_create_card_query
 }
 
 pub fn same_project_selection_keeps_project_scoped_capability_resources_test() {

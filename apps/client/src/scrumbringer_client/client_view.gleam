@@ -1552,7 +1552,7 @@ fn left_panel_member_route_config(
     capability_scope: model.member.pool.member_capability_scope,
     type_filter: model.member.pool.member_filters_type_id,
     capability_filter: model.member.pool.member_filters_capability_id,
-    search: helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+    search: helpers_options.search_to_opt(model.member.pool.member_filters_q),
     card_depth: model.member.pool.member_card_depth_filter,
     plan_mode: current_plan_mode_param(model.member.pool.member_plan_mode),
   )

@@ -1330,21 +1330,23 @@ Estado registrado tras la implementacion:
 - `member_refresh_filters` distingue `PlanStructureRefresh` de `PlanKanbanRefresh` con tipos;
 - la navegacion preserva filtros de trabajo en superficies que los muestran y limpia `scope/type/cap` al volver a Plan estructura;
 - i18n obsoleto del boton antiguo eliminado: `MyCapabilitiesOn`, `MyCapabilitiesOff`, `MyCapabilitiesHint`, `MyCapabilitiesLabel`;
-- no se migro una API cliente canonica de capacidades de miembro; queda fuera del alcance porque no reduce riesgo del refactor visual.
+- API cliente de capacidades de miembro consolidada en `apps/client/src/scrumbringer_client/api/member_capabilities.gleam`;
+- busqueda member normalizada con `helpers/options.search_to_opt`, evitando que `" bug "` viaje como request o URL distinta de `"bug"`;
+- cambio de proyecto limpia filtros member dependientes de proyecto: tipo, capacidad, scope, profundidad, tarjetas de plan y tarjetas de creacion.
 
 Metricas reales del diff:
 
 - funciones/render locales retirados de Pool: busqueda, tipo, capacidad, scope, botones de scope, visibilidad y conversion local de opcion;
 - render local retirado de Capacidades: boton unidireccional "Mis capacidades" y controles sueltos de tipo/capacidad/busqueda;
 - codigo obsoleto buscado sin resultados en `apps/client/src apps/client/test`: `capability-my-capabilities-action`, `view_my_capabilities_action`, `view_capability_scope_filter`, `view_scope_button`, `pool-filter-capability-scope`, `MyCapabilitiesOn`, `MyCapabilitiesOff`, `MyCapabilitiesHint`, `MyCapabilitiesLabel`;
-- tests nuevos o ampliados: `work_filters_bar_test`, `member_refresh_filters_test`, `pool_view_mode_update_test`, y aserciones `work-filter-*` en Pool, Capacidades, Kanban y Plan Kanban;
-- balance aproximado de implementacion cliente sin docs: 405 inserciones y 309 eliminaciones en archivos existentes, mas 500 lineas nuevas entre componente y test de componente.
+- tests nuevos o ampliados: `work_filters_bar_test`, `member_refresh_filters_test`, `pool_view_mode_update_test`, `left_panel_data_test`, `member_refresh_test`, `update_helpers_test`, y aserciones `work-filter-*` en Pool, Capacidades, Kanban y Plan Kanban;
+- balance de implementacion cliente contra `origin/main` sin docs: 1202 inserciones y 496 eliminaciones en `apps/client/src` y `apps/client/test`, con 24 archivos de fuente y 15 archivos de test afectados.
 
 Validaciones ejecutadas:
 
 - `cd apps/client && gleam format --check src test`;
 - `cd apps/client && gleam check`;
-- `cd apps/client && gleam test --target javascript`: 1857 tests pasan;
+- `cd apps/client && gleam test --target javascript`: 1864 tests pasan;
 - `cd apps/server && gleam format --check src test`;
 - `cd apps/server && gleam check`;
 - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable gleam test`: 557 tests pasan;
@@ -1381,6 +1383,14 @@ Hallazgo de cierre corregido durante la validacion:
 - Pool renderizaba los controles comunes con `view_bar_controls`, por lo que faltaba el wrapper `work-filter-bar` en DOM. Se migro a `work_filters_bar.view_bar` y se conservo la grid con `display: contents`;
 - `plan_scope_bar` ahora marca el wrapper de refinamiento como `work-filter-bar`, de modo que Capacidades y Kanban tambien exponen el mismo contenedor raiz;
 - se anadio `scope_bar_marks_refinement_controls_as_work_filter_bar_test`.
+
+Hallazgos posteriores corregidos:
+
+- el shortcut de foco seguia apuntando a `pool-filter-q`; ahora usa el id canonico `pool-work-filter-q`;
+- `left_panel_data` y `view_mode_update` tenian politicas de URL member parcialmente duplicadas; ahora ambas usan `member_route_policy`;
+- `member_plan_route` y `member_depth_route` fuerzan `PlanStructureDestination`, evitando heredar `PlanKanban` y filtros de trabajo al navegar a estructura;
+- `PlanStructureDestination` conserva solo la busqueda contextual visible y limpia `scope/type/cap`;
+- el follow-up de API cliente ya no queda pendiente: `api/projects.gleam` y `api/tasks/capabilities.gleam` dejaron de duplicar el endpoint.
 
 Notas:
 

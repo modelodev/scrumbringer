@@ -7,6 +7,7 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
+import scrumbringer_client/api/member_capabilities
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/features/admin/msg as admin_messages
@@ -107,7 +108,7 @@ fn handle_member_capabilities_dialog_opened(
           ),
           member_capabilities_error: opt.None,
         ),
-        api_projects.get_member_capabilities(
+        member_capabilities.get_member_capabilities(
           project_id,
           user_id,
           context.on_member_capabilities_fetched,
@@ -152,7 +153,7 @@ fn handle_member_capabilities_save_clicked(
   case context.selected_project_id, model.member_capabilities_dialog_user_id {
     opt.Some(project_id), opt.Some(user_id) -> #(
       admin_capabilities.Model(..model, member_capabilities_saving: True),
-      api_projects.set_member_capabilities(
+      member_capabilities.set_member_capabilities(
         project_id,
         user_id,
         model.member_capabilities_selected,
@@ -166,7 +167,7 @@ fn handle_member_capabilities_save_clicked(
 
 fn handle_member_capabilities_fetched_ok(
   model: admin_capabilities.Model,
-  result: api_projects.MemberCapabilities,
+  result: member_capabilities.MemberCapabilities,
 ) -> #(admin_capabilities.Model, Effect(parent_msg)) {
   admin_capabilities.Model(
     ..model,
@@ -195,7 +196,7 @@ fn handle_member_capabilities_fetched_error(
 
 fn handle_member_capabilities_saved_ok(
   model: admin_capabilities.Model,
-  result: api_projects.MemberCapabilities,
+  result: member_capabilities.MemberCapabilities,
   feedback: capability_types.FeedbackContext(parent_msg),
 ) -> #(admin_capabilities.Model, Effect(parent_msg)) {
   #(

@@ -6,6 +6,7 @@ import domain/view_mode.{type ViewMode}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
+import scrumbringer_client/features/pool/member_route_policy
 import scrumbringer_client/permissions.{type AdminSection}
 import scrumbringer_client/router
 import scrumbringer_client/url_state
@@ -27,12 +28,11 @@ pub fn member_state(
   config: MemberRouteConfig,
   mode: ViewMode,
 ) -> url_state.UrlState {
-  base_state(config.selected_project_id)
-  |> url_state.with_view(mode)
-  |> url_state.with_capability_scope(config.capability_scope)
-  |> url_state.with_type_filter(config.type_filter)
-  |> url_state.with_capability_filter(config.capability_filter)
-  |> url_state.with_search(config.search)
+  member_route_policy.state(
+    config.selected_project_id,
+    destination_for_mode(mode, config.plan_mode),
+    filters(config),
+  )
 }
 
 pub fn member_route(config: MemberRouteConfig, mode: ViewMode) -> router.Route {
@@ -40,19 +40,28 @@ pub fn member_route(config: MemberRouteConfig, mode: ViewMode) -> router.Route {
 }
 
 pub fn member_plan_route(config: MemberRouteConfig) -> router.Route {
-  router.Member(member_state(config, view_mode.Cards))
+  router.Member(member_route_policy.state(
+    config.selected_project_id,
+    member_route_policy.PlanStructureDestination,
+    filters(config),
+  ))
 }
 
 pub fn member_kanban_route(config: MemberRouteConfig) -> router.Route {
-  router.Member(
-    member_state(config, view_mode.Cards)
-    |> url_state.with_plan_mode(url_state.PlanKanbanParam),
-  )
+  router.Member(member_route_policy.state(
+    config.selected_project_id,
+    member_route_policy.PlanKanbanDestination,
+    filters(config),
+  ))
 }
 
 pub fn member_depth_route(config: MemberRouteConfig, depth: Int) -> router.Route {
   router.Member(
-    member_state(config, view_mode.Cards)
+    member_route_policy.state(
+      config.selected_project_id,
+      member_route_policy.PlanStructureDestination,
+      filters(config),
+    )
     |> url_state.with_card_depth(Some(depth)),
   )
 }
@@ -93,11 +102,30 @@ pub fn loaded_count(remote_list: Remote(List(a))) -> Int {
   }
 }
 
-fn base_state(selected_project_id: Option(Int)) -> url_state.UrlState {
-  case selected_project_id {
-    Some(project_id) -> url_state.with_project(url_state.empty(), project_id)
-    None -> url_state.empty()
+fn destination_for_mode(
+  mode: ViewMode,
+  plan_mode: url_state.PlanModeParam,
+) -> member_route_policy.Destination {
+  case mode {
+    view_mode.Pool -> member_route_policy.PoolDestination
+    view_mode.Capabilities -> member_route_policy.CapabilitiesDestination
+    view_mode.People -> member_route_policy.PeopleDestination
+    view_mode.Cards ->
+      case plan_mode {
+        url_state.PlanKanbanParam -> member_route_policy.PlanKanbanDestination
+        url_state.PlanStructureParam ->
+          member_route_policy.PlanStructureDestination
+      }
   }
+}
+
+fn filters(config: MemberRouteConfig) -> member_route_policy.WorkFilters {
+  member_route_policy.WorkFilters(
+    capability_scope: config.capability_scope,
+    type_filter: config.type_filter,
+    capability_filter: config.capability_filter,
+    search: config.search,
+  )
 }
 
 fn is_org_section(section: AdminSection) -> Bool {

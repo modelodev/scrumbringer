@@ -10,6 +10,7 @@ import domain/project.{type Project, type ProjectDepthName, type ProjectMember}
 import domain/project_role.{type ProjectRole}
 import domain/task_type.{type TaskType}
 
+import scrumbringer_client/api/member_capabilities
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state/admin/assignments as assignments_state
@@ -105,8 +106,8 @@ pub type Msg {
   MemberCapabilitiesDialogClosed
   MemberCapabilitiesToggled(Int)
   MemberCapabilitiesSaveClicked
-  MemberCapabilitiesFetched(ApiResult(api_projects.MemberCapabilities))
-  MemberCapabilitiesSaved(ApiResult(api_projects.MemberCapabilities))
+  MemberCapabilitiesFetched(ApiResult(member_capabilities.MemberCapabilities))
+  MemberCapabilitiesSaved(ApiResult(member_capabilities.MemberCapabilities))
   CapabilityMembersDialogOpened(Int)
   CapabilityMembersDialogClosed
   CapabilityMembersToggled(Int)

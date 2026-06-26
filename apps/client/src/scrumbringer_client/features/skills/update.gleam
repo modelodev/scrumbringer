@@ -13,13 +13,13 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - API request construction (see `api/tasks/capabilities.gleam`)
+//// - API request construction (see `api/member_capabilities.gleam`)
 //// - Capability selection state used by pool/capability flows
 ////
 //// ## Relations
 ////
 //// - **features/pool/update.gleam**: Applies local transitions to the root model
-//// - **api/tasks/capabilities.gleam**: Provides capability API functions
+//// - **api/member_capabilities.gleam**: Provides capability API functions
 
 import gleam/dict
 import gleam/option as opt
@@ -29,7 +29,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/remote.{Failed, Loaded}
-import scrumbringer_client/api/tasks/capabilities as capabilities_api
+import scrumbringer_client/api/member_capabilities as capabilities_api
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/helpers/dicts as helpers_dicts

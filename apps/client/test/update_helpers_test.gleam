@@ -13,6 +13,11 @@ pub fn empty_to_opt_trims_whitespace_test() {
   let assert None = helpers_options.empty_to_opt("   ")
 }
 
+pub fn search_to_opt_trims_and_drops_empty_queries_test() {
+  let assert None = helpers_options.search_to_opt("   ")
+  let assert Some("backend") = helpers_options.search_to_opt("  backend  ")
+}
+
 pub fn empty_to_int_opt_rejects_non_int_test() {
   let assert None = helpers_options.empty_to_int_opt("abc")
 }

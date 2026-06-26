@@ -6,16 +6,19 @@ import gleam/option.{type Option}
 
 import domain/api_error.{type ApiResult}
 import domain/capability.{type Capability}
+import scrumbringer_client/api/member_capabilities
 import scrumbringer_client/api/projects as api_projects
 
 pub type Context(parent_msg) {
   Context(
     selected_project_id: Option(Int),
     on_member_capabilities_fetched: fn(
-      ApiResult(api_projects.MemberCapabilities),
+      ApiResult(member_capabilities.MemberCapabilities),
     ) ->
       parent_msg,
-    on_member_capabilities_saved: fn(ApiResult(api_projects.MemberCapabilities)) ->
+    on_member_capabilities_saved: fn(
+      ApiResult(member_capabilities.MemberCapabilities),
+    ) ->
       parent_msg,
     on_capability_members_fetched: fn(ApiResult(api_projects.CapabilityMembers)) ->
       parent_msg,

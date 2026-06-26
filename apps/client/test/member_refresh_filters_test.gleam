@@ -33,7 +33,7 @@ pub fn pool_refresh_keeps_pool_filters_test() {
       member_refresh_filters.PoolRefresh,
       opt.Some(2),
       opt.Some(7),
-      "rollout",
+      " rollout ",
     )
 }
 

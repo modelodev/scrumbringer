@@ -44,7 +44,7 @@ pub fn task_filters(
         status: opt.None,
         type_id: type_id,
         capability_id: capability_id,
-        q: helpers_options.empty_to_opt(search),
+        q: helpers_options.search_to_opt(search),
         blocked: opt.None,
       )
   }

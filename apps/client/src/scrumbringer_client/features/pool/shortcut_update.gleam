@@ -64,7 +64,7 @@ fn handle(
 }
 
 fn focus_search(model: Model) -> #(Model, Effect(parent_msg)) {
-  #(model, app_effects.focus_element_after_timeout("pool-filter-q", 0))
+  #(model, app_effects.focus_element_after_timeout("pool-work-filter-q", 0))
 }
 
 fn open_create(model: Model) -> #(Model, Effect(parent_msg)) {

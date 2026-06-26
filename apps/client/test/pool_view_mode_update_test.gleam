@@ -84,7 +84,7 @@ pub fn view_mode_change_preserves_work_filters_in_route_test() {
       member_capability_scope: capability_scope.MyCapabilities,
       member_filters_type_id: opt.Some(2),
       member_filters_capability_id: opt.Some(7),
-      member_filters_q: "rollout",
+      member_filters_q: " rollout ",
     )
 
   let assert opt.Some(view_mode_update.Update(_next, route_policy)) =
@@ -100,6 +100,60 @@ pub fn view_mode_change_preserves_work_filters_in_route_test() {
   let assert capability_scope.MyCapabilities = url_state.capability_scope(state)
   let assert opt.Some(2) = url_state.type_filter(state)
   let assert opt.Some(7) = url_state.capability_filter(state)
+  let assert opt.Some("rollout") = url_state.search(state)
+}
+
+pub fn view_mode_change_to_people_omits_invisible_work_filters_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_capability_scope: capability_scope.MyCapabilities,
+      member_filters_type_id: opt.Some(2),
+      member_filters_capability_id: opt.Some(7),
+      member_filters_q: "rollout",
+    )
+
+  let assert opt.Some(view_mode_update.Update(next, route_policy)) =
+    view_mode_update.try_update(
+      model,
+      pool_messages.ViewModeChanged(view_mode.People),
+      context(opt.Some(42)),
+    )
+
+  let assert view_mode.People = next.view_mode
+  let assert view_mode_update.ReplaceMemberRoute(state) = route_policy
+  let assert view_mode.People = url_state.view(state)
+  let assert capability_scope.AllCapabilities =
+    url_state.capability_scope(state)
+  let assert opt.None = url_state.type_filter(state)
+  let assert opt.None = url_state.capability_filter(state)
+  let assert opt.None = url_state.search(state)
+}
+
+pub fn view_mode_change_to_plan_structure_omits_scope_type_and_capability_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_capability_scope: capability_scope.MyCapabilities,
+      member_filters_type_id: opt.Some(2),
+      member_filters_capability_id: opt.Some(7),
+      member_filters_q: "rollout",
+    )
+
+  let assert opt.Some(view_mode_update.Update(_next, route_policy)) =
+    view_mode_update.try_update(
+      model,
+      pool_messages.ViewModeChanged(view_mode.Cards),
+      context(opt.Some(42)),
+    )
+
+  let assert view_mode_update.ReplaceMemberRoute(state) = route_policy
+  let assert view_mode.Cards = url_state.view(state)
+  let assert url_state.PlanStructureParam = url_state.plan_mode(state)
+  let assert capability_scope.AllCapabilities =
+    url_state.capability_scope(state)
+  let assert opt.None = url_state.type_filter(state)
+  let assert opt.None = url_state.capability_filter(state)
   let assert opt.Some("rollout") = url_state.search(state)
 }
 

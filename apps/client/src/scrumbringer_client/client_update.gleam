@@ -43,11 +43,11 @@ import scrumbringer_client/automation_deep_link
 // API modules
 import scrumbringer_client/api/api_tokens as api_tokens_api
 import scrumbringer_client/api/cards as api_cards
+import scrumbringer_client/api/member_capabilities as capabilities_api
 import scrumbringer_client/api/operational_metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks/active as active_api
-import scrumbringer_client/api/tasks/capabilities as capabilities_api
 import scrumbringer_client/api/tasks/operations as task_operations_api
 import scrumbringer_client/api/tasks/positions as task_positions_api
 import scrumbringer_client/api/tasks/task_types as task_types_api
@@ -55,6 +55,7 @@ import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
 
+import scrumbringer_client/capability_scope
 import scrumbringer_client/client_ffi
 import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
@@ -335,7 +336,7 @@ fn current_route(model: client_state.Model) -> router.Route {
       let state =
         url_state.with_search(
           state,
-          helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+          helpers_options.search_to_opt(model.member.pool.member_filters_q),
         )
       let state =
         url_state.with_card_depth(
@@ -2043,8 +2044,20 @@ fn reset_project_scoped_resources(
         )
       })
       |> client_state.update_member(fn(member) {
+        let pool = member.pool
         member_state.MemberModel(
           ..member,
+          pool: member_pool.Model(
+            ..pool,
+            member_filters_type_id: opt.None,
+            member_filters_capability_id: opt.None,
+            member_capability_scope: capability_scope.default(),
+            member_card_depth_filter: opt.None,
+            member_plan_scope_card_id: opt.None,
+            member_plan_scope_card_query: "",
+            member_create_card_id: opt.None,
+            member_create_card_query: "",
+          ),
           skills: member_skills.Model(
             member_capabilities: NotAsked,
             member_my_capability_ids: NotAsked,
