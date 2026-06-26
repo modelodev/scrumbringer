@@ -17,6 +17,9 @@ import domain/task.{type Task}
 import domain/task/state as task_state
 import domain/task_type.{type TaskType}
 
+import scrumbringer_client/features/cards/card_target
+import scrumbringer_client/features/cards/card_target_field
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/tasks/show_permissions
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -35,10 +38,12 @@ pub type Config(msg) {
     edit_priority: String,
     edit_type_id: String,
     edit_card_id: String,
+    edit_card_query: String,
     edit_error: opt.Option(String),
     edit_in_flight: Bool,
     task_types: Remote(List(TaskType)),
     cards: List(Card),
+    depth_names: List(scope_view.DepthName),
     on_edit_started: msg,
     on_edit_cancelled: msg,
     on_title_changed: fn(String) -> msg,
@@ -46,6 +51,7 @@ pub type Config(msg) {
     on_priority_changed: fn(String) -> msg,
     on_type_id_changed: fn(String) -> msg,
     on_card_id_changed: fn(String) -> msg,
+    on_card_query_changed: fn(String) -> msg,
     on_submitted: msg,
   )
 }
@@ -271,26 +277,27 @@ fn priority_option(config: Config(msg), priority: Int) -> Element(msg) {
 }
 
 fn view_card_field(config: Config(msg)) -> Element(msg) {
-  form_field.view(
-    i18n.t(config.locale, i18n_text.ParentCardLabel),
-    select(
-      [
-        attribute.value(config.edit_card_id),
-        attribute.disabled(config.edit_in_flight),
-        event.on_input(config.on_card_id_changed),
-      ],
-      [
-        empty_option(
-          i18n.t(config.locale, i18n_text.NoCard),
-          config.edit_card_id,
-        ),
-        ..list.map(config.cards, fn(card) {
-          let value = int.to_string(card.id)
-          select_option(value, card.title, config.edit_card_id)
-        })
-      ],
-    ),
-  )
+  let options =
+    card_target.active_task_targets(config.cards, config.depth_names)
+  let selected_card_id = parse_card_id(config.edit_card_id)
+
+  card_target_field.view(card_target_field.Config(
+    label: i18n.t(config.locale, i18n_text.ParentCardLabel),
+    placeholder: i18n.t(config.locale, i18n_text.TaskCreateRequiresCard),
+    selected_label: card_target.selected_label(options, selected_card_id),
+    query: config.edit_card_query,
+    options: card_target.filter_options(options, config.edit_card_query),
+    loading: False,
+    disabled: config.edit_in_flight,
+    empty_title: i18n.t(config.locale, i18n_text.TaskCreateNoActiveCards),
+    empty_body: i18n.t(config.locale, i18n_text.TaskCreateRequiresCard),
+    loading_label: i18n.t(config.locale, i18n_text.LoadingEllipsis),
+    listbox_id: "task-show-edit-card-options",
+    testid_prefix: "task-show-edit-card",
+    show_options_when_empty: selected_card_id == opt.None,
+    on_query_changed: config.on_card_query_changed,
+    on_selected: config.on_card_id_changed,
+  ))
 }
 
 fn empty_option(label: String, selected: String) -> Element(msg) {
@@ -305,6 +312,13 @@ fn remote_loaded(remote: Remote(List(item))) -> Bool {
   case remote {
     Loaded(_) -> True
     _ -> False
+  }
+}
+
+fn parse_card_id(value: String) -> opt.Option(Int) {
+  case int.parse(value) {
+    Ok(id) if id > 0 -> opt.Some(id)
+    _ -> opt.None
   }
 }
 

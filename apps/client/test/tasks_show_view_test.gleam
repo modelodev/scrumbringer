@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
@@ -48,6 +49,33 @@ pub fn task_show_renders_parent_card_navigation_in_header_test() {
     html,
     "/app?project=1&amp;view=cards&amp;work_scope=card&amp;card=10",
   )
+}
+
+pub fn task_show_editing_uses_footer_edit_actions_only_test() {
+  let html =
+    task_show.view_task_show(
+      task_show.TaskShowConfig(
+        ..config(),
+        editor: task_show.TaskEditorConfig(
+          ..editor_config(),
+          editing: True,
+          edit_title: "Prepare final release",
+        ),
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "task-show-edit-form")
+  assert_contains(html, ">Cancel<")
+  let assert 1 = occurrences(html, ">Save<")
+  assert_not_contains(html, "Release back to Pool")
+  assert_not_contains(html, "Start working")
+  assert_not_contains(html, "Claim task")
+  assert_not_contains(html, "data-testid=\"task-show-primary-close\"")
+}
+
+fn occurrences(source: String, fragment: String) -> Int {
+  list.length(string.split(source, fragment)) - 1
 }
 
 fn config() -> task_show.TaskShowConfig(String) {
@@ -129,10 +157,12 @@ fn editor_config() -> task_show.TaskEditorConfig(String) {
     edit_priority: "2",
     edit_type_id: "1",
     edit_card_id: "10",
+    edit_card_query: "",
     edit_error: None,
     edit_in_flight: False,
     task_types: remote.Loaded([]),
     cards: [],
+    depth_names: [],
     parent_card_title: Some("Release card"),
     on_edit_started: "edit",
     on_edit_cancelled: "cancel-edit",
@@ -141,6 +171,7 @@ fn editor_config() -> task_show.TaskEditorConfig(String) {
     on_edit_priority_changed: fn(_) { "priority" },
     on_edit_type_id_changed: fn(_) { "type" },
     on_edit_card_id_changed: fn(_) { "card" },
+    on_edit_card_query_changed: fn(_) { "card-query" },
     on_edit_submitted: "submit-edit",
   )
 }

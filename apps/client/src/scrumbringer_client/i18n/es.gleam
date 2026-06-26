@@ -91,16 +91,16 @@ pub fn translate(text: Text) -> String {
     text.ContentRequired -> "Contenido obligatorio"
     text.TaskCreateCardHasChildCards ->
       "Esta tarjeta ya contiene tarjetas hijas. Añade la tarea a un grupo de tareas o elige una tarjeta vacía."
-    text.TaskCreateParentCardConflict ->
-      "Elige una sola ubicación para la tarea. Puede pertenecer a una tarjeta o al Pool raíz, no a ambas."
-    text.TaskCreateRootPoolHint ->
-      "Tarea del Pool raíz. Requiere flujo gestionado; estará disponible en el Pool y no se reclamará automáticamente."
+    text.TaskCreateParentCardConflict -> "Elige una sola tarjeta para la tarea."
+    text.TaskCreateRequiresCard ->
+      "Elige una tarjeta activa para crear la tarea."
+    text.TaskCreateActiveCardLabel -> "Tarjeta activa"
+    text.TaskCreateNoActiveCards ->
+      "No hay tarjetas activas que puedan recibir tareas"
     text.TaskCreateMissingCard ->
       "La tarjeta seleccionada no está disponible. Cierra este diálogo e inténtalo de nuevo."
-    text.TaskCreateDraftCardHint ->
-      "Esta tarea no se reclamará automáticamente. Quedará preparada hasta que se active esta tarjeta."
-    text.TaskCreateActiveCardHint ->
-      "Esta tarea entrará en el Pool al crearse y quedará disponible para alguien con la capacidad correspondiente. No se reclamará automáticamente."
+    text.TaskCreateInactiveCard ->
+      "Solo las tarjetas activas pueden recibir tareas nuevas."
     text.TaskCreateClosedCard ->
       "Las tarjetas cerradas no pueden recibir tareas nuevas."
     text.CardClosedCannotReceiveChildren ->

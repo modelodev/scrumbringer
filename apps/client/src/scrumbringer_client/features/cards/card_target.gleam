@@ -1,4 +1,4 @@
-//// Local card picker helpers for Plan scope selection.
+//// Shared card target option helpers.
 
 import domain/card.{type Card, Active}
 import gleam/int
@@ -10,8 +10,8 @@ import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/utils/card_queries
 
-pub type CardOption {
-  CardOption(
+pub type CardTargetOption {
+  CardTargetOption(
     id: Int,
     title: String,
     path: String,
@@ -21,25 +21,49 @@ pub type CardOption {
   )
 }
 
-pub fn active_options(
+pub fn active_task_targets(
   cards: List(Card),
   depth_names: List(scope_view.DepthName),
-) -> List(CardOption) {
+) -> List(CardTargetOption) {
+  cards
+  |> list.filter(fn(card) {
+    card.state == Active && !card_has_child_cards(cards, card)
+  })
+  |> sorted_options(cards, depth_names)
+}
+
+pub fn plan_scope_targets(
+  cards: List(Card),
+  depth_names: List(scope_view.DepthName),
+) -> List(CardTargetOption) {
   cards
   |> list.filter(fn(card) { card.state == Active })
-  |> list.sort(fn(a, b) {
-    string.compare(
-      card_queries.card_path(a, cards),
-      card_queries.card_path(b, cards),
-    )
+  |> sorted_options(cards, depth_names)
+}
+
+pub fn move_destination_targets(
+  destinations: List(card_policy.MoveDestination),
+  cards: List(Card),
+  depth_names: List(scope_view.DepthName),
+) -> List(CardTargetOption) {
+  destinations
+  |> list.map(fn(destination) {
+    case destination {
+      card_policy.ValidDestination(card) ->
+        option_for_card(card, cards, depth_names)
+      card_policy.InvalidDestination(card, reason) ->
+        CardTargetOption(
+          ..option_for_card(card, cards, depth_names),
+          disabled_reason: Some(card_policy.move_blocked_reason_label(reason)),
+        )
+    }
   })
-  |> list.map(fn(card) { option_for_card(card, cards, depth_names) })
 }
 
 pub fn filter_options(
-  options: List(CardOption),
+  options: List(CardTargetOption),
   query: String,
-) -> List(CardOption) {
+) -> List(CardTargetOption) {
   let normalized_query = normalize(query)
 
   case normalized_query {
@@ -56,37 +80,13 @@ pub fn filter_options(
   }
 }
 
-pub fn move_destination_options(
-  destinations: List(card_policy.MoveDestination),
-  cards: List(Card),
-  depth_names: List(scope_view.DepthName),
-) -> List(CardOption) {
-  destinations
-  |> list.map(fn(destination) {
-    case destination {
-      card_policy.ValidDestination(card) ->
-        option_for_card(card, cards, depth_names)
-      card_policy.InvalidDestination(card, reason) ->
-        CardOption(
-          ..option_for_card(card, cards, depth_names),
-          disabled_reason: Some(card_policy.move_blocked_reason_label(reason)),
-        )
-    }
-  })
-}
-
 pub fn selected_label(
-  cards: List(Card),
-  depth_names: List(scope_view.DepthName),
+  options: List(CardTargetOption),
   selected_card_id: Option(Int),
 ) -> String {
   case selected_card_id {
     Some(card_id) ->
-      case
-        list.find(active_options(cards, depth_names), fn(option) {
-          option.id == card_id
-        })
-      {
+      case list.find(options, fn(option) { option.id == card_id }) {
         Ok(option) -> option.label
         Error(_) -> ""
       }
@@ -95,13 +95,12 @@ pub fn selected_label(
 }
 
 pub fn search_value_to_card_id(
-  cards: List(Card),
-  depth_names: List(scope_view.DepthName),
+  options: List(CardTargetOption),
   value: String,
 ) -> String {
   let query = normalize(value)
   let matches =
-    active_options(cards, depth_names)
+    options
     |> list.filter(fn(option) {
       normalize(option.label) == query
       || normalize("#" <> int.to_string(option.id)) == query
@@ -114,11 +113,30 @@ pub fn search_value_to_card_id(
   }
 }
 
+fn sorted_options(
+  target_cards: List(Card),
+  all_cards: List(Card),
+  depth_names: List(scope_view.DepthName),
+) -> List(CardTargetOption) {
+  target_cards
+  |> list.sort(fn(a, b) {
+    string.compare(
+      card_queries.card_path(a, all_cards),
+      card_queries.card_path(b, all_cards),
+    )
+  })
+  |> list.map(fn(card) { option_for_card(card, all_cards, depth_names) })
+}
+
+fn card_has_child_cards(cards: List(Card), card: Card) -> Bool {
+  list.any(cards, fn(candidate) { candidate.parent_card_id == Some(card.id) })
+}
+
 fn option_for_card(
   card: Card,
   cards: List(Card),
   depth_names: List(scope_view.DepthName),
-) -> CardOption {
+) -> CardTargetOption {
   let full_path = card_queries.card_path(card, cards)
   let parent_path = card_queries.parent_path(card, cards)
   let level_name =
@@ -142,7 +160,7 @@ fn option_for_card(
       <> int.to_string(card.id)
   }
 
-  CardOption(
+  CardTargetOption(
     id: card.id,
     title: card.title,
     path: visible_path,

@@ -170,6 +170,10 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           model.ui.locale,
           model.member.pool,
           project_cards(model),
+          configured_depth_names(
+            remote.unwrap(model.core.projects, []),
+            model.core.selected_project_id,
+          ),
           client_state.pool_msg(pool_messages.MemberCreateDialogClosed),
           client_state.pool_msg(pool_messages.MemberCreateSubmitted),
           fn(value) {
@@ -187,6 +191,14 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           },
           fn(value) {
             client_state.pool_msg(pool_messages.MemberCreateTypeIdChanged(value))
+          },
+          fn(value) {
+            client_state.pool_msg(pool_messages.MemberCreateCardChanged(value))
+          },
+          fn(value) {
+            client_state.pool_msg(pool_messages.MemberCreateCardSearchChanged(
+              value,
+            ))
           },
           client_state.pool_msg(
             pool_messages.MemberCreateTypeOptionsRetryClicked,
@@ -206,6 +218,10 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
           model.core.user |> opt.map(fn(user) { user.id }),
           can_manage_task_notes(model),
           project_cards(model),
+          configured_depth_names(
+            remote.unwrap(model.core.projects, []),
+            model.core.selected_project_id,
+          ),
           project_capabilities(model),
           task_id,
           task_show_callbacks(),
@@ -288,6 +304,11 @@ fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
     },
     on_edit_card_id_changed: fn(value) {
       client_state.pool_msg(pool_messages.MemberTaskShowEditCardIdChanged(value))
+    },
+    on_edit_card_query_changed: fn(value) {
+      client_state.pool_msg(pool_messages.MemberTaskShowEditCardSearchChanged(
+        value,
+      ))
     },
     on_edit_submitted: client_state.pool_msg(
       pool_messages.MemberTaskShowEditSubmitted,

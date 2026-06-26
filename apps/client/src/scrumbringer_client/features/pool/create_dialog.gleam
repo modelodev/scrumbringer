@@ -3,16 +3,20 @@
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, form, input, option, select, text}
 import lustre/event
 
-import domain/card.{type Card, Active, Closed, Draft}
+import domain/card.{type Card, Active, Draft}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_type.{type TaskType}
 
+import scrumbringer_client/features/cards/card_target
+import scrumbringer_client/features/cards/card_target_field
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -30,15 +34,20 @@ pub type Config(msg) {
     priority: String,
     type_id: String,
     card_id: opt.Option(Int),
+    card_query: String,
     in_flight: Bool,
     task_types: Remote(List(TaskType)),
     cards: List(Card),
+    cards_loading: Bool,
+    depth_names: List(scope_view.DepthName),
     on_close: msg,
     on_submit: msg,
     on_title_changed: fn(String) -> msg,
     on_description_changed: fn(String) -> msg,
     on_priority_changed: fn(String) -> msg,
     on_type_id_changed: fn(String) -> msg,
+    on_card_id_changed: fn(String) -> msg,
+    on_card_query_changed: fn(String) -> msg,
     on_type_options_retry_clicked: msg,
   )
 }
@@ -69,7 +78,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           view_description_field(config),
           view_priority_field(config),
           view_type_field(config),
-          view_creation_context_hint(config),
+          view_card_field(config),
         ],
       ),
     ],
@@ -87,25 +96,58 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   )
 }
 
-fn view_creation_context_hint(config: Config(msg)) -> Element(msg) {
+fn view_card_field(config: Config(msg)) -> Element(msg) {
+  let options =
+    card_target.active_task_targets(config.cards, config.depth_names)
+  let filtered_options = card_target.filter_options(options, config.card_query)
+
+  div([attribute.class("task-create-card-target")], [
+    card_target_field.view(card_target_field.Config(
+      label: t(config, i18n_text.TaskCreateActiveCardLabel),
+      placeholder: t(config, i18n_text.TaskCreateRequiresCard),
+      selected_label: card_target.selected_label(options, config.card_id),
+      query: config.card_query,
+      options: filtered_options,
+      loading: config.cards_loading,
+      disabled: config.in_flight,
+      empty_title: t(config, i18n_text.TaskCreateNoActiveCards),
+      empty_body: t(config, i18n_text.TaskCreateRequiresCard),
+      loading_label: t(config, i18n_text.LoadingEllipsis),
+      listbox_id: "task-create-card-options",
+      testid_prefix: "task-create-card",
+      show_options_when_empty: config.card_id == opt.None,
+      on_query_changed: config.on_card_query_changed,
+      on_selected: config.on_card_id_changed,
+    )),
+    view_invalid_card_hint(config),
+  ])
+}
+
+fn view_invalid_card_hint(config: Config(msg)) -> Element(msg) {
+  case config.card_id {
+    opt.None -> element.none()
+    opt.Some(card_id) ->
+      case selected_card(config.cards, card_id) {
+        opt.None -> invalid_hint(t(config, i18n_text.TaskCreateMissingCard))
+        opt.Some(card) ->
+          case
+            card.state == Active && !card_has_child_cards(config.cards, card)
+          {
+            True -> element.none()
+            False -> invalid_hint(card_context_hint(config, card))
+          }
+      }
+  }
+}
+
+fn invalid_hint(message: String) -> Element(msg) {
   div(
     [
       attribute.class("task-create-context-hint"),
       attribute.attribute("data-testid", "task-create-context-hint"),
     ],
-    [text(creation_context_hint(config))],
+    [text(message)],
   )
-}
-
-fn creation_context_hint(config: Config(msg)) -> String {
-  case config.card_id {
-    opt.None -> t(config, i18n_text.TaskCreateRootPoolHint)
-    opt.Some(card_id) ->
-      case selected_card(config.cards, card_id) {
-        opt.Some(card) -> card_context_hint(config, card)
-        opt.None -> t(config, i18n_text.TaskCreateMissingCard)
-      }
-  }
 }
 
 fn selected_card(cards: List(Card), card_id: Int) -> opt.Option(Card) {
@@ -114,20 +156,10 @@ fn selected_card(cards: List(Card), card_id: Int) -> opt.Option(Card) {
 }
 
 fn card_context_hint(config: Config(msg), card: Card) -> String {
-  case card.state {
-    Draft -> {
-      case card_has_child_cards(config.cards, card) {
-        True -> t(config, i18n_text.TaskCreateCardHasChildCards)
-        False -> t(config, i18n_text.TaskCreateDraftCardHint)
-      }
-    }
-    Active -> {
-      case card_has_child_cards(config.cards, card) {
-        True -> t(config, i18n_text.TaskCreateCardHasChildCards)
-        False -> t(config, i18n_text.TaskCreateActiveCardHint)
-      }
-    }
-    Closed -> t(config, i18n_text.TaskCreateClosedCard)
+  case card.state, card_has_child_cards(config.cards, card) {
+    _, True -> t(config, i18n_text.TaskCreateCardHasChildCards)
+    Draft, False -> t(config, i18n_text.TaskCreateInactiveCard)
+    _, False -> t(config, i18n_text.TaskCreateClosedCard)
   }
 }
 
@@ -237,13 +269,41 @@ fn card_has_child_cards(cards: List(Card), card: Card) -> Bool {
 }
 
 fn create_context_blocks_submit(config: Config(msg)) -> Bool {
+  case create_form_blocks_submit(config) {
+    True -> True
+    False -> create_card_context_blocks_submit(config)
+  }
+}
+
+fn create_form_blocks_submit(config: Config(msg)) -> Bool {
+  string.trim(config.title) == ""
+  || string.length(string.trim(config.title)) > 56
+  || type_blocks_submit(config.type_id)
+  || priority_blocks_submit(config.priority)
+}
+
+fn type_blocks_submit(type_id_value: String) -> Bool {
+  case int.parse(type_id_value) {
+    Ok(_) -> False
+    Error(_) -> True
+  }
+}
+
+fn priority_blocks_submit(priority_value: String) -> Bool {
+  case int.parse(priority_value) {
+    Ok(priority) -> priority < 1 || priority > 5
+    Error(_) -> True
+  }
+}
+
+fn create_card_context_blocks_submit(config: Config(msg)) -> Bool {
   case config.card_id {
-    opt.None -> False
+    opt.None -> True
     opt.Some(card_id) -> {
       case selected_card(config.cards, card_id) {
         opt.None -> True
         opt.Some(card) ->
-          card.state == Closed || card_has_child_cards(config.cards, card)
+          card.state != Active || card_has_child_cards(config.cards, card)
       }
     }
   }

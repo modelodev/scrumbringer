@@ -17,11 +17,11 @@ import lustre/element/html.{
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/card_target
 import scrumbringer_client/features/cards/move_target
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
-import scrumbringer_client/features/plan/card_picker
 import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/features/plan/structure_filters
 import scrumbringer_client/features/plan/structure_move
@@ -268,13 +268,13 @@ fn view_move_destination_search(config: Config(msg)) -> Element(msg) {
         div(
           [
             attribute.id(listbox_id),
-            attribute.class("plan-card-picker-options plan-move-picker-options"),
+            attribute.class("card-target-options plan-move-picker-options"),
             attribute.attribute("data-testid", "plan-move-destination-options"),
             attribute.attribute("role", "listbox"),
           ],
           case options {
             [] -> [
-              span([attribute.class("plan-card-picker-empty")], [
+              span([attribute.class("card-target-empty")], [
                 text("Sin destinos para esa busqueda."),
               ]),
             ]
@@ -290,7 +290,7 @@ fn view_move_destination_search(config: Config(msg)) -> Element(msg) {
 
 fn view_move_destination_option(
   config: Config(msg),
-  option: card_picker.CardOption,
+  option: card_target.CardTargetOption,
 ) -> Element(msg) {
   let disabled = case option.disabled_reason {
     Some(_) -> True
@@ -311,8 +311,8 @@ fn view_move_destination_option(
       ),
     ],
     [
-      span([attribute.class("plan-card-picker-title")], [text(option.title)]),
-      span([attribute.class("plan-card-picker-meta")], [
+      span([attribute.class("card-target-title")], [text(option.title)]),
+      span([attribute.class("card-target-meta")], [
         text(
           option.path
           <> " - "
@@ -340,7 +340,7 @@ fn view_move_root_option(config: Config(msg)) -> Element(msg) {
           button(
             [
               attribute.type_("button"),
-              attribute.class("plan-card-picker-option plan-move-root-option"),
+              attribute.class("card-target-option plan-move-root-option"),
               attribute.attribute("data-testid", "plan-move-root-option"),
               attribute.disabled(config.move_in_flight),
               event.on_click(config.on_move_destination_selected(
@@ -348,10 +348,10 @@ fn view_move_root_option(config: Config(msg)) -> Element(msg) {
               )),
             ],
             [
-              span([attribute.class("plan-card-picker-title")], [
+              span([attribute.class("card-target-title")], [
                 text("Mover a raiz"),
               ]),
-              span([attribute.class("plan-card-picker-meta")], [
+              span([attribute.class("card-target-meta")], [
                 text("Quedará como tarjeta principal del proyecto"),
               ]),
             ],
@@ -364,8 +364,8 @@ fn view_move_root_option(config: Config(msg)) -> Element(msg) {
 
 fn move_option_class(disabled: Bool) -> String {
   case disabled {
-    True -> "plan-card-picker-option is-disabled"
-    False -> "plan-card-picker-option"
+    True -> "card-target-option is-disabled"
+    False -> "card-target-option"
   }
 }
 

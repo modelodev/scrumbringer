@@ -12,6 +12,7 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
 import scrumbringer_client/client_state/member/notes as notes_state
 import scrumbringer_client/client_state/member/pool as pool_state
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/tasks/show/model as show_model
 import scrumbringer_client/features/tasks/show/view as task_show
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -36,6 +37,7 @@ pub type Callbacks(msg) {
     on_edit_priority_changed: fn(String) -> msg,
     on_edit_type_id_changed: fn(String) -> msg,
     on_edit_card_id_changed: fn(String) -> msg,
+    on_edit_card_query_changed: fn(String) -> msg,
     on_edit_submitted: msg,
     on_note_dialog_opened: msg,
     on_note_dialog_closed: msg,
@@ -62,6 +64,7 @@ pub fn view(
   current_user_id: opt.Option(Int),
   can_manage_notes: Bool,
   cards: List(Card),
+  depth_names: List(scope_view.DepthName),
   capabilities: List(Capability),
   task_id: Int,
   callbacks: Callbacks(msg),
@@ -75,6 +78,7 @@ pub fn view(
     current_user_id,
     can_manage_notes,
     cards,
+    depth_names,
     capabilities,
     task_id,
     callbacks,
@@ -90,6 +94,7 @@ pub fn from_state(
   current_user_id: opt.Option(Int),
   can_manage_notes: Bool,
   cards: List(Card),
+  depth_names: List(scope_view.DepthName),
   capabilities: List(Capability),
   task_id: Int,
   callbacks: Callbacks(msg),
@@ -105,7 +110,7 @@ pub fn from_state(
     current_user_id: current_user_id,
     active_tab: task_show.active_tab,
     dependencies: dependencies_config(dependencies, callbacks),
-    editor: editor_config(pool, task_show, cards, task, callbacks),
+    editor: editor_config(pool, task_show, cards, depth_names, task, callbacks),
     notes: notes_config(notes, can_manage_notes, callbacks),
     activity: activity_config(notes),
     activity_total: notes.member_activity_total,
@@ -178,6 +183,7 @@ fn editor_config(
   pool: pool_state.Model,
   task_show: show_model.Model,
   cards: List(Card),
+  depth_names: List(scope_view.DepthName),
   task: opt.Option(Task),
   callbacks: Callbacks(msg),
 ) -> task_show.TaskEditorConfig(msg) {
@@ -188,10 +194,12 @@ fn editor_config(
     edit_priority: task_show.edit_priority,
     edit_type_id: task_show.edit_type_id,
     edit_card_id: task_show.edit_card_id,
+    edit_card_query: task_show.edit_card_query,
     edit_error: task_show.edit_error,
     edit_in_flight: task_show.edit_in_flight,
     task_types: pool.member_task_types,
     cards: cards,
+    depth_names: depth_names,
     parent_card_title: parent_card_title(cards, task),
     on_edit_started: callbacks.on_edit_started,
     on_edit_cancelled: callbacks.on_edit_cancelled,
@@ -200,6 +208,7 @@ fn editor_config(
     on_edit_priority_changed: callbacks.on_edit_priority_changed,
     on_edit_type_id_changed: callbacks.on_edit_type_id_changed,
     on_edit_card_id_changed: callbacks.on_edit_card_id_changed,
+    on_edit_card_query_changed: callbacks.on_edit_card_query_changed,
     on_edit_submitted: callbacks.on_edit_submitted,
   )
 }

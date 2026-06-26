@@ -39,7 +39,7 @@ pub fn plan_kanban_has_kanban_title_and_hides_claimable_task_ui_test() {
   assert_not_contains(html, "draggable=\"true\"")
 }
 
-pub fn plan_kanban_card_scope_without_selection_shows_empty_state_test() {
+pub fn plan_kanban_card_scope_without_selection_shows_card_target_options_test() {
   let html =
     kanban_board.KanbanConfig(
       ..config([]),
@@ -51,7 +51,10 @@ pub fn plan_kanban_card_scope_without_selection_shows_empty_state_test() {
 
   assert_contains(html, "data-testid=\"kanban-empty-card-scope\"")
   assert_contains(html, "Select an active card")
-  assert_not_contains(html, "Release 1.5")
+  assert_contains(html, "data-testid=\"plan-scope-card-option\"")
+  assert_contains(html, "Release 1.5")
+  assert_not_contains(html, "Draft prep")
+  assert_not_contains(html, "Closed outcome")
 }
 
 pub fn plan_kanban_hides_management_actions_even_for_managers_test() {

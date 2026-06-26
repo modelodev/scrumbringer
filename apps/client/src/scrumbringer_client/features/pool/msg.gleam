@@ -91,6 +91,8 @@ pub type Msg {
   MemberCreateDescriptionChanged(String)
   MemberCreatePriorityChanged(String)
   MemberCreateTypeIdChanged(String)
+  MemberCreateCardChanged(String)
+  MemberCreateCardSearchChanged(String)
   MemberCreateTypeOptionsRetryClicked
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
@@ -135,6 +137,7 @@ pub type Msg {
   MemberTaskShowEditPriorityChanged(String)
   MemberTaskShowEditTypeIdChanged(String)
   MemberTaskShowEditCardIdChanged(String)
+  MemberTaskShowEditCardSearchChanged(String)
   MemberTaskShowEditSubmitted
   MemberTaskUpdated(ApiResult(Task))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))

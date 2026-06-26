@@ -36,6 +36,7 @@ import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/cards/scoped_navigation
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/features/tasks/show/details as task_show_details
@@ -102,10 +103,12 @@ pub type TaskEditorConfig(msg) {
     edit_priority: String,
     edit_type_id: String,
     edit_card_id: String,
+    edit_card_query: String,
     edit_error: opt.Option(String),
     edit_in_flight: Bool,
     task_types: Remote(List(TaskType)),
     cards: List(Card),
+    depth_names: List(scope_view.DepthName),
     parent_card_title: opt.Option(String),
     on_edit_started: msg,
     on_edit_cancelled: msg,
@@ -114,6 +117,7 @@ pub type TaskEditorConfig(msg) {
     on_edit_priority_changed: fn(String) -> msg,
     on_edit_type_id_changed: fn(String) -> msg,
     on_edit_card_id_changed: fn(String) -> msg,
+    on_edit_card_query_changed: fn(String) -> msg,
     on_edit_submitted: msg,
   )
 }
@@ -374,10 +378,12 @@ fn editor_config(config: TaskShowConfig(msg)) -> show_editor.Config(msg) {
     edit_priority: config.editor.edit_priority,
     edit_type_id: config.editor.edit_type_id,
     edit_card_id: config.editor.edit_card_id,
+    edit_card_query: config.editor.edit_card_query,
     edit_error: config.editor.edit_error,
     edit_in_flight: config.editor.edit_in_flight,
     task_types: config.editor.task_types,
     cards: config.editor.cards,
+    depth_names: config.editor.depth_names,
     on_edit_started: config.editor.on_edit_started,
     on_edit_cancelled: config.editor.on_edit_cancelled,
     on_title_changed: config.editor.on_edit_title_changed,
@@ -385,6 +391,7 @@ fn editor_config(config: TaskShowConfig(msg)) -> show_editor.Config(msg) {
     on_priority_changed: config.editor.on_edit_priority_changed,
     on_type_id_changed: config.editor.on_edit_type_id_changed,
     on_card_id_changed: config.editor.on_edit_card_id_changed,
+    on_card_query_changed: config.editor.on_edit_card_query_changed,
     on_submitted: config.editor.on_edit_submitted,
   )
 }

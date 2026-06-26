@@ -90,16 +90,13 @@ pub fn translate(text: Text) -> String {
     text.ContentRequired -> "Content required"
     text.TaskCreateCardHasChildCards ->
       "This card already contains child cards. Add the task to a task group or choose an empty card."
-    text.TaskCreateParentCardConflict ->
-      "Choose one task location only. A task can belong to a card or the Root Pool, not both."
-    text.TaskCreateRootPoolHint ->
-      "Root Pool task. Requires manage flow; it will be available in the Pool and will not be auto-claimed."
+    text.TaskCreateParentCardConflict -> "Choose one card for the task."
+    text.TaskCreateRequiresCard -> "Choose an active card to create the task."
+    text.TaskCreateActiveCardLabel -> "Active card"
+    text.TaskCreateNoActiveCards -> "No active cards can receive tasks"
     text.TaskCreateMissingCard ->
       "Selected card is not available. Close this dialog and try again."
-    text.TaskCreateDraftCardHint ->
-      "This task will not be auto-claimed. It will stay prepared until this card is activated."
-    text.TaskCreateActiveCardHint ->
-      "This task will enter the Pool when created and be available for someone with the matching capability. It will not be auto-claimed."
+    text.TaskCreateInactiveCard -> "Only active cards can receive new tasks."
     text.TaskCreateClosedCard -> "Closed cards cannot receive new tasks."
     text.CardClosedCannotReceiveChildren ->
       "Closed cards cannot receive new child cards or tasks."

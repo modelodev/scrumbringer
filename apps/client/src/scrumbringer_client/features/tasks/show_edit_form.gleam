@@ -23,6 +23,7 @@ pub type Labels {
     title_too_long_max_56: String,
     type_required: String,
     priority_must_be_1_to_5: String,
+    card_required: String,
   )
 }
 
@@ -59,19 +60,23 @@ pub fn evaluate(current_task: Task, input: Input, labels: Labels) -> Decision {
           case validate_priority(input.priority, labels) {
             Error(message) -> Invalid(message)
             Ok(priority) -> {
-              let card_id = optional_id_from_input(input.card_id)
-              let submission =
-                Submission(
-                  title: title,
-                  description: normalize_description(input.description),
-                  priority: priority,
-                  type_id: type_id,
-                  card_id: card_id,
-                )
+              case required_id_from_input(input.card_id, labels.card_required) {
+                Error(message) -> Invalid(message)
+                Ok(card_id) -> {
+                  let submission =
+                    Submission(
+                      title: title,
+                      description: normalize_description(input.description),
+                      priority: priority,
+                      type_id: type_id,
+                      card_id: opt.Some(card_id),
+                    )
 
-              case is_dirty(current_task, submission) {
-                True -> Changed(submission)
-                False -> Unchanged(submission)
+                  case is_dirty(current_task, submission) {
+                    True -> Changed(submission)
+                    False -> Unchanged(submission)
+                  }
+                }
               }
             }
           }
@@ -138,9 +143,9 @@ fn effective_type_input(type_id: String, current_task: Task) -> String {
   }
 }
 
-fn optional_id_from_input(value: String) -> opt.Option(Int) {
+fn required_id_from_input(value: String, error: String) -> Result(Int, String) {
   case int.parse(value) {
-    Ok(id) if id > 0 -> opt.Some(id)
-    _ -> opt.None
+    Ok(id) if id > 0 -> Ok(id)
+    _ -> Error(error)
   }
 }

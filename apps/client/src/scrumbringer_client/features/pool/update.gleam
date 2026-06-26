@@ -973,6 +973,8 @@ fn update_without_view_mode(
     | pool_messages.MemberCreateDescriptionChanged(_)
     | pool_messages.MemberCreatePriorityChanged(_)
     | pool_messages.MemberCreateTypeIdChanged(_)
+    | pool_messages.MemberCreateCardChanged(_)
+    | pool_messages.MemberCreateCardSearchChanged(_)
     | pool_messages.MemberCreateTypeOptionsRetryClicked
     | pool_messages.MemberCreateSubmitted
     | pool_messages.MemberTaskCreated(_) -> #(model, effect.none())
@@ -1050,6 +1052,7 @@ fn update_without_view_mode(
     | pool_messages.MemberTaskShowEditPriorityChanged(_)
     | pool_messages.MemberTaskShowEditTypeIdChanged(_)
     | pool_messages.MemberTaskShowEditCardIdChanged(_)
+    | pool_messages.MemberTaskShowEditCardSearchChanged(_)
     | pool_messages.MemberTaskShowEditSubmitted
     | pool_messages.MemberTaskUpdated(_) -> #(model, effect.none())
 

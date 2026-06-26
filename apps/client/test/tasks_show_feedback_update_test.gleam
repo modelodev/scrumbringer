@@ -46,6 +46,7 @@ fn edit_context() -> show_update.EditContext(Nil) {
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1-5",
+    card_required: "Card required",
   )
 }
 

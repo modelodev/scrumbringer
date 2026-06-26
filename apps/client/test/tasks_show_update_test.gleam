@@ -27,6 +27,7 @@ fn edit_context(current_task, can_edit) -> show_update.EditContext(Nil) {
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1-5",
+    card_required: "Card required",
   )
 }
 
@@ -119,7 +120,7 @@ fn sample_task() -> Task {
     due_date: None,
     version: 3,
     parent_card_id: None,
-    card_id: None,
+    card_id: Some(10),
     card_title: None,
     card_color: None,
     has_new_notes: False,
@@ -330,6 +331,7 @@ pub fn local_task_show_edit_submitted_unchanged_stops_editing_test() {
         edit_description: "Review checklist.",
         edit_priority: "2",
         edit_type_id: "1",
+        edit_card_id: "10",
         edit_error: Some("old"),
       ),
     )
@@ -360,6 +362,7 @@ pub fn local_task_show_edit_submitted_changed_sets_in_flight_test() {
         edit_description: "Updated description",
         edit_priority: "2",
         edit_type_id: "1",
+        edit_card_id: "10",
       ),
     )
 

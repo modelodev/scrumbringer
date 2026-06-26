@@ -6,10 +6,10 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/card_target
 import scrumbringer_client/features/cards/move_target
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
-import scrumbringer_client/features/plan/card_picker
 import scrumbringer_client/features/plan/types
 
 pub type DropTargetState {
@@ -51,13 +51,13 @@ pub fn search_state(
   tasks: List(Task),
   depth_names: List(scope_view.DepthName),
   move_mode: member_pool.PlanMoveMode,
-) -> #(String, List(card_picker.CardOption)) {
+) -> #(String, List(card_target.CardTargetOption)) {
   let query = move_query(move_mode)
   let options = case moving_card(cards, move_mode) {
     Some(card) ->
       card_policy.move_destination_entries(card, cards, tasks)
-      |> card_picker.move_destination_options(cards, depth_names)
-      |> card_picker.filter_options(query)
+      |> card_target.move_destination_targets(cards, depth_names)
+      |> card_target.filter_options(query)
     None -> []
   }
 

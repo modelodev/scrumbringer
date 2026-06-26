@@ -5,9 +5,11 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/card.{type Card}
 import domain/remote.{Failed, NotAsked}
 import domain/task.{type Task}
 import domain/task_type.{type TaskType}
+import scrumbringer_client/api/cards as cards_api
 import scrumbringer_client/api/tasks/operations as task_operations_api
 import scrumbringer_client/api/tasks/task_types as task_types_api
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -19,12 +21,14 @@ pub type Context(parent_msg) {
   Context(
     selected_project_id: opt.Option(Int),
     on_task_types_fetched: fn(Int, ApiResult(List(TaskType))) -> parent_msg,
+    on_project_cards_fetched: fn(Int, ApiResult(List(Card))) -> parent_msg,
     on_task_created: fn(ApiResult(Task)) -> parent_msg,
     select_project_first: String,
     title_required: String,
     title_too_long_max_56: String,
     type_required: String,
     priority_must_be_1_to_5: String,
+    card_required: String,
     card_has_child_cards: String,
     parent_card_conflict: String,
   )
@@ -74,6 +78,14 @@ pub fn try_update(
       handle_type_id_changed(model, value)
       |> without_policy
 
+    pool_messages.MemberCreateCardChanged(value) ->
+      handle_card_changed(model, value)
+      |> without_policy
+
+    pool_messages.MemberCreateCardSearchChanged(value) ->
+      handle_card_search_changed(model, value)
+      |> without_policy
+
     pool_messages.MemberCreateTypeOptionsRetryClicked ->
       handle_type_options_retry_clicked(model, context)
       |> without_policy
@@ -114,7 +126,7 @@ fn handle_dialog_opened(
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   let next = create_state.open(model)
 
-  #(next, fetch_task_types_if_needed(next, context))
+  #(next, fetch_create_resources_if_needed(next, context))
 }
 
 fn handle_dialog_opened_with_card(
@@ -124,7 +136,7 @@ fn handle_dialog_opened_with_card(
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   let next = create_state.open_with_card(model, card_id)
 
-  #(next, fetch_task_types_if_needed(next, context))
+  #(next, fetch_create_resources_if_needed(next, context))
 }
 
 fn handle_type_options_retry_clicked(
@@ -141,6 +153,33 @@ fn fetch_task_types_if_needed(
   case model.member_task_types {
     NotAsked | Failed(_) -> fetch_task_types(context)
     _ -> effect.none()
+  }
+}
+
+fn fetch_create_resources_if_needed(
+  model: member_pool.Model,
+  context: Context(parent_msg),
+) -> Effect(parent_msg) {
+  effect.batch([
+    fetch_task_types_if_needed(model, context),
+    fetch_cards_if_needed(model, context),
+  ])
+}
+
+fn fetch_cards_if_needed(
+  _model: member_pool.Model,
+  context: Context(parent_msg),
+) -> Effect(parent_msg) {
+  fetch_cards(context)
+}
+
+fn fetch_cards(context: Context(parent_msg)) -> Effect(parent_msg) {
+  case context.selected_project_id {
+    opt.Some(project_id) ->
+      cards_api.list_cards(project_id, fn(result) {
+        context.on_project_cards_fetched(project_id, result)
+      })
+    opt.None -> effect.none()
   }
 }
 
@@ -188,6 +227,20 @@ fn handle_type_id_changed(
   #(create_state.type_id_changed(model, value), effect.none())
 }
 
+fn handle_card_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(create_state.card_id_changed(model, value), effect.none())
+}
+
+fn handle_card_search_changed(
+  model: member_pool.Model,
+  value: String,
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  #(create_state.card_query_changed(model, value), effect.none())
+}
+
 fn handle_submitted(
   model: member_pool.Model,
   context: Context(parent_msg),
@@ -227,6 +280,7 @@ fn create_labels(context: Context(parent_msg)) -> create_form.Labels {
     title_too_long_max_56: context.title_too_long_max_56,
     type_required: context.type_required,
     priority_must_be_1_to_5: context.priority_must_be_1_to_5,
+    card_required: context.card_required,
   )
 }
 

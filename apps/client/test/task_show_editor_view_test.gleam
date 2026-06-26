@@ -60,6 +60,7 @@ fn config(current_user_id) -> show_editor.Config(String) {
     edit_priority: "2",
     edit_type_id: "1",
     edit_card_id: "",
+    edit_card_query: "",
     edit_error: None,
     edit_in_flight: False,
     task_types: Loaded([
@@ -72,6 +73,7 @@ fn config(current_user_id) -> show_editor.Config(String) {
       ),
     ]),
     cards: [],
+    depth_names: [],
     on_edit_started: "edit-started",
     on_edit_cancelled: "edit-cancelled",
     on_title_changed: fn(value) { "title:" <> value },
@@ -79,6 +81,7 @@ fn config(current_user_id) -> show_editor.Config(String) {
     on_priority_changed: fn(value) { "priority:" <> value },
     on_type_id_changed: fn(value) { "type:" <> value },
     on_card_id_changed: fn(value) { "card:" <> value },
+    on_card_query_changed: fn(value) { "card-query:" <> value },
     on_submitted: "submitted",
   )
 }

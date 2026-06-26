@@ -14,12 +14,14 @@ fn local_context(selected_project_id) -> create_update.Context(Nil) {
   create_update.Context(
     selected_project_id: selected_project_id,
     on_task_types_fetched: fn(_project_id, _result) { Nil },
+    on_project_cards_fetched: fn(_project_id, _result) { Nil },
     on_task_created: fn(_result) { Nil },
     select_project_first: "Select a project first",
     title_required: "Title required",
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1 to 5",
+    card_required: "Choose an active card",
     card_has_child_cards: "Choose a task group or empty card",
     parent_card_conflict: "Choose one task location only",
   )
@@ -178,6 +180,29 @@ pub fn local_create_submitted_without_project_sets_context_error_test() {
 
   let assert create_update.NoPolicy = policy
   let assert Some("Select a project first") = next.member_create_error
+  let assert False = next.member_create_in_flight
+  let assert True = fx == effect.none()
+}
+
+pub fn local_create_submitted_without_card_sets_card_error_test() {
+  let model =
+    member_pool.Model(
+      ..member_pool.default_model(),
+      member_create_title: "Ship task",
+      member_create_type_id: "1",
+      member_create_priority: "3",
+      member_create_card_id: None,
+    )
+
+  let assert Some(create_update.Update(next, fx, policy)) =
+    create_update.try_update(
+      model,
+      pool_messages.MemberCreateSubmitted,
+      local_context(Some(1)),
+    )
+
+  let assert create_update.NoPolicy = policy
+  let assert Some("Choose an active card") = next.member_create_error
   let assert False = next.member_create_in_flight
   let assert True = fx == effect.none()
 }

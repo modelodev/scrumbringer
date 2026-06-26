@@ -9,6 +9,7 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/features/cards/policy as card_policy
+import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/pool/create_dialog
 import scrumbringer_client/i18n/locale
 
@@ -71,6 +72,14 @@ fn task_type() -> TaskType {
   )
 }
 
+fn depth_names() -> List(scope_view.DepthName) {
+  [
+    scope_view.DepthName(1, "Initiative", "Initiatives"),
+    scope_view.DepthName(2, "Feature", "Features"),
+    scope_view.DepthName(3, "Story", "Stories"),
+  ]
+}
+
 fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
   create_dialog.Config(
     locale: locale.En,
@@ -80,15 +89,20 @@ fn create_config(card_id: opt.Option(Int), cards: List(Card)) {
     priority: "3",
     type_id: "1",
     card_id: card_id,
+    card_query: "",
     in_flight: False,
     task_types: Loaded([task_type()]),
     cards: cards,
+    cards_loading: False,
+    depth_names: depth_names(),
     on_close: "close",
     on_submit: "submit",
     on_title_changed: fn(value) { "title-" <> value },
     on_description_changed: fn(value) { "description-" <> value },
     on_priority_changed: fn(value) { "priority-" <> value },
     on_type_id_changed: fn(value) { "type-" <> value },
+    on_card_id_changed: fn(value) { "card-" <> value },
+    on_card_query_changed: fn(value) { "card-query-" <> value },
     on_type_options_retry_clicked: "retry",
   )
 }
@@ -119,29 +133,22 @@ pub fn task_group_show_offers_create_task_only_test() {
   let assert True = policy.can_create_task
 }
 
-pub fn pool_create_task_explains_root_pool_manage_flow_impact_test() {
+pub fn create_task_without_card_requires_active_card_test() {
   let html =
     create_dialog.view(create_config(opt.None, []))
     |> element.to_document_string
 
-  assert_contains(html, "Root Pool")
-  assert_contains(html, "manage flow")
+  assert_contains(html, "Choose an active card to create the task")
+  assert_contains(html, "disabled")
 }
 
-pub fn draft_card_create_task_does_not_auto_claim_test() {
+pub fn draft_card_create_task_is_blocked_test() {
   let html =
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Draft)]))
     |> element.to_document_string
 
-  assert_contains(html, "will not be auto-claimed")
-}
-
-pub fn draft_card_create_task_explains_prepared_until_activation_test() {
-  let html =
-    create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Draft)]))
-    |> element.to_document_string
-
-  assert_contains(html, "prepared until this card is activated")
+  assert_contains(html, "Only active cards can receive new tasks")
+  assert_contains(html, "disabled")
 }
 
 pub fn active_card_create_task_adds_task_to_pool_test() {
@@ -149,7 +156,7 @@ pub fn active_card_create_task_adds_task_to_pool_test() {
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
     |> element.to_document_string
 
-  assert_contains(html, "enter the Pool")
+  assert_contains(html, "Card 1")
 }
 
 pub fn active_card_create_task_explains_pool_entry_test() {
@@ -157,7 +164,7 @@ pub fn active_card_create_task_explains_pool_entry_test() {
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
     |> element.to_document_string
 
-  assert_contains(html, "available for someone with the matching capability")
+  assert_contains(html, "Active card")
 }
 
 pub fn move_card_dialog_lists_valid_destinations_across_depths_test() {

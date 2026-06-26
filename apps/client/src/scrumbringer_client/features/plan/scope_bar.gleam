@@ -10,8 +10,9 @@ import lustre/element/html.{
 import lustre/event
 
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/cards/card_target
+import scrumbringer_client/features/cards/card_target_field
 import scrumbringer_client/features/hierarchy/scope_view
-import scrumbringer_client/features/plan/card_picker
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -149,107 +150,31 @@ fn view_depth_selector(config: Config(msg)) -> Element(msg) {
 
 fn view_card_search(config: Config(msg)) -> Element(msg) {
   let listbox_id = config.id_prefix <> "-active-card-options"
-  let has_query = config.card_query != ""
-  let options =
-    card_picker.active_options(config.cards, config.depth_names)
-    |> card_picker.filter_options(config.card_query)
-  let input_value = case config.card_query {
-    "" ->
-      card_picker.selected_label(
-        config.cards,
-        config.depth_names,
-        config.selected_card_id,
-      )
-    query -> query
-  }
+  let options = card_target.plan_scope_targets(config.cards, config.depth_names)
+  let filtered_options = card_target.filter_options(options, config.card_query)
 
   div([attribute.class("plan-card-scope-control")], [
-    input([
-      attribute.type_("search"),
-      attribute.attribute("data-testid", "plan-scope-card-search"),
-      attribute.attribute("role", "combobox"),
-      attribute.attribute("aria-controls", listbox_id),
-      attribute.attribute("aria-expanded", bool_string(has_query)),
-      attribute.attribute("aria-autocomplete", "list"),
-      attribute.attribute("autocomplete", "off"),
-      attribute.placeholder(i18n.t(config.locale, i18n_text.PlanScopeSelectCard)),
-      attribute.value(input_value),
-      event.on_input(config.on_scope_card_search_change),
-      event.on_change(config.on_scope_card_search_change),
-    ]),
-    view_card_options(
-      config.locale,
-      listbox_id,
-      has_query,
-      options,
-      config.on_scope_card_change,
-    ),
+    card_target_field.view(card_target_field.Config(
+      label: i18n.t(config.locale, i18n_text.PlanScopeCard),
+      placeholder: i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
+      selected_label: card_target.selected_label(
+        options,
+        config.selected_card_id,
+      ),
+      query: config.card_query,
+      options: filtered_options,
+      loading: False,
+      disabled: False,
+      empty_title: i18n.t(config.locale, i18n_text.PlanScopeNoActiveCards),
+      empty_body: i18n.t(config.locale, i18n_text.PlanScopeSelectCard),
+      loading_label: i18n.t(config.locale, i18n_text.LoadingEllipsis),
+      listbox_id: listbox_id,
+      testid_prefix: "plan-scope-card",
+      show_options_when_empty: config.selected_card_id == None,
+      on_query_changed: config.on_scope_card_search_change,
+      on_selected: config.on_scope_card_change,
+    )),
   ])
-}
-
-fn view_card_options(
-  locale: Locale,
-  listbox_id: String,
-  visible: Bool,
-  options: List(card_picker.CardOption),
-  on_scope_card_change: fn(String) -> msg,
-) -> Element(msg) {
-  case visible {
-    False -> element.none()
-    True ->
-      div(
-        [
-          attribute.id(listbox_id),
-          attribute.class("plan-card-picker-options"),
-          attribute.attribute("data-testid", "plan-scope-card-options"),
-          attribute.attribute("role", "listbox"),
-        ],
-        case options {
-          [] -> [
-            span(
-              [
-                attribute.class("plan-card-picker-empty"),
-                attribute.attribute("data-testid", "plan-scope-card-no-results"),
-              ],
-              [text(i18n.t(locale, i18n_text.PlanScopeNoActiveCards))],
-            ),
-          ]
-          _ ->
-            list.map(options, fn(option) {
-              view_card_option(option, on_scope_card_change)
-            })
-        },
-      )
-  }
-}
-
-fn view_card_option(
-  option: card_picker.CardOption,
-  on_scope_card_change: fn(String) -> msg,
-) -> Element(msg) {
-  button(
-    [
-      attribute.type_("button"),
-      attribute.class("plan-card-picker-option"),
-      attribute.attribute("data-testid", "plan-scope-card-option"),
-      attribute.attribute("data-card-id", int.to_string(option.id)),
-      attribute.attribute("role", "option"),
-      attribute.attribute("aria-label", option.label),
-      event.on_click(on_scope_card_change(int.to_string(option.id))),
-    ],
-    [
-      span([attribute.class("plan-card-picker-title")], [text(option.title)]),
-      span([attribute.class("plan-card-picker-meta")], [
-        text(
-          option.path
-          <> " - "
-          <> option.level_name
-          <> " #"
-          <> int.to_string(option.id),
-        ),
-      ]),
-    ],
-  )
 }
 
 fn view_mode_controls(config: Config(msg)) -> Element(msg) {

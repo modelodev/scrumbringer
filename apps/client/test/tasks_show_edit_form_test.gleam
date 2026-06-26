@@ -11,6 +11,7 @@ fn labels() -> show_edit_form.Labels {
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1-5",
+    card_required: "Card required",
   )
 }
 
@@ -20,7 +21,7 @@ fn input(title: String, description: String) -> show_edit_form.Input {
     description: description,
     priority: "2",
     type_id: "1",
-    card_id: "",
+    card_id: "10",
   )
 }
 
@@ -41,7 +42,7 @@ fn sample_task() -> Task {
     due_date: None,
     version: 3,
     parent_card_id: None,
-    card_id: None,
+    card_id: Some(10),
     card_title: None,
     card_color: None,
     has_new_notes: False,
@@ -79,7 +80,7 @@ pub fn show_edit_form_returns_unchanged_canonical_values_test() {
   let assert "Review checklist." = submission.description
   let assert 2 = submission.priority
   let assert 1 = submission.type_id
-  let assert None = submission.card_id
+  let assert Some(10) = submission.card_id
 }
 
 pub fn show_edit_form_returns_changed_normalized_values_test() {

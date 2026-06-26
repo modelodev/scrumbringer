@@ -30,6 +30,7 @@ pub fn open(
       edit_priority: fields.priority,
       edit_type_id: fields.type_id,
       edit_card_id: fields.card_id,
+      edit_card_query: "",
       edit_in_flight: False,
       edit_error: opt.None,
     ),
@@ -148,6 +149,7 @@ fn apply_edit_fields(
     edit_priority: fields.priority,
     edit_type_id: fields.type_id,
     edit_card_id: fields.card_id,
+    edit_card_query: "",
     edit_in_flight: False,
     edit_error: opt.None,
   )
@@ -185,7 +187,24 @@ pub fn change_edit_card_id(
   task_show: show_model.Model,
   value: String,
 ) -> show_model.Model {
-  show_model.Model(..task_show, edit_card_id: value, edit_error: opt.None)
+  show_model.Model(
+    ..task_show,
+    edit_card_id: value,
+    edit_card_query: "",
+    edit_error: opt.None,
+  )
+}
+
+pub fn change_edit_card_query(
+  task_show: show_model.Model,
+  value: String,
+) -> show_model.Model {
+  show_model.Model(
+    ..task_show,
+    edit_card_id: "",
+    edit_card_query: value,
+    edit_error: opt.None,
+  )
 }
 
 pub fn edit_invalid(
@@ -207,6 +226,7 @@ pub fn edit_unchanged(
     edit_priority: int.to_string(submission.priority),
     edit_type_id: int.to_string(submission.type_id),
     edit_card_id: id_to_form_value(submission.card_id),
+    edit_card_query: "",
     edit_in_flight: False,
     edit_error: opt.None,
   )
@@ -223,6 +243,7 @@ pub fn edit_started_submit(
     edit_priority: int.to_string(submission.priority),
     edit_type_id: int.to_string(submission.type_id),
     edit_card_id: id_to_form_value(submission.card_id),
+    edit_card_query: "",
     edit_in_flight: True,
     edit_error: opt.None,
   )
@@ -240,6 +261,7 @@ pub fn task_updated(
     edit_priority: int.to_string(updated_task.priority),
     edit_type_id: int.to_string(show_edit_form.task_type_id(updated_task)),
     edit_card_id: id_to_form_value(updated_task.card_id),
+    edit_card_query: "",
     edit_in_flight: False,
     edit_error: opt.None,
   )

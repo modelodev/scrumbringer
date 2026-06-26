@@ -34,6 +34,7 @@ pub type EditContext(parent_msg) {
     title_too_long_max_56: String,
     type_required: String,
     priority_must_be_1_to_5: String,
+    card_required: String,
   )
 }
 
@@ -138,6 +139,10 @@ pub fn try_update(
 
     pool_messages.MemberTaskShowEditCardIdChanged(value) ->
       handle_task_show_edit_card_id_changed(model.task_show, value)
+      |> task_show_result(model)
+
+    pool_messages.MemberTaskShowEditCardSearchChanged(value) ->
+      handle_task_show_edit_card_query_changed(model.task_show, value)
       |> task_show_result(model)
 
     pool_messages.MemberTaskShowEditSubmitted ->
@@ -371,6 +376,13 @@ fn handle_task_show_edit_card_id_changed(
   #(show_state.change_edit_card_id(model, value), effect.none())
 }
 
+fn handle_task_show_edit_card_query_changed(
+  model: task_show_model.Model,
+  value: String,
+) -> #(task_show_model.Model, Effect(parent_msg)) {
+  #(show_state.change_edit_card_query(model, value), effect.none())
+}
+
 fn handle_task_show_edit_submitted(
   model: task_show_model.Model,
   context: EditContext(parent_msg),
@@ -402,6 +414,7 @@ fn submit_task_show_edit(
             title_too_long_max_56: context.title_too_long_max_56,
             type_required: context.type_required,
             priority_must_be_1_to_5: context.priority_must_be_1_to_5,
+            card_required: context.card_required,
           ),
         )
       {

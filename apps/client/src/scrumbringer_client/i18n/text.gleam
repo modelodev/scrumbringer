@@ -79,10 +79,11 @@ pub type Text {
   ContentRequired
   TaskCreateCardHasChildCards
   TaskCreateParentCardConflict
-  TaskCreateRootPoolHint
+  TaskCreateRequiresCard
+  TaskCreateActiveCardLabel
+  TaskCreateNoActiveCards
   TaskCreateMissingCard
-  TaskCreateDraftCardHint
-  TaskCreateActiveCardHint
+  TaskCreateInactiveCard
   TaskCreateClosedCard
   CardClosedCannotReceiveChildren
   CardHasOperationalHistory

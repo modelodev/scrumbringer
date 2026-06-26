@@ -22,6 +22,7 @@ pub type Labels {
     title_too_long_max_56: String,
     type_required: String,
     priority_must_be_1_to_5: String,
+    card_required: String,
   )
 }
 
@@ -89,16 +90,31 @@ fn validate_priority(
 ) -> Result(Submission, String) {
   case int.parse(input.priority) {
     Ok(priority) if priority >= 1 && priority <= 5 ->
+      validate_card(input, labels, project_id, title, type_id, priority)
+
+    _ -> Error(labels.priority_must_be_1_to_5)
+  }
+}
+
+fn validate_card(
+  input: Input,
+  labels: Labels,
+  project_id: Int,
+  title: String,
+  type_id: Int,
+  priority: Int,
+) -> Result(Submission, String) {
+  case input.card_id {
+    opt.None -> Error(labels.card_required)
+    opt.Some(card_id) ->
       Ok(Submission(
         project_id: project_id,
         title: title,
         description: description(input.description),
         priority: priority,
         type_id: type_id,
-        card_id: input.card_id,
+        card_id: opt.Some(card_id),
       ))
-
-    _ -> Error(labels.priority_must_be_1_to_5)
   }
 }
 

@@ -1,5 +1,6 @@
 //// Pure state transitions for the task creation dialog.
 
+import gleam/int
 import gleam/option as opt
 
 import scrumbringer_client/client_state/dialog_mode
@@ -12,6 +13,7 @@ pub fn open(model: member_pool.Model) -> member_pool.Model {
     member_create_dialog_mode: dialog_mode.DialogCreate,
     member_create_error: opt.None,
     member_create_card_id: opt.None,
+    member_create_card_query: "",
   )
 }
 
@@ -24,6 +26,7 @@ pub fn open_with_card(
     member_create_dialog_mode: dialog_mode.DialogCreate,
     member_create_error: opt.None,
     member_create_card_id: opt.Some(card_id),
+    member_create_card_query: "",
   )
 }
 
@@ -33,6 +36,7 @@ pub fn close(model: member_pool.Model) -> member_pool.Model {
     member_create_dialog_mode: dialog_mode.DialogClosed,
     member_create_error: opt.None,
     member_create_card_id: opt.None,
+    member_create_card_query: "",
   )
 }
 
@@ -62,6 +66,30 @@ pub fn type_id_changed(
   value: String,
 ) -> member_pool.Model {
   member_pool.Model(..model, member_create_type_id: value)
+}
+
+pub fn card_id_changed(
+  model: member_pool.Model,
+  value: String,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_create_card_id: parse_card_id(value),
+    member_create_card_query: "",
+    member_create_error: opt.None,
+  )
+}
+
+pub fn card_query_changed(
+  model: member_pool.Model,
+  value: String,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_create_card_id: opt.None,
+    member_create_card_query: value,
+    member_create_error: opt.None,
+  )
 }
 
 pub fn input(
@@ -103,6 +131,7 @@ pub fn created(model: member_pool.Model) -> member_pool.Model {
     member_create_priority: "3",
     member_create_type_id: "",
     member_create_card_id: opt.None,
+    member_create_card_query: "",
   )
 }
 
@@ -115,4 +144,11 @@ pub fn create_failed(
     member_create_in_flight: False,
     member_create_error: opt.Some(message),
   )
+}
+
+fn parse_card_id(value: String) -> opt.Option(Int) {
+  case int.parse(value) {
+    Ok(id) if id > 0 -> opt.Some(id)
+    _ -> opt.None
+  }
 }

@@ -412,6 +412,12 @@ fn task_create_context(
         result,
       ))
     },
+    on_project_cards_fetched: fn(project_id, result) {
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
+        project_id,
+        result,
+      ))
+    },
     on_task_created: fn(result) {
       client_state.pool_msg(pool_messages.MemberTaskCreated(result))
     },
@@ -423,6 +429,7 @@ fn task_create_context(
       model.ui.locale,
       i18n_text.PriorityMustBe1To5,
     ),
+    card_required: i18n.t(model.ui.locale, i18n_text.TaskCreateRequiresCard),
     card_has_child_cards: i18n.t(
       model.ui.locale,
       i18n_text.TaskCreateCardHasChildCards,
@@ -537,6 +544,7 @@ fn task_show_edit_context(
       model.ui.locale,
       i18n_text.PriorityMustBe1To5,
     ),
+    card_required: i18n.t(model.ui.locale, i18n_text.TaskCreateRequiresCard),
   )
 }
 

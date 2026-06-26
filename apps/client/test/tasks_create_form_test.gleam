@@ -9,6 +9,7 @@ fn labels() -> create_form.Labels {
     title_too_long_max_56: "Title too long",
     type_required: "Type required",
     priority_must_be_1_to_5: "Priority must be 1 to 5",
+    card_required: "Choose an active card",
   )
 }
 
@@ -59,4 +60,7 @@ pub fn create_form_validate_reports_first_error_test() {
 
   let assert Error("Priority must be 1 to 5") =
     create_form.validate(create_form.Input(..input(), priority: "8"), labels())
+
+  let assert Error("Choose an active card") =
+    create_form.validate(create_form.Input(..input(), card_id: None), labels())
 }
