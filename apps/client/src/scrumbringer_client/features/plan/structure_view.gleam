@@ -12,7 +12,7 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
   button, div, h4, input, label, li, option as html_option, p, select, span,
-  text, ul,
+  strong, text, ul,
 }
 import lustre/event
 
@@ -35,6 +35,8 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attribute_value
+import scrumbringer_client/ui/button as ui_button
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/tone
@@ -91,7 +93,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let rows = structure_rows(config, include_closed)
   let summary =
     structure_rollups.summary_for_rows(rows, config.cards, config.tasks)
-  let detail = structure_detail(config, include_closed)
+  let detail = structure_detail(config, include_closed, rows)
   let content = case rows {
     [] -> view_empty_state(config)
     _ -> view_body(config, rows, detail)
@@ -141,7 +143,7 @@ fn view_surface_header(
         tone.Available,
       ),
       work_surface.summary_chip(
-        "Al activar",
+        "Preparadas",
         int.to_string(summary.pool_impact),
         tone.Warning,
       ),
@@ -417,10 +419,10 @@ fn normal_plan_refinement_controls(config: Config(msg)) -> List(Element(msg)) {
             event.on_change(config.on_sort_change),
           ],
           [
-            html_option([attribute.value("path")], "Arbol"),
+            html_option([attribute.value("path")], "Árbol"),
             html_option([attribute.value("state")], "Estado"),
-            html_option([attribute.value("due_date")], "Vence"),
-            html_option([attribute.value("pool_impact")], "Al activar"),
+            html_option([attribute.value("due_date")], "Próximo vencimiento"),
+            html_option([attribute.value("pool_impact")], "Trabajo preparado"),
           ],
         ),
       ]),
@@ -482,28 +484,10 @@ fn view_table(
           "plan-cell-tree",
         ),
         tree_table.column(
-          "Estado",
-          fn(row) { view_state_cell(config.locale, row) },
-          "plan-col-state",
-          "plan-cell-state",
-        ),
-        tree_table.column(
-          "Tareas",
-          fn(row) { view_task_count_cell(row) },
-          "plan-col-tasks",
-          "plan-cell-tasks",
-        ),
-        tree_table.column(
-          "Al activar",
-          fn(row) { view_pool_impact_cell(row) },
-          "plan-col-pool",
-          "plan-cell-pool",
-        ),
-        tree_table.column(
-          "Vence",
-          fn(row) { view_due_date_cell(row) },
-          "plan-col-due",
-          "plan-cell-due",
+          "Trabajo",
+          fn(row) { view_work_cell(config.locale, row) },
+          "plan-col-work",
+          "plan-cell-work",
         ),
         tree_table.column(
           "Acciones",
@@ -520,7 +504,7 @@ fn view_table(
 }
 
 fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg) {
-  let types.CardRow(card:, path:, level_name:, rollup:, ..) = row
+  let types.CardRow(card:, path:, level_name:, ..) = row
 
   div(
     [
@@ -551,17 +535,7 @@ fn view_mobile_row(config: Config(msg), row: types.StructureRow) -> Element(msg)
         },
       ]),
       div([attribute.class("plan-tree-mobile-meta")], [
-        view_state_cell(config.locale, row),
-        span([attribute.class("plan-task-count")], [
-          text(
-            int.to_string(rollup.closed_tasks)
-            <> "/"
-            <> int.to_string(rollup.total_tasks)
-            <> " tareas",
-          ),
-        ]),
-        view_pool_impact_cell(row),
-        view_due_date_cell(row),
+        view_work_cell(config.locale, row),
       ]),
       view_actions_cell(config, row, "mobile"),
     ],
@@ -574,11 +548,21 @@ fn view_tree_cell(config: Config(msg), row: types.StructureRow) -> Element(msg) 
     True -> " is-nested"
     False -> ""
   }
+  let child_class = case
+    card_queries.direct_child_cards(card.id, config.cards)
+  {
+    [] -> " is-leaf-row"
+    _ -> " has-children"
+  }
 
   div(
     [
       attribute.class(
-        "plan-tree-cell" <> depth_class <> " " <> move_row_class(config, row),
+        "plan-tree-cell"
+        <> depth_class
+        <> child_class
+        <> " "
+        <> move_row_class(config, row),
       ),
       ..move_drop_attributes(config, card)
     ],
@@ -685,21 +669,33 @@ fn view_task_count_cell(row: types.StructureRow) -> Element(msg) {
   ])
 }
 
+fn view_work_cell(locale: Locale, row: types.StructureRow) -> Element(msg) {
+  div([attribute.class("plan-work-summary")], [
+    view_state_cell(locale, row),
+    view_task_count_cell(row),
+    view_pool_impact_cell(row),
+    view_due_date_cell(row),
+  ])
+}
+
 fn view_pool_impact_cell(row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, rollup:, ..) = row
-  signal_chip.text(
-    structure_presentation.pool_impact_label(card, rollup),
-    structure_presentation.pool_impact_tone(card),
-  )
-  |> signal_chip.with_class("plan-pool-chip")
-  |> signal_chip.view
+  case card.state {
+    card.Draft ->
+      signal_chip.text(
+        structure_presentation.draft_pool_impact_label(rollup),
+        tone.Warning,
+      )
+      |> signal_chip.view
+    _ -> element.none()
+  }
 }
 
 fn view_due_date_cell(row: types.StructureRow) -> Element(msg) {
   let types.CardRow(card:, ..) = row
   case card.due_date {
     Some(date) -> span([attribute.class("plan-due-date")], [text(date)])
-    None -> span([attribute.class("plan-due-date is-empty")], [text("-")])
+    None -> element.none()
   }
 }
 
@@ -726,7 +722,6 @@ fn view_normal_actions_cell(
 
   div([attribute.class("plan-row-actions")], [
     view_contextual_create_action(config, card, primary_create),
-    view_row_move_action(config, card, actions),
   ])
 }
 
@@ -750,20 +745,7 @@ fn view_move_actions_cell(
       structure_move.MovingSource(is_dragging) ->
         view_move_source(config, card, render_context, is_dragging)
       structure_move.MoveTarget(structure_move.ValidDropTarget) ->
-        button(
-          [
-            attribute.type_("button"),
-            attribute.class("plan-action-btn plan-move-here-btn"),
-            attribute.attribute("data-testid", "plan-move-here"),
-            attribute.disabled(config.move_in_flight),
-            event.on_click(
-              config.on_move_destination_selected(move_target.InsideCard(
-                card.id,
-              )),
-            ),
-          ],
-          [text("Mover dentro")],
-        )
+        view_move_here_button(config, card)
       structure_move.MoveTarget(structure_move.ActiveDropTarget) ->
         div([attribute.class("plan-drop-target-actions")], [
           span(
@@ -773,20 +755,7 @@ fn view_move_actions_cell(
             ],
             [text("Soltar dentro de " <> card.title)],
           ),
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("plan-action-btn plan-move-here-btn"),
-              attribute.attribute("data-testid", "plan-move-here"),
-              attribute.disabled(config.move_in_flight),
-              event.on_click(
-                config.on_move_destination_selected(move_target.InsideCard(
-                  card.id,
-                )),
-              ),
-            ],
-            [text("Mover dentro")],
-          ),
+          view_move_here_button(config, card),
         ])
       structure_move.MoveTarget(structure_move.InvalidDropTarget(reason)) ->
         div(
@@ -807,6 +776,19 @@ fn view_move_actions_cell(
       structure_move.NotMoveCandidate -> element.none()
     },
   ])
+}
+
+fn view_move_here_button(config: Config(msg), card: Card) -> Element(msg) {
+  ui_button.text(
+    "Mover dentro",
+    config.on_move_destination_selected(move_target.InsideCard(card.id)),
+    ui_button.Primary,
+    ui_button.EntityAction,
+  )
+  |> ui_button.with_size(ui_button.ExtraSmall)
+  |> ui_button.with_disabled(config.move_in_flight)
+  |> ui_button.with_testid("plan-move-here")
+  |> ui_button.view
 }
 
 fn view_move_source(
@@ -860,55 +842,28 @@ fn view_contextual_create_action(
       let #(label, msg) = action_event(config, card, action_kind)
       let #(disabled, title) = availability_attrs(availability)
 
-      button(
-        [
-          attribute.type_("button"),
-          attribute.class("plan-action-btn plan-action-primary"),
-          attribute.attribute("data-testid", "plan-action-contextual-create"),
-          attribute.attribute("aria-label", label),
-          attribute.attribute("title", case title {
-            "" -> label
-            _ -> title
-          }),
-          attribute.disabled(disabled),
-          event.on_click(msg),
-        ],
-        [text("+")],
+      ui_button.icon_text(
+        label,
+        msg,
+        icons.Plus,
+        ui_button.Secondary,
+        ui_button.EntityAction,
       )
+      |> ui_button.with_size(ui_button.ExtraSmall)
+      |> ui_button.with_disabled(disabled)
+      |> ui_button.with_tooltip(contextual_action_title(label, title))
+      |> ui_button.with_testid("plan-action-contextual-create")
+      |> ui_button.with_class("plan-contextual-create-btn")
+      |> ui_button.view
     }
     None -> element.none()
   }
 }
 
-fn view_row_move_action(
-  config: Config(msg),
-  card: Card,
-  actions: List(types.PlannedAction),
-) -> Element(msg) {
-  case config.is_pm_or_admin {
-    False -> element.none()
-    True ->
-      case find_planned_action(actions, types.MoveCard) {
-        Some(planned) -> {
-          let types.PlannedAction(availability:, ..) = planned
-          let #(disabled, title) = availability_attrs(availability)
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("plan-action-btn plan-action-move-btn"),
-              attribute.attribute("data-testid", "plan-action-move-card"),
-              attribute.attribute("title", case title {
-                "" -> "Mover a..."
-                _ -> title
-              }),
-              attribute.disabled(disabled),
-              event.on_click(config.on_move_requested(card.id)),
-            ],
-            [text("Mover")],
-          )
-        }
-        None -> element.none()
-      }
+fn contextual_action_title(label: String, title: String) -> String {
+  case title {
+    "" -> label
+    _ -> title
   }
 }
 
@@ -929,21 +884,6 @@ fn find_available_action(
     list.find(actions, fn(planned) {
       let types.PlannedAction(action:, availability:) = planned
       action == target && availability == types.Available
-    })
-  {
-    Ok(action) -> Some(action)
-    Error(_) -> None
-  }
-}
-
-fn find_planned_action(
-  actions: List(types.PlannedAction),
-  target: types.CardAction,
-) -> Option(types.PlannedAction) {
-  case
-    list.find(actions, fn(planned) {
-      let types.PlannedAction(action:, ..) = planned
-      action == target
     })
   {
     Ok(action) -> Some(action)
@@ -972,6 +912,9 @@ fn view_detail(
       view_detail_empty(rollup),
     )
   }
+  let direct_subcards = card_queries.direct_child_cards(card.id, config.cards)
+  let direct_tasks = card_queries.direct_child_tasks(card.id, config.tasks)
+  let rollup = detail_rollup(detail)
 
   div(
     [
@@ -992,7 +935,8 @@ fn view_detail(
       div([attribute.class("plan-detail-path")], [
         text(card_queries.card_path(card, config.cards)),
       ]),
-      view_detail_rollup(card, detail_rollup(detail)),
+      view_detail_context(config, card, direct_subcards, direct_tasks, rollup),
+      view_detail_rollup(card, rollup),
       h4([attribute.class("plan-detail-section-title")], [text(title)]),
       body,
       div([attribute.class("plan-detail-actions")], [
@@ -1005,6 +949,33 @@ fn view_detail(
       ]),
     ],
   )
+}
+
+fn view_detail_context(
+  config: Config(msg),
+  card: Card,
+  direct_subcards: List(Card),
+  direct_tasks: List(domain_task.Task),
+  rollup: types.CardRollup,
+) -> Element(msg) {
+  div([attribute.class("plan-detail-context")], [
+    div([attribute.class("plan-detail-context-item")], [
+      span([], [text("Nivel")]),
+      strong([], [text(level_label(config, card))]),
+    ]),
+    div([attribute.class("plan-detail-context-item")], [
+      span([], [text("Hijas")]),
+      strong([], [text(int.to_string(list.length(direct_subcards)))]),
+    ]),
+    div([attribute.class("plan-detail-context-item")], [
+      span([], [text("Tareas directas")]),
+      strong([], [text(int.to_string(list.length(direct_tasks)))]),
+    ]),
+    div([attribute.class("plan-detail-context-item")], [
+      span([], [text("Tareas descendientes")]),
+      strong([], [text(int.to_string(rollup.total_tasks))]),
+    ]),
+  ])
 }
 
 fn view_detail_subcards(
@@ -1060,23 +1031,40 @@ fn view_detail_empty(_rollup: types.CardRollup) -> Element(msg) {
 }
 
 fn view_detail_rollup(card: Card, rollup: types.CardRollup) -> Element(msg) {
-  div([attribute.class("plan-detail-rollup")], [
-    signal_chip.metric_int("tareas", rollup.total_tasks, tone.Neutral)
+  div(
+    [attribute.class("plan-detail-rollup")],
+    list.append(
+      [
+        signal_chip.metric_int("tareas", rollup.total_tasks, tone.Neutral)
+          |> signal_chip.view,
+        signal_chip.metric_int(
+          "disponibles",
+          rollup.available_tasks,
+          tone.Available,
+        )
+          |> signal_chip.view,
+        signal_chip.metric_int("bloqueadas", rollup.blocked_tasks, tone.Blocked)
+          |> signal_chip.view,
+      ],
+      view_detail_pool_impact(card, rollup),
+    ),
+  )
+}
+
+fn view_detail_pool_impact(
+  card: Card,
+  rollup: types.CardRollup,
+) -> List(Element(msg)) {
+  case card.state {
+    card.Draft -> [
+      signal_chip.text(
+        structure_presentation.draft_pool_impact_label(rollup),
+        tone.Warning,
+      )
       |> signal_chip.view,
-    signal_chip.metric_int(
-      "disponibles",
-      rollup.available_tasks,
-      tone.Available,
-    )
-      |> signal_chip.view,
-    signal_chip.metric_int("bloqueadas", rollup.blocked_tasks, tone.Blocked)
-      |> signal_chip.view,
-    signal_chip.text(
-      structure_presentation.pool_impact_label(card, rollup),
-      tone.Warning,
-    )
-      |> signal_chip.view,
-  ])
+    ]
+    _ -> []
+  }
 }
 
 fn view_detail_action(
@@ -1088,17 +1076,56 @@ fn view_detail_action(
   let #(label, msg) = action_event(config, card, action)
   let #(disabled, title) = availability_attrs(availability)
 
-  button(
-    [
-      attribute.type_("button"),
-      attribute.class(structure_policy.action_class(action)),
-      attribute.attribute("data-testid", structure_policy.action_testid(action)),
-      attribute.attribute("title", title),
-      attribute.disabled(disabled),
-      event.on_click(msg),
-    ],
-    [text(label)],
-  )
+  case disabled {
+    True -> element.none()
+    False -> view_detail_action_button(action, label, title, msg)
+  }
+}
+
+fn view_detail_action_button(
+  action: types.CardAction,
+  label: String,
+  title: String,
+  msg: msg,
+) -> Element(msg) {
+  detail_action_button_config(action, label, msg)
+  |> ui_button.with_size(ui_button.ExtraSmall)
+  |> ui_button.with_tooltip(contextual_action_title(label, title))
+  |> ui_button.with_testid(structure_policy.action_testid(action))
+  |> ui_button.view
+}
+
+fn detail_action_button_config(
+  action: types.CardAction,
+  label: String,
+  msg: msg,
+) -> ui_button.Config(msg) {
+  case action {
+    types.CreateSubcard ->
+      ui_button.icon_text(
+        label,
+        msg,
+        icons.Plus,
+        ui_button.Secondary,
+        ui_button.EntityAction,
+      )
+    types.CreateTask ->
+      ui_button.icon_text(
+        label,
+        msg,
+        icons.Plus,
+        ui_button.Secondary,
+        ui_button.EntityAction,
+      )
+    types.ActivateSubtree ->
+      ui_button.text(label, msg, ui_button.Primary, ui_button.EntityAction)
+    types.MoveCard ->
+      ui_button.text(label, msg, ui_button.Secondary, ui_button.EntityAction)
+    types.CloseCard ->
+      ui_button.text(label, msg, ui_button.Secondary, ui_button.EntityAction)
+    types.DeleteCard ->
+      ui_button.text(label, msg, ui_button.Danger, ui_button.EntityAction)
+  }
 }
 
 fn view_empty_state(config: Config(msg)) -> Element(msg) {
@@ -1128,14 +1155,16 @@ fn view_empty_state(config: Config(msg)) -> Element(msg) {
       p([], [text(body)]),
       case show_create {
         True ->
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("plan-action-btn plan-action-primary"),
-              event.on_click(config.on_create_subcard(0)),
-            ],
-            [text("+ Subtarjeta")],
+          ui_button.icon_text(
+            "Subtarjeta",
+            config.on_create_subcard(0),
+            icons.Plus,
+            ui_button.Secondary,
+            ui_button.ViewAction,
           )
+          |> ui_button.with_testid("plan-empty-create-subcard")
+          |> ui_button.with_class("plan-contextual-create-btn")
+          |> ui_button.view
         False -> element.none()
       },
     ],
@@ -1248,6 +1277,7 @@ fn row_for_card(
 fn structure_detail(
   config: Config(msg),
   include_closed: Bool,
+  rows: List(types.StructureRow),
 ) -> Option(types.StructureDetail) {
   case config.scope_kind, config.selected_card_id {
     member_pool.PlanScopeCard, Some(card_id) ->
@@ -1259,7 +1289,15 @@ fn structure_detail(
         Ok(card) -> Some(detail_for_card(config, card))
         Error(_) -> None
       }
-    _, _ -> None
+    _, _ ->
+      case rows {
+        [types.CardRow(card:, ..), ..] ->
+          case is_collapsed(config, card.id) {
+            True -> None
+            False -> Some(detail_for_card(config, card))
+          }
+        [] -> None
+      }
   }
 }
 
@@ -1344,8 +1382,8 @@ fn action_event(
   action: types.CardAction,
 ) -> #(String, msg) {
   case action {
-    types.CreateSubcard -> #("+ Subtarjeta", config.on_create_subcard(card.id))
-    types.CreateTask -> #("+ Tarea", config.on_create_task_in_card(card.id))
+    types.CreateSubcard -> #("Subtarjeta", config.on_create_subcard(card.id))
+    types.CreateTask -> #("Tarea", config.on_create_task_in_card(card.id))
     types.ActivateSubtree -> #(
       "Activar subárbol",
       config.on_card_click(card.id),

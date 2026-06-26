@@ -94,17 +94,6 @@ fn has_claimed_or_ongoing_descendants(
   })
 }
 
-pub fn action_class(action: types.CardAction) -> String {
-  case action {
-    types.CreateSubcard -> "plan-action-btn"
-    types.CreateTask -> "plan-action-btn"
-    types.ActivateSubtree -> "plan-action-btn"
-    types.MoveCard -> "plan-action-btn"
-    types.CloseCard -> "plan-action-btn"
-    types.DeleteCard -> "plan-action-btn plan-action-danger"
-  }
-}
-
 pub fn action_testid(action: types.CardAction) -> String {
   case action {
     types.CreateSubcard -> "plan-action-create-subcard"

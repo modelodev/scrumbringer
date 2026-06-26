@@ -21,22 +21,9 @@ pub fn card_state_tone(card: Card) -> tone.Tone {
   }
 }
 
-pub fn pool_impact_label(card: Card, rollup: types.CardRollup) -> String {
-  case card.state {
-    Draft ->
-      case rollup.pool_impact {
-        0 -> "0"
-        impact -> "+" <> int.to_string(impact) <> " tareas"
-      }
-    Active -> "ya activo"
-    Closed -> "-"
-  }
-}
-
-pub fn pool_impact_tone(card: Card) -> tone.Tone {
-  case card.state {
-    Draft -> tone.Warning
-    Active -> tone.Available
-    Closed -> tone.Neutral
+pub fn draft_pool_impact_label(rollup: types.CardRollup) -> String {
+  case rollup.pool_impact {
+    0 -> "0"
+    impact -> "+" <> int.to_string(impact) <> " tareas"
   }
 }

@@ -39,7 +39,10 @@ pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   assert_contains(html, "data-testid=\"plan-structure-view\"")
   assert_contains(html, "data-testid=\"plan-filter-status\"")
   assert_contains(html, "data-testid=\"plan-filter-sort\"")
-  assert_contains(html, "Al activar")
+  assert_contains(html, "Trabajo")
+  assert_not_contains(html, "Al activar")
+  assert_not_contains(html, "Vence")
+  assert_not_contains(html, "ya activo")
   assert_not_contains(html, "Pool impact")
   assert_contains(html, "Root Initiative")
   assert_contains(html, "Portal Feature")
@@ -60,6 +63,8 @@ pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   assert_contains(html, "class=\"plan-tree-marker\">▾</span>")
   assert_contains(html, "class=\"plan-tree-leaf\"></span>")
   assert_not_contains(html, "plan-tree-path")
+  assert_contains(html, "plan-detail-context")
+  assert_contains(html, "Tareas descendientes")
 }
 
 pub fn tree_gutter_scales_for_deep_card_nesting_test() {
@@ -273,7 +278,7 @@ pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {
   assert_contains(spanish, "Incluye cerradas")
 }
 
-pub fn unsupported_actions_are_disabled_with_reason_test() {
+pub fn unsupported_detail_actions_are_hidden_test() {
   let html =
     render(
       structure_view.Config(
@@ -283,18 +288,18 @@ pub fn unsupported_actions_are_disabled_with_reason_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-action-create-task\"")
-  assert_contains(html, "Esta tarjeta contiene subtarjetas")
-  assert_contains(html, "data-testid=\"plan-action-delete-card\"")
-  assert_contains(html, "Tiene historial operativo")
+  assert_not_contains(html, "data-testid=\"plan-action-create-task\"")
+  assert_not_contains(html, "Esta tarjeta contiene subtarjetas")
+  assert_not_contains(html, "data-testid=\"plan-action-delete-card\"")
+  assert_not_contains(html, "Tiene historial operativo")
 }
 
-pub fn row_actions_are_title_contextual_create_and_move_test() {
+pub fn row_actions_are_title_and_contextual_create_test() {
   let html = render(base_config())
 
   assert_contains(html, "data-testid=\"card-show-open\"")
   assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
-  assert_contains(html, "data-testid=\"plan-action-move-card\"")
+  assert_not_contains(html, "data-testid=\"plan-action-move-card\"")
   assert_not_contains(html, "data-testid=\"plan-card-show-action\"")
   assert_not_contains(html, "data-testid=\"plan-action-menu\"")
   assert_not_contains(html, "data-testid=\"plan-action-menu-toggle\"")
@@ -302,7 +307,7 @@ pub fn row_actions_are_title_contextual_create_and_move_test() {
   assert_not_contains(html, "role=\"menuitem\"")
 }
 
-pub fn detail_actions_keep_close_and_delete_disabled_reasons_test() {
+pub fn detail_actions_hide_unavailable_close_and_delete_test() {
   let html =
     render(
       structure_view.Config(
@@ -312,16 +317,16 @@ pub fn detail_actions_keep_close_and_delete_disabled_reasons_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-action-close-card\"")
-  assert_contains(html, "Hay tareas reclamadas o en curso debajo")
-  assert_contains(html, "data-testid=\"plan-action-delete-card\"")
-  assert_contains(html, "Tiene historial operativo")
+  assert_not_contains(html, "data-testid=\"plan-action-close-card\"")
+  assert_not_contains(html, "Hay tareas reclamadas o en curso debajo")
+  assert_not_contains(html, "data-testid=\"plan-action-delete-card\"")
+  assert_not_contains(html, "Tiene historial operativo")
 }
 
-pub fn move_action_enters_inline_mode_without_opening_detail_test() {
+pub fn normal_outline_does_not_repeat_move_action_per_row_test() {
   let html = render(base_config())
 
-  assert_contains(html, "data-testid=\"plan-action-move-card\"")
+  assert_not_contains(html, "data-testid=\"plan-action-move-card\"")
   assert_not_contains(html, "card-move-dialog")
 }
 
