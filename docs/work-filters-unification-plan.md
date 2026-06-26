@@ -101,7 +101,7 @@ Para Pool, incluir tambien:
 - `visibility`;
 - `on_visibility_change`.
 
-La busqueda no debe asumir que todas las superficies usan exactamente la misma semantica. Plan estructura puede seguir usando `member_filters_q` como busqueda contextual sin mostrar `capability_scope`.
+La busqueda no debe asumir que todas las superficies usan exactamente la misma semantica. Plan estructura no debe heredar `member_filters_q`: si necesita busqueda contextual, debe tener estado y control propios.
 
 ### `data-testid` canonicos
 
@@ -1346,7 +1346,7 @@ Validaciones ejecutadas:
 
 - `cd apps/client && gleam format --check src test`;
 - `cd apps/client && gleam check`;
-- `cd apps/client && gleam test --target javascript`: 1864 tests pasan;
+- `cd apps/client && gleam test --target javascript`: 1868 tests pasan;
 - `cd apps/server && gleam format --check src test`;
 - `cd apps/server && gleam check`;
 - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable gleam test`: 557 tests pasan;
@@ -1389,7 +1389,10 @@ Hallazgos posteriores corregidos:
 - el shortcut de foco seguia apuntando a `pool-filter-q`; ahora usa el id canonico `pool-work-filter-q`;
 - `left_panel_data` y `view_mode_update` tenian politicas de URL member parcialmente duplicadas; ahora ambas usan `member_route_policy`;
 - `member_plan_route` y `member_depth_route` fuerzan `PlanStructureDestination`, evitando heredar `PlanKanban` y filtros de trabajo al navegar a estructura;
-- `PlanStructureDestination` conserva solo la busqueda contextual visible y limpia `scope/type/cap`;
+- `PlanStructureDestination` limpia `scope/type/cap/search` para no aplicar filtros de trabajo invisibles;
+- `client_update.current_route` usa `member_route_policy` y deja de serializar filtros de trabajo para Plan Structure;
+- la hidratacion de rutas Member ignora `q` en Plan Structure y conserva `q` en Plan Kanban, donde el control es visible;
+- `client_view` pasa `search_query: ""` a Plan Structure hasta que exista busqueda estructural propia;
 - el follow-up de API cliente ya no queda pendiente: `api/projects.gleam` y `api/tasks/capabilities.gleam` dejaron de duplicar el endpoint.
 
 Notas:

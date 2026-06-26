@@ -79,9 +79,7 @@ fn with_visible_filters(
       |> url_state.with_type_filter(type_filter)
       |> url_state.with_capability_filter(capability_filter)
       |> url_state.with_search(search)
-    PlanStructureDestination ->
-      state
-      |> url_state.with_search(search)
+    PlanStructureDestination -> state
     PeopleDestination -> state
   }
 }

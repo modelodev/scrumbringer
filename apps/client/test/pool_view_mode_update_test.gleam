@@ -130,7 +130,7 @@ pub fn view_mode_change_to_people_omits_invisible_work_filters_test() {
   let assert opt.None = url_state.search(state)
 }
 
-pub fn view_mode_change_to_plan_structure_omits_scope_type_and_capability_test() {
+pub fn view_mode_change_to_plan_structure_omits_invisible_work_filters_test() {
   let model =
     member_pool.Model(
       ..member_pool.default_model(),
@@ -154,7 +154,7 @@ pub fn view_mode_change_to_plan_structure_omits_scope_type_and_capability_test()
     url_state.capability_scope(state)
   let assert opt.None = url_state.type_filter(state)
   let assert opt.None = url_state.capability_filter(state)
-  let assert opt.Some("rollout") = url_state.search(state)
+  let assert opt.None = url_state.search(state)
 }
 
 pub fn plan_mode_change_to_kanban_preserves_work_filters_in_route_test() {
@@ -205,7 +205,7 @@ pub fn plan_mode_change_to_structure_clears_invisible_work_filters_test() {
   let assert capability_scope.AllCapabilities = next.member_capability_scope
   let assert opt.None = next.member_filters_type_id
   let assert opt.None = next.member_filters_capability_id
-  let assert "rollout" = next.member_filters_q
+  let assert "" = next.member_filters_q
   let assert view_mode_update.ReplaceMemberRoute(state) = route_policy
   let assert view_mode.Cards = url_state.view(state)
   let assert url_state.PlanStructureParam = url_state.plan_mode(state)
@@ -213,5 +213,5 @@ pub fn plan_mode_change_to_structure_clears_invisible_work_filters_test() {
     url_state.capability_scope(state)
   let assert opt.None = url_state.type_filter(state)
   let assert opt.None = url_state.capability_filter(state)
-  let assert opt.Some("rollout") = url_state.search(state)
+  let assert opt.None = url_state.search(state)
 }

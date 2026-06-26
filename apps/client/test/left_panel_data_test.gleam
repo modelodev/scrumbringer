@@ -67,7 +67,7 @@ pub fn member_route_omits_work_filters_for_people_test() {
   state |> url_state.search |> assert_equal(None)
 }
 
-pub fn member_plan_route_omits_scope_type_and_capability_filters_test() {
+pub fn member_plan_route_omits_invisible_work_filters_test() {
   let config =
     left_panel_data.MemberRouteConfig(
       ..base_config(),
@@ -83,7 +83,7 @@ pub fn member_plan_route_omits_scope_type_and_capability_filters_test() {
   |> assert_equal(capability_scope.AllCapabilities)
   state |> url_state.type_filter |> assert_equal(None)
   state |> url_state.capability_filter |> assert_equal(None)
-  state |> url_state.search |> assert_equal(Some("sync"))
+  state |> url_state.search |> assert_equal(None)
 }
 
 pub fn member_kanban_route_preserves_work_filters_test() {

@@ -83,6 +83,7 @@ fn plan_mode_changed(
         member_capability_scope: capability_scope.default(),
         member_filters_type_id: opt.None,
         member_filters_capability_id: opt.None,
+        member_filters_q: "",
       )
   }
 

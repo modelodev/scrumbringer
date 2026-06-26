@@ -1751,7 +1751,7 @@ fn plan_structure_config(
     status_filter: model.member.pool.member_plan_status_filter,
     sort_order: model.member.pool.member_plan_sort,
     collapsed_card_ids: collapsed_plan_card_ids(model.member.pool),
-    search_query: model.member.pool.member_filters_q,
+    search_query: "",
     is_pm_or_admin: permissions.can_manage_project_content(
       user.org_role,
       state_selectors.selected_project(model),

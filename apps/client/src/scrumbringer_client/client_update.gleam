@@ -98,6 +98,7 @@ import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/layout/update as layout_workflow
 import scrumbringer_client/features/pool/card_refresh
 import scrumbringer_client/features/pool/member_refresh_filters
+import scrumbringer_client/features/pool/member_route_policy
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
 import scrumbringer_client/features/tasks/show_state as task_show_state
@@ -278,6 +279,22 @@ fn route_search_or_empty(search: opt.Option(String)) -> String {
   }
 }
 
+fn route_member_search_or_empty(state: url_state.UrlState) -> String {
+  case
+    member_destination(
+      url_state.view(state),
+      plan_url.mode_from_url(url_state.plan_mode(state)),
+    )
+  {
+    member_route_policy.PoolDestination
+    | member_route_policy.CapabilitiesDestination
+    | member_route_policy.PlanKanbanDestination ->
+      route_search_or_empty(url_state.search(state))
+    member_route_policy.PlanStructureDestination
+    | member_route_policy.PeopleDestination -> ""
+  }
+}
+
 fn current_route(model: client_state.Model) -> router.Route {
   case model.core.page {
     client_state.Login -> router.Login
@@ -304,39 +321,21 @@ fn current_route(model: client_state.Model) -> router.Route {
       }
 
     client_state.Member -> {
-      let state = case model.core.selected_project_id {
-        opt.Some(project_id) ->
-          url_state.with_project(url_state.empty(), project_id)
-        opt.None -> url_state.empty()
-      }
-      let state = url_state.with_view(state, model.member.pool.view_mode)
-      let state = case model.member.pool.view_mode {
-        view_mode.Cards ->
-          url_state.with_plan_mode(
-            state,
-            plan_url.mode_to_url(model.member.pool.member_plan_mode),
-          )
-        _ -> state
-      }
       let state =
-        url_state.with_capability_scope(
-          state,
-          model.member.pool.member_capability_scope,
-        )
-      let state =
-        url_state.with_type_filter(
-          state,
-          model.member.pool.member_filters_type_id,
-        )
-      let state =
-        url_state.with_capability_filter(
-          state,
-          model.member.pool.member_filters_capability_id,
-        )
-      let state =
-        url_state.with_search(
-          state,
-          helpers_options.search_to_opt(model.member.pool.member_filters_q),
+        member_route_policy.state(
+          model.core.selected_project_id,
+          member_destination(
+            model.member.pool.view_mode,
+            model.member.pool.member_plan_mode,
+          ),
+          member_route_policy.WorkFilters(
+            capability_scope: model.member.pool.member_capability_scope,
+            type_filter: model.member.pool.member_filters_type_id,
+            capability_filter: model.member.pool.member_filters_capability_id,
+            search: helpers_options.search_to_opt(
+              model.member.pool.member_filters_q,
+            ),
+          ),
         )
       let state =
         url_state.with_card_depth(
@@ -710,7 +709,7 @@ fn apply_route_fields(
                 member_capability_scope: url_state.capability_scope(state),
                 member_filters_type_id: url_state.type_filter(state),
                 member_filters_capability_id: url_state.capability_filter(state),
-                member_filters_q: route_search_or_empty(url_state.search(state)),
+                member_filters_q: route_member_search_or_empty(state),
               ),
             )
           },
@@ -1996,6 +1995,23 @@ fn task_filters_for_member_route(
     model.member.pool.member_filters_capability_id,
     model.member.pool.member_filters_q,
   )
+}
+
+fn member_destination(
+  view_mode: view_mode.ViewMode,
+  plan_mode: member_pool.PlanMode,
+) -> member_route_policy.Destination {
+  case view_mode {
+    view_mode.Pool -> member_route_policy.PoolDestination
+    view_mode.Capabilities -> member_route_policy.CapabilitiesDestination
+    view_mode.People -> member_route_policy.PeopleDestination
+    view_mode.Cards ->
+      case plan_mode {
+        member_pool.PlanKanban -> member_route_policy.PlanKanbanDestination
+        member_pool.PlanStructure ->
+          member_route_policy.PlanStructureDestination
+      }
+  }
 }
 
 /// Provides should pause active task on project change.

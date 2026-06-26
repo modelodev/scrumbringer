@@ -1,6 +1,7 @@
 import domain/view_mode
 import gleam/option as opt
 import lustre/effect
+import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -102,6 +103,95 @@ pub fn navigate_to_card_work_scope_sets_plan_scope_card_test() {
   next_model.member.pool.member_plan_scope_kind
   |> assert_equal(member_pool.PlanScopeCard)
   next_model.member.pool.member_plan_scope_card_id |> assert_equal(opt.Some(42))
+}
+
+pub fn navigate_to_plan_structure_ignores_inherited_work_search_test() {
+  let route =
+    url_state.empty()
+    |> url_state.with_project(7)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanStructureParam)
+    |> url_state.with_search(opt.Some("rollout"))
+    |> router.Member
+
+  let #(next_model, _) =
+    client_update.update(
+      client_state.default_model(),
+      client_state.NavigateTo(route, client_state.Push),
+    )
+
+  next_model.member.pool.view_mode |> assert_equal(view_mode.Cards)
+  next_model.member.pool.member_plan_mode
+  |> assert_equal(member_pool.PlanStructure)
+  next_model.member.pool.member_filters_q |> assert_equal("")
+}
+
+pub fn navigate_to_plan_kanban_preserves_visible_work_search_test() {
+  let route =
+    url_state.empty()
+    |> url_state.with_project(7)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanKanbanParam)
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+    |> url_state.with_search(opt.Some("rollout"))
+    |> router.Member
+
+  let #(next_model, _) =
+    client_update.update(
+      client_state.default_model(),
+      client_state.NavigateTo(route, client_state.Push),
+    )
+
+  next_model.member.pool.view_mode |> assert_equal(view_mode.Cards)
+  next_model.member.pool.member_plan_mode
+  |> assert_equal(member_pool.PlanKanban)
+  next_model.member.pool.member_capability_scope
+  |> assert_equal(capability_scope.MyCapabilities)
+  next_model.member.pool.member_filters_q |> assert_equal("rollout")
+}
+
+pub fn plan_structure_clean_route_matches_current_route_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(
+        ..core,
+        page: client_state.Member,
+        selected_project_id: opt.Some(7),
+      )
+    })
+    |> client_state.update_member(fn(member) {
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..member.pool,
+          view_mode: view_mode.Cards,
+          member_plan_mode: member_pool.PlanStructure,
+          member_capability_scope: capability_scope.MyCapabilities,
+          member_filters_type_id: opt.Some(2),
+          member_filters_capability_id: opt.Some(3),
+          member_filters_q: "rollout",
+        ),
+      )
+    })
+    |> client_state.update_ui(fn(ui) {
+      ui_state.UiModel(..ui, mobile_drawer: ui_state.DrawerLeftOpen)
+    })
+  let route =
+    url_state.empty()
+    |> url_state.with_project(7)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_plan_mode(url_state.PlanStructureParam)
+    |> router.Member
+
+  let #(next_model, fx) =
+    client_update.update(
+      model,
+      client_state.NavigateTo(route, client_state.Push),
+    )
+
+  next_model.ui.mobile_drawer |> assert_equal(ui_state.DrawerLeftOpen)
+  let assert True = fx == effect.none()
 }
 
 pub fn navigate_to_current_route_is_noop_test() {

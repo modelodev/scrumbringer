@@ -194,6 +194,42 @@ pub fn member_people_view_renders_task_and_card_ctas_from_client_config_test() {
   let assert True = string.contains(html, "Open card")
 }
 
+pub fn member_plan_structure_ignores_inherited_work_search_test() {
+  let model =
+    base_model()
+    |> update_core(fn(core) {
+      CoreModel(
+        ..core,
+        page: client_state.Member,
+        user: opt.Some(User(
+          id: 1,
+          email: "admin@example.com",
+          org_id: 1,
+          org_role: org_role.Admin,
+          created_at: "2026-01-01T00:00:00Z",
+        )),
+        selected_project_id: opt.Some(1),
+      )
+    })
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          view_mode: view_mode.Cards,
+          member_plan_mode: member_pool.PlanStructure,
+          member_filters_q: "rollout",
+        ),
+      )
+    })
+
+  let html = client_view.view(model) |> element.to_document_string
+
+  let assert True = string.contains(html, "data-testid=\"plan-structure-view\"")
+  let assert False = string.contains(html, "Buscar: rollout")
+}
+
 fn admin_mobile_model(section: permissions.AdminSection) -> Model {
   base_model()
   |> update_core(fn(core) {
