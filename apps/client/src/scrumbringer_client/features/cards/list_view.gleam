@@ -90,6 +90,7 @@ fn view_card_item(config: Config(msg), card: Card) -> Element(msg) {
       },
       div([attribute.class("ficha-meta")], [
         card_progress.view(
+          config.locale,
           card.closed_count,
           card.task_count,
           card_progress.Compact,

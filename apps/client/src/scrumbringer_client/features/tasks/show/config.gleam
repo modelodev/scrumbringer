@@ -3,11 +3,9 @@ import gleam/option as opt
 import lustre/element.{type Element}
 
 import domain/activity/entity.{type ActivityEvent}
-import domain/capability.{type Capability}
 import domain/card.{type Card}
-import domain/remote.{type Remote, Loaded}
+import domain/remote.{type Remote}
 import domain/task.{type Task}
-import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state/member/dependencies as dependencies_state
 import scrumbringer_client/client_state/member/notes as notes_state
@@ -65,7 +63,6 @@ pub fn view(
   can_manage_notes: Bool,
   cards: List(Card),
   depth_names: List(scope_view.DepthName),
-  capabilities: List(Capability),
   task_id: Int,
   callbacks: Callbacks(msg),
 ) -> Element(msg) {
@@ -79,7 +76,6 @@ pub fn view(
     can_manage_notes,
     cards,
     depth_names,
-    capabilities,
     task_id,
     callbacks,
   ))
@@ -95,7 +91,6 @@ pub fn from_state(
   can_manage_notes: Bool,
   cards: List(Card),
   depth_names: List(scope_view.DepthName),
-  capabilities: List(Capability),
   task_id: Int,
   callbacks: Callbacks(msg),
 ) -> task_show.TaskShowConfig(msg) {
@@ -106,7 +101,6 @@ pub fn from_state(
     task_id: task_id,
     task: task,
     parent_card: parent_card(cards, task),
-    capability_name: capability_name(pool.member_task_types, capabilities, task),
     current_user_id: current_user_id,
     active_tab: task_show.active_tab,
     dependencies: dependencies_config(dependencies, callbacks),
@@ -125,36 +119,6 @@ pub fn from_state(
 
 fn activity_config(notes: notes_state.Model) -> Remote(List(ActivityEvent)) {
   notes.member_activity
-}
-
-fn capability_name(
-  task_types: Remote(List(TaskType)),
-  capabilities: List(Capability),
-  task: opt.Option(Task),
-) -> opt.Option(String) {
-  case task, task_types {
-    opt.Some(current_task), Loaded(types) -> {
-      case
-        list.find(types, fn(task_type) { task_type.id == current_task.type_id })
-      {
-        Ok(task_type) ->
-          case task_type.capability_id {
-            opt.Some(capability_id) ->
-              case
-                list.find(capabilities, fn(capability) {
-                  capability.id == capability_id
-                })
-              {
-                Ok(capability) -> opt.Some(capability.name)
-                Error(_) -> opt.None
-              }
-            opt.None -> opt.None
-          }
-        Error(_) -> opt.None
-      }
-    }
-    _, _ -> opt.None
-  }
 }
 
 fn dependencies_config(

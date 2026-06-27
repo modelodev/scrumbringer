@@ -28,6 +28,7 @@
 //// ```
 
 import gleam/dynamic/decode
+import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
@@ -159,16 +160,32 @@ fn on_escape(on_close: msg) -> attribute.Attribute(msg) {
 }
 
 /// Attributes for feature-local panels that use a visible heading as their label.
-pub fn panel_attributes(
-  title_id: String,
-  on_close: msg,
-) -> List(attribute.Attribute(msg)) {
+pub fn panel_base_attributes(title_id: String) -> List(attribute.Attribute(msg)) {
   [
     attribute.attribute("role", "dialog"),
     attribute.attribute("aria-modal", "true"),
     attribute.attribute("aria-labelledby", title_id),
-    ..escape_close_attributes(on_close)
   ]
+}
+
+/// Attributes for feature-local panels that close through the application
+/// shortcut layer instead of a local keydown handler.
+pub fn passive_panel_attributes(
+  title_id: String,
+) -> List(attribute.Attribute(msg)) {
+  panel_base_attributes(title_id)
+}
+
+/// Attributes for feature-local panels that use a visible heading as their label
+/// and own their Escape close behavior.
+pub fn panel_attributes(
+  title_id: String,
+  on_close: msg,
+) -> List(attribute.Attribute(msg)) {
+  list.append(
+    panel_base_attributes(title_id),
+    escape_close_attributes(on_close),
+  )
 }
 
 /// Attributes for a visible panel heading used as the dialog label.

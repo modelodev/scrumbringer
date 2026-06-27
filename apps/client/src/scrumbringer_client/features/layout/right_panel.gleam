@@ -413,7 +413,12 @@ fn view_my_card_item(
     ],
     [
       span([attribute.class("card-title")], [text(card.card_title)]),
-      card_progress.view(card.closed, card.total, card_progress.Compact),
+      card_progress.view(
+        config.locale,
+        card.closed,
+        card.total,
+        card_progress.Compact,
+      ),
     ],
   )
 }

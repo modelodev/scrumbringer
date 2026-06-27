@@ -5,6 +5,8 @@ import lustre/element.{type Element, none}
 import lustre/element/html.{a, button, div, text}
 import lustre/event
 
+import scrumbringer_client/ui/icons
+
 pub type Item(msg) {
   ButtonItem(
     label: String,
@@ -14,6 +16,12 @@ pub type Item(msg) {
     title: Option(String),
   )
   LinkItem(label: String, testid: String, href: String)
+}
+
+pub type Trigger {
+  TextTrigger(label: String, aria_label: Option(String))
+  IconTrigger(label: String, icon: icons.NavIcon)
+  IconTextTrigger(label: String, icon: icons.NavIcon)
 }
 
 pub fn item(label: String, testid: String, on_click: msg) -> Item(msg) {
@@ -44,43 +52,68 @@ pub fn view(
   item_class: String,
   items: List(Item(msg)),
 ) -> Element(msg) {
+  view_with_trigger(
+    TextTrigger(label: trigger_label, aria_label: trigger_aria_label),
+    trigger_testid,
+    menu_id,
+    menu_class,
+    trigger_class,
+    items_class,
+    item_class,
+    items,
+  )
+}
+
+pub fn view_with_trigger(
+  trigger: Trigger,
+  trigger_testid: String,
+  menu_id: String,
+  menu_class: String,
+  trigger_class: String,
+  items_class: String,
+  item_class: String,
+  items: List(Item(msg)),
+) -> Element(msg) {
   case items {
     [] -> none()
-    _ ->
-      element.element(
-        "details",
+    _ -> {
+      let panel_id = menu_id <> "-panel"
+
+      div(
         [
-          attribute.class(menu_class),
+          attribute.class("action-menu " <> menu_class),
           attribute.attribute("data-testid", menu_class),
         ],
         [
-          element.element(
-            "summary",
+          button(
             [
-              attribute.class(trigger_class),
+              attribute.class("action-menu-trigger " <> trigger_class),
               attribute.attribute("data-testid", trigger_testid),
+              attribute.attribute("type", "button"),
               attribute.attribute("role", "button"),
-              attribute.attribute("aria-label", case trigger_aria_label {
-                Some(value) -> value
-                None -> trigger_label
-              }),
+              attribute.attribute("aria-label", trigger_label(trigger)),
+              attribute.attribute("title", trigger_label(trigger)),
               attribute.attribute("aria-haspopup", "menu"),
-              attribute.attribute("aria-controls", menu_id <> "-panel"),
+              attribute.attribute("aria-controls", panel_id),
+              attribute.attribute("popovertarget", panel_id),
+              attribute.attribute("style", anchor_name(menu_id)),
             ],
-            [text(trigger_label)],
+            trigger_children(trigger),
           ),
           div(
             [
-              attribute.class(items_class),
-              attribute.attribute("id", menu_id <> "-panel"),
+              attribute.class("action-menu-panel " <> items_class),
+              attribute.attribute("id", panel_id),
+              attribute.attribute("popover", "auto"),
               attribute.attribute("role", "menu"),
+              attribute.attribute("style", anchor_position(menu_id)),
             ],
             list.map(items, fn(menu_item) {
               case menu_item {
                 ButtonItem(label:, testid:, on_click:, disabled:, title:) ->
                   button(
                     [
-                      attribute.class(item_class),
+                      attribute.class("action-menu-item " <> item_class),
                       attribute.attribute("data-testid", testid),
                       attribute.attribute("type", "button"),
                       attribute.attribute("role", "menuitem"),
@@ -89,6 +122,8 @@ pub fn view(
                         bool_string(disabled),
                       ),
                       attribute.attribute("title", option_to_string(title)),
+                      attribute.attribute("popovertarget", panel_id),
+                      attribute.attribute("popovertargetaction", "hide"),
                       attribute.disabled(disabled),
                       event.on_click(on_click),
                     ],
@@ -97,7 +132,7 @@ pub fn view(
                 LinkItem(label:, testid:, href:) ->
                   a(
                     [
-                      attribute.class(item_class),
+                      attribute.class("action-menu-item " <> item_class),
                       attribute.attribute("data-testid", testid),
                       attribute.href(href),
                       attribute.attribute("role", "menuitem"),
@@ -109,6 +144,43 @@ pub fn view(
           ),
         ],
       )
+    }
+  }
+}
+
+fn anchor_name(menu_id: String) -> String {
+  "anchor-name: --" <> menu_id <> "-anchor;"
+}
+
+fn anchor_position(menu_id: String) -> String {
+  "position-anchor: --"
+  <> menu_id
+  <> "-anchor; inset: auto; top: anchor(bottom); right: anchor(right); margin: 6px 0 0; position-try-fallbacks: flip-block, flip-inline;"
+}
+
+fn trigger_label(trigger: Trigger) -> String {
+  case trigger {
+    TextTrigger(label:, aria_label:) ->
+      case aria_label {
+        Some(value) -> value
+        None -> label
+      }
+    IconTrigger(label:, ..) -> label
+    IconTextTrigger(label:, ..) -> label
+  }
+}
+
+fn trigger_children(trigger: Trigger) -> List(Element(msg)) {
+  case trigger {
+    TextTrigger(label:, ..) -> [text(label)]
+    IconTrigger(label:, icon:) -> [
+      icons.nav_icon(icon, icons.Small),
+      element.element("span", [attribute.class("sr-only")], [text(label)]),
+    ]
+    IconTextTrigger(label:, icon:) -> [
+      icons.nav_icon(icon, icons.Small),
+      text(label),
+    ]
   }
 }
 

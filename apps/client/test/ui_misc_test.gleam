@@ -76,7 +76,9 @@ pub fn action_menu_renders_links_as_menu_items_test() {
   let assert True = string.contains(html, "href=\"/app?view=cards\"")
   let assert True = string.contains(html, "role=\"menuitem\"")
   let assert True = string.contains(html, "data-testid=\"open-plan\"")
-  let assert False = string.contains(html, "type=\"button\"")
+  let assert True = string.contains(html, "popover=\"auto\"")
+  let assert True = string.contains(html, "popovertarget=\"open-menu-panel\"")
+  let assert False = string.contains(html, "<details")
 }
 
 pub fn empty_state_simple_renders_description_test() {

@@ -231,6 +231,7 @@ pub type NavIcon {
   EmptyMailbox
   Close
   Menu
+  MoreHorizontal
   // Sub-section icons (Story 4.8 UX)
   Rules
   // Right panel icons (Story 4.8 UX)
@@ -321,6 +322,7 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
     Menu -> outline.bars_3()
+    MoreHorizontal -> outline.ellipsis_horizontal()
     // Sub-section icons (Story 4.8 UX)
     Rules -> outline.document_text()
     // Right panel icons (Story 4.8 UX)
@@ -405,6 +407,7 @@ pub fn nav_icon_with_class(
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
     Menu -> outline.bars_3()
+    MoreHorizontal -> outline.ellipsis_horizontal()
     // Sub-section icons (Story 4.8 UX)
     Rules -> outline.document_text()
     // Right panel icons (Story 4.8 UX)

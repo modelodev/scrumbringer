@@ -158,6 +158,7 @@ fn due_date_before(due_date: String, project_today: String) -> Bool {
 fn view_progress(config: Config(msg)) -> Element(msg) {
   div([attribute.class(progress_class())], [
     card_progress.view(
+      config.locale,
       config.progress_closed,
       config.progress_total,
       card_progress.Default,

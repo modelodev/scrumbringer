@@ -894,6 +894,14 @@ pub type Text {
   TaskStateClaimedHint
   TaskStateOngoingHint
   TaskStateClosedHint
+  TaskHeadlineAvailable
+  TaskHeadlineClaimedByYou
+  TaskHeadlineClaimedByOther
+  TaskHeadlineClaimed
+  TaskHeadlineOngoingByYou
+  TaskHeadlineOngoingByOther
+  TaskHeadlineOngoing
+  TaskHeadlineClosed
   TaskNextActionLabel
   TaskNextActionClaim
   TaskNextActionStart
@@ -1011,6 +1019,15 @@ pub type Text {
   CardAddSubcard
   CardEmptyWorkTitle
   CardEmptyWorkBody
+  CardSummaryNoWorkTitle
+  CardSummaryNoWorkBody
+  CardSummaryBlockedTitle(count: Int)
+  CardSummaryBlockedBody
+  CardSummaryCompleteTitle
+  CardSummaryCompleteBody
+  CardSummaryFlowTitle
+  CardSummaryFlowBody
+  CardSummaryNoDescription
   CardTasksEmpty
   CardTasksClosed
   TaskType
@@ -1139,8 +1156,6 @@ pub type Text {
   MetricsNotAvailable
   MetricsEmptyState
   MetricsLoadError
-  Unassigned
-  Assigned
   ClaimTask
 
   // Error states

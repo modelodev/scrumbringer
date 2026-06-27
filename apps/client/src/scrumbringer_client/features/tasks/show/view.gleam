@@ -24,7 +24,7 @@ import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
-import lustre/element.{type Element, none}
+import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
 import domain/activity/entity.{type ActivityEvent}
@@ -51,6 +51,7 @@ import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/activity_feed
 import scrumbringer_client/ui/button
 import scrumbringer_client/ui/detail_tabs
+import scrumbringer_client/ui/inspector_actions
 import scrumbringer_client/ui/inspector_shell
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
@@ -61,7 +62,6 @@ pub type TaskShowConfig(msg) {
     task_id: Int,
     task: opt.Option(Task),
     parent_card: opt.Option(Card),
-    capability_name: opt.Option(String),
     current_user_id: opt.Option(Int),
     active_tab: show_tabs.TaskShowTab,
     dependencies: TaskDependenciesConfig(msg),
@@ -160,7 +160,6 @@ pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
       root_class: "task-show task-show-panel",
       panel_class: "task-show-content",
       title_id: "task-show-title",
-      on_close: config.on_close,
       testid: "task-show",
     ),
     [
@@ -170,7 +169,6 @@ pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
         ],
         [
           view_task_header(config),
-          view_task_inspector_actions(config),
           view_task_show_tabs(config),
         ],
       ),
@@ -186,46 +184,42 @@ fn view_task_header(config: TaskShowConfig(msg)) -> Element(msg) {
     locale: config.locale,
     task: config.task,
     parent_card_title: config.editor.parent_card_title,
-    capability_name: config.capability_name,
+    current_user_id: config.current_user_id,
     dependencies: config.dependencies.items,
+    actions: opt.Some(view_task_inspector_actions(config)),
     on_close: config.on_close,
   ))
 }
 
 fn view_task_inspector_actions(config: TaskShowConfig(msg)) -> Element(msg) {
-  div([attribute.class("inspector-actions task-inspector-actions")], [
-    view_task_primary_action(config),
-    view_task_open_in_menu(config),
-    view_task_secondary_actions(config),
-  ])
+  inspector_actions.view(inspector_actions.Config(
+    id: "task-" <> int.to_string(config.task_id),
+    primary: opt.Some(view_task_primary_action(config)),
+    open_in_label: i18n.t(config.locale, i18n_text.OpenIn),
+    open_in_items: task_open_in_items(config),
+    more_label: i18n.t(config.locale, i18n_text.HierarchyMoreActions),
+    more_items: task_secondary_action_items(config),
+    extra_class: "task-inspector-actions",
+  ))
 }
 
-fn view_task_open_in_menu(config: TaskShowConfig(msg)) -> Element(msg) {
+fn task_open_in_items(
+  config: TaskShowConfig(msg),
+) -> List(action_menu.Item(msg)) {
   case config.parent_card {
-    opt.Some(card) ->
-      action_menu.view(
-        i18n.t(config.locale, i18n_text.OpenIn),
-        "task-open-in-trigger",
-        "task-open-in-" <> int.to_string(config.task_id),
-        opt.Some(i18n.t(config.locale, i18n_text.OpenIn)),
-        "task-open-in-menu",
-        "task-open-in-trigger",
-        "task-open-in-panel",
-        "task-open-in-item",
-        [
-          action_menu.item(
-            i18n.t(config.locale, i18n_text.OpenCard),
-            "task-open-parent-card",
-            config.on_open_parent_card(card.id),
-          ),
-          action_menu.link_item(
-            i18n.t(config.locale, i18n_text.ViewInPlan),
-            "task-open-plan",
-            scoped_navigation.plan_url(card),
-          ),
-        ],
-      )
-    opt.None -> none()
+    opt.Some(card) -> [
+      action_menu.item(
+        i18n.t(config.locale, i18n_text.OpenCard),
+        "task-open-parent-card",
+        config.on_open_parent_card(card.id),
+      ),
+      action_menu.link_item(
+        i18n.t(config.locale, i18n_text.ViewInPlan),
+        "task-open-plan",
+        scoped_navigation.plan_url(card),
+      ),
+    ]
+    opt.None -> []
   }
 }
 
@@ -303,21 +297,12 @@ fn view_edit_primary_actions(config: TaskShowConfig(msg)) -> Element(msg) {
   ])
 }
 
-fn view_task_secondary_actions(config: TaskShowConfig(msg)) -> Element(msg) {
+fn task_secondary_action_items(
+  config: TaskShowConfig(msg),
+) -> List(action_menu.Item(msg)) {
   case config.task {
-    opt.None -> none()
-    opt.Some(task) ->
-      action_menu.view(
-        "⋯",
-        "task-show-secondary-actions-trigger",
-        "task-show-secondary-actions-" <> int.to_string(task.id),
-        opt.Some(i18n.t(config.locale, i18n_text.HierarchyMoreActions)),
-        "secondary-actions-menu",
-        "secondary-actions-trigger task-show-secondary-actions-trigger",
-        "secondary-actions-panel task-show-secondary-actions-panel",
-        "secondary-actions-item task-show-secondary-actions-item",
-        secondary_action_items(config, task),
-      )
+    opt.None -> []
+    opt.Some(task) -> secondary_action_items(config, task)
   }
 }
 

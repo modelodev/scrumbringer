@@ -139,7 +139,7 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
     |> element.to_document_string
 
   assert_contains(html, "my-card-item card-border-blue")
-  assert_contains(html, "1/3")
+  assert_contains(html, "1 of 3 tasks closed")
   assert_contains(html, "type=\"button\"")
   assert_contains(html, "aria-label=\"Context: Sprint\"")
   assert_contains(html, "title=\"Sprint\"")

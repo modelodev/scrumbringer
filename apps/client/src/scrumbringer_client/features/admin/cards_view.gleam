@@ -317,6 +317,7 @@ fn view_list(config: Config(msg), cards: Remote(List(Card))) -> Element(msg) {
         }),
         data_table.column(t(config, i18n_text.CardTasks), fn(c: Card) {
           card_progress.view(
+            config.locale,
             c.closed_count,
             c.task_count,
             card_progress.Compact,

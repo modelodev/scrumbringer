@@ -13,48 +13,56 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 pub fn task_show_header_renders_loaded_task_test() {
   let html =
     task_show_header.view(task_show_header.Config(
       locale: locale.En,
       task: Some(available_task()),
       parent_card_title: Some("Release card"),
-      capability_name: Some("Backend"),
+      current_user_id: Some(7),
       dependencies: Loaded([]),
+      actions: None,
       on_close: "close",
     ))
     |> element.to_document_string
 
   assert_contains(html, "Prepare release")
   assert_contains(html, "Release card")
-  assert_contains(html, "Feature")
-  assert_contains(html, "Backend")
-  assert_contains(html, "task-meta-capability")
-  assert_contains(html, "P2")
-  assert_contains(html, "data-testid=\"task-show-status-indicator\"")
-  assert_contains(html, "task-status-indicator")
-  assert_contains(html, "Available")
-  assert_contains(html, "Claim to My Tasks")
-  assert_contains(html, "No due date")
+  assert_contains(html, "Ready to claim")
   assert_contains(html, "task-show-title")
+  assert_not_contains(html, "Available")
+  assert_not_contains(html, "Feature")
+  assert_not_contains(html, "Backend")
+  assert_not_contains(html, "task-meta-capability")
+  assert_not_contains(html, "P2")
+  assert_not_contains(html, "data-testid=\"task-show-status-indicator\"")
+  assert_not_contains(html, "task-status-indicator")
+  assert_not_contains(html, "Claim to My Tasks")
+  assert_not_contains(html, "No due date")
 }
 
-pub fn task_show_header_renders_assigned_task_test() {
+pub fn task_show_header_renders_claimed_state_without_owner_chip_test() {
   let html =
     task_show_header.view(task_show_header.Config(
       locale: locale.En,
       task: Some(claimed_task()),
       parent_card_title: Some("Release card"),
-      capability_name: None,
+      current_user_id: Some(7),
       dependencies: Loaded([]),
+      actions: None,
       on_close: "close",
     ))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"task-show-status-indicator\"")
-  assert_contains(html, "Claimed")
-  assert_contains(html, "Claimed by #7")
-  assert_contains(html, "task-meta-assignee")
+  assert_contains(html, "In My Tasks, ready to start")
+  assert_not_contains(html, "Claimed")
+  assert_not_contains(html, "data-testid=\"task-show-status-indicator\"")
+  assert_not_contains(html, "Claimed by #7")
+  assert_not_contains(html, "task-meta-assignee")
 }
 
 pub fn task_show_header_renders_loading_title_test() {
@@ -63,8 +71,9 @@ pub fn task_show_header_renders_loading_title_test() {
       locale: locale.En,
       task: None,
       parent_card_title: None,
-      capability_name: None,
+      current_user_id: None,
       dependencies: Loaded([]),
+      actions: None,
       on_close: "close",
     ))
     |> element.to_document_string
@@ -79,8 +88,9 @@ pub fn task_show_header_localizes_close_label_test() {
       locale: locale.Es,
       task: Some(available_task()),
       parent_card_title: Some("Release card"),
-      capability_name: None,
+      current_user_id: Some(7),
       dependencies: Loaded([]),
+      actions: None,
       on_close: "close",
     ))
     |> element.to_document_string
@@ -94,18 +104,20 @@ pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {
       locale: locale.En,
       task: Some(Task(..available_task(), due_date: Some("2026-06-24"))),
       parent_card_title: Some("Release card"),
-      capability_name: None,
+      current_user_id: Some(7),
       dependencies: Loaded([
         dependency(11, task_state.Available),
         dependency(12, closed_done_state()),
       ]),
+      actions: None,
       on_close: "close",
     ))
     |> element.to_document_string
 
   assert_contains(html, "Due 2026-06-24")
   assert_contains(html, "Blocked by 1 tasks")
-  assert_contains(html, "task-meta-blocking blocking")
+  assert_not_contains(html, "Ready to claim")
+  assert_not_contains(html, "task-meta-blocking blocking")
 }
 
 fn available_task() -> Task {

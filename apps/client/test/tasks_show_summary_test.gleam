@@ -19,7 +19,7 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-fn legacy(parts: List(String)) -> String {
+fn forbidden_fragment(parts: List(String)) -> String {
   string.join(parts, "")
 }
 
@@ -43,7 +43,7 @@ pub fn task_show_summary_renders_operational_context_test() {
   assert_contains(html, "Release card")
   assert_contains(html, "Claim to My Tasks")
   assert_contains(html, "No active blockers")
-  assert_not_contains(html, legacy(["task", "-show-summary-grid"]))
+  assert_not_contains(html, forbidden_fragment(["task", "-show-summary-grid"]))
 }
 
 pub fn task_show_summary_uses_loaded_dependency_blockers_test() {

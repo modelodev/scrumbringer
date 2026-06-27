@@ -948,7 +948,7 @@ pub fn translate(text: Text) -> String {
     text.CardDescription -> "Descripción"
     text.CardPhase -> "Estado"
     text.CardPhaseDraft -> "Por iniciar"
-    text.CardPhaseActive -> "En curso"
+    text.CardPhaseActive -> "Activa"
     text.CardPhaseClosed -> "cerrada"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
@@ -1126,6 +1126,14 @@ pub fn translate(text: Text) -> String {
     text.TaskStateClaimedHint -> "En Mis tareas, lista para empezar"
     text.TaskStateOngoingHint -> "Sesión de trabajo activa"
     text.TaskStateClosedHint -> "cerrada y sin acciones pendientes"
+    text.TaskHeadlineAvailable -> "Lista para reclamar"
+    text.TaskHeadlineClaimedByYou -> "En Mis tareas, lista para empezar"
+    text.TaskHeadlineClaimedByOther -> "Reclamada por otra persona"
+    text.TaskHeadlineClaimed -> "Reclamada"
+    text.TaskHeadlineOngoingByYou -> "Estás trabajando ahora"
+    text.TaskHeadlineOngoingByOther -> "En curso por otra persona"
+    text.TaskHeadlineOngoing -> "En curso"
+    text.TaskHeadlineClosed -> "Cerrada"
     text.TaskNextActionLabel -> "Siguiente acción"
     text.TaskNextActionClaim -> "Reclamar a Mis tareas"
     text.TaskNextActionStart -> "Empezar a trabajar"
@@ -1248,7 +1256,17 @@ pub fn translate(text: Text) -> String {
     // Card grouping
     text.UngroupedTasks -> "Sin tarjeta"
     text.CardProgressCount(closed, total) ->
-      int.to_string(closed) <> "/" <> int.to_string(total)
+      case total {
+        0 -> "Sin tareas"
+        _ -> {
+          let task_label = case total {
+            1 -> " tarea cerrada"
+            _ -> " tareas cerradas"
+          }
+
+          int.to_string(closed) <> " de " <> int.to_string(total) <> task_label
+        }
+      }
 
     // Card detail (member)
     text.CardAddTask -> "Añadir tarea"
@@ -1256,6 +1274,20 @@ pub fn translate(text: Text) -> String {
     text.CardEmptyWorkTitle -> "Esta tarjeta todavía no tiene trabajo"
     text.CardEmptyWorkBody ->
       "Elige si esta tarjeta contendrá tareas o subtarjetas."
+    text.CardSummaryNoWorkTitle -> "Definir trabajo"
+    text.CardSummaryNoWorkBody ->
+      "Esta tarjeta está activa, pero todavía no tiene tareas directas."
+    text.CardSummaryBlockedTitle(count) ->
+      int.to_string(count) <> " señal de bloqueo"
+    text.CardSummaryBlockedBody ->
+      "Resuelve los bloqueos antes de esperar un flujo sano en esta tarjeta."
+    text.CardSummaryCompleteTitle -> "Trabajo completado"
+    text.CardSummaryCompleteBody ->
+      "Todas las tareas directas están cerradas. Revisa si la tarjeta puede cerrarse."
+    text.CardSummaryFlowTitle -> "Trabajo en flujo"
+    text.CardSummaryFlowBody ->
+      "Las tareas directas están definidas y no hay bloqueos dominando esta tarjeta."
+    text.CardSummaryNoDescription -> "Todavía no se ha escrito el propósito."
     text.CardTasksEmpty -> "No hay tareas"
     text.CardTasksClosed -> "cerradas"
     text.TaskType -> "Tipo de tarea"
@@ -1393,8 +1425,6 @@ pub fn translate(text: Text) -> String {
     text.MetricsNotAvailable -> "No disponible"
     text.MetricsEmptyState -> "Sin datos suficientes para métricas"
     text.MetricsLoadError -> "No se pudieron cargar métricas"
-    text.Unassigned -> "Sin asignar"
-    text.Assigned -> "Asignado"
     text.ClaimTask -> "Reclamar tarea"
 
     // Error states

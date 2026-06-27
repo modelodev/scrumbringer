@@ -227,7 +227,6 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
             remote.unwrap(model.core.projects, []),
             model.core.selected_project_id,
           ),
-          project_capabilities(model),
           task_id,
           task_show_callbacks(),
         )
@@ -2152,10 +2151,6 @@ fn project_cards(model: client_state.Model) -> List(Card) {
     model.admin.cards.cards,
     model.core.selected_project_id,
   )
-}
-
-fn project_capabilities(model: client_state.Model) {
-  remote.unwrap(model.member.skills.member_capabilities, [])
 }
 
 fn can_manage_task_notes(model: client_state.Model) -> Bool {

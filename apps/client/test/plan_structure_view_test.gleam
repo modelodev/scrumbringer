@@ -286,7 +286,7 @@ pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {
 
   assert_contains(english, ">All</option>")
   assert_contains(english, ">Pending</option>")
-  assert_contains(english, ">In Progress</option>")
+  assert_contains(english, ">Active</option>")
   assert_contains(english, ">Closed</option>")
   assert_contains(english, "Includes closed")
   assert_not_contains(english, ">Todas</option>")

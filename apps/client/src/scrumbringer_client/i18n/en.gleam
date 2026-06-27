@@ -913,7 +913,7 @@ pub fn translate(text: Text) -> String {
     text.CardDescription -> "Description"
     text.CardPhase -> "State"
     text.CardPhaseDraft -> "Pending"
-    text.CardPhaseActive -> "In Progress"
+    text.CardPhaseActive -> "Active"
     text.CardPhaseClosed -> "Closed"
     text.CardTasks -> "Tasks"
     text.CardProgress -> "Progress"
@@ -1089,6 +1089,14 @@ pub fn translate(text: Text) -> String {
     text.TaskStateClaimedHint -> "In My Tasks, ready to start"
     text.TaskStateOngoingHint -> "Active work session is running"
     text.TaskStateClosedHint -> "Closed and no longer actionable"
+    text.TaskHeadlineAvailable -> "Ready to claim"
+    text.TaskHeadlineClaimedByYou -> "In My Tasks, ready to start"
+    text.TaskHeadlineClaimedByOther -> "Claimed by another user"
+    text.TaskHeadlineClaimed -> "Claimed"
+    text.TaskHeadlineOngoingByYou -> "You are working now"
+    text.TaskHeadlineOngoingByOther -> "Working now by another user"
+    text.TaskHeadlineOngoing -> "Working now"
+    text.TaskHeadlineClosed -> "Closed"
     text.TaskNextActionLabel -> "Next action"
     text.TaskNextActionClaim -> "Claim to My Tasks"
     text.TaskNextActionStart -> "Start working"
@@ -1209,7 +1217,21 @@ pub fn translate(text: Text) -> String {
     // Card grouping
     text.UngroupedTasks -> "No card"
     text.CardProgressCount(closed, total) ->
-      int.to_string(closed) <> "/" <> int.to_string(total)
+      case total {
+        0 -> "No tasks"
+        _ -> {
+          let task_label = case total {
+            1 -> " task"
+            _ -> " tasks"
+          }
+
+          int.to_string(closed)
+          <> " of "
+          <> int.to_string(total)
+          <> task_label
+          <> " closed"
+        }
+      }
 
     // Card detail (member)
     text.CardAddTask -> "Add task"
@@ -1217,6 +1239,20 @@ pub fn translate(text: Text) -> String {
     text.CardEmptyWorkTitle -> "This card has no work yet"
     text.CardEmptyWorkBody ->
       "Choose whether this card will contain tasks or subcards."
+    text.CardSummaryNoWorkTitle -> "Define the work"
+    text.CardSummaryNoWorkBody ->
+      "This card is active but has no direct tasks yet."
+    text.CardSummaryBlockedTitle(count) ->
+      int.to_string(count) <> " blocking signal"
+    text.CardSummaryBlockedBody ->
+      "Resolve blockers before expecting healthy flow from this card."
+    text.CardSummaryCompleteTitle -> "Work complete"
+    text.CardSummaryCompleteBody ->
+      "All direct tasks are closed. Review whether the card can be closed."
+    text.CardSummaryFlowTitle -> "Work is flowing"
+    text.CardSummaryFlowBody ->
+      "Direct tasks are defined and no blockers dominate this card."
+    text.CardSummaryNoDescription -> "No purpose has been written yet."
     text.CardTasksEmpty -> "No tasks"
     text.CardTasksClosed -> "closed"
     text.TaskType -> "Task type"
@@ -1354,8 +1390,6 @@ pub fn translate(text: Text) -> String {
     text.MetricsNotAvailable -> "Not available"
     text.MetricsEmptyState -> "Not enough data for metrics"
     text.MetricsLoadError -> "Could not load metrics"
-    text.Unassigned -> "Unassigned"
-    text.Assigned -> "Assigned"
     text.ClaimTask -> "Claim task"
 
     // Error states

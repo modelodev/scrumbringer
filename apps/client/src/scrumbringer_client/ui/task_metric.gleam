@@ -31,8 +31,8 @@ pub fn label(locale: Locale, kind: TaskMetricKind) -> String {
     Available -> i18n.t(locale, i18n_text.MetricsAvailable)
     Claimed -> i18n.t(locale, i18n_text.MetricsClaimed)
     Ongoing -> i18n.t(locale, i18n_text.MetricsOngoing)
-    Closed -> i18n.t(locale, i18n_text.TaskStateClosed)
-    Blocked -> i18n.t(locale, i18n_text.Blocked)
+    Closed -> i18n.t(locale, i18n_text.Closed)
+    Blocked -> i18n.t(locale, i18n_text.PoolVisibilityBlocked)
   }
 }
 

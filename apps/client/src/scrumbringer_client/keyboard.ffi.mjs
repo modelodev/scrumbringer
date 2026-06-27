@@ -36,6 +36,10 @@ function is_editing_context(event) {
   )
 }
 
+function has_open_popover() {
+  return Boolean(document.querySelector(":popover-open"))
+}
+
 export function register_keydown(callback) {
   if (typeof window === "undefined") return undefined
   try {
@@ -49,8 +53,13 @@ export function register_keydown(callback) {
       // expose their internal textarea as the event target
       const modal_open = Boolean(
         document.querySelector(".modal") ||
-        document.querySelector(".dialog-overlay")
+        document.querySelector(".dialog-overlay") ||
+        has_open_popover()
       )
+
+      if (key === "escape" && has_open_popover()) {
+        return
+      }
 
       // Prevent browser defaults for our shortcuts, but only when we're not
       // typing and no modal is open (story: ignore shortcuts in those cases).
@@ -66,7 +75,7 @@ export function register_keydown(callback) {
       }
 
       callback([key, ctrl, meta, shift, is_editing, modal_open])
-    })
+    }, { capture: true })
   } catch {
     // ignore
   }

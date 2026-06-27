@@ -29,7 +29,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{type Card, Closed, Draft}
+import domain/card.{type Card, Active, Closed, Draft}
 import domain/note/entity.{type Note}
 import domain/note/id as note_ids
 import domain/task.{type Task, claimed_by}
@@ -43,8 +43,10 @@ import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/cards/scoped_navigation
+import scrumbringer_client/features/cards/show/headline as card_headline
 import scrumbringer_client/features/cards/show/hierarchy as show_hierarchy
 import scrumbringer_client/features/cards/show/notes as show_notes
+import scrumbringer_client/features/tasks/blocking_status
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -58,11 +60,13 @@ import scrumbringer_client/ui/card_state_badge
 import scrumbringer_client/ui/detail_tabs
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/inspector_actions
 import scrumbringer_client/ui/inspector_header
 import scrumbringer_client/ui/inspector_shell
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/pinned_context
+import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/show_tabs
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
@@ -75,6 +79,14 @@ import scrumbringer_client/ui/tooltips/types as notes_list_types
 // =============================================================================
 // Internal Types
 // =============================================================================
+
+type TaskWorkGroup {
+  AvailableWork
+  BlockedWork
+  ClaimedWork
+  OngoingWork
+  ClosedWork
+}
 
 /// Internal component model - encapsulated state.
 pub type Model {
@@ -541,7 +553,6 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
       root_class: "card-show",
       panel_class: "card-show-panel card-show-surface " <> border_class,
       title_id: "card-show-title",
-      on_close: CloseClicked,
       testid: "card-show",
     ),
     [
@@ -653,74 +664,106 @@ fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
 }
 
 fn view_card_header(model: Model, card: Card) -> Element(Msg) {
-  let state_label = card_state.label(model.locale, card.state)
-  let meta =
-    div([attribute.class("detail-meta")], [
-      div([attribute.class("detail-meta-group")], [
-        card_state_badge.view(card.state, state_label, card_state_badge.Detail),
-        due_date_chip(model, card),
-      ]),
-      div(
-        [attribute.class("detail-meta-group")],
-        card_header_metrics(model, card),
-      ),
-    ])
+  let meta = card_header_meta(model, card)
 
   inspector_header.view(inspector_header.Config(
     title: card.title,
     title_id: "card-show-title",
-    state_line: option.Some(card_state_line(model, card)),
+    state_line: option.Some(
+      card_headline.text(card_headline.Config(locale: model.locale, card: card)),
+    ),
     context: option.Some(view_card_path(model, card)),
-    meta: option.Some(meta),
-    primary_action: option.Some(view_quick_create_action(
-      model,
-      card,
-      action_policy(model, card),
-    )),
-    open_in: option.Some(view_open_in_menu(model, card)),
-    secondary_actions: option.Some(view_secondary_action_menu(
-      model,
-      card,
-      action_policy(model, card),
-    )),
+    meta: meta,
+    actions: option.Some(view_card_inspector_actions(model, card)),
     close_label: t(model.locale, i18n_text.Close),
     on_close: CloseClicked,
     extra_class: "card-inspector-header",
   ))
 }
 
+fn card_header_meta(model: Model, card: Card) -> Option(Element(Msg)) {
+  let status_signals = card_header_status_signals(model, card)
+  let metric_signals = card_header_metrics(model, card)
+
+  let groups = case status_signals, metric_signals {
+    [], [] -> []
+    _, [] -> [detail_meta_group(status_signals)]
+    [], _ -> [detail_meta_group(metric_signals)]
+    _, _ -> [
+      detail_meta_group(status_signals),
+      detail_meta_group(metric_signals),
+    ]
+  }
+
+  case groups {
+    [] -> option.None
+    _ -> option.Some(div([attribute.class("detail-meta")], groups))
+  }
+}
+
+fn detail_meta_group(children: List(Element(Msg))) -> Element(Msg) {
+  div([attribute.class("detail-meta-group")], children)
+}
+
+fn card_header_status_signals(model: Model, card: Card) -> List(Element(Msg)) {
+  []
+  |> append_optional_element(card_state_signal(model, card))
+  |> append_optional_element(due_date_chip(model, card))
+}
+
+fn card_state_signal(model: Model, card: Card) -> Option(Element(Msg)) {
+  case card.state {
+    Active -> option.None
+    Draft | Closed ->
+      option.Some(card_state_badge.view(
+        card.state,
+        card_state.label(model.locale, card.state),
+        card_state_badge.Detail,
+      ))
+  }
+}
+
+fn view_card_inspector_actions(model: Model, card: Card) -> Element(Msg) {
+  let policy = action_policy(model, card)
+
+  inspector_actions.view(inspector_actions.Config(
+    id: "card-" <> int.to_string(card.id),
+    primary: option.Some(view_quick_create_action(model, card, policy)),
+    open_in_label: t(model.locale, i18n_text.OpenIn),
+    open_in_items: card_open_in_items(model, card),
+    more_label: t(model.locale, i18n_text.HierarchyMoreActions),
+    more_items: card_secondary_action_items(model, card, policy),
+    extra_class: "card-inspector-actions",
+  ))
+}
+
 fn card_header_metrics(model: Model, card: Card) -> List(Element(Msg)) {
   case card.task_count {
     0 -> []
-    _ -> [
-      card_task_metric(
-        model.locale,
-        task_metric.Total,
-        card.task_count,
-        "card-task-metric-total",
-      ),
-      card_task_metric(
+    _ ->
+      [
+        card_task_metric(
+          model.locale,
+          task_metric.Total,
+          card.task_count,
+          "card-task-metric-total",
+        ),
+      ]
+      |> append_metric_if(
+        card.closed_count > 0,
         model.locale,
         task_metric.Closed,
         card.closed_count,
         "card-task-metric-closed",
-      ),
-      card_task_metric(
+      )
+      |> append_metric_if(
+        blocked_count(model) > 0,
         model.locale,
         task_metric.Blocked,
         blocked_count(model),
         "card-task-metric-blocked",
-      ),
-    ]
+      )
   }
-}
-
-fn card_state_line(model: Model, card: Card) -> String {
-  card_state.label(model.locale, card.state)
-  <> " - "
-  <> due_date_text(model, card)
-  <> " - "
-  <> card_work_progress_copy(model, card)
 }
 
 fn view_card_path(model: Model, card: Card) -> Element(Msg) {
@@ -752,35 +795,22 @@ fn path_part_text(label: String, index: Int) -> String {
   }
 }
 
-fn due_date_chip(model: Model, card: Card) -> Element(Msg) {
+fn due_date_chip(model: Model, card: Card) -> Option(Element(Msg)) {
   case card.due_date {
     option.Some(date) ->
-      span(
-        [
-          attribute.class("card-meta-chip card-meta-due"),
-          attribute.attribute("data-testid", "card-header-due"),
-        ],
-        [
-          icons.nav_icon(icons.Calendar, icons.Small),
-          text(t(model.locale, i18n_text.TaskDueDateLabel) <> " " <> date),
-        ],
+      option.Some(
+        span(
+          [
+            attribute.class("card-meta-chip card-meta-due"),
+            attribute.attribute("data-testid", "card-header-due"),
+          ],
+          [
+            icons.nav_icon(icons.Calendar, icons.Small),
+            text(t(model.locale, i18n_text.TaskDueDateLabel) <> " " <> date),
+          ],
+        ),
       )
-    option.None ->
-      span(
-        [
-          attribute.class("card-meta-chip card-meta-due muted"),
-          attribute.attribute("data-testid", "card-header-due"),
-        ],
-        [text(t(model.locale, i18n_text.NoDueDate))],
-      )
-  }
-}
-
-fn due_date_text(model: Model, card: Card) -> String {
-  case card.due_date {
-    option.Some(date) ->
-      t(model.locale, i18n_text.TaskDueDateLabel) <> " " <> date
-    option.None -> t(model.locale, i18n_text.NoDueDate)
+    option.None -> option.None
   }
 }
 
@@ -799,49 +829,60 @@ fn card_task_metric(
   ))
 }
 
+fn append_metric_if(
+  items: List(Element(Msg)),
+  include: Bool,
+  locale: Locale,
+  kind: task_metric.TaskMetricKind,
+  value: Int,
+  testid: String,
+) -> List(Element(Msg)) {
+  case include {
+    True -> list.append(items, [card_task_metric(locale, kind, value, testid)])
+    False -> items
+  }
+}
+
+fn append_optional_element(
+  items: List(Element(Msg)),
+  item: Option(Element(Msg)),
+) -> List(Element(Msg)) {
+  case item {
+    option.Some(element) -> list.append(items, [element])
+    option.None -> items
+  }
+}
+
 fn blocked_count(model: Model) -> Int {
   case model.tasks {
-    Loaded(tasks) ->
-      tasks
-      |> list.filter(fn(task) { task.blocked_count > 0 })
-      |> list.length
+    Loaded(tasks) -> blocking_status.blocked_count(tasks)
     _ -> 0
   }
 }
 
-fn view_open_in_menu(model: Model, card: Card) -> Element(Msg) {
-  action_menu.view(
-    t(model.locale, i18n_text.OpenIn),
-    "card-open-in-trigger",
-    "card-open-in-" <> int.to_string(card.id),
-    option.Some(t(model.locale, i18n_text.OpenIn)),
-    "card-open-in-menu",
-    "card-open-in-trigger",
-    "card-open-in-panel",
-    "card-open-in-item",
-    [
-      action_menu.link_item(
-        t(model.locale, i18n_text.ViewInPlan),
-        "card-scope-plan",
-        scoped_navigation.plan_url(card),
-      ),
-      action_menu.link_item(
-        t(model.locale, i18n_text.ViewInKanban),
-        "card-scope-kanban",
-        scoped_navigation.kanban_url(card),
-      ),
-      action_menu.link_item(
-        t(model.locale, i18n_text.ViewInCapabilities),
-        "card-scope-capabilities",
-        scoped_navigation.capabilities_url(card),
-      ),
-      action_menu.link_item(
-        t(model.locale, i18n_text.ViewInPeople),
-        "card-scope-people",
-        scoped_navigation.people_url(card),
-      ),
-    ],
-  )
+fn card_open_in_items(model: Model, card: Card) -> List(action_menu.Item(Msg)) {
+  [
+    action_menu.link_item(
+      t(model.locale, i18n_text.ViewInPlan),
+      "card-scope-plan",
+      scoped_navigation.plan_url(card),
+    ),
+    action_menu.link_item(
+      t(model.locale, i18n_text.ViewInKanban),
+      "card-scope-kanban",
+      scoped_navigation.kanban_url(card),
+    ),
+    action_menu.link_item(
+      t(model.locale, i18n_text.ViewInCapabilities),
+      "card-scope-capabilities",
+      scoped_navigation.capabilities_url(card),
+    ),
+    action_menu.link_item(
+      t(model.locale, i18n_text.ViewInPeople),
+      "card-scope-people",
+      scoped_navigation.people_url(card),
+    ),
+  ]
 }
 
 fn view_quick_create_action(
@@ -937,26 +978,16 @@ fn view_create_task_action(
   }
 }
 
-fn view_secondary_action_menu(
+fn card_secondary_action_items(
   model: Model,
   card: Card,
   policy: card_policy.Policy,
-) -> Element(Msg) {
-  action_menu.view(
-    "⋯",
-    "card-secondary-actions-trigger",
-    "card-secondary-actions-" <> int.to_string(card.id),
-    option.Some(t(model.locale, i18n_text.HierarchyMoreActions)),
-    "card-secondary-actions-menu",
-    "card-secondary-actions-trigger",
-    "card-secondary-actions-panel",
-    "card-secondary-actions-item",
-    list.flatten([
-      activate_action_items(model, card),
-      move_action_items(model, card),
-      delete_action_items(model, policy),
-    ]),
-  )
+) -> List(action_menu.Item(Msg)) {
+  list.flatten([
+    activate_action_items(model, card),
+    move_action_items(model, card),
+    delete_action_items(model, policy),
+  ])
 }
 
 fn activate_action_items(
@@ -1065,43 +1096,24 @@ fn card_work_count(model: Model) -> Int {
 
 fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
   div([attribute.class("card-summary-section detail-section")], [
-    div([attribute.class("card-summary-block")], [
-      span([attribute.class("detail-section-kicker")], [
-        text(t(model.locale, i18n_text.MetricsProgress)),
-      ]),
-      div([attribute.class("card-summary-progress-line")], [
-        text(card_work_breakdown_text(model, card)),
-      ]),
-      div([attribute.class("card-summary-progress-bar")], [
-        div(
-          [
-            attribute.class("card-summary-progress-fill"),
-            attribute.style(
-              "width",
-              int.to_string(card_progress_percent(card)) <> "%",
-            ),
-          ],
-          [],
-        ),
-      ]),
-    ]),
+    view_card_summary_signal(model, card),
+    view_card_summary_metrics(model, card),
     case card.description {
-      "" -> element.none()
-      description ->
-        div([attribute.class("card-summary-block card-summary-description")], [
-          span([attribute.class("detail-section-kicker")], [
-            text(t(model.locale, i18n_text.Description)),
-          ]),
-          div([attribute.class("card-summary-description-text")], [
-            text(description),
-          ]),
-        ])
+      "" ->
+        view_card_summary_description(
+          model,
+          t(model.locale, i18n_text.CardSummaryNoDescription),
+          True,
+        )
+      description -> view_card_summary_description(model, description, False)
     },
-    div([attribute.class("card-summary-block")], [
+    div([attribute.class("card-summary-block card-summary-structure")], [
       span([attribute.class("detail-section-kicker")], [
         text(t(model.locale, i18n_text.PlanModeStructure)),
       ]),
-      view_card_path(model, card),
+      summary_element_item(t(model.locale, i18n_text.HierarchyScopeCardTitle), [
+        view_card_path(model, card),
+      ]),
       summary_item(
         t(model.locale, i18n_text.CardTasks),
         card_work_progress_copy(model, card),
@@ -1116,6 +1128,93 @@ fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
       },
       on_open_notes: TabClicked(show_tabs.CardNotesTab),
     )),
+  ])
+}
+
+fn view_card_summary_signal(model: Model, card: Card) -> Element(Msg) {
+  let blockers = blocked_count(model)
+  let #(title, body, icon, tone_class) = case card.task_count, blockers {
+    0, _ -> #(
+      t(model.locale, i18n_text.CardSummaryNoWorkTitle),
+      t(model.locale, i18n_text.CardSummaryNoWorkBody),
+      icons.EmptyMailbox,
+      "is-empty",
+    )
+    _, blocked if blocked > 0 -> #(
+      t(model.locale, i18n_text.CardSummaryBlockedTitle(blocked)),
+      t(model.locale, i18n_text.CardSummaryBlockedBody),
+      icons.Warning,
+      "is-blocked",
+    )
+    total, _ if card.closed_count == total -> #(
+      t(model.locale, i18n_text.CardSummaryCompleteTitle),
+      t(model.locale, i18n_text.CardSummaryCompleteBody),
+      icons.CheckCircle,
+      "is-complete",
+    )
+    _, _ -> #(
+      t(model.locale, i18n_text.CardSummaryFlowTitle),
+      t(model.locale, i18n_text.CardSummaryFlowBody),
+      icons.ChartUp,
+      "is-flowing",
+    )
+  }
+
+  div([attribute.class("card-summary-signal " <> tone_class)], [
+    span([attribute.class("card-summary-signal-icon")], [
+      icons.nav_icon(icon, icons.Small),
+    ]),
+    div([attribute.class("card-summary-signal-copy")], [
+      span([attribute.class("card-summary-signal-title")], [text(title)]),
+      span([attribute.class("card-summary-signal-body")], [text(body)]),
+    ]),
+  ])
+}
+
+fn view_card_summary_metrics(model: Model, card: Card) -> Element(Msg) {
+  div([attribute.class("card-summary-metrics")], [
+    task_metric_chip.view(task_metric_chip.Config(
+      locale: model.locale,
+      metric: task_metric.metric(task_metric.Total, card.task_count),
+      variant: task_metric_chip.Full,
+      extra_class: option.Some("card-summary-metric"),
+      testid: option.Some("card-summary-metric-total"),
+    )),
+    task_metric_chip.view(task_metric_chip.Config(
+      locale: model.locale,
+      metric: task_metric.metric(task_metric.Closed, card.closed_count),
+      variant: task_metric_chip.Full,
+      extra_class: option.Some("card-summary-metric"),
+      testid: option.Some("card-summary-metric-closed"),
+    )),
+    task_metric_chip.view(task_metric_chip.Config(
+      locale: model.locale,
+      metric: task_metric.metric(task_metric.Blocked, blocked_count(model)),
+      variant: task_metric_chip.Full,
+      extra_class: option.Some("card-summary-metric"),
+      testid: option.Some("card-summary-metric-blocked"),
+    )),
+  ])
+}
+
+fn view_card_summary_description(
+  model: Model,
+  description: String,
+  muted: Bool,
+) -> Element(Msg) {
+  div([attribute.class("card-summary-block card-summary-description")], [
+    span([attribute.class("detail-section-kicker")], [
+      text(t(model.locale, i18n_text.Description)),
+    ]),
+    div(
+      [
+        attribute.class(case muted {
+          True -> "card-summary-description-text muted"
+          False -> "card-summary-description-text"
+        }),
+      ],
+      [text(description)],
+    ),
   ])
 }
 
@@ -1137,7 +1236,7 @@ fn view_empty_card_work_decision(
         t(model.locale, i18n_text.CardAddSubcard),
         CreateCardClicked,
       )
-      |> empty_state.with_class("card-empty-work-decision")
+      |> empty_state.with_class("inspector-empty-work")
       |> empty_state.view
     _ -> element.none()
   }
@@ -1160,25 +1259,17 @@ fn card_pinned_notes(model: Model) -> List(pinned_context.PinnedNote) {
 }
 
 fn summary_item(label: String, value: String) -> Element(Msg) {
+  summary_element_item(label, [text(value)])
+}
+
+fn summary_element_item(
+  label: String,
+  value: List(Element(Msg)),
+) -> Element(Msg) {
   div([attribute.class("detail-summary-item")], [
     span([attribute.class("detail-summary-label")], [text(label)]),
-    span([attribute.class("detail-summary-value")], [text(value)]),
+    span([attribute.class("detail-summary-value")], value),
   ])
-}
-
-fn card_progress_percent(card: Card) -> Int {
-  case card.task_count <= 0 {
-    True -> 0
-    False -> card.closed_count * 100 / card.task_count
-  }
-}
-
-fn card_work_breakdown_text(model: Model, card: Card) -> String {
-  card_work_progress_copy(model, card)
-  <> " - "
-  <> int.to_string(blocked_count(model))
-  <> " "
-  <> t(model.locale, i18n_text.PoolVisibilityBlocked)
 }
 
 fn card_work_progress_copy(model: Model, card: Card) -> String {
@@ -1229,10 +1320,7 @@ fn card_activity_load_more(model: Model) -> Option(activity_feed.LoadMore(Msg)) 
 }
 
 fn view_card_notes_section(model: Model) -> Element(Msg) {
-  let notes = case model.notes {
-    Loaded(list) -> list
-    _ -> []
-  }
+  let notes = loaded_notes(model)
   let count_label =
     t(model.locale, i18n_text.Notes)
     <> " ("
@@ -1248,14 +1336,17 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
       button_disabled: False,
       on_button_click: NoteDialogOpened,
     )),
-    case model.notes {
-      Loading ->
+    ui_remote.view_remote(
+      model.notes,
+      loading: fn() {
         div([attribute.class("card-notes-loading")], [
           text(t(model.locale, i18n_text.LoadingEllipsis)),
         ])
-      Failed(err) ->
+      },
+      error: fn(err) {
         div([attribute.class("card-notes-error")], [text(err.message)])
-      _ ->
+      },
+      loaded: fn(notes) {
         notes_list.view(
           // Reverse to show newest first (descending chronological order)
           list.map(list.reverse(notes), fn(note) { note_to_view(model, note) }),
@@ -1266,8 +1357,16 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
           NoteDeleteClicked,
           NotePinClicked,
         )
-    },
+      },
+    ),
   ])
+}
+
+fn loaded_notes(model: Model) -> List(Note) {
+  case model.notes {
+    Loaded(notes) -> notes
+    _ -> []
+  }
 }
 
 /// Note creation dialog - uses shared note_dialog component (Story 5.4.2).
@@ -1333,35 +1432,35 @@ fn note_belongs_to_current_user(
 }
 
 fn view_card_tasks_section(model: Model, card: Card) -> Element(Msg) {
-  let tasks = case model.tasks {
-    Loaded(task_list) -> task_list
-    _ -> []
-  }
   let policy = action_policy(model, card)
 
   div([attribute.class("card-show-tasks-section detail-section")], [
     view_tasks_header(model, policy),
-    case model.tasks {
-      Loading ->
+    ui_remote.view_remote(
+      model.tasks,
+      loading: fn() {
         empty_state.notice_with_class(
           "arrow-path",
           t(model.locale, i18n_text.LoadingEllipsis),
           empty_state.Loading,
           "card-work-state",
         )
-      Failed(_) ->
+      },
+      error: fn(_) {
         empty_state.notice_with_class(
           "exclamation-triangle",
           t(model.locale, i18n_text.ErrorLoadingTasks),
           empty_state.Error,
           "card-work-state",
         )
-      _ ->
+      },
+      loaded: fn(tasks) {
         case list.is_empty(tasks) {
           True -> view_empty_card_work_decision(model, policy)
           False -> view_task_list(model, tasks)
         }
-    },
+      },
+    ),
   ])
 }
 
@@ -1391,43 +1490,26 @@ fn view_tasks_header(model: Model, policy: card_policy.Policy) -> Element(Msg) {
 }
 
 fn view_task_list(model: Model, tasks: List(Task)) -> Element(Msg) {
-  div([attribute.class("card-work-list")], [
-    view_task_group(
-      model,
-      t(model.locale, i18n_text.MetricsAvailable),
-      list.filter(tasks, is_available_unblocked),
-    ),
-    view_task_group(
-      model,
-      t(model.locale, i18n_text.PoolVisibilityBlocked),
-      list.filter(tasks, is_blocked),
-    ),
-    view_task_group(
-      model,
-      t(model.locale, i18n_text.MetricsClaimed),
-      list.filter(tasks, is_claimed_taken),
-    ),
-    view_task_group(
-      model,
-      t(model.locale, i18n_text.MetricsOngoing),
-      list.filter(tasks, is_ongoing),
-    ),
-    view_task_group(
-      model,
-      t(model.locale, i18n_text.Closed),
-      list.filter(tasks, is_closed),
-    ),
-  ])
+  div(
+    [attribute.class("card-work-list")],
+    list.map(task_work_groups(), fn(group) {
+      view_task_group(model, group, tasks)
+    }),
+  )
 }
 
 fn view_task_group(
   model: Model,
-  label: String,
-  tasks: List(Task),
+  group: TaskWorkGroup,
+  all_tasks: List(Task),
 ) -> Element(Msg) {
+  let tasks = tasks_for_group(all_tasks, group)
+
   div([attribute.class("card-work-group")], [
     div([attribute.class("card-work-group-header")], [
-      span([attribute.class("card-work-group-title")], [text(label)]),
+      span([attribute.class("card-work-group-title")], [
+        text(task_group_label(model, group)),
+      ]),
       span([attribute.class("card-work-group-count")], [
         text(int.to_string(list.length(tasks))),
       ]),
@@ -1444,6 +1526,32 @@ fn view_task_group(
         )
     },
   ])
+}
+
+fn task_work_groups() -> List(TaskWorkGroup) {
+  [AvailableWork, BlockedWork, ClaimedWork, OngoingWork, ClosedWork]
+}
+
+fn task_group_label(model: Model, group: TaskWorkGroup) -> String {
+  case group {
+    AvailableWork -> t(model.locale, i18n_text.MetricsAvailable)
+    BlockedWork -> t(model.locale, i18n_text.PoolVisibilityBlocked)
+    ClaimedWork -> t(model.locale, i18n_text.MetricsClaimed)
+    OngoingWork -> t(model.locale, i18n_text.MetricsOngoing)
+    ClosedWork -> t(model.locale, i18n_text.Closed)
+  }
+}
+
+fn tasks_for_group(tasks: List(Task), group: TaskWorkGroup) -> List(Task) {
+  let predicate = case group {
+    AvailableWork -> is_available_unblocked
+    BlockedWork -> is_blocked
+    ClaimedWork -> is_claimed_taken
+    OngoingWork -> is_ongoing
+    ClosedWork -> is_closed
+  }
+
+  list.filter(tasks, predicate)
 }
 
 fn view_task_item(locale: Locale, task: Task) -> Element(Msg) {
@@ -1492,7 +1600,7 @@ fn is_available_unblocked(task: Task) -> Bool {
 }
 
 fn is_blocked(task: Task) -> Bool {
-  task.blocked_count > 0
+  blocking_status.is_blocked(task)
 }
 
 fn is_claimed_taken(task: Task) -> Bool {

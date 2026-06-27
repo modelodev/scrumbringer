@@ -8,7 +8,6 @@ import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/id as activity_id
 import domain/activity/kind
 import domain/activity/subject.{ActivityTask}
-import domain/capability.{Capability}
 import domain/org_role
 import domain/project/id as project_id
 import domain/remote
@@ -80,7 +79,6 @@ fn task_show_view(model: client_state.Model, task_id: Int) {
     model.member.notes,
     model.core.user |> opt.map(fn(user) { user.id }),
     False,
-    [],
     [],
     [],
     task_id,
@@ -235,14 +233,12 @@ pub fn task_show_config_uses_project_cache_when_active_list_misses_task_test() {
       False,
       [],
       [],
-      [Capability(id: 5, name: "Backend")],
       42,
       task_show_callbacks(),
     )
 
   let assert opt.Some(found) = config.task
   let assert "Prepare release" = found.title
-  let assert opt.Some("Backend") = config.capability_name
 }
 
 pub fn task_show_close_resets_default_tasks_tab_test() {

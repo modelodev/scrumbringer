@@ -37,7 +37,7 @@ pub fn task_metric_title_uses_localized_label_and_value_test() {
   let metric = task_metric.metric(task_metric.Blocked, 2)
 
   let assert "Blocked: 2" = task_metric.title(locale.En, metric)
-  let assert "Bloqueada: 2" = task_metric.title(locale.Es, metric)
+  let assert "Bloqueadas: 2" = task_metric.title(locale.Es, metric)
 }
 
 fn list_each(items: List(a), fun: fn(a) -> Nil) -> Nil {

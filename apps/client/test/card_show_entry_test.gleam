@@ -20,7 +20,7 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-fn legacy(parts: List(String)) -> String {
+fn forbidden_fragment(parts: List(String)) -> String {
   string.join(parts, "")
 }
 
@@ -92,10 +92,10 @@ pub fn card_show_entry_renders_without_root_model_test() {
 
   assert_contains(html, "card-show")
   assert_contains(html, "inspector-shell")
-  assert_contains(html, "data-testid=\"card-open-in-trigger\"")
+  assert_contains(html, "data-testid=\"inspector-open-in-trigger\"")
   assert_contains(html, "Customer Card")
   assert_contains(html, "data-testid=\"entity-tabs\"")
-  assert_not_contains(html, legacy(["card", "-scoped-navigation"]))
+  assert_not_contains(html, forbidden_fragment(["card", "-scoped-navigation"]))
   assert_not_contains(html, "card-progress")
 }
 
@@ -116,10 +116,12 @@ pub fn card_show_secondary_actions_render_as_menu_items_test() {
     |> element.to_document_string
 
   assert_contains(html, "data-testid=\"card-primary-activate-action\"")
-  assert_contains(html, "data-testid=\"card-secondary-actions-trigger\"")
+  assert_contains(html, "data-testid=\"inspector-more-actions-trigger\"")
   assert_not_contains(html, "data-testid=\"card-secondary-activate-action\"")
   assert_contains(html, "data-testid=\"card-secondary-move-action\"")
   assert_contains(html, "data-testid=\"card-secondary-delete-action\"")
+  assert_not_contains(html, "card-secondary-actions-menu")
+  assert_not_contains(html, "card-open-in-menu")
   assert_not_contains(html, "data-testid=\"card-activate-action\"")
   assert_not_contains(html, "data-testid=\"card-move-action\"")
   assert_not_contains(html, "data-testid=\"card-delete-action\"")
@@ -178,6 +180,7 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
   assert_contains(html, "data-testid=\"card-header-path\"")
   assert_contains(html, "Release")
   assert_contains(html, "API Cleanup")
+  assert_contains(html, "Active · Due 2026-06-24 · 1 closed · 4 Tasks")
   assert_contains(html, "data-testid=\"card-header-due\"")
   assert_contains(html, "Due 2026-06-24")
   assert_contains(html, "data-testid=\"card-task-metric-total\"")
@@ -201,12 +204,19 @@ pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
     show_entry.view(config(Some(empty_card)))
     |> element.to_document_string
 
-  assert_contains(html, "card-empty-work-decision")
+  assert_contains(html, "inspector-empty-work")
+  assert_not_contains(html, "card-empty-work-decision")
+  assert_contains(html, "Active")
+  assert_contains(html, "Active · No due date · No tasks")
+  assert_not_contains(html, "detail-meta")
+  assert_not_contains(html, "card-state-badge")
+  assert_not_contains(html, "data-testid=\"card-header-due\"")
   assert_contains(html, "empty-state-actions")
   assert_contains(html, "This card has no work yet")
   assert_contains(html, "Add subcard")
   assert_contains(html, "Add task")
-  assert_not_contains(html, legacy(["0", "/", "0"]))
+  assert_not_contains(html, "In Progress")
+  assert_not_contains(html, forbidden_fragment(["0", "/", "0"]))
 }
 
 pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
@@ -232,17 +242,18 @@ pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
     |> element.to_document_string
 
   assert_contains(html, "card-summary-block")
-  assert_contains(html, "card-summary-progress-line")
-  assert_contains(html, "card-summary-progress-bar")
+  assert_contains(html, "card-summary-signal")
+  assert_contains(html, "card-summary-metrics")
   assert_contains(html, "detail-section-kicker")
   assert_contains(html, "Description")
   assert_contains(html, "Structure")
+  assert_contains(html, "Define the work")
   assert_contains(html, "Ready root card dominated by loose documentation.")
-  assert_not_contains(html, legacy(["detail", "-summary-grid"]))
+  assert_not_contains(html, forbidden_fragment(["detail", "-summary-grid"]))
   assert_not_contains(html, "card-progress")
   assert_not_contains(html, "Tasks0")
   assert_not_contains(html, "Progress0%")
-  assert_not_contains(html, legacy(["0", "/", "0"]))
+  assert_not_contains(html, forbidden_fragment(["0", "/", "0"]))
 }
 
 pub fn card_show_entry_omits_missing_card_test() {

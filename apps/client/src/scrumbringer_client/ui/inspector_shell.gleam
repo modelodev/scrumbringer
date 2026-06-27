@@ -11,7 +11,6 @@ pub type Config(msg) {
     root_class: String,
     panel_class: String,
     title_id: String,
-    on_close: msg,
     testid: String,
   )
 }
@@ -26,7 +25,7 @@ pub fn view(config: Config(msg), children: List(Element(msg))) -> Element(msg) {
       div(
         [
           attribute.class(config.panel_class <> " inspector-panel"),
-          ..dialog.panel_attributes(config.title_id, config.on_close)
+          ..dialog.passive_panel_attributes(config.title_id)
         ],
         children,
       ),

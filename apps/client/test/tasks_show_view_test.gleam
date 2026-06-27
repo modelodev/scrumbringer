@@ -21,7 +21,7 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
-fn legacy(parts: List(String)) -> String {
+fn forbidden_fragment(parts: List(String)) -> String {
   string.join(parts, "")
 }
 
@@ -39,9 +39,30 @@ pub fn task_show_renders_as_panel_not_modal_test() {
   assert_contains(html, "aria-modal=\"true\"")
   assert_contains(html, "task-inspector-actions")
   assert_contains(html, "data-testid=\"task-inspector-primary-claim\"")
+  assert_fragment_order(html, "task-inspector-header", "task-inspector-actions")
+  assert_fragment_order(html, "task-inspector-actions", "task-show-tabs")
   assert_not_contains(html, "role=\"complementary\"")
-  assert_not_contains(html, legacy(["task", "-action-bar"]))
+  assert_not_contains(html, forbidden_fragment(["task", "-action-bar"]))
   assert_not_contains(html, "modal-backdrop")
+}
+
+pub fn task_show_header_uses_operational_headline_without_legacy_meta_test() {
+  let html =
+    task_show.view_task_show(config_with_parent_card())
+    |> element.to_document_string
+
+  assert_contains(html, "Ready to claim · Release card")
+  assert_contains(html, "Operational summary")
+  assert_contains(html, "Feature")
+  assert_contains(html, "P2")
+  assert_not_contains(html, "task-meta-chip")
+  assert_not_contains(html, "task-meta-type")
+  assert_not_contains(html, "task-meta-priority")
+  assert_not_contains(html, "task-meta-status")
+  assert_not_contains(html, "task-meta-assignee")
+  assert_not_contains(html, "task-meta-due")
+  assert_not_contains(html, "task-meta-blocking")
+  assert_not_contains(html, "data-testid=\"task-show-status-indicator\"")
 }
 
 pub fn task_show_contains_parent_navigation_in_open_in_menu_test() {
@@ -49,15 +70,16 @@ pub fn task_show_contains_parent_navigation_in_open_in_menu_test() {
     task_show.view_task_show(config_with_parent_card())
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"task-open-in-trigger\"")
-  assert_contains(html, "task-open-in-menu")
+  assert_contains(html, "data-testid=\"inspector-open-in-trigger\"")
+  assert_contains(html, "inspector-open-in-menu")
   assert_contains(html, "Open card")
   assert_contains(html, "View in Plan")
   assert_contains(
     html,
     "/app?project=1&amp;view=cards&amp;work_scope=card&amp;card=10",
   )
-  assert_not_contains(html, legacy(["task", "-context-navigation"]))
+  assert_not_contains(html, forbidden_fragment(["task", "-context-navigation"]))
+  assert_not_contains(html, "task-open-in-menu")
 }
 
 pub fn task_show_editing_uses_footer_edit_actions_only_test() {
@@ -88,13 +110,17 @@ fn occurrences(source: String, fragment: String) -> Int {
   list.length(string.split(source, fragment)) - 1
 }
 
+fn assert_fragment_order(source: String, before: String, after: String) {
+  let assert [_, rest, ..] = string.split(source, before)
+  assert_contains(rest, after)
+}
+
 fn config() -> task_show.TaskShowConfig(String) {
   task_show.TaskShowConfig(
     locale: locale.En,
     task_id: 42,
     task: Some(task()),
     parent_card: None,
-    capability_name: Some("Backend"),
     current_user_id: Some(7),
     active_tab: show_tabs.TaskDetailsTab,
     dependencies: dependencies_config(),

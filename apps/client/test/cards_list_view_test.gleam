@@ -50,7 +50,7 @@ pub fn cards_list_view_renders_cards_without_root_model_test() {
   assert_contains(html, "Customer Portal")
   assert_contains(html, "Visible to members")
   assert_contains(html, "role=\"button\"")
-  assert_contains(html, "1/4")
+  assert_contains(html, "1 of 4 tasks closed")
 }
 
 pub fn cards_list_view_renders_empty_state_without_root_model_test() {

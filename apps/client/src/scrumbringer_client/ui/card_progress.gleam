@@ -9,13 +9,22 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
+
 pub type Variant {
   Default
   Compact
 }
 
-pub fn view(closed: Int, total: Int, variant: Variant) -> Element(msg) {
-  let progress_text = int.to_string(closed) <> "/" <> int.to_string(total)
+pub fn view(
+  locale: Locale,
+  closed: Int,
+  total: Int,
+  variant: Variant,
+) -> Element(msg) {
+  let progress_copy = i18n.t(locale, i18n_text.CardProgressCount(closed, total))
   let percent = case total {
     0 -> 0
     _ -> closed * 100 / total
@@ -33,7 +42,7 @@ pub fn view(closed: Int, total: Int, variant: Variant) -> Element(msg) {
             [],
           ),
         ]),
-        span([attribute.class("card-progress")], [text(progress_text)]),
+        span([attribute.class("card-progress")], [text(progress_copy)]),
       ])
 
     Compact ->
@@ -47,7 +56,7 @@ pub fn view(closed: Int, total: Int, variant: Variant) -> Element(msg) {
             [],
           ),
         ]),
-        span([attribute.class("progress-text-mini")], [text(progress_text)]),
+        span([attribute.class("progress-text-mini")], [text(progress_copy)]),
       ])
   }
 }

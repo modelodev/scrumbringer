@@ -164,7 +164,12 @@ fn view_card_group(
       [expand_toggle.view(is_expanded)],
       list.append(title_elements, [
         // Progress bar (AC34)
-        card_progress.view(group.closed, group.total, card_progress.Default),
+        card_progress.view(
+          config.locale,
+          group.closed,
+          group.total,
+          card_progress.Default,
+        ),
       ]),
     )
 
