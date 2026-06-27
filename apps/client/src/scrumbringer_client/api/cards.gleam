@@ -12,7 +12,6 @@
 ////
 //// cards.list_cards(project_id, CardsFetched)
 //// cards.create_card(project_id, "Title", "Desc", CardCreated)
-//// cards.list_card_tasks(card_id, CardTasksFetched)
 //// ```
 
 import gleam/dynamic/decode
@@ -31,8 +30,6 @@ import domain/card.{type Card, type CardColor}
 import domain/card/card_codec
 import domain/note/entity.{type Note}
 import domain/note/note_codec
-import domain/task.{type Task}
-import domain/task/task_codec
 
 // =============================================================================
 // API Functions
@@ -199,26 +196,6 @@ pub fn move_card(
     "/api/v1/cards/" <> int.to_string(card_id) <> "/move",
     option.Some(body),
     card_action_response_decoder(),
-    to_msg,
-  )
-}
-
-/// List all tasks belonging to a card.
-pub fn list_card_tasks(
-  card_id: Int,
-  to_msg: fn(ApiResult(List(Task))) -> msg,
-) -> Effect(msg) {
-  let decoder =
-    decode.field(
-      "tasks",
-      decode.list(task_codec.task_decoder()),
-      decode.success,
-    )
-  core.request(
-    core.Get,
-    "/api/v1/cards/" <> int.to_string(card_id) <> "/tasks",
-    option.None,
-    decoder,
     to_msg,
   )
 }

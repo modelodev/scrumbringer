@@ -22,7 +22,6 @@
 //// - POST /api/v1/cards/:card_id/activate
 //// - POST /api/v1/cards/:card_id/close
 //// - POST /api/v1/cards/:card_id/move
-//// - GET  /api/v1/cards/:card_id/tasks
 
 import api/cards/contracts as card_contracts
 import domain/card as domain_card
