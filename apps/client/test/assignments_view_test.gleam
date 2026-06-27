@@ -403,9 +403,11 @@ pub fn project_metrics_summary_renders_counts_test() {
   let html = render_assignments(model)
 
   assert_contains(html, "assignments-task-metric")
+  assert_contains(html, "task-metric-chip is-compact")
   assert_contains(html, "title=\"Available: 3\"")
   assert_contains(html, "title=\"Ongoing: 1\"")
   assert_contains(html, "title=\"Closed: 2\"")
+  assert_not_contains(html, "task-metric-chip-label")
   assert_contains(html, "Release %: 50%")
 }
 
@@ -453,10 +455,12 @@ pub fn user_metrics_summary_renders_counts_test() {
   let html = render_assignments(model)
 
   assert_contains(html, "assignments-task-metric")
+  assert_contains(html, "task-metric-chip is-compact")
   assert_contains(html, "title=\"Claimed: 4\"")
   assert_contains(html, "Released: 1")
   assert_contains(html, "title=\"Closed: 2\"")
   assert_contains(html, "title=\"Ongoing: 1\"")
+  assert_not_contains(html, "task-metric-chip-label")
   assert_contains(html, "Last claim: 2026-01-02")
 }
 

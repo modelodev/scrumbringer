@@ -438,7 +438,7 @@ pub fn css() -> List(String) {
     ".card-show-progress-fill { width: 100%; height: 100%; background: var(--sb-primary); border-radius: 4px; clip-path: inset(0 calc(100% - var(--progress-width, 0%)) 0 0); transition: clip-path var(--sb-transition-slow); }",
     ".card-show-description { color: var(--sb-muted); line-height: var(--sb-line-body); max-width: var(--sb-measure-prose); }",
     ".detail-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }",
-    ".detail-summary-task-metric.task-metric-chip { box-sizing: border-box; width: 100%; min-height: 48px; justify-content: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--sb-surface); }",
+    ".detail-summary-task-metric.task-metric-chip { box-sizing: border-box; width: 100%; min-height: 48px; justify-content: center; padding: 10px 12px; border-radius: 10px; background: var(--sb-surface); }",
     ".detail-summary-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--sb-border) 76%, transparent); border-radius: 10px; background: var(--sb-surface); }",
     ".detail-summary-label { order: 2; color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); letter-spacing: var(--sb-letter-label); line-height: var(--sb-line-tight); text-transform: uppercase; overflow-wrap: anywhere; }",
     ".detail-summary-value { order: 1; color: var(--sb-text-strong); font-size: var(--sb-font-xl); font-weight: var(--sb-weight-bold); line-height: var(--sb-line-tight); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }",

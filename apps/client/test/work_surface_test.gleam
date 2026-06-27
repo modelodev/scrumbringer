@@ -68,14 +68,15 @@ pub fn work_surface_header_renders_task_summary_chip_test() {
     |> work_surface.header
     |> element.to_document_string
 
-  assert_contains(html, "task-metric-chip is-full available")
-  assert_contains(html, "task-metric-chip is-full blocked")
+  assert_contains(html, "task-metric-chip is-compact available")
+  assert_contains(html, "task-metric-chip is-compact blocked")
   assert_contains(html, "data-testid=\"work-surface-chip\"")
   assert_contains(html, "title=\"Available: 3\"")
   assert_contains(html, "aria-label=\"Blocked: 1\"")
   assert_contains(html, "task-metric-chip-icon")
-  assert_contains(html, ">Available<")
-  assert_contains(html, ">Blocked<")
+  assert_not_contains(html, "task-metric-chip-label")
+  assert_not_contains(html, ">Available<")
+  assert_not_contains(html, ">Blocked<")
 }
 
 pub fn work_surface_surface_renders_optional_slots_in_order_test() {

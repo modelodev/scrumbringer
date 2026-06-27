@@ -17,6 +17,10 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+fn assert_not_contains(html: String, fragment: String) {
+  let assert False = string.contains(html, fragment)
+}
+
 fn user() -> OrgUser {
   OrgUser(
     id: 7,
@@ -85,7 +89,9 @@ pub fn user_card_renders_expanded_projects_from_config_test() {
   assert_contains(html, "Platform")
   assert_contains(html, "Add to project")
   assert_contains(html, "assignments-task-metric")
+  assert_contains(html, "task-metric-chip is-compact")
   assert_contains(html, "title=\"Claimed: 2\"")
+  assert_not_contains(html, "task-metric-chip-label")
   assert_contains(html, "btn-secondary")
   assert_contains(html, "btn-entity-action")
 }

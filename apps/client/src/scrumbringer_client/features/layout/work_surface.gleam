@@ -190,7 +190,7 @@ fn view_summary_chip(chip: SummaryChip) -> Element(msg) {
       task_metric_chip.view(task_metric_chip.Config(
         locale: locale,
         metric: metric,
-        variant: task_metric_chip.Full,
+        variant: task_metric_chip.Compact,
         extra_class: Some("work-surface-chip"),
         testid: Some("work-surface-chip"),
       ))

@@ -235,7 +235,7 @@ fn assignment_task_metric(
   task_metric_chip.view(task_metric_chip.Config(
     locale: locale,
     metric: task_metric.metric(kind, value),
-    variant: task_metric_chip.Full,
+    variant: task_metric_chip.Compact,
     extra_class: opt.Some("assignments-task-metric"),
     testid: opt.None,
   ))

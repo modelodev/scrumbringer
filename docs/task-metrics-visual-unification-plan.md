@@ -125,12 +125,12 @@ Usar una gramatica visual comun basada en:
 
 - icono;
 - numero;
-- etiqueta visible cuando haya espacio;
+- etiqueta visible solo cuando el contexto sea explicativo;
 - tooltip en hover/focus;
 - `aria-label` equivalente;
 - tono cromatico consistente.
 
-No usar iconos como unica fuente semantica. El color tampoco debe ser la unica pista.
+En las metricas canonicas repetidas de tareas, el icono debe sustituir a la etiqueta visible para reducir ruido. El significado completo se conserva con `title` y `aria-label`. El color no debe ser la unica pista.
 
 ### Variantes de render
 
@@ -143,8 +143,8 @@ Compact -> icono + numero, con title/aria-label
 
 Uso recomendado:
 
-- `Full`: encabezados de superficies y zonas con espacio suficiente.
-- `Compact`: bloques densos de Capacidades, breakdowns y health chips dentro de tarjetas.
+- `Compact`: variante operativa por defecto para metricas canonicas de tareas, tambien en encabezados.
+- `Full`: variante excepcional para contextos explicativos, onboarding o primeras apariciones donde el icono todavia no baste.
 
 ### Hover, focus y accesibilidad
 
@@ -288,7 +288,7 @@ pub type SummaryChip {
 
 `SummaryChip` existente se mantiene para metricas no relacionadas con tareas, como automatizaciones o limites.
 
-El render de `TaskSummaryChip` debe usar `task_metric_chip.Full`.
+El render de `TaskSummaryChip` debe usar `task_metric_chip.Compact`.
 
 ## Paquetes de trabajo
 
@@ -334,8 +334,9 @@ Objetivo:
 Tareas:
 
 - Reemplazar `view_summary_chip` local por `task_metric_chip.Compact` o `Full` segun contexto.
-- Usar `Full` en encabezado general si se migra via `work_surface`.
+- Usar `Compact` en encabezado general si se migra via `work_surface`.
 - Usar `Compact` en bloques/list rows/matrix cells.
+- Reservar `Full` para superficies explicativas que lo justifiquen explicitamente.
 - Reemplazar `workload_breakdown` por el nuevo componente compacto o adaptar `workload_breakdown` para delegar en `task_metric_chip`.
 - Mantener `title` equivalente a las etiquetas actuales.
 
@@ -427,7 +428,7 @@ Tests:
 Criterios de aceptacion:
 
 - `work_surface` sigue soportando chips genericos.
-- Las metricas de tareas de headers usan icono + numero + texto visible.
+- Las metricas de tareas de headers usan icono + numero, con `title` y `aria-label`.
 - Las metricas no-task no reciben iconos incorrectos.
 
 ### Paquete 5: Estados inline de task
@@ -641,8 +642,8 @@ Implementado:
 
 - Paquete 1: `task_metric`, `task_metric_chip` y `task_status_indicator` centralizan icono, tono, label, `title` y `aria-label`.
 - Paquete 2: Capacidades usa chips comunes para available/claimed/ongoing/blocked y conserva chips genericos para cards/capabilities.
-- Paquete 3: Kanban usa `work_surface.task_summary_chip` en cabecera y `task_metric_chip.Compact` en cards.
-- Paquete 4: `work_surface` expone `TaskSummaryChip` para metricas canonicas y mantiene `SummaryChip` para datos no-task.
+- Paquete 3: Kanban usa `work_surface.task_summary_chip` compacto en cabecera y `task_metric_chip.Compact` en cards.
+- Paquete 4: `work_surface` expone `TaskSummaryChip` compacto para metricas canonicas y mantiene `SummaryChip` para datos no-task.
 - Paquete 5: Card show, task show, listas agrupadas y superficies con tasks usan `task_status_indicator` para estado inline.
 - Paquete 6: `workload_breakdown` y sus tests se eliminan al quedar sustituido por el componente comun.
 - Paquete 7: Se limpian clases y helpers obsoletos (`kanban-health-chip`, `capability-summary-chip`, `card-health-*`, `card-task-info`, `task-claimed-icon`, `claimed_icon`).
