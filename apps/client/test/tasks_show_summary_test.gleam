@@ -19,6 +19,10 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
+fn legacy(parts: List(String)) -> String {
+  string.join(parts, "")
+}
+
 pub fn task_show_summary_renders_operational_context_test() {
   let html =
     task_show_summary.view(task_show_summary.Config(
@@ -30,14 +34,16 @@ pub fn task_show_summary_renders_operational_context_test() {
     |> element.to_document_string
 
   assert_contains(html, "Operational summary")
+  assert_contains(html, "task-inspector-facts")
   assert_contains(html, "data-testid=\"task-show-summary-status-indicator\"")
   assert_contains(html, "task-status-indicator")
   assert_contains(html, "Available")
   assert_contains(html, "P2")
   assert_contains(html, "Feature")
   assert_contains(html, "Release card")
-  assert_contains(html, "Unassigned")
+  assert_contains(html, "Claim to My Tasks")
   assert_contains(html, "No active blockers")
+  assert_not_contains(html, legacy(["task", "-show-summary-grid"]))
 }
 
 pub fn task_show_summary_uses_loaded_dependency_blockers_test() {

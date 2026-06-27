@@ -31,6 +31,7 @@ pub type EmptyStateConfig(msg) {
     title: String,
     description: String,
     action: opt.Option(EmptyStateAction(msg)),
+    secondary_action: opt.Option(EmptyStateAction(msg)),
     meaning: Meaning,
     extra_class: opt.Option(String),
   )
@@ -52,6 +53,7 @@ pub fn new(
     title:,
     description:,
     action: opt.None,
+    secondary_action: opt.None,
     meaning: HealthyEmpty,
     extra_class: opt.None,
   )
@@ -66,6 +68,18 @@ pub fn with_action(
   EmptyStateConfig(
     ..state,
     action: opt.Some(EmptyStateAction(label:, on_click:)),
+  )
+}
+
+/// Adds a secondary action button to the empty state.
+pub fn with_secondary_action(
+  state: EmptyStateConfig(msg),
+  label: String,
+  on_click: msg,
+) -> EmptyStateConfig(msg) {
+  EmptyStateConfig(
+    ..state,
+    secondary_action: opt.Some(EmptyStateAction(label:, on_click:)),
   )
 }
 
@@ -92,6 +106,7 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
     title:,
     description:,
     action:,
+    secondary_action:,
     meaning:,
     extra_class:,
   ) = state
@@ -104,13 +119,32 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
     p([attribute.class("empty-state-description")], [
       text(description),
     ]),
-    case action {
-      opt.Some(EmptyStateAction(label:, on_click:)) ->
-        button.text(label, on_click, button.Primary, button.EntityAction)
-        |> button.view
-      opt.None -> element.none()
-    },
+    view_actions(action, secondary_action),
   ])
+}
+
+fn view_actions(
+  action: opt.Option(EmptyStateAction(msg)),
+  secondary_action: opt.Option(EmptyStateAction(msg)),
+) -> Element(msg) {
+  case action, secondary_action {
+    opt.None, opt.None -> element.none()
+    _, _ ->
+      div([attribute.class("empty-state-actions")], [
+        case action {
+          opt.Some(EmptyStateAction(label:, on_click:)) ->
+            button.text(label, on_click, button.Primary, button.EntityAction)
+            |> button.view
+          opt.None -> element.none()
+        },
+        case secondary_action {
+          opt.Some(EmptyStateAction(label:, on_click:)) ->
+            button.text(label, on_click, button.Secondary, button.EntityAction)
+            |> button.view
+          opt.None -> element.none()
+        },
+      ])
+  }
 }
 
 /// Simple empty state without title (just icon and text).

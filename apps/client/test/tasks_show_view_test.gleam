@@ -21,6 +21,10 @@ fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
 }
 
+fn legacy(parts: List(String)) -> String {
+  string.join(parts, "")
+}
+
 pub fn task_show_renders_as_panel_not_modal_test() {
   let html =
     task_show.view_task_show(config())
@@ -28,27 +32,32 @@ pub fn task_show_renders_as_panel_not_modal_test() {
 
   assert_contains(html, "task-show-panel")
   assert_contains(html, "task-show-content")
+  assert_contains(html, "inspector-shell")
   assert_contains(html, "data-testid=\"task-show\"")
   assert_contains(html, "data-testid=\"entity-tabs\"")
-  assert_contains(html, "role=\"complementary\"")
-  assert_contains(html, "task-action-bar")
-  assert_not_contains(html, "aria-modal=\"true\"")
+  assert_contains(html, "role=\"dialog\"")
+  assert_contains(html, "aria-modal=\"true\"")
+  assert_contains(html, "task-inspector-actions")
+  assert_contains(html, "data-testid=\"task-inspector-primary-claim\"")
+  assert_not_contains(html, "role=\"complementary\"")
+  assert_not_contains(html, legacy(["task", "-action-bar"]))
   assert_not_contains(html, "modal-backdrop")
 }
 
-pub fn task_show_renders_parent_card_navigation_in_header_test() {
+pub fn task_show_contains_parent_navigation_in_open_in_menu_test() {
   let html =
     task_show.view_task_show(config_with_parent_card())
     |> element.to_document_string
 
-  assert_contains(html, "task-context-navigation")
-  assert_contains(html, "Open in")
+  assert_contains(html, "data-testid=\"task-open-in-trigger\"")
+  assert_contains(html, "task-open-in-menu")
   assert_contains(html, "Open card")
   assert_contains(html, "View in Plan")
   assert_contains(
     html,
     "/app?project=1&amp;view=cards&amp;work_scope=card&amp;card=10",
   )
+  assert_not_contains(html, legacy(["task", "-context-navigation"]))
 }
 
 pub fn task_show_editing_uses_footer_edit_actions_only_test() {
@@ -66,12 +75,13 @@ pub fn task_show_editing_uses_footer_edit_actions_only_test() {
     |> element.to_document_string
 
   assert_contains(html, "task-show-edit-form")
+  assert_contains(html, "task-inspector-edit-actions")
   assert_contains(html, ">Cancel<")
   let assert 1 = occurrences(html, ">Save<")
   assert_not_contains(html, "Release back to Pool")
   assert_not_contains(html, "Start working")
   assert_not_contains(html, "Claim task")
-  assert_not_contains(html, "data-testid=\"task-show-primary-close\"")
+  assert_not_contains(html, "data-testid=\"task-inspector-primary-close\"")
 }
 
 fn occurrences(source: String, fragment: String) -> Int {

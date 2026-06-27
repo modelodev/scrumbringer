@@ -100,7 +100,7 @@ pub fn card_show_uses_wide_panel_and_mobile_fullscreen_test() {
   assert_contains(css, ".card-show { position: fixed")
   assert_contains(css, "justify-content: flex-end")
   assert_contains(css, "width: min(920px, calc(100vw - 48px))")
-  assert_contains(css, ".card-show { padding: 0; align-items: stretch")
+  assert_contains(css, ".card-show, .task-show { padding: 0")
   assert_contains(css, "height: 100dvh; max-height: 100dvh")
 }
 

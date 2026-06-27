@@ -40,7 +40,7 @@ pub fn view(config: Config) -> Element(msg) {
       text(t(config.locale, i18n_text.TaskOperationalSummary)),
     ]),
     div(
-      [attribute.class("task-show-summary-grid")],
+      [attribute.class("task-inspector-facts")],
       [
         status_summary_item(config, t(config.locale, i18n_text.Status)),
         summary_item(
@@ -352,8 +352,9 @@ fn card_is_empty(config: Config) -> Bool {
 
 fn owner_label(config: Config) -> String {
   case task_execution_state.claimed_by(config.task.state) {
-    opt.Some(_) -> t(config.locale, i18n_text.Assigned)
-    opt.None -> t(config.locale, i18n_text.Unassigned)
+    opt.Some(user_id) ->
+      t(config.locale, i18n_text.ClaimedBy) <> " #" <> int.to_string(user_id)
+    opt.None -> t(config.locale, i18n_text.TaskNextActionClaim)
   }
 }
 

@@ -4,6 +4,7 @@ import lustre/element
 import scrumbringer_client/features/admin/org_user_fallback
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
+import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/copyable_input
@@ -55,6 +56,27 @@ pub fn empty_state_action_uses_semantic_button_test() {
   let assert True = string.contains(html, "btn-entity-action")
   let assert True = string.contains(html, "type=\"button\"")
   let assert False = string.contains(html, "type=\"submit\"")
+}
+
+pub fn action_menu_renders_links_as_menu_items_test() {
+  let html =
+    action_menu.view(
+      "Open in",
+      "open-trigger",
+      "open-menu",
+      Some("Open in"),
+      "open-menu",
+      "open-trigger",
+      "open-panel",
+      "open-item",
+      [action_menu.link_item("Plan", "open-plan", "/app?view=cards")],
+    )
+    |> element.to_document_string
+
+  let assert True = string.contains(html, "href=\"/app?view=cards\"")
+  let assert True = string.contains(html, "role=\"menuitem\"")
+  let assert True = string.contains(html, "data-testid=\"open-plan\"")
+  let assert False = string.contains(html, "type=\"button\"")
 }
 
 pub fn empty_state_simple_renders_description_test() {

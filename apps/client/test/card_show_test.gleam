@@ -39,7 +39,7 @@ fn make_model() -> Model {
     can_manage_notes: False,
     can_manage_structure: False,
     can_execute_work: False,
-    active_tab: show_tabs.CardSummaryTab,
+    active_tab: show_tabs.default_card_tab(),
     notes: NotAsked,
     note_dialog_open: False,
     note_content: "",
@@ -110,7 +110,7 @@ pub fn initial_model_has_correct_defaults_test() {
   let assert option.None = model.note_pin_in_flight
   let assert option.None = model.note_error
   let assert NotAsked = model.tasks
-  let assert show_tabs.CardSummaryTab = model.active_tab
+  let assert show_tabs.CardWorkTab = model.active_tab
 }
 
 pub fn model_with_card_retains_data_test() {
@@ -153,7 +153,9 @@ pub fn card_show_renders_as_panel_not_modal_test() {
     |> element.to_document_string
 
   let assert True = string.contains(html, "card-show-panel")
-  let assert False = string.contains(html, "aria-modal=\"true\"")
+  let assert True = string.contains(html, "inspector-shell")
+  let assert True = string.contains(html, "role=\"dialog\"")
+  let assert True = string.contains(html, "aria-modal=\"true\"")
   let assert False = string.contains(html, "modal-backdrop")
 }
 

@@ -10,6 +10,7 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/locale
+import scrumbringer_client/ui/show_tabs
 
 fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
@@ -17,6 +18,10 @@ fn assert_contains(html: String, fragment: String) {
 
 fn assert_not_contains(html: String, fragment: String) {
   let assert False = string.contains(html, fragment)
+}
+
+fn legacy(parts: List(String)) -> String {
+  string.join(parts, "")
 }
 
 fn sample_card() {
@@ -86,8 +91,12 @@ pub fn card_show_entry_renders_without_root_model_test() {
     |> element.to_document_string
 
   assert_contains(html, "card-show")
+  assert_contains(html, "inspector-shell")
+  assert_contains(html, "data-testid=\"card-open-in-trigger\"")
   assert_contains(html, "Customer Card")
-  assert_contains(html, "Customer-facing card")
+  assert_contains(html, "data-testid=\"entity-tabs\"")
+  assert_not_contains(html, legacy(["card", "-scoped-navigation"]))
+  assert_not_contains(html, "card-progress")
 }
 
 pub fn card_show_entry_renders_without_current_user_test() {
@@ -192,15 +201,15 @@ pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
     show_entry.view(config(Some(empty_card)))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"card-create-card-action\"")
-  assert_contains(html, "data-testid=\"card-create-task-action\"")
-  assert_contains(html, "data-testid=\"card-empty-work-decision\"")
+  assert_contains(html, "card-empty-work-decision")
+  assert_contains(html, "empty-state-actions")
   assert_contains(html, "This card has no work yet")
   assert_contains(html, "Add subcard")
   assert_contains(html, "Add task")
+  assert_not_contains(html, legacy(["0", "/", "0"]))
 }
 
-pub fn card_show_summary_uses_separate_metric_nodes_and_description_label_test() {
+pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
   let card =
     Card(
       ..sample_card(),
@@ -211,22 +220,29 @@ pub fn card_show_summary_uses_separate_metric_nodes_and_description_label_test()
     )
 
   let html =
-    show_entry.view(config(Some(card)))
+    show_entry.view(
+      show_entry.Config(
+        ..config(Some(card)),
+        model: card_show.Model(
+          ..card_show.init_model(),
+          active_tab: show_tabs.CardSummaryTab,
+        ),
+      ),
+    )
     |> element.to_document_string
 
-  assert_contains(html, "detail-summary-grid")
-  assert_contains(html, "data-testid=\"card-summary-task-metric-total\"")
-  assert_contains(html, "data-testid=\"card-summary-task-metric-closed\"")
-  assert_contains(html, "detail-summary-task-metric")
-  assert_contains(html, "task-metric-chip is-compact")
-  assert_contains(html, "title=\"Total: 0\"")
-  assert_contains(html, "detail-summary-label")
-  assert_contains(html, "detail-summary-value")
+  assert_contains(html, "card-summary-block")
+  assert_contains(html, "card-summary-progress-line")
+  assert_contains(html, "card-summary-progress-bar")
   assert_contains(html, "detail-section-kicker")
   assert_contains(html, "Description")
+  assert_contains(html, "Structure")
   assert_contains(html, "Ready root card dominated by loose documentation.")
+  assert_not_contains(html, legacy(["detail", "-summary-grid"]))
+  assert_not_contains(html, "card-progress")
   assert_not_contains(html, "Tasks0")
   assert_not_contains(html, "Progress0%")
+  assert_not_contains(html, legacy(["0", "/", "0"]))
 }
 
 pub fn card_show_entry_omits_missing_card_test() {

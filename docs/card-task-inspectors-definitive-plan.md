@@ -475,12 +475,14 @@ dos usos reales o no elimina un helper/local CSS duplicado, no entra en `ui/`.
 | --- | --- |
 | `ui/tabs.gleam` | Mantener como motor canonico de tabs: roles, teclado, counts e indicadores ya existen. |
 | `ui/detail_tabs.gleam` | Reutilizar para Card/Task Inspector. No crear `InspectorTabs` salvo wrapper minimo sin logica. |
+| `ui/show_tabs.gleam` | Contrato canonico de tabs de Card/Task Show. Extender aqui labels, orden, counts y default tab; no duplicar enums locales de inspector. |
 | `ui/action_menu.gleam` | Reutilizar para acciones secundarias. Si `Abrir en` necesita enlaces reales, extender con items link antes de crear otro menu. |
 | `ui/move_menu.gleam` | Usar como patron de wrapper fino sobre `action_menu`, no como dependencia directa. |
 | `ui/button.gleam` | Fuente unica para acciones primarias/secundarias de inspectors. No crear markup local de botones. |
 | `ui/action_buttons.gleam` y `ui/task_actions.gleam` | Reutilizar en filas compactas de tasks; no usarlos como accion primaria grande del Task Inspector. |
 | `ui/task_item.gleam` | Base canonica de filas de trabajo en Card Inspector. Configurar leading, secondary y actions antes de crear una fila nueva. |
 | `ui/task_status_indicator.gleam` | Indicador canonico de estado de task en filas y header. |
+| `ui/task_blocked_badge.gleam` | Reutilizar badge compacto en filas. Para inspectors, extraer o exponer resumen semantico de bloqueo antes de duplicar tooltip/status text. |
 | `ui/task_metric.gleam` y `ui/task_metric_chip.gleam` | Mantener semantica de metricas. En inspectors usar version full o texto explicito cuando el chip compacto sea ambiguo. |
 | `ui/activity_feed.gleam` | Reutilizar tal cual para Card y Task. No crear `inspector_activity_feed`. |
 | `ui/note_content.gleam` | Reutilizar. Ya evita duplicar la URL explicita cuando aparece en el contenido; el plan solo debe exigir test. |
@@ -488,6 +490,9 @@ dos usos reales o no elimina un helper/local CSS duplicado, no entra en `ui/`.
 | `ui/pinned_context.gleam` | Reutilizar para contexto fijado; ya limita visibles y soporta `more_label`. |
 | `ui/note_dialog.gleam` | Reutilizar para crear/editar notas. No introducir modal nuevo. |
 | `ui/empty_state.gleam` | Extender antes de crear empty states especificos: debe soportar dos acciones equilibradas para card vacia. |
+| `ui/remote.gleam`, `ui/error_notice.gleam`, `ui/loading.gleam` | Reutilizar estados remotos. Si inspector necesita variante compacta, extender estas piezas antes de escribir `case Remote` locales. |
+| `ui/dialog.gleam` | Usar primitivas accesibles de panel (`panel_attributes`, background inert, Escape). No usar `dialog.view` como contenedor visual del inspector. |
+| `ui/confirm_dialog.gleam` | Reutilizar para confirmaciones destructivas o irreversibles desde menus; no crear confirmaciones locales. |
 | `ui/card_section_header.gleam` | Mantener para secciones con titulo + una accion. Generalizar solo si Card y Task duplican el mismo patron. |
 | `ui/section_header.gleam` | No usar como base de inspectors si mantiene sesgo admin/iconografico. |
 | `ui/modal_header.gleam` y `ui/modal_close_button.gleam` | Mantener para dialogos. Reutilizar close button si aplica, pero no forzar `modal_header` como header de inspector. |
@@ -495,6 +500,9 @@ dos usos reales o no elimina un helper/local CSS duplicado, no entra en `ui/`.
 | `ui/card_progress.gleam` | Mantener fuera de inspectors si tiene consumidores compactos. Sustituir dentro de inspectors. |
 | `features/cards/show/hierarchy.gleam` | Reutilizar para contexto/ruta de card. Generalizar a `ui/context_path` solo si Task Inspector necesita el mismo patron. |
 | `features/cards/scoped_navigation.gleam` | Mantener como fuente de URLs. La nueva UI debe envolverlo en menu, no duplicar logica de rutas. |
+| `features/pool/blocking.gleam` | Reutilizar derivaciones puras de dependencias abiertas, ids y ocultas. Si deja de ser pool-only, mover sin cambiar contrato. |
+| `features/tasks/claimability.gleam` | Fuente unica para decidir si una task se puede tomar. Extender a razon/estado si el inspector necesita explicar por que no es reclamable. |
+| `features/tasks/show_editor.gleam` | Reutilizar en Task Inspector Details/Edit. No convertirlo en componente generico; extraer solo helpers si tambien sirven fuera de Task Show. |
 | `features/tasks/show/footer.gleam` | Extraer politica pura de acciones a `features/tasks/show/actions.gleam`; luego renderizarla desde header/next action. |
 | `features/tasks/show/summary.gleam` | Conservar automation origin y facts utiles; separar si la vista nueva necesita bloques mas pequenos. |
 
@@ -575,6 +583,18 @@ pub type TaskPrimaryAction {
 `ReleaseClaim` no es primaria en este plan. Es salida secundaria.
 
 ## Limpieza Obligatoria
+
+Regla de cierre:
+
+- Todo helper, bloque de markup, clase CSS, test fixture, expectativa legacy o
+  rama de render que quede sustituida por un componente compartido debe
+  retirarse en el mismo PR.
+- Solo puede conservarse codigo sustituido si todavia tiene un consumidor real
+  fuera del alcance del inspector. Ese consumidor debe quedar nombrado en el PR.
+- No se aceptan dos sistemas paralelos para resolver el mismo caso visual,
+  aunque ambos pasen tests.
+- Si se deja un adaptador temporal, debe incluir razon, consumidor, busqueda de
+  cierre y criterio concreto para eliminarlo.
 
 ### Frontend
 
@@ -722,6 +742,10 @@ Crear o ampliar:
   - tabs con count en Trabajo/Notas/Bloqueos cuando aporte valor;
   - labels i18n;
   - tab activa estable.
+- `show_tabs_contract_test.gleam`
+  - Card Show abre en `CardWorkTab` sin tab explicita;
+  - orden de Card tabs: Trabajo, Resumen, Notas, Actividad;
+  - Task Show mantiene contrato propio sin enums duplicados.
 - `action_menu_link_item_test.gleam`
   - `Abrir en` puede renderizar enlaces con href real;
   - items button y link mantienen roles/nombres accesibles;
@@ -733,6 +757,16 @@ Crear o ampliar:
 - `task_item_card_work_row_test.gleam`
   - `task_item` cubre fila de trabajo con estado, owner, meta y acciones;
   - no se requiere fila nueva si la configuracion alcanza el layout objetivo.
+- `blocking_summary_test.gleam`
+  - inspector usa `blocking`/`task_blocked_badge` para dependencias abiertas;
+  - tooltip/resumen de bloqueo no duplica logica de estado o claimant.
+- `claimability_inspector_test.gleam`
+  - `Tomar` solo aparece si `claimability.can_claim` lo permite;
+  - si se necesita razon visible, se extiende `claimability` en vez de duplicar
+    condiciones locales.
+- `remote_inspector_state_test.gleam`
+  - loading/error de deep-link usa `remote`, `loading` o `error_notice`;
+  - no hay `case Remote` visuales locales salvo adaptadores finos.
 - `note_content_test.gleam`
   - no duplica la URL visible cuando ya aparece en el contenido;
   - mantiene enlaces explicitos cuando el contenido no los incluye.
@@ -795,6 +829,9 @@ Al cerrar la implementacion se debe reportar:
 - numero de funciones locales sustituidas por componentes compartidos;
 - numero de componentes `ui/` nuevos y justificacion por call sites;
 - numero de componentes existentes extendidos en lugar de duplicados;
+- inventario de codigo sustituido y eliminado: helpers, clases CSS, ramas de
+  render, tests y fixtures;
+- inventario de codigo sustituido que permanece, con consumidor real y razon;
 - numero de tests nuevos;
 - numero de tests legacy eliminados o actualizados;
 - resultado de `rg` para patrones legacy;
@@ -808,8 +845,11 @@ Metas orientativas:
   duplicar logica de rutas/menus;
 - cada componente nuevo en `ui/` debe listar en el PR los helpers, clases o
   bloques de markup que elimina;
+- todo codigo sustituido por un componente compartido debe quedar eliminado o
+  justificado con consumidor real;
 - reutilizar o extender al menos 6 piezas existentes del barrido:
-  `detail_tabs`, `action_menu`, `button`, `empty_state`, `task_item`,
+  `show_tabs`, `detail_tabs`, `action_menu`, `button`, `empty_state`,
+  `task_item`, `task_blocked_badge`, `blocking`, `claimability`, `remote`,
   `activity_feed`, `notes_list`, `pinned_context`, `task_status_indicator` o
   `task_metric`;
 - eliminar o absorber al menos 4 helpers/bloques locales de inspectors
@@ -827,6 +867,11 @@ Metas de limpieza comprobables:
 
 - `rg "ui/inspector_tabs|inspector_activity_feed|inspector_notes_list" apps/client/src`
   no debe devolver matches salvo docs/tests negativos.
+- `rg "NotAsked|Loading|Failed\\(" apps/client/src/scrumbringer_client/features/cards/show.gleam apps/client/src/scrumbringer_client/features/tasks/show`
+  debe justificar cualquier render local de loading/error en vez de `ui/remote`.
+- `rg "blocked_count > 0|can_claim" apps/client/src/scrumbringer_client/features/cards/show.gleam apps/client/src/scrumbringer_client/features/tasks/show`
+  debe demostrar que las decisiones pasan por `blocking`, `task_blocked_badge` o
+  `claimability`, no por condiciones duplicadas.
 - `rg "card-empty-work-decision" apps/client/src apps/client/test` debe quedar
   eliminado o documentado como adaptador temporal hacia `empty_state`.
 - `rg "card-scoped-navigation|task-context-navigation" apps/client/src apps/client/test`
@@ -852,9 +897,17 @@ Gate:
 ### Fase 2: DRY Primero, Componentes Nuevos Despues
 
 - Ajustar `detail_tabs`/`show_tabs` para counts y labels de inspectors.
+- Cambiar contrato/default de Card Show en `show_tabs`/estado para que
+  `Trabajo` sea la entrada inicial sin tab explicita.
 - Extender `action_menu` con item link si `Abrir en` requiere href real.
 - Extender `empty_state` para dos acciones sin romper single-action.
 - Confirmar que `task_item` cubre filas de trabajo de Card Inspector.
+- Usar `blocking`, `task_blocked_badge` y `claimability` como fuentes de
+  verdad para bloqueo y accion `Tomar`.
+- Usar `remote`, `loading` y `error_notice` para estados de carga/error de
+  inspectors.
+- Usar primitivas de `dialog` para accesibilidad de panel y `confirm_dialog`
+  para confirmaciones.
 - Extraer politica pura de acciones desde `features/tasks/show/footer.gleam`.
 - Crear `InspectorShell`.
 - Crear `InspectorHeader`.
@@ -918,6 +971,9 @@ Gate:
 - Retirar CSS legacy.
 - Retirar tests legacy.
 - Retirar helpers locales sustituidos.
+- Retirar adaptadores temporales si ya no tienen consumidor real.
+- Eliminar ramas de render sustituidas por componentes compartidos.
+- Documentar cualquier codigo sustituido que permanezca con consumidor y razon.
 - Actualizar docs de validacion.
 - Ejecutar busquedas `rg`.
 - Ejecutar test suite y browser validation.

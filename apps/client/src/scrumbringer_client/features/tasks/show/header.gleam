@@ -16,7 +16,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/modal_header
+import scrumbringer_client/ui/inspector_header
 import scrumbringer_client/ui/task_status_indicator
 
 pub type Config(msg) {
@@ -49,33 +49,19 @@ fn render_header(
   title: String,
   meta: opt.Option(Element(msg)),
 ) -> Element(msg) {
-  modal_header.view_extended_with_close_label(
-    base_header_config(config, title:, meta:),
-    t(config, i18n_text.Close),
-  )
-}
-
-fn base_header_config(
-  config: Config(msg),
-  title title: String,
-  meta meta: opt.Option(Element(msg)),
-) -> modal_header.ExtendedConfig(msg) {
-  modal_header.ExtendedConfig(
+  inspector_header.view(inspector_header.Config(
     title: title,
-    title_element: modal_header.TitleH2,
-    close_position: modal_header.CloseAfterTitle,
-    icon: opt.None,
-    badges: [],
-    meta: meta,
-    progress: opt.None,
-    on_close: config.on_close,
-    header_class: "detail-header",
-    title_row_class: "detail-title-row",
-    title_class: "detail-title",
     title_id: "task-show-title",
-    close_button_class: "modal-close btn-icon",
-    close_button_testid: opt.Some("entity-show-close"),
-  )
+    state_line: opt.None,
+    context: opt.None,
+    meta: meta,
+    primary_action: opt.None,
+    open_in: opt.None,
+    secondary_actions: opt.None,
+    close_label: t(config, i18n_text.Close),
+    on_close: config.on_close,
+    extra_class: "task-inspector-header",
+  ))
 }
 
 fn task_meta(config: Config(msg), task: domain_task.Task) -> Element(msg) {
@@ -138,15 +124,26 @@ fn capability_chip(config: Config(msg)) -> Element(msg) {
 
 fn assignee(config: Config(msg), task: domain_task.Task) -> Element(msg) {
   case task_execution_state.claimed_by(task.state) {
-    opt.Some(_user_id) ->
+    opt.Some(user_id) ->
       span([attribute.class("task-meta-chip task-meta-assignee")], [
         icons.nav_icon(icons.UserCircle, icons.Small),
-        text(t(config, i18n_text.Assigned)),
+        text(t(config, i18n_text.ClaimedBy) <> " #" <> int.to_string(user_id)),
       ])
     opt.None ->
       span([attribute.class("task-meta-chip task-meta-assignee muted")], [
-        text(t(config, i18n_text.Unassigned)),
+        text(task_status_indicator_label(config, task)),
       ])
+  }
+}
+
+fn task_status_indicator_label(
+  config: Config(msg),
+  task: domain_task.Task,
+) -> String {
+  case task.state {
+    task_execution_state.Available -> t(config, i18n_text.TaskNextActionClaim)
+    task_execution_state.Closed(..) -> t(config, i18n_text.TaskNextActionOpen)
+    task_execution_state.Claimed(..) -> t(config, i18n_text.TaskNextActionOpen)
   }
 }
 

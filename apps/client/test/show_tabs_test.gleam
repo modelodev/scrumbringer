@@ -10,6 +10,49 @@ fn assert_contains(html: String, fragment: String) {
   let assert True = string.contains(html, fragment)
 }
 
+pub fn card_items_start_with_work_and_count_visible_work_test() {
+  let items =
+    show_tabs.card_items(
+      show_tabs.CardLabels(
+        summary: "Summary",
+        work: "Work",
+        notes: "Notes",
+        activity: "Activity",
+      ),
+      3,
+      1,
+      True,
+    )
+
+  let assert [
+    detail_tabs.TabItem(
+      id: show_tabs.CardWorkTab,
+      label: "Work",
+      count: opt.Some(3),
+      has_indicator: False,
+    ),
+    detail_tabs.TabItem(
+      id: show_tabs.CardSummaryTab,
+      label: "Summary",
+      count: opt.None,
+      has_indicator: False,
+    ),
+    detail_tabs.TabItem(
+      id: show_tabs.CardNotesTab,
+      label: "Notes",
+      count: opt.Some(1),
+      has_indicator: True,
+    ),
+    detail_tabs.TabItem(
+      id: show_tabs.CardActivityTab,
+      label: "Activity",
+      count: opt.None,
+      has_indicator: False,
+    ),
+  ] = items
+  let assert show_tabs.CardWorkTab = show_tabs.default_card_tab()
+}
+
 pub fn task_items_render_closed_task_show_contract_test() {
   let items =
     show_tabs.task_items(

@@ -33,19 +33,20 @@ pub type TaskLabels {
 
 pub fn card_items(
   labels: CardLabels,
+  work_count: Int,
   notes_count: Int,
   has_new_notes: Bool,
 ) -> List(detail_tabs.TabItem(CardShowTab)) {
   [
     detail_tabs.TabItem(
-      id: CardSummaryTab,
-      label: labels.summary,
-      count: opt.None,
+      id: CardWorkTab,
+      label: labels.work,
+      count: positive_count(work_count),
       has_indicator: False,
     ),
     detail_tabs.TabItem(
-      id: CardWorkTab,
-      label: labels.work,
+      id: CardSummaryTab,
+      label: labels.summary,
       count: opt.None,
       has_indicator: False,
     ),
@@ -62,6 +63,10 @@ pub fn card_items(
       has_indicator: False,
     ),
   ]
+}
+
+pub fn default_card_tab() -> CardShowTab {
+  CardWorkTab
 }
 
 pub fn task_items(

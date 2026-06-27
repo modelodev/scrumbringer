@@ -19,12 +19,13 @@
 ////
 //// - **features/pool/view.gleam**: Imports and renders this surface
 
+import gleam/int
 import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{a, div, span, text}
+import lustre/element/html.{div, text}
 
 import domain/activity/entity.{type ActivityEvent}
 import domain/card.{type Card}
@@ -39,17 +40,18 @@ import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/features/pool/task_notes
+import scrumbringer_client/features/tasks/show/actions as task_show_actions
 import scrumbringer_client/features/tasks/show/details as task_show_details
-import scrumbringer_client/features/tasks/show/footer as task_show_footer
 import scrumbringer_client/features/tasks/show/header as task_show_header
 import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/activity_feed
 import scrumbringer_client/ui/button
 import scrumbringer_client/ui/detail_tabs
-import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/inspector_shell
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
 
@@ -153,35 +155,28 @@ pub type TaskActionsConfig(msg) {
 }
 
 pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
-  div(
-    [
-      attribute.class("task-show task-show-panel"),
-      attribute.attribute("data-testid", "task-show"),
-    ],
+  inspector_shell.view(
+    inspector_shell.Config(
+      root_class: "task-show task-show-panel",
+      panel_class: "task-show-content",
+      title_id: "task-show-title",
+      on_close: config.on_close,
+      testid: "task-show",
+    ),
     [
       div(
         [
-          attribute.class("task-show-content"),
-          attribute.attribute("role", "complementary"),
-          attribute.attribute("aria-labelledby", "task-show-title"),
+          attribute.class("task-show-header-block detail-header-block"),
         ],
         [
-          div(
-            [
-              attribute.class("task-show-header-block detail-header-block"),
-            ],
-            [
-              view_task_header(config),
-              view_task_context_navigation(config),
-              view_task_show_tabs(config),
-            ],
-          ),
-          div([attribute.class("task-show-body")], [
-            view_task_tab_content(config),
-          ]),
-          view_task_footer(config),
+          view_task_header(config),
+          view_task_inspector_actions(config),
+          view_task_show_tabs(config),
         ],
       ),
+      div([attribute.class("task-show-body")], [
+        view_task_tab_content(config),
+      ]),
     ],
   )
 }
@@ -197,39 +192,176 @@ fn view_task_header(config: TaskShowConfig(msg)) -> Element(msg) {
   ))
 }
 
-fn view_task_context_navigation(config: TaskShowConfig(msg)) -> Element(msg) {
+fn view_task_inspector_actions(config: TaskShowConfig(msg)) -> Element(msg) {
+  div([attribute.class("inspector-actions task-inspector-actions")], [
+    view_task_primary_action(config),
+    view_task_open_in_menu(config),
+    view_task_secondary_actions(config),
+  ])
+}
+
+fn view_task_open_in_menu(config: TaskShowConfig(msg)) -> Element(msg) {
   case config.parent_card {
     opt.Some(card) ->
-      div([attribute.class("task-context-navigation")], [
-        span([attribute.class("task-context-navigation-label")], [
-          text(i18n.t(config.locale, i18n_text.OpenIn)),
-        ]),
-        button.view(
-          button.icon_text(
+      action_menu.view(
+        i18n.t(config.locale, i18n_text.OpenIn),
+        "task-open-in-trigger",
+        "task-open-in-" <> int.to_string(config.task_id),
+        opt.Some(i18n.t(config.locale, i18n_text.OpenIn)),
+        "task-open-in-menu",
+        "task-open-in-trigger",
+        "task-open-in-panel",
+        "task-open-in-item",
+        [
+          action_menu.item(
             i18n.t(config.locale, i18n_text.OpenCard),
+            "task-open-parent-card",
             config.on_open_parent_card(card.id),
-            icons.Cards,
-            button.Secondary,
+          ),
+          action_menu.link_item(
+            i18n.t(config.locale, i18n_text.ViewInPlan),
+            "task-open-plan",
+            scoped_navigation.plan_url(card),
+          ),
+        ],
+      )
+    opt.None -> none()
+  }
+}
+
+fn view_task_primary_action(config: TaskShowConfig(msg)) -> Element(msg) {
+  case config.editor.editing {
+    True -> view_edit_primary_actions(config)
+    False ->
+      case
+        task_show_actions.primary_action(
+          config.task,
+          config.current_user_id,
+          config.actions.disable_actions,
+        )
+      {
+        task_show_actions.ClaimTask(id, version) ->
+          button.text(
+            i18n.t(config.locale, i18n_text.ClaimTask),
+            config.actions.on_claim(id, version),
+            button.Primary,
             button.EntityAction,
           )
-          |> button.with_class("task-context-open-card"),
-        ),
-        a(
-          [
-            attribute.class(
-              "btn btn-secondary btn-icon-text btn-entity-action btn-sm task-context-plan-link",
-            ),
-            attribute.href(scoped_navigation.plan_url(card)),
-          ],
-          [
-            span([attribute.class("btn-icon-prefix")], [
-              icons.nav_icon(icons.List, icons.Small),
-            ]),
-            text(i18n.t(config.locale, i18n_text.ViewInPlan)),
-          ],
-        ),
-      ])
+          |> button.with_testid("task-inspector-primary-claim")
+          |> button.view
+        task_show_actions.StartWork(id) ->
+          button.text(
+            i18n.t(config.locale, i18n_text.TaskNextActionStart),
+            config.actions.on_start_work(id),
+            button.Primary,
+            button.EntityAction,
+          )
+          |> button.with_testid("task-inspector-primary-start")
+          |> button.view
+        task_show_actions.CloseTask(id, version) ->
+          button.text(
+            i18n.t(config.locale, i18n_text.TaskNextActionClose),
+            config.actions.on_task_close(id, version),
+            button.Primary,
+            button.EntityAction,
+          )
+          |> button.with_testid("task-inspector-primary-close")
+          |> button.view
+        task_show_actions.NoPrimaryAction(reason) ->
+          div(
+            [
+              attribute.class("task-inspector-no-primary"),
+              attribute.attribute("data-testid", "task-inspector-no-primary"),
+            ],
+            [text(no_primary_reason_label(config.locale, reason))],
+          )
+      }
+  }
+}
+
+fn view_edit_primary_actions(config: TaskShowConfig(msg)) -> Element(msg) {
+  div([attribute.class("task-inspector-edit-actions")], [
+    button.text(
+      i18n.t(config.locale, i18n_text.Cancel),
+      config.editor.on_edit_cancelled,
+      button.Secondary,
+      button.EntityAction,
+    )
+      |> button.with_disabled(config.editor.edit_in_flight)
+      |> button.view,
+    button.text(
+      i18n.t(config.locale, i18n_text.Save),
+      config.editor.on_edit_submitted,
+      button.Primary,
+      button.EntityAction,
+    )
+      |> button.with_disabled(
+        config.editor.edit_in_flight || !edit_dirty(config),
+      )
+      |> button.with_class("task-show-save")
+      |> button.view,
+  ])
+}
+
+fn view_task_secondary_actions(config: TaskShowConfig(msg)) -> Element(msg) {
+  case config.task {
     opt.None -> none()
+    opt.Some(task) ->
+      action_menu.view(
+        "⋯",
+        "task-show-secondary-actions-trigger",
+        "task-show-secondary-actions-" <> int.to_string(task.id),
+        opt.Some(i18n.t(config.locale, i18n_text.HierarchyMoreActions)),
+        "secondary-actions-menu",
+        "secondary-actions-trigger task-show-secondary-actions-trigger",
+        "secondary-actions-panel task-show-secondary-actions-panel",
+        "secondary-actions-item task-show-secondary-actions-item",
+        secondary_action_items(config, task),
+      )
+  }
+}
+
+fn secondary_action_items(
+  config: TaskShowConfig(msg),
+  task: Task,
+) -> List(action_menu.Item(msg)) {
+  let release_items = case
+    task_show_actions.can_release(task, config.current_user_id)
+  {
+    True -> [
+      action_menu.item(
+        i18n.t(config.locale, i18n_text.TaskNextActionRelease),
+        "task-show-secondary-release",
+        config.actions.on_release(task.id, task.version),
+      ),
+    ]
+    False -> []
+  }
+
+  list.append(release_items, [
+    action_menu.disabled_item(
+      i18n.t(config.locale, i18n_text.Delete),
+      "task-show-secondary-delete",
+      i18n.t(config.locale, i18n_text.TaskHasOperationalHistory),
+      config.actions.on_delete(task.id),
+    ),
+  ])
+}
+
+fn no_primary_reason_label(
+  locale: Locale,
+  reason: task_show_actions.NoPrimaryReason,
+) -> String {
+  case reason {
+    task_show_actions.LoadingTask -> i18n.t(locale, i18n_text.LoadingEllipsis)
+    task_show_actions.ActionsDisabled -> i18n.t(locale, i18n_text.Working)
+    task_show_actions.BlockedByDependencies ->
+      i18n.t(locale, i18n_text.TaskBlockedByDependencies)
+    task_show_actions.ClaimedByAnotherUser ->
+      i18n.t(locale, i18n_text.TaskAlreadyClaimed)
+    task_show_actions.ClosedTask -> i18n.t(locale, i18n_text.TaskNextActionOpen)
+    task_show_actions.NoCurrentUser ->
+      i18n.t(locale, i18n_text.GoToPoolToClaimTasks)
   }
 }
 
@@ -414,26 +546,6 @@ fn view_notes(config: TaskShowConfig(msg)) -> Element(msg) {
     on_submitted: config.notes.on_submitted,
     on_delete: config.notes.on_delete,
     on_pin_toggle: config.notes.on_pin_toggle,
-  ))
-}
-
-fn view_task_footer(config: TaskShowConfig(msg)) -> Element(msg) {
-  task_show_footer.view(task_show_footer.Config(
-    locale: config.locale,
-    task: config.task,
-    current_user_id: config.current_user_id,
-    disable_actions: config.actions.disable_actions,
-    editing: config.editor.editing,
-    edit_in_flight: config.editor.edit_in_flight,
-    edit_dirty: edit_dirty(config),
-    on_close: config.on_close,
-    on_edit_cancelled: config.editor.on_edit_cancelled,
-    on_edit_submitted: config.editor.on_edit_submitted,
-    on_claim: config.actions.on_claim,
-    on_start_work: config.actions.on_start_work,
-    on_release: config.actions.on_release,
-    on_task_close: config.actions.on_task_close,
-    on_delete: config.actions.on_delete,
   ))
 }
 

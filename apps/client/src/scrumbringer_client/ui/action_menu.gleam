@@ -2,21 +2,22 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element, none}
-import lustre/element/html.{button, div, text}
+import lustre/element/html.{a, button, div, text}
 import lustre/event
 
 pub type Item(msg) {
-  Item(
+  ButtonItem(
     label: String,
     testid: String,
     on_click: msg,
     disabled: Bool,
     title: Option(String),
   )
+  LinkItem(label: String, testid: String, href: String)
 }
 
 pub fn item(label: String, testid: String, on_click: msg) -> Item(msg) {
-  Item(label, testid, on_click, False, None)
+  ButtonItem(label, testid, on_click, False, None)
 }
 
 pub fn disabled_item(
@@ -25,7 +26,11 @@ pub fn disabled_item(
   reason: String,
   on_click: msg,
 ) -> Item(msg) {
-  Item(label, testid, on_click, True, Some(reason))
+  ButtonItem(label, testid, on_click, True, Some(reason))
+}
+
+pub fn link_item(label: String, testid: String, href: String) -> Item(msg) {
+  LinkItem(label, testid, href)
 }
 
 pub fn view(
@@ -71,22 +76,35 @@ pub fn view(
               attribute.attribute("role", "menu"),
             ],
             list.map(items, fn(menu_item) {
-              let Item(label:, testid:, on_click:, disabled:, title:) =
-                menu_item
-
-              button(
-                [
-                  attribute.class(item_class),
-                  attribute.attribute("data-testid", testid),
-                  attribute.attribute("type", "button"),
-                  attribute.attribute("role", "menuitem"),
-                  attribute.attribute("aria-disabled", bool_string(disabled)),
-                  attribute.attribute("title", option_to_string(title)),
-                  attribute.disabled(disabled),
-                  event.on_click(on_click),
-                ],
-                [text(label)],
-              )
+              case menu_item {
+                ButtonItem(label:, testid:, on_click:, disabled:, title:) ->
+                  button(
+                    [
+                      attribute.class(item_class),
+                      attribute.attribute("data-testid", testid),
+                      attribute.attribute("type", "button"),
+                      attribute.attribute("role", "menuitem"),
+                      attribute.attribute(
+                        "aria-disabled",
+                        bool_string(disabled),
+                      ),
+                      attribute.attribute("title", option_to_string(title)),
+                      attribute.disabled(disabled),
+                      event.on_click(on_click),
+                    ],
+                    [text(label)],
+                  )
+                LinkItem(label:, testid:, href:) ->
+                  a(
+                    [
+                      attribute.class(item_class),
+                      attribute.attribute("data-testid", testid),
+                      attribute.href(href),
+                      attribute.attribute("role", "menuitem"),
+                    ],
+                    [text(label)],
+                  )
+              }
             }),
           ),
         ],
