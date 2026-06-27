@@ -13,7 +13,7 @@ import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/refresh_update
 
-pub fn task_fetch_compacts_existing_positions_for_loaded_tasks_test() {
+pub fn task_fetch_preserves_existing_positions_test() {
   let model =
     client_state.update_member(client_state.default_model(), fn(member) {
       member_state.MemberModel(
@@ -41,8 +41,8 @@ pub fn task_fetch_compacts_existing_positions_for_loaded_tasks_test() {
     )
 
   let result = next.member.positions.member_positions_by_task
-  let assert Ok(#(12, 12)) = dict.get(result, 10)
-  let assert Ok(#(234, 27)) = dict.get(result, 11)
+  let assert Ok(#(61, 195)) = dict.get(result, 10)
+  let assert Ok(#(283, 210)) = dict.get(result, 11)
   let assert Ok(#(0, 0)) = dict.get(result, 99)
   let assert True = fx == effect.none()
 }

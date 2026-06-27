@@ -30,6 +30,16 @@ fn model_with_loaded_tasks(tasks: List(Task)) -> client_state.Model {
   })
 }
 
+fn model_with_loaded_tasks_and_positions(
+  tasks: List(Task),
+  positions: member_positions.Model,
+) -> client_state.Model {
+  let model = model_with_loaded_tasks(tasks)
+  client_state.update_member(model, fn(member) {
+    member_state.MemberModel(..member, positions: positions)
+  })
+}
+
 pub fn try_update_routes_position_opened_test() {
   let assert opt.Some(#(next, fx)) =
     positions_route.try_update(
@@ -41,7 +51,7 @@ pub fn try_update_routes_position_opened_test() {
   let assert True = fx == effect.none()
 }
 
-pub fn fetched_positions_compact_loaded_pool_tasks_only_test() {
+pub fn fetched_positions_preserve_server_coordinates_test() {
   let model = model_with_loaded_tasks([task(10), task(11)])
   let positions = [
     position(10, 61, 195),
@@ -56,9 +66,31 @@ pub fn fetched_positions_compact_loaded_pool_tasks_only_test() {
     )
 
   let result = next.member.positions.member_positions_by_task
-  let assert Ok(#(12, 12)) = dict.get(result, 10)
-  let assert Ok(#(234, 27)) = dict.get(result, 11)
+  let assert Ok(#(61, 195)) = dict.get(result, 10)
+  let assert Ok(#(283, 210)) = dict.get(result, 11)
   let assert Ok(#(0, 0)) = dict.get(result, 99)
+  let assert True = fx == effect.none()
+}
+
+pub fn saved_position_does_not_compact_other_loaded_pool_tasks_test() {
+  let model =
+    model_with_loaded_tasks_and_positions(
+      [task(10), task(11)],
+      member_positions.Model(
+        ..member_positions.default_model(),
+        member_positions_by_task: dict.from_list([#(11, #(283, 210))]),
+      ),
+    )
+
+  let assert opt.Some(#(next, fx)) =
+    positions_route.try_update(
+      model,
+      pool_messages.MemberPositionSaved(Ok(position(10, 61, 195))),
+    )
+
+  let result = next.member.positions.member_positions_by_task
+  let assert Ok(#(61, 195)) = dict.get(result, 10)
+  let assert Ok(#(283, 210)) = dict.get(result, 11)
   let assert True = fx == effect.none()
 }
 

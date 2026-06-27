@@ -9,7 +9,6 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/features/pool/position_layout
 import scrumbringer_client/features/pool/position_update
 import scrumbringer_client/features/route_support
 import scrumbringer_client/i18n/i18n
@@ -67,10 +66,7 @@ fn set_member_positions(
   model: client_state.Model,
   positions: member_positions.Model,
 ) -> client_state.Model {
-  let model =
-    client_state.update_member(model, fn(member) {
-      member_state.MemberModel(..member, positions: positions)
-    })
-
-  position_layout.compact_loaded_pool_positions(model)
+  client_state.update_member(model, fn(member) {
+    member_state.MemberModel(..member, positions: positions)
+  })
 }

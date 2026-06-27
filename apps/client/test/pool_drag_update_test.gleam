@@ -123,6 +123,43 @@ pub fn drag_update_active_move_updates_position_and_pool_test() {
   let assert Some(#(7, 3, 4)) = drag.active(next.pool)
 }
 
+pub fn drag_update_active_move_clamps_negative_position_test() {
+  let pool =
+    member_pool.default_model()
+    |> drag.start(7)
+    |> drag.offset_resolved(7, 30, 40)
+  let model =
+    drag_update.Model(
+      ..local_model(),
+      pool: pool,
+      positions: member_positions.Model(
+        ..member_positions.default_model(),
+        member_canvas_left: 10,
+        member_canvas_top: 20,
+      ),
+    )
+
+  let assert Some(#(next, _fx)) =
+    drag_update.try_update(
+      model,
+      pool_messages.MemberDragMoved(20, 30),
+      context(),
+    )
+
+  let assert Ok(#(0, 0)) = dict.get(next.positions.member_positions_by_task, 7)
+}
+
+pub fn drag_update_pending_drop_without_position_does_not_save_test() {
+  let pool = drag.start(member_pool.default_model(), 7)
+  let model = drag_update.Model(..local_model(), pool: pool)
+
+  let assert Some(#(next, fx)) =
+    drag_update.try_update(model, pool_messages.MemberDragEnded, context())
+
+  let assert member_pool.DragIdle = next.pool.member_drag
+  let assert True = fx == effect.none()
+}
+
 pub fn drag_update_touch_end_without_longpress_opens_preview_test() {
   let model =
     drag_update.Model(..local_model(), pool: drag_update_local_touch_started(7))

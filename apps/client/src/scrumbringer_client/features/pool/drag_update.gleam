@@ -287,8 +287,11 @@ fn drag_moved(
 ) -> #(Model, Effect(parent_msg)) {
   case pool_drag.active(model.pool), pool_drag.is_pending(model.pool) {
     opt.Some(#(task_id, ox, oy)), _ -> {
-      let x = client_x - model.positions.member_canvas_left - ox
-      let y = client_y - model.positions.member_canvas_top - oy
+      let #(x, y) =
+        clamp_position(#(
+          client_x - model.positions.member_canvas_left - ox,
+          client_y - model.positions.member_canvas_top - oy,
+        ))
       #(
         Model(
           ..model,
@@ -407,22 +410,28 @@ fn position_drop(
   task_id: Int,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
-  let #(x, y) =
-    position_for_task(model.positions.member_positions_by_task, task_id)
-  #(
-    model,
-    task_positions_api.upsert_me_task_position(task_id, x, y, fn(result) {
-      context.on_position_saved(result)
-    }),
-  )
+  case position_for_task(model.positions.member_positions_by_task, task_id) {
+    Ok(#(x, y)) -> #(
+      model,
+      task_positions_api.upsert_me_task_position(task_id, x, y, fn(result) {
+        context.on_position_saved(result)
+      }),
+    )
+    Error(_) -> #(model, effect.none())
+  }
 }
 
 fn position_for_task(
   positions: dict.Dict(Int, #(Int, Int)),
   task_id: Int,
-) -> #(Int, Int) {
+) -> Result(#(Int, Int), Nil) {
   case dict.get(positions, task_id) {
-    Ok(xy) -> xy
-    Error(_) -> #(0, 0)
+    Ok(xy) -> Ok(clamp_position(xy))
+    Error(_) -> Error(Nil)
   }
+}
+
+fn clamp_position(position: #(Int, Int)) -> #(Int, Int) {
+  let #(x, y) = position
+  #(int.max(0, x), int.max(0, y))
 }
