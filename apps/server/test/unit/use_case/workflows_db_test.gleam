@@ -7,7 +7,6 @@ import fixtures
 import gleam/option.{None}
 import gleeunit
 import pog
-import scrumbringer_server
 import support/assertions as expect
 
 pub fn main() {
@@ -19,26 +18,18 @@ pub fn main() {
 // =============================================================================
 
 pub fn create_workflow_succeeds_with_valid_data_test() {
-  // Given: Bootstrap creates org with admin user
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Workflow Test Project")
 
-  // Create a project for project-scoped workflow test
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Workflow Test Project")
-
-  // When: Create workflow via API
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Test Workflow")
 
-  // Then: Workflow exists in database
   let assert Ok(count) =
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM workflows WHERE id = $1", [
       pog.int(workflow_id),
     ])
   count |> expect.equal(1)
 
-  // Verify workflow is active by default
   let assert Ok(active) =
     fixtures.query_int(
       db,
@@ -53,18 +44,14 @@ pub fn create_workflow_succeeds_with_valid_data_test() {
 // =============================================================================
 
 pub fn create_workflow_fails_for_duplicate_name_test() {
-  // Given: Bootstrap and create a workflow
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Dup Test Project")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Dup Test Project")
   let assert Ok(_workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Unique Workflow")
 
-  // When: Try to create another workflow with same name (same project scope)
   let result =
     fixtures.create_workflow(handler, session, project_id, "Unique Workflow")
 
-  // Then: Fails with error
   let assert Error(_) = result
 }
 
@@ -73,19 +60,13 @@ pub fn create_workflow_fails_for_duplicate_name_test() {
 // =============================================================================
 
 pub fn update_workflow_succeeds_for_existing_workflow_test() {
-  // Given: Bootstrap and create a workflow
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Update Test Project")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Update Test Project")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Original Name")
 
-  // When: Update workflow via fixtures helper (deactivate it)
   let assert Ok(Nil) = fixtures.set_workflow_active(db, workflow_id, False)
 
-  // Then: Workflow is now inactive
   let assert Ok(active) =
     fixtures.query_int(
       db,
@@ -100,14 +81,8 @@ pub fn update_workflow_succeeds_for_existing_workflow_test() {
 // =============================================================================
 
 pub fn set_active_cascade_deactivates_children_test() {
-  // Given: Workflow with an active rule
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Cascade Test Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Cascade Test Project")
   let assert Ok(template_id) =
     fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
@@ -123,7 +98,6 @@ pub fn set_active_cascade_deactivates_children_test() {
       template_id,
     )
 
-  // Verify rule is initially active
   let assert Ok(rule_active_before) =
     fixtures.query_int(
       db,
@@ -132,11 +106,9 @@ pub fn set_active_cascade_deactivates_children_test() {
     )
   rule_active_before |> expect.equal(1)
 
-  // When: Deactivate workflow via API (cascades to rules)
   let assert Ok(Nil) =
     fixtures.set_workflow_active_cascade(handler, session, workflow_id, False)
 
-  // Then: Rule is now inactive
   let assert Ok(rule_active_after) =
     fixtures.query_int(
       db,
@@ -147,14 +119,8 @@ pub fn set_active_cascade_deactivates_children_test() {
 }
 
 pub fn set_active_cascade_activates_children_test() {
-  // Given: Workflow and rule both inactive
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Activate Cascade Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Activate Cascade Project")
   let assert Ok(template_id) =
     fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
@@ -170,11 +136,9 @@ pub fn set_active_cascade_activates_children_test() {
       template_id,
     )
 
-  // Deactivate both using cascade API
   let assert Ok(Nil) =
     fixtures.set_workflow_active_cascade(handler, session, workflow_id, False)
 
-  // Verify both are now inactive
   let assert Ok(rule_inactive) =
     fixtures.query_int(
       db,
@@ -183,11 +147,9 @@ pub fn set_active_cascade_activates_children_test() {
     )
   rule_inactive |> expect.equal(0)
 
-  // When: Activate workflow via API (cascades to rules)
   let assert Ok(Nil) =
     fixtures.set_workflow_active_cascade(handler, session, workflow_id, True)
 
-  // Then: Rule is now active
   let assert Ok(rule_active) =
     fixtures.query_int(
       db,
@@ -202,19 +164,13 @@ pub fn set_active_cascade_activates_children_test() {
 // =============================================================================
 
 pub fn delete_workflow_succeeds_if_no_rules_test() {
-  // Given: Workflow with no rules
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Delete Test Project")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Delete Test Project")
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "To Delete")
 
-  // When: Delete workflow via API
   let assert Ok(Nil) = fixtures.delete_workflow(handler, session, workflow_id)
 
-  // Then: Workflow no longer exists
   let assert Ok(count) =
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM workflows WHERE id = $1", [
       pog.int(workflow_id),
@@ -223,14 +179,8 @@ pub fn delete_workflow_succeeds_if_no_rules_test() {
 }
 
 pub fn delete_workflow_cascades_deletes_rules_test() {
-  // Given: Workflow with rules (FK ON DELETE CASCADE)
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Cascade Delete Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Task", "check")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Cascade Delete Project")
   let assert Ok(template_id) =
     fixtures.create_template(handler, session, project_id, type_id, "Followup")
   let assert Ok(workflow_id) =
@@ -251,17 +201,14 @@ pub fn delete_workflow_cascades_deletes_rules_test() {
       template_id,
     )
 
-  // Verify rule exists
   let assert Ok(rule_count_before) =
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM rules WHERE id = $1", [
       pog.int(rule_id),
     ])
   rule_count_before |> expect.equal(1)
 
-  // When: Delete workflow (cascades to rules via FK)
   let assert Ok(Nil) = fixtures.delete_workflow(handler, session, workflow_id)
 
-  // Then: Rule is also deleted
   let assert Ok(rule_count_after) =
     fixtures.query_int(db, "SELECT COUNT(*)::int FROM rules WHERE id = $1", [
       pog.int(rule_id),

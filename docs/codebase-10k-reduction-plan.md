@@ -2614,6 +2614,25 @@ Estado de ejecucion:
   - total Gleam actual: `198.313` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.701` lineas;
   - deficit restante para `-20k`: `4.299` lineas.
+- Decimoseptimo pase de fixtures de workflows DB:
+  - migrados los escenarios de `unit/use_case/workflows_db_test.gleam` a
+    `require_project_context` o `require_task_project`, segun necesitaran solo
+    proyecto o tambien template/task type;
+  - conservadas explicitas las operaciones propias del contrato: creacion de
+    workflow, duplicados, activacion/desactivacion, cascade de reglas y borrado
+    con FK;
+  - retirado el import local de `scrumbringer_server` y comentarios
+    `Given/When/Then` redundantes;
+  - delta adicional: `-53` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `unit@use_case@workflows_db_test` via EUnit secuencial
+      (`7 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimoseptimo pase:
+  - total Gleam actual: `198.260` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.754` lineas;
+  - deficit restante para `-20k`: `4.246` lineas.
 
 ## Orden recomendado de ejecucion
 
