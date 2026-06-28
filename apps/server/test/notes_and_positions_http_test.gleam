@@ -58,21 +58,10 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member1@example.com", "inv_member1")
-  create_member_user(handler, db, "member2@example.com", "inv_member2")
-
   let member1_id =
-    single_int(
-      db,
-      "select id from users where email = 'member1@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member1@example.com", "inv_member1")
   let member2_id =
-    single_int(
-      db,
-      "select id from users where email = 'member2@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member2@example.com", "inv_member2")
 
   add_member(handler, admin_session, admin_csrf, project_id, member1_id)
   add_member(handler, admin_session, admin_csrf, project_id, member2_id)
@@ -193,15 +182,9 @@ pub fn task_notes_list_requires_task_membership_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-  create_member_user(handler, db, "outsider@example.com", "inv_out")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
+  create_member_user(handler, db, "outsider@example.com", "inv_out")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -277,14 +260,8 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -395,14 +372,8 @@ pub fn task_notes_create_requires_csrf_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -442,15 +413,9 @@ pub fn card_notes_list_requires_card_membership_test() {
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-  create_member_user(handler, db, "outsider@example.com", "inv_out")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
+  create_member_user(handler, db, "outsider@example.com", "inv_out")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -552,21 +517,10 @@ pub fn card_notes_create_and_delete_permissions_test() {
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
-  create_member_user(handler, db, "member1@example.com", "inv_member1")
-  create_member_user(handler, db, "member2@example.com", "inv_member2")
-
   let member1_id =
-    single_int(
-      db,
-      "select id from users where email = 'member1@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member1@example.com", "inv_member1")
   let member2_id =
-    single_int(
-      db,
-      "select id from users where email = 'member2@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member2@example.com", "inv_member2")
 
   add_member(handler, admin_session, admin_csrf, project_id, member1_id)
   add_member(handler, admin_session, admin_csrf, project_id, member2_id)
@@ -706,14 +660,8 @@ pub fn card_notes_create_requires_csrf_test() {
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -744,13 +692,8 @@ pub fn card_notes_indicator_updates_after_view_test() {
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -812,13 +755,8 @@ pub fn task_notes_indicator_updates_after_view_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -942,14 +880,8 @@ pub fn task_positions_upsert_requires_csrf_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -1012,21 +944,10 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member1@example.com", "inv_member1")
-  create_member_user(handler, db, "member2@example.com", "inv_member2")
-
   let member1_id =
-    single_int(
-      db,
-      "select id from users where email = 'member1@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member1@example.com", "inv_member1")
   let member2_id =
-    single_int(
-      db,
-      "select id from users where email = 'member2@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member2@example.com", "inv_member2")
 
   add_member(handler, admin_session, admin_csrf, core_id, member1_id)
   add_member(handler, admin_session, admin_csrf, core_id, member2_id)
@@ -1123,15 +1044,9 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
       "bug-ant",
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-  create_member_user(handler, db, "outsider@example.com", "inv_out")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
+  create_member_user(handler, db, "outsider@example.com", "inv_out")
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
@@ -1659,10 +1574,9 @@ fn create_member_user(
   db: pog.Connection,
   email: String,
   invite_code: String,
-) {
+) -> Int {
   fixtures.create_member_user(handler, db, email, invite_code)
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn bootstrap_app() -> scrumbringer_server.App {

@@ -73,13 +73,8 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(
     handler,
@@ -477,17 +472,10 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       0,
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-  create_member_user(handler, db, "other@example.com", "inv_other")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
   let other_id =
-    single_int(db, "select id from users where email = 'other@example.com'", [])
+    create_member_user(handler, db, "other@example.com", "inv_other")
 
   add_member(
     handler,
@@ -733,13 +721,8 @@ pub fn release_all_tasks_for_member_success_test() {
   let #(session, csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, session, csrf, "Bulk Release")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, session, csrf, project_id, member_id, "member")
   let type_id =
@@ -852,13 +835,8 @@ pub fn release_all_tasks_for_member_forbidden_test() {
   let project_id =
     create_project(handler, session, csrf, "Bulk Release Forbidden")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
 
   add_member(handler, session, csrf, project_id, member_id, "member")
 
@@ -1434,15 +1412,14 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
   let #(db, handler, admin_session, admin_csrf, project_id, type_id) =
     ht08_project("HT08 Close Owner")
 
-  create_member_user(handler, db, "owner@example.com", "inv_owner")
-  create_member_user(handler, db, "other-owner@example.com", "inv_other_owner")
   let owner_id =
-    single_int(db, "select id from users where email = 'owner@example.com'", [])
+    create_member_user(handler, db, "owner@example.com", "inv_owner")
   let other_id =
-    single_int(
+    create_member_user(
+      handler,
       db,
-      "select id from users where email = 'other-owner@example.com'",
-      [],
+      "other-owner@example.com",
+      "inv_other_owner",
     )
   add_member(handler, admin_session, admin_csrf, project_id, owner_id, "member")
   add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
@@ -1571,13 +1548,8 @@ pub fn pool_filters_by_user_capabilities_test() {
       backend,
     )
 
-  create_member_user(handler, db, "cap-user@example.com", "inv_cap")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'cap-user@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "cap-user@example.com", "inv_cap")
   add_member(
     handler,
     admin_session,
@@ -2111,17 +2083,10 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
       0,
     )
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
-  create_member_user(handler, db, "other@example.com", "inv_other")
-
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    create_member_user(handler, db, "member@example.com", "inv_member")
   let other_id =
-    single_int(db, "select id from users where email = 'other@example.com'", [])
+    create_member_user(handler, db, "other@example.com", "inv_other")
 
   add_member(
     handler,
@@ -3072,10 +3037,9 @@ fn create_member_user(
   db: pog.Connection,
   email: String,
   invite_code: String,
-) {
+) -> Int {
   fixtures.create_member_user(handler, db, email, invite_code)
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn bootstrap_app() -> scrumbringer_server.App {
