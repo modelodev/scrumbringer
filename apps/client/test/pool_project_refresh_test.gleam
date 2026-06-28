@@ -1,12 +1,12 @@
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, Loading}
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
-import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/project_refresh
@@ -160,29 +160,7 @@ fn api_error() {
 }
 
 fn task(id: Int) -> Task {
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Task",
-    description: None,
-    priority: 3,
-    state: task_state.Available,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, "Task", 1), description: None)
 }
 
 fn task_type(id: Int) -> TaskType {

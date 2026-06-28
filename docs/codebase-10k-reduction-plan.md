@@ -1364,7 +1364,11 @@ Estado de ejecucion:
   (`actions`, `permissions` y `show_state`). Se conserva la intencion de cada
   escenario mediante overrides de estado, version, ids de card, permisos y
   valores de formulario.
-- Delta parcial WP-12: `-2.545` lineas netas mantenidas (`-44` del primer pase
+- Quinto pase de fixtures de dominio aplicado a tests de refresh/routing del
+  pool (`pool_refresh_update`, `pool_project_refresh` y `pool_task_route`). Se
+  retiran constructores completos manteniendo overrides para icono/tipo,
+  descripcion vacia, prioridad y datos de refresh usados por cada escenario.
+- Delta parcial WP-12: `-2.601` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1387,7 +1391,8 @@ Estado de ejecucion:
   fixtures de dominio compartidas en tests de cliente, `-74` del segundo pase
   de fixtures de dominio compartidas en tests de cliente, `-67` del tercer
   pase de fixtures de dominio compartidas en tests de cliente, `-43` del
-  cuarto pase de fixtures de dominio compartidas en tests de cliente).
+  cuarto pase de fixtures de dominio compartidas en tests de cliente, `-56` del
+  quinto pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
