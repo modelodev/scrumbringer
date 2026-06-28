@@ -759,14 +759,6 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
 // Icon Picker
 // =============================================================================
 
-/// Common icons for task types.
-const task_type_icons = [
-  "clipboard-document-list", "bug-ant", "sparkles", "rocket-launch",
-  "check-circle", "wrench-screwdriver", "document-text", "code-bracket",
-  "beaker", "shield-check", "bolt", "cog-6-tooth", "cube", "flag", "light-bulb",
-  "puzzle-piece",
-]
-
 pub fn view_create_dialog_for_test(locale: Locale) -> Element(Msg) {
   let model = default_model()
   let model = Model(..model, locale: locale, mode: crud_dialog_base.Creating)
@@ -823,8 +815,9 @@ fn view_icon_picker(
         div([attribute.class("icon-picker-dropdown")], [
           div(
             [attribute.class("icon-picker-grid")],
-            task_type_icons
-              |> list.map(fn(icon_name) {
+            icon_catalog.catalog()
+              |> list.map(fn(icon) {
+                let icon_name = icon.id
                 button(
                   [
                     attribute.class(case icon_name == current_icon {

@@ -1227,6 +1227,12 @@ Estado de ejecucion:
   - retirado `icon_catalog.search` y su dependencia de `gleam/string`, al no
     tener consumidores tras retirar el picker preventivo;
   - delta adicional WP-10: `-47` lineas mantenidas.
+- Micro-pase adicional de fuente unica para iconos de task type:
+  - retirado el `const task_type_icons` local de
+    `task_type_crud_dialog.gleam`;
+  - el picker conectado renderiza directamente desde `icon_catalog.catalog()`,
+    eliminando duplicacion entre catalogo, labels y render;
+  - delta adicional WP-10: `-7` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1256,10 +1262,11 @@ Estado de ejecucion:
     `1864 passed` tras retirar tooltips UI huerfanos;
     `1859 passed` tras retirar `ui/icon_picker`;
     `1859 passed` tras retirar categoria legacy del icon catalog;
-    `1859 passed` tras retirar busqueda legacy del icon catalog);
+    `1859 passed` tras retirar busqueda legacy del icon catalog;
+    `1859 passed` tras conectar el picker a `icon_catalog.catalog`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.909` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.916` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
@@ -2229,7 +2236,7 @@ anterior:
 | --- | --- | --- |
 | Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; `tasks_http_test` ya no mantiene helper local de task type; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
 | Client render assertions | Decenas de `assert_contains` repetidos. | Ejecutado para serializacion HTML directa; queda solo `support/render_assertions.html` como uso canonico de `element.to_document_string`. Los siguientes pases WP-02 deben centrarse en builders de dominio reales, no en sustituciones cosmeticas. |
-| Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI, `ui/icon_picker`, categoria y busqueda legacy de `ui/icon_catalog` ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
+| Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI, `ui/icon_picker`, categoria/busqueda legacy de `ui/icon_catalog` y lista local duplicada de iconos ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
 | Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
 | Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; retirados restos de `ui/icon_picker`, navegacion antigua, sorting visual no conectado, decay badge legacy y progreso duplicado, preservando reglas responsive vivas. Repetir comparacion de clases usadas en views contra `styles/*`. |
