@@ -1,11 +1,11 @@
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/card
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/capability_scope.{AllCapabilities}
 import scrumbringer_client/features/pool/available_tasks
@@ -170,26 +170,14 @@ fn task_row_config(task: Task) -> task_row.Config(String) {
 
 fn sample_task() {
   Task(
-    id: 1,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(1, "Task 1", 1),
     task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    ongoing_by: None,
-    title: "Task 1",
     description: Some("Task description"),
     priority: 2,
-    state: task_state.Available,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: Some(card.Blue),
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }

@@ -1,11 +1,10 @@
 import domain/task.{Task, TaskPosition}
-import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{None}
 import scrumbringer_client/helpers/dicts as helpers_dicts
+import support/domain_fixtures
 
 pub fn ids_to_bool_dict_sets_true_test() {
   let result = helpers_dicts.ids_to_bool_dict([1, 2])
@@ -35,31 +34,7 @@ pub fn positions_to_dict_maps_task_id_test() {
 }
 
 pub fn flatten_tasks_collects_all_tasks_test() {
-  let state = task_state.Available
-  let t1 =
-    Task(
-      id: 1,
-      project_id: 1,
-      type_id: 1,
-      task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug"),
-      ongoing_by: None,
-      title: "A",
-      description: None,
-      priority: 1,
-      state: state,
-      created_by: 1,
-      created_at: "2026-01-01T00:00:00Z",
-      due_date: None,
-      version: 1,
-      parent_card_id: None,
-      card_id: None,
-      card_title: None,
-      card_color: None,
-      has_new_notes: False,
-      blocked_count: 0,
-      dependencies: [],
-      automation_origin: None,
-    )
+  let t1 = Task(..domain_fixtures.task(1, "A", 1), description: None)
   let t2 = Task(..t1, id: 2, title: "B")
   let tasks = dict.from_list([#(1, [t1]), #(2, [t2])])
   let assert [1, 2] =
