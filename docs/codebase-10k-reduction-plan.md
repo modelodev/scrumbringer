@@ -1358,6 +1358,12 @@ Estado de ejecucion:
     necesario para renderizar identificadores de toast;
   - delta adicional WP-10: `-11` lineas mantenidas y una funcion publica
     menos.
+- Micro-pase adicional de helpers internos de `ui/dialog`:
+  - privatizados `escape_close_attributes` y `panel_base_attributes`; sus
+    consumidores son internos del modulo y las APIs publicas vivas siguen
+    siendo `panel_attributes` y `passive_panel_attributes`;
+  - delta adicional WP-10: `-2` lineas mantenidas y dos funciones publicas
+    menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1400,10 +1406,11 @@ Estado de ejecucion:
     `1821 passed` tras encapsular `toast`;
     `1820 passed` tras retirar la variante textual de `task_metric_chip`;
     `1819 passed` tras retirar helpers preventivos de `signal_chip`;
-    `1819 passed` tras retirar `ids.toast_id_eq`);
+    `1819 passed` tras retirar `ids.toast_id_eq`;
+    `1819 passed` tras privatizar helpers internos de `ui/dialog`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.122` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.124` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

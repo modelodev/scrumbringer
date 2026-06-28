@@ -126,8 +126,7 @@ fn view_dialog(
   ])
 }
 
-/// Attributes that make a dialog or drawer close on Escape and accept initial focus.
-pub fn escape_close_attributes(on_close: msg) -> List(attribute.Attribute(msg)) {
+fn escape_close_attributes(on_close: msg) -> List(attribute.Attribute(msg)) {
   [
     attribute.attribute("aria-keyshortcuts", "Escape"),
     attribute.attribute("tabindex", "-1"),
@@ -159,8 +158,7 @@ fn on_escape(on_close: msg) -> attribute.Attribute(msg) {
   })
 }
 
-/// Attributes for feature-local panels that use a visible heading as their label.
-pub fn panel_base_attributes(title_id: String) -> List(attribute.Attribute(msg)) {
+fn panel_base_attributes(title_id: String) -> List(attribute.Attribute(msg)) {
   [
     attribute.attribute("role", "dialog"),
     attribute.attribute("aria-modal", "true"),
