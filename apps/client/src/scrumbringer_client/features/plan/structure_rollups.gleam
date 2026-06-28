@@ -41,7 +41,7 @@ pub fn summary_for_rows(
   )
 }
 
-pub fn for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
+fn for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
   let rollup = task_rollup.from_tasks(tasks)
 
   types.CardRollup(

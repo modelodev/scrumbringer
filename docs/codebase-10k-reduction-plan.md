@@ -2261,6 +2261,21 @@ Estado de ejecucion:
       (`559 passed`);
     - `cd apps/client && gleam format src test && gleam test`
       (`1819 passed`).
+- Cuarto pase de encapsulacion frontend:
+  - privatizados helpers internos sin consumidor externo ni tests acoplados a
+    su visibilidad publica:
+    `client_state/ui.sidebar_collapse_from_bools`,
+    `client_state/ui.sidebar_collapse_to_bools`,
+    `features/cards/policy.structure_for`,
+    `features/my_bar/view.view_member_metrics_panel`,
+    `features/my_bar/view.member_bar_status_rank`,
+    `features/people/state.reserved_work_count`,
+    `features/plan/structure_rollups.for_tasks` y
+    `features/pool/available_tasks.is_open_pool_task`;
+  - delta adicional: ocho funciones publicas menos, sin cambio de lineas netas
+    de codigo;
+  - verificacion: `cd apps/client && gleam format src test && gleam test`
+    (`1819 passed`).
 
 ## Orden recomendado de ejecucion
 

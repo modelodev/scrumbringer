@@ -45,7 +45,7 @@ pub fn default_model() -> UiModel {
   )
 }
 
-pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
+fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
   case config, org {
     True, True -> BothCollapsed
     True, False -> ConfigCollapsed
@@ -54,7 +54,7 @@ pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
   }
 }
 
-pub fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
+fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
   case state {
     NoneCollapsed -> #(False, False)
     ConfigCollapsed -> #(True, False)

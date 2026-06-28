@@ -55,7 +55,7 @@ pub fn state(config: Config) -> State {
   }
 }
 
-pub fn is_open_pool_task(task: domain_task.Task) -> Bool {
+fn is_open_pool_task(task: domain_task.Task) -> Bool {
   task.state == task_state.Available
 }
 

@@ -72,7 +72,7 @@ pub fn has_attention(person: PersonWorkload) -> Bool {
   person.attention != []
 }
 
-pub fn reserved_work_count(person: PersonWorkload) -> Int {
+fn reserved_work_count(person: PersonWorkload) -> Int {
   list.length(person.working_now)
   + list.length(person.reserved)
   + list.length(person.attention)

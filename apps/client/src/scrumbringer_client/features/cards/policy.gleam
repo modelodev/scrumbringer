@@ -96,7 +96,7 @@ pub fn card_accepts_direct_tasks(
   card.state == Active && list.is_empty(direct_child_cards)
 }
 
-pub fn structure_for(
+fn structure_for(
   card: Card,
   direct_child_cards: List(Card),
   direct_tasks: List(Task),

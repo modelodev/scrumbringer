@@ -306,7 +306,7 @@ fn view_card_group(config: Config(msg), group: CardGroup) -> Element(msg) {
 }
 
 /// Renders the personal metrics panel.
-pub fn view_member_metrics_panel(
+fn view_member_metrics_panel(
   locale: Locale,
   member_metrics: Remote(MyMetrics),
 ) -> Element(msg) {
@@ -489,7 +489,7 @@ pub fn view_member_bar_task_row(
 // Inline icon helper removed in favor of ui/task_type_icon.view
 
 /// Status rank for sorting (lower = higher priority).
-pub fn member_bar_status_rank(state: task_state.TaskExecutionState) -> Int {
+fn member_bar_status_rank(state: task_state.TaskExecutionState) -> Int {
   case state {
     task_state.Claimed(mode: task_state.Ongoing, ..) -> 0
     task_state.Claimed(mode: task_state.Taken, ..) -> 1
