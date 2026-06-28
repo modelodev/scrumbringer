@@ -112,22 +112,6 @@ pub fn new_unchecked(text_value: String, variant: BadgeVariant) -> Badge {
 }
 
 // =============================================================================
-// Accessors
-// =============================================================================
-
-/// Get the badge text.
-pub fn get_text(badge: Badge) -> String {
-  let Badge(text: t, ..) = badge
-  t
-}
-
-/// Get the badge variant.
-pub fn get_variant(badge: Badge) -> BadgeVariant {
-  let Badge(variant: v, ..) = badge
-  v
-}
-
-// =============================================================================
 // View Functions
 // =============================================================================
 

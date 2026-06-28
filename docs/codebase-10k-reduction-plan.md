@@ -1110,6 +1110,12 @@ Estado de ejecucion:
     vivos `search_to_opt` y `empty_to_int_opt`, usados por filtros del Pool;
   - retirado el test directo del helper muerto en `update_helpers_test`;
   - delta adicional WP-10: `-12` lineas mantenidas.
+- Micro-pase adicional de accessors de badge:
+  - retirados `ui/badge.get_text` y `ui/badge.get_variant`; exponian la
+    estructura opaca del componente solo para tests;
+  - `ui_badge_test` valida ahora el resultado renderizado de
+    `new_truncated`, reforzando el contrato visual publico;
+  - delta adicional WP-10: `-15` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1130,10 +1136,11 @@ Estado de ejecucion:
     externos;
     `1887 passed` tras retirar `pool/chrome.tasks_onboarding`;
     `1887 passed` tras retirar helpers muertos de `api/activity`;
-    `1886 passed` tras retirar `helpers/options.empty_to_opt`);
+    `1886 passed` tras retirar `helpers/options.empty_to_opt`;
+    `1886 passed` tras retirar accessors de `ui/badge`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-1.501` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.516` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

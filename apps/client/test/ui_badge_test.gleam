@@ -5,9 +5,10 @@ import scrumbringer_client/ui/badge
 
 pub fn new_truncated_truncates_valid_text_test() {
   let assert Ok(result) = badge.new_truncated("Long status", badge.Neutral, 4)
+  let html = result |> badge.view |> element.to_document_string
 
-  let assert "Long…" = badge.get_text(result)
-  let assert badge.Neutral = badge.get_variant(result)
+  let assert True = string.contains(html, "Long…")
+  let assert True = string.contains(html, "badge-neutral")
 }
 
 pub fn new_truncated_rejects_empty_text_test() {
