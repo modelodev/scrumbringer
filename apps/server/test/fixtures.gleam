@@ -878,6 +878,29 @@ pub fn require_task_with_card_full(
   |> expect.ok
 }
 
+pub fn require_task(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+) -> Int {
+  let card_id = require_card(handler, session, project_id, title <> " card")
+  require_activate_card(handler, session, card_id)
+  require_task_with_card_full(
+    handler,
+    session,
+    project_id,
+    title,
+    description,
+    priority,
+    type_id,
+    card_id,
+  )
+}
+
 /// Create a card and return its ID.
 pub fn create_card(
   handler: Handler,

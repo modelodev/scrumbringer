@@ -110,9 +110,9 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     create_task_type(handler, session, project_id, "OtherType", "bolt", cap2)
 
   let t1_id =
-    create_task(handler, session, project_id, "Old", "", 3, other_type_id)
+    fx.require_task(handler, session, project_id, "Old", "", 3, other_type_id)
   let t2_id =
-    create_task(
+    fx.require_task(
       handler,
       session,
       project_id,
@@ -122,7 +122,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
       other_type_id,
     )
   let t3_id =
-    create_task(
+    fx.require_task(
       handler,
       session,
       project_id,
@@ -203,7 +203,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
-  create_task(handler, session, project_id, "Core", "", 3, type_id)
+  fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   let req =
     simulate.request(
@@ -271,7 +271,7 @@ pub fn task_get_includes_task_contract_fields_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
@@ -334,7 +334,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
   expect.expect_status(start_work_session(handler, session, task_id), 200)
@@ -424,7 +424,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let other_session = fx.require_login_session(handler, "other@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let claim_req =
     simulate.request(
@@ -528,7 +528,7 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
     )
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   count_audit_events(db, task_id, "task_created") |> expect.equal(1)
   count_audit_events_for_actor(db, task_id, admin_id, "task_created")
@@ -555,7 +555,7 @@ pub fn delete_task_without_operational_history_removes_task_test() {
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let task_id =
-    create_task(handler, session, project_id, "Clean", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Clean", "", 3, type_id)
 
   delete_task(handler, session, task_id) |> expect.equal(204)
   count_task_rows(db, task_id) |> expect.equal(0)
@@ -572,7 +572,7 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let task_id =
-    create_task(handler, session, project_id, "Claimed", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Claimed", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
   let res = delete_task_response(handler, session, task_id)
@@ -593,11 +593,11 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let noted_task =
-    create_task(handler, session, project_id, "Noted", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Noted", "", 3, type_id)
   let blocked_task =
-    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker_task =
-    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
   create_task_note(handler, session, noted_task, "Operational context")
   |> expect.equal(200)
@@ -621,7 +621,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Editable", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Editable", "", 3, type_id)
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
@@ -655,9 +655,9 @@ pub fn release_all_tasks_for_member_success_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_a =
-    create_task(handler, session, project_id, "Task A", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Task A", "", 1, type_id)
   let task_b =
-    create_task(handler, session, project_id, "Task B", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Task B", "", 1, type_id)
 
   let member_session = fx.require_login_session(handler, "member@example.com")
 
@@ -822,9 +822,9 @@ pub fn task_dependencies_reject_circular_dependency_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_a =
-    create_task(handler, session, project_id, "Task A", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Task A", "", 1, type_id)
   let task_b =
-    create_task(handler, session, project_id, "Task B", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Task B", "", 1, type_id)
 
   let dep_req =
     simulate.request(
@@ -872,7 +872,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
     create_task_type(handler, session, project_two_id, "Bug", "bug-ant", 0)
 
   let task_one =
-    create_task(
+    fx.require_task(
       handler,
       session,
       project_one_id,
@@ -882,7 +882,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
       type_one_id,
     )
   let task_two =
-    create_task(
+    fx.require_task(
       handler,
       session,
       project_two_id,
@@ -920,9 +920,17 @@ pub fn task_dependencies_reject_closed_dependency_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, project_id, "Task Blocked", "", 1, type_id)
+    fx.require_task(
+      handler,
+      session,
+      project_id,
+      "Task Blocked",
+      "",
+      1,
+      type_id,
+    )
   let task_closed =
-    create_task(handler, session, project_id, "Task Closed", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Task Closed", "", 1, type_id)
 
   let claim_status =
     claim_task(handler, session, task_closed, task_version(db, task_closed))
@@ -960,9 +968,9 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, project_id, "Blocked", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 1, type_id)
   let task_blocker =
-    create_task(handler, session, project_id, "Blocker", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
   create_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
@@ -993,9 +1001,9 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, project_id, "Blocked", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 1, type_id)
   let task_blocker =
-    create_task(handler, session, project_id, "Blocker", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
   create_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
@@ -1019,9 +1027,9 @@ pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, project_id, "Blocked", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 1, type_id)
   let task_blocker =
-    create_task(handler, session, project_id, "Blocker", "", 1, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
   create_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
@@ -1057,7 +1065,15 @@ pub fn pool_includes_available_active_card_task_test() {
   let #(_, handler, session, project_id, type_id) =
     ht08_project("HT08 Active Card Pool")
 
-  create_task(handler, session, project_id, "Active card task", "", 3, type_id)
+  fx.require_task(
+    handler,
+    session,
+    project_id,
+    "Active card task",
+    "",
+    3,
+    type_id,
+  )
 
   let res = list_project_tasks(handler, session, project_id, "")
   expect.expect_status(res, 200)
@@ -1112,9 +1128,9 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
   let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Blocked")
   let blocked =
-    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
   create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
@@ -1144,9 +1160,9 @@ pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
   let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Claimed Blocked Close")
   let blocked =
-    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
   claim_task(handler, session, blocked, task_version(db, blocked))
   |> expect.equal(200)
@@ -1170,9 +1186,9 @@ pub fn dependency_unblocks_when_dependency_closed_test() {
   let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Closed Dependency")
   let blocked =
-    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
   create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
@@ -1195,9 +1211,9 @@ pub fn delete_dependency_target_unblocks_task_test() {
   let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Delete Dependency")
   let blocked =
-    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
   create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
@@ -1228,7 +1244,7 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
     fx.require_login_session(handler, "other-owner@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Owned", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Owned", "", 3, type_id)
   claim_task(handler, owner_session, task_id, task_version(db, task_id))
   |> expect.equal(200)
 
@@ -1248,9 +1264,9 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
 pub fn dependency_would_create_cycle_is_rejected_test() {
   let #(_, handler, session, project_id, type_id) = ht08_project("HT08 Cycle")
   let task_a =
-    create_task(handler, session, project_id, "Task A", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Task A", "", 3, type_id)
   let task_b =
-    create_task(handler, session, project_id, "Task B", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Task B", "", 3, type_id)
 
   create_dependency(handler, session, task_a, task_b) |> expect.equal(200)
   create_dependency(handler, session, task_b, task_a) |> expect.equal(422)
@@ -1264,7 +1280,7 @@ pub fn cross_project_dependency_is_rejected_test() {
     create_task_type(handler, session, project_two_id, "Bug", "bug-ant", 0)
 
   let task_one =
-    create_task(
+    fx.require_task(
       handler,
       session,
       project_one_id,
@@ -1274,7 +1290,7 @@ pub fn cross_project_dependency_is_rejected_test() {
       type_one_id,
     )
   let task_two =
-    create_task(
+    fx.require_task(
       handler,
       session,
       project_two_id,
@@ -1317,7 +1333,7 @@ pub fn pool_filters_by_user_capabilities_test() {
   fx.require_member(handler, admin_session, project_id, member_id, "member")
   grant_capability(db, project_id, member_id, frontend)
 
-  create_task(
+  fx.require_task(
     handler,
     admin_session,
     project_id,
@@ -1326,7 +1342,7 @@ pub fn pool_filters_by_user_capabilities_test() {
     3,
     frontend_type,
   )
-  create_task(
+  fx.require_task(
     handler,
     admin_session,
     project_id,
@@ -1355,7 +1371,7 @@ pub fn me_metrics_returns_counts_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
   close_task(handler, session, task_id, 2) |> expect.equal(200)
@@ -1424,7 +1440,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
   expect.expect_status(start_work_session(handler, session, task_id), 200)
@@ -1619,7 +1635,7 @@ pub fn task_get_requires_membership_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Secret", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Secret", "", 3, type_id)
 
   fx.require_member_user(handler, db, "outsider@example.com", "inv_out")
   let outsider_session =
@@ -1649,13 +1665,29 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
     create_task_type(handler, session, project_id, "Chore", "bolt", 0)
 
   let available_id =
-    create_task(handler, session, project_id, "Available", "", 3, bug_type_id)
+    fx.require_task(
+      handler,
+      session,
+      project_id,
+      "Available",
+      "",
+      3,
+      bug_type_id,
+    )
 
   let claimed_id =
-    create_task(handler, session, project_id, "Claimed", "", 3, chore_type_id)
+    fx.require_task(
+      handler,
+      session,
+      project_id,
+      "Claimed",
+      "",
+      3,
+      chore_type_id,
+    )
 
   let closed_id =
-    create_task(handler, session, project_id, "Closed", "", 3, bug_type_id)
+    fx.require_task(handler, session, project_id, "Closed", "", 3, bug_type_id)
 
   claim_task(handler, session, claimed_id, 1) |> expect.equal(200)
   claim_task(handler, session, closed_id, 1) |> expect.equal(200)
@@ -1790,7 +1822,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let other_session = fx.require_login_session(handler, "other@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, member_session, task_id, 1)
   |> expect.equal(200)
@@ -1864,7 +1896,7 @@ pub fn patch_rejects_blank_title_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
 
@@ -1896,7 +1928,7 @@ pub fn me_work_session_start_pause_and_persist_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
 
@@ -1964,7 +1996,7 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
   expect.expect_status(start_work_session(handler, session, task_id), 200)
@@ -2022,8 +2054,8 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
-  let t1 = create_task(handler, session, project_id, "T1", "", 3, type_id)
-  let t2 = create_task(handler, session, project_id, "T2", "", 3, type_id)
+  let t1 = fx.require_task(handler, session, project_id, "T1", "", 3, type_id)
+  let t2 = fx.require_task(handler, session, project_id, "T2", "", 3, type_id)
 
   claim_task(handler, session, t1, 1) |> expect.equal(200)
   claim_task(handler, session, t2, 1) |> expect.equal(200)
@@ -2060,7 +2092,7 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   let res = start_work_session(handler, session, task_id)
   expect.expect_status(res, 409)
@@ -2079,7 +2111,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
   claim_task(handler, session, task_id, 1) |> expect.equal(200)
   expect.expect_status(start_work_session(handler, session, task_id), 200)
@@ -2479,59 +2511,6 @@ fn create_task_type(
   expect.expect_status(res, 200)
   fx.decode_entity_id(simulate.read_body(res), fx.TaskType)
   |> expect.ok
-}
-
-fn create_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  project_id: Int,
-  title: String,
-  description: String,
-  priority: Int,
-  type_id: Int,
-) -> Int {
-  let card_id = create_active_card(handler, session, project_id, title)
-  fx.require_task_with_card_full(
-    handler,
-    session,
-    project_id,
-    title,
-    description,
-    priority,
-    type_id,
-    card_id,
-  )
-}
-
-fn create_active_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  project_id: Int,
-  title: String,
-) -> Int {
-  let card_id = fx.require_card(handler, session, project_id, title <> " card")
-  try_activate_card(handler, session, card_id)
-  card_id
-}
-
-fn try_activate_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  card_id: Int,
-) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
-    )
-    |> fx.with_auth(session)
-    |> simulate.json_body(json.object([]))
-
-  let res = handler(req)
-  case res.status {
-    200 | 403 -> Nil
-    _ -> expect.expect_status(res, 200)
-  }
 }
 
 fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {

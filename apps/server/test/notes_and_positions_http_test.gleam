@@ -52,7 +52,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let member2_session = fx.require_login_session(handler, "member2@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let note_req =
     simulate.request(
@@ -155,7 +155,7 @@ pub fn task_notes_list_requires_task_membership_test() {
     fx.require_login_session(handler, "outsider@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let _ =
     handler(
@@ -212,7 +212,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
   let member_session = fx.require_login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let delete_collection_res =
     handler(
@@ -307,7 +307,7 @@ pub fn task_notes_create_requires_csrf_test() {
   let member_session = fx.require_login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let note_req =
     simulate.request(
@@ -667,7 +667,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let member_session = fx.require_login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Task", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Task", "", 3, type_id)
 
   let note_req =
     simulate.request(
@@ -774,7 +774,7 @@ pub fn task_positions_upsert_requires_csrf_test() {
   let member_session = fx.require_login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let put_req =
     simulate.request(
@@ -821,9 +821,25 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let member2_session = fx.require_login_session(handler, "member2@example.com")
 
   let core_task_id =
-    create_task(handler, admin_session, core_id, "Core", "", 3, core_type_id)
+    fx.require_task(
+      handler,
+      admin_session,
+      core_id,
+      "Core",
+      "",
+      3,
+      core_type_id,
+    )
   let other_task_id =
-    create_task(handler, admin_session, other_id, "Other", "", 3, other_type_id)
+    fx.require_task(
+      handler,
+      admin_session,
+      other_id,
+      "Other",
+      "",
+      3,
+      other_type_id,
+    )
 
   upsert_position(handler, member1_session, core_task_id, 10, 20)
   |> expect.equal(200)
@@ -889,7 +905,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
     fx.require_login_session(handler, "outsider@example.com")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let put_req =
     simulate.request(
@@ -1054,29 +1070,6 @@ fn upsert_position(
   handler(req).status
 }
 
-fn create_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  project_id: Int,
-  title: String,
-  description: String,
-  priority: Int,
-  type_id: Int,
-) -> Int {
-  let card_id = fx.require_card(handler, session, project_id, title <> " card")
-  fx.require_activate_card(handler, session, card_id)
-  fx.require_task_with_card_full(
-    handler,
-    session,
-    project_id,
-    title,
-    description,
-    priority,
-    type_id,
-    card_id,
-  )
-}
-
 fn resource_view_fixture() -> ResourceViewFixture {
   let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1090,7 +1083,7 @@ fn resource_view_fixture() -> ResourceViewFixture {
   let card_id = fx.require_card(handler, admin_session, project_id, "Card")
 
   let task_id =
-    create_task(handler, admin_session, project_id, "Task", "", 3, type_id)
+    fx.require_task(handler, admin_session, project_id, "Task", "", 3, type_id)
 
   ResourceViewFixture(
     handler: handler,

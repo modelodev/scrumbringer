@@ -1615,7 +1615,13 @@ Estado de ejecucion:
   completos de `Project` usando `domain_fixtures.project`, conservando
   overrides de rol, `members_count` y `healthy_pool_limit` cuando gobiernan
   los contratos de permisos o seleccion.
-- Delta parcial WP-12: `-4.019` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimocuarto pase de fixtures HTTP aplicado a
+  `tasks_http_test` y `notes_and_positions_http_test`. Se extrae
+  `fixtures.require_task` para crear una task completa en una card activa,
+  retirando wrappers locales equivalentes y el helper de activacion que quedo
+  sin uso; los tests siguen expresando titulo, descripcion, prioridad y tipo
+  en cada escenario.
+- Delta parcial WP-12: `-4.024` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1683,11 +1689,12 @@ Estado de ejecucion:
   de fixtures de dominio compartidas en tests de cliente, `-5` del
   cuadragesimosegundo pase de fixtures de dominio compartidas en tests de
   cliente, `-35` del cuadragesimotercer pase de fixtures de dominio
-  compartidas en tests de cliente).
+  compartidas en tests de cliente, `-5` del cuadragesimocuarto pase de
+  fixtures HTTP compartidas en tests de servidor).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
-  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
   - `cd apps/client && gleam format --check src test && gleam build`;
   - `cd apps/client && gleam test` (`1887 passed`).
 
