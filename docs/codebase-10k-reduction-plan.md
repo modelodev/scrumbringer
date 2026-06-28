@@ -1377,7 +1377,12 @@ Estado de ejecucion:
   (`tasks_claimability`, `tasks_dependency_list` y `task_blocking_status`). Se
   retiran constructores e imports locales donde el escenario solo depende de
   `state`, `blocked_count` o dependencia abierta/cerrada.
-- Delta parcial WP-12: `-2.701` lineas netas mantenidas (`-44` del primer pase
+- Octavo pase de fixtures de dominio aplicado a tests de `tasks/show`
+  (`tasks_show_lifecycle_update`, `tasks_show_details`,
+  `tasks_show_edit_form` y `task_show_editor_view`). Se conservan solo
+  overrides de descripcion, prioridad, version, fecha de creacion, estado
+  reclamado y card asociada cuando forman parte del caso.
+- Delta parcial WP-12: `-2.764` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1403,7 +1408,8 @@ Estado de ejecucion:
   cuarto pase de fixtures de dominio compartidas en tests de cliente, `-56` del
   quinto pase de fixtures de dominio compartidas en tests de cliente, `-72` del
   sexto pase de fixtures de dominio compartidas en tests de cliente, `-28` del
-  septimo pase de fixtures de dominio compartidas en tests de cliente).
+  septimo pase de fixtures de dominio compartidas en tests de cliente, `-63`
+  del octavo pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

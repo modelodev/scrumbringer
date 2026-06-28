@@ -1,11 +1,10 @@
 import gleam/dict
 import gleam/option.{None, Some}
 import lustre/effect
+import support/domain_fixtures
 
 import domain/remote
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
@@ -16,29 +15,12 @@ import scrumbringer_client/features/tasks/show_update
 import scrumbringer_client/ui/show_tabs
 
 fn sample_task() -> Task {
-  let state = task_state.Available
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Prepare release",
+    ..domain_fixtures.task(42, "Prepare release", 1),
     description: Some("Review checklist."),
     priority: 2,
-    state: state,
-    created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
-    due_date: None,
     version: 3,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
 
