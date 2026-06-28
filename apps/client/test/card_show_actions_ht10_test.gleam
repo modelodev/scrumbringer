@@ -1,12 +1,12 @@
 import gleam/int
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
@@ -15,46 +15,20 @@ import scrumbringer_client/i18n/locale
 
 fn card(id: Int, parent_id: opt.Option(Int), state: CardPhase) -> Card {
   Card(
-    id: id,
-    project_id: 7,
+    ..domain_fixtures.card(id, 7, "Card " <> int.to_string(id)),
     parent_card_id: parent_id,
-    title: "Card " <> int.to_string(id),
-    description: "",
-    color: opt.None,
     state: state,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    has_new_notes: False,
   )
 }
 
 fn task(id: Int, card_id: opt.Option(Int), created_by: Int) -> Task {
-  let state = task_state.Available
   Task(
-    id: id,
+    ..domain_fixtures.task(id, "Task " <> int.to_string(id), 1),
     project_id: 7,
-    type_id: 1,
     task_type: TaskTypeInline(id: 1, name: "Build", icon: "hammer"),
-    ongoing_by: opt.None,
-    title: "Task " <> int.to_string(id),
     description: opt.None,
-    priority: 3,
-    state: state,
     created_by: created_by,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    version: 1,
-    parent_card_id: opt.None,
     card_id: card_id,
-    card_title: opt.None,
-    card_color: opt.None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: opt.None,
   )
 }
 
