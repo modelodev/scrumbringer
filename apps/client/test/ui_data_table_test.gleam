@@ -95,22 +95,6 @@ pub fn view_uses_responsive_data_table_class_by_default_test() {
   render_assertions.contains(html, "scope=\"col\"")
 }
 
-pub fn sortable_column_renders_keyboard_button_test() {
-  let rendered =
-    data_table.new()
-    |> data_table.with_columns([
-      data_table.sortable_column("Name", fn(value) { text(value) }, "sort-name"),
-    ])
-    |> data_table.with_rows(["Alice"], fn(value) { value })
-    |> data_table.view()
-
-  let html = element.to_document_string(rendered)
-  render_assertions.contains(html, "table-sort-button")
-  render_assertions.contains(html, "type=\"button\"")
-  render_assertions.contains(html, "aria-label=\"Sort by Name\"")
-  render_assertions.contains(html, "aria-hidden=\"true\"")
-}
-
 pub fn loading_state_is_announced_without_blocking_page_test() {
   let rendered =
     data_table.view_remote(

@@ -1,7 +1,6 @@
 import lustre/element
 import support/render_assertions
 
-import scrumbringer_client/ui/button
 import scrumbringer_client/ui/filter_bar
 
 pub fn filter_bar_search_preserves_value_placeholder_and_testid_test() {
@@ -50,31 +49,4 @@ pub fn filter_bar_select_renders_options_and_selected_value_test() {
   render_assertions.contains(html, ">All<")
   render_assertions.contains(html, ">Feature<")
   render_assertions.contains(html, "selected")
-}
-
-pub fn filter_bar_checkbox_and_actions_use_separate_slots_test() {
-  let html =
-    filter_bar.new([
-      filter_bar.checkbox_chip(
-        "Show closed",
-        True,
-        fn(value) { value },
-        "filter-closed",
-        "filter-chip",
-        "filter-checkbox",
-      ),
-    ])
-    |> filter_bar.with_actions([
-      button.text("Clear", False, button.Ghost, button.ViewAction)
-      |> button.view,
-    ])
-    |> filter_bar.view
-    |> element.to_document_string
-
-  render_assertions.contains(html, "filter-bar-fields")
-  render_assertions.contains(html, "filter-bar-actions")
-  render_assertions.contains(html, "data-testid=\"filter-closed\"")
-  render_assertions.contains(html, "checked")
-  render_assertions.contains(html, "Show closed")
-  render_assertions.contains(html, ">Clear<")
 }

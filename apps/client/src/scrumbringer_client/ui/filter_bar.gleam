@@ -99,27 +99,6 @@ pub fn select_field(
   ])
 }
 
-/// Renders a checkbox inside a chip-like label.
-pub fn checkbox_chip(
-  label_text: String,
-  checked: Bool,
-  on_check: fn(Bool) -> msg,
-  testid: String,
-  extra_class: String,
-  checkbox_class: String,
-) -> Element(msg) {
-  label([attribute.class(extra_class)], [
-    input([
-      attribute.type_("checkbox"),
-      attribute.class(checkbox_class),
-      attribute.attribute("data-testid", testid),
-      attribute.checked(checked),
-      event.on_check(on_check),
-    ]),
-    text(" " <> label_text),
-  ])
-}
-
 fn root_attrs(config: Config(msg)) {
   let class = case config.extra_class {
     Some(extra) -> "filter-bar " <> extra

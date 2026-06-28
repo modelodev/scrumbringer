@@ -1125,6 +1125,16 @@ Estado de ejecucion:
     usos de `stop_propagation` siguen como atributos Lustre locales;
   - retirados tests directos de API preventiva en `ui_button_test`;
   - delta adicional WP-10: `-64` lineas mantenidas.
+- Micro-pase adicional de primitivas UI preventivas:
+  - retirados `data_table.sortable_column`, `filter_bar.checkbox_chip`,
+    `skeleton.skeleton_card`, `layout.theme_switch` y `layout.locale_switch`,
+    sin consumidores de produccion y cubiertos solo por tests directos;
+  - simplificado `data_table.Column` retirando el campo `on_sort` y la rama
+    de header sortable, ya que ningun flujo activo ordena desde esa primitiva;
+  - retirados tests de implementacion asociados, conservando tests de los
+    contratos UI vivos de tabla, filtros, skeleton line/list/table y layout
+    section/empty;
+  - delta adicional WP-10: `-212` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1147,10 +1157,11 @@ Estado de ejecucion:
     `1887 passed` tras retirar helpers muertos de `api/activity`;
     `1886 passed` tras retirar `helpers/options.empty_to_opt`;
     `1886 passed` tras retirar accessors de `ui/badge`;
-    `1884 passed` tras retirar API preventiva de `ui/button`);
+    `1884 passed` tras retirar API preventiva de `ui/button`;
+    `1879 passed` tras retirar primitivas UI preventivas sin consumidores);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-1.580` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.792` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

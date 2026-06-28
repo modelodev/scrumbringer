@@ -34,17 +34,6 @@ pub fn skeleton_line(width: String, height: String) -> Element(msg) {
   )
 }
 
-pub fn skeleton_card() -> Element(msg) {
-  div(
-    [
-      attribute.class("skeleton"),
-      attribute.style("width", "100%"),
-      attribute.style("height", "120px"),
-    ],
-    [],
-  )
-}
-
 /// Renders a skeleton table placeholder with n rows.
 pub fn skeleton_table(rows: Int) -> Element(msg) {
   div([attribute.class("skeleton-table")], {

@@ -2,7 +2,6 @@
 ////
 //// Provides a reusable, accessible table component with:
 //// - Consistent styling via CSS classes
-//// - Optional sortable column headers
 //// - Per-column CSS classes for headers and cells
 //// - Remote data state handling (NotAsked/Loading/Failed/Loaded)
 //// - Responsive design (collapses to card view on mobile)
@@ -47,11 +46,8 @@ import gleam/string
 
 import lustre/attribute.{type Attribute, attribute, class}
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, caption, div, span, table, td, text, th, thead, tr,
-}
+import lustre/element/html.{caption, div, table, td, text, th, thead, tr}
 import lustre/element/keyed
-import lustre/event
 
 import domain/api_error.{type ApiError}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
@@ -68,8 +64,6 @@ pub type Column(row, msg) {
     header: String,
     /// Function to render cell content for this column
     render: fn(row) -> Element(msg),
-    /// Optional sort message when header is clicked
-    on_sort: Option(msg),
     /// CSS class for header (th) element
     header_class: Option(String),
     /// CSS class for cell (td) elements in this column
@@ -218,7 +212,7 @@ pub fn view(config: DataTableConfig(row, msg)) -> Element(msg) {
 }
 
 fn view_header(column: Column(row, msg)) -> Element(msg) {
-  let Column(header:, on_sort:, header_class:, ..) = column
+  let Column(header:, header_class:, ..) = column
 
   let base_attrs = [attribute("scope", "col")]
   let class_attrs = case header_class {
@@ -226,36 +220,7 @@ fn view_header(column: Column(row, msg)) -> Element(msg) {
     None -> [class("table-header"), ..base_attrs]
   }
 
-  case on_sort {
-    Some(sort_msg) ->
-      th(
-        [
-          class(case header_class {
-            Some(css) -> "table-header sortable " <> css
-            None -> "table-header sortable"
-          }),
-          attribute("scope", "col"),
-          attribute("aria-sort", "none"),
-        ],
-        [
-          button(
-            [
-              class("table-sort-button"),
-              attribute("type", "button"),
-              attribute("aria-label", "Sort by " <> header),
-              event.on_click(sort_msg),
-            ],
-            [
-              span([class("header-text")], [text(header)]),
-              span([class("sort-icon"), attribute("aria-hidden", "true")], [
-                text("⇅"),
-              ]),
-            ],
-          ),
-        ],
-      )
-    None -> th(class_attrs, [text(header)])
-  }
+  th(class_attrs, [text(header)])
 }
 
 fn view_row(
@@ -286,7 +251,7 @@ pub fn column(
   header: String,
   render: fn(row) -> Element(msg),
 ) -> Column(row, msg) {
-  Column(header:, render:, on_sort: None, header_class: None, cell_class: None)
+  Column(header:, render:, header_class: None, cell_class: None)
 }
 
 /// Create a column with CSS classes for header and cells.
@@ -299,24 +264,8 @@ pub fn column_with_class(
   Column(
     header:,
     render:,
-    on_sort: None,
     header_class: Some(header_class),
     cell_class: Some(cell_class),
-  )
-}
-
-/// Create a sortable column.
-pub fn sortable_column(
-  header: String,
-  render: fn(row) -> Element(msg),
-  on_sort: msg,
-) -> Column(row, msg) {
-  Column(
-    header:,
-    render:,
-    on_sort: Some(on_sort),
-    header_class: None,
-    cell_class: None,
   )
 }
 

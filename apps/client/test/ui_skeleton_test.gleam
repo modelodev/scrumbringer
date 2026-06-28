@@ -17,10 +17,3 @@ pub fn skeleton_line_has_dimensions_test() {
   let assert True = string.contains(html, "200px")
   let assert True = string.contains(html, "20px")
 }
-
-pub fn skeleton_card_has_skeleton_class_test() {
-  let rendered = skeleton.skeleton_card()
-  let html = element.to_document_string(rendered)
-
-  let assert True = string.contains(html, "skeleton")
-}

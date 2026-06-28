@@ -2,8 +2,6 @@ import gleam/option.{Some}
 import gleam/string
 import lustre/element
 import scrumbringer_client/features/admin/org_user_fallback
-import scrumbringer_client/i18n/locale
-import scrumbringer_client/theme
 import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/attribute_value
 import scrumbringer_client/ui/card_section_header
@@ -11,8 +9,6 @@ import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/error_notice
-
-import scrumbringer_client/ui/layout
 
 pub fn attribute_value_boolean_serializes_html_booleans_test() {
   let assert "true" = attribute_value.boolean(True)
@@ -185,22 +181,4 @@ pub fn error_banner_renders_message_test() {
   let html = error_banner.view("Oops") |> element.to_document_string
   let assert True = string.contains(html, "Oops")
   let assert True = string.contains(html, "error-banner")
-}
-
-pub fn layout_theme_switch_renders_options_test() {
-  let html =
-    layout.theme_switch(locale.En, theme.Default, fn(_s) { "msg" })
-    |> element.to_document_string
-
-  let assert True = string.contains(html, "default")
-  let assert True = string.contains(html, "dark")
-}
-
-pub fn layout_locale_switch_renders_options_test() {
-  let html =
-    layout.locale_switch(locale.En, fn(_s) { "msg" })
-    |> element.to_document_string
-
-  let assert True = string.contains(html, "es")
-  let assert True = string.contains(html, "en")
 }
