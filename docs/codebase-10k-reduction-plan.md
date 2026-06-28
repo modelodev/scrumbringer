@@ -2906,6 +2906,28 @@ Estado de ejecucion:
   - total Gleam actual: `197.307` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.707` lineas;
   - deficit restante para `-20k`: `3.293` lineas.
+- Trigesimoprimer pase de helpers locales de listados de tareas HTTP:
+  - extraidos en `tasks_http_test.gleam` los helpers privados
+    `project_task_titles` y `expect_project_task_titles` para encapsular el
+    patron repetido de `list_project_tasks_response`, status `200` y decode de
+    titulos;
+  - sustituidos los checks repetidos de filtros por query, estado, tipo,
+    bloqueo, card activa/draft y capacidades de usuario;
+  - se conservan explicitos los escenarios, filtros, sesiones usadas y listas
+    esperadas; los casos de error siguen con sus status y body asserts locales;
+  - delta adicional: `-59` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce duplicacion de
+    contrato HTTP local sin ampliar fixtures globales ni alterar aislamiento DB;
+  - verificacion:
+    - `cd apps/server && gleam format test/tasks_http_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el trigesimoprimer pase:
+  - total Gleam actual: `197.248` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.766` lineas;
+  - deficit restante para `-20k`: `3.234` lineas.
 
 ## Orden recomendado de ejecucion
 

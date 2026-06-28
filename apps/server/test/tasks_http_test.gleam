@@ -133,31 +133,21 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   set_task_created_at(db, t2_id, "2000-01-03T00:00:00Z")
   set_task_created_at(db, t3_id, "2000-01-02T00:00:00Z")
 
-  let list_res =
-    fx.list_project_tasks_response(handler, session, project_id, "")
-
-  expect.expect_status(list_res, 200)
-  let list_titles = decode_task_titles(simulate.read_body(list_res))
-  list_titles |> expect.equal(["needle in title", "Unrelated", "Old"])
-
-  let q_res =
-    fx.list_project_tasks_response(handler, session, project_id, "q=needle")
-
-  expect.expect_status(q_res, 200)
-  let q_titles = decode_task_titles(simulate.read_body(q_res))
-  q_titles |> expect.equal(["needle in title"])
-
-  let cap_res =
-    fx.list_project_tasks_response(
-      handler,
-      session,
-      project_id,
-      "capability_id=" <> int.to_string(cap1),
-    )
-
-  expect.expect_status(cap_res, 200)
-  let cap_titles = decode_task_titles(simulate.read_body(cap_res))
-  cap_titles |> expect.equal(["Unrelated"])
+  expect_project_task_titles(handler, session, project_id, "", [
+    "needle in title",
+    "Unrelated",
+    "Old",
+  ])
+  expect_project_task_titles(handler, session, project_id, "q=needle", [
+    "needle in title",
+  ])
+  expect_project_task_titles(
+    handler,
+    session,
+    project_id,
+    "capability_id=" <> int.to_string(cap1),
+    ["Unrelated"],
+  )
 
   let multi_cap_res =
     fx.list_project_tasks_response(
@@ -648,10 +638,9 @@ pub fn pool_includes_available_active_card_task_test() {
     type_id,
   )
 
-  let res = fx.list_project_tasks_response(handler, session, project_id, "")
-  expect.expect_status(res, 200)
-  decode_task_titles(simulate.read_body(res))
-  |> expect.equal(["Active card task"])
+  expect_project_task_titles(handler, session, project_id, "", [
+    "Active card task",
+  ])
 }
 
 pub fn pool_excludes_task_under_draft_card_test() {
@@ -670,9 +659,7 @@ pub fn pool_excludes_task_under_draft_card_test() {
     draft_card,
   )
 
-  let res = fx.list_project_tasks_response(handler, session, project_id, "")
-  expect.expect_status(res, 200)
-  decode_task_titles(simulate.read_body(res)) |> expect.equal([])
+  expect_project_task_titles(handler, session, project_id, "", [])
 }
 
 pub fn pool_includes_task_under_active_card_test() {
@@ -691,10 +678,9 @@ pub fn pool_includes_task_under_active_card_test() {
     active_card,
   )
 
-  let res = fx.list_project_tasks_response(handler, session, project_id, "")
-  expect.expect_status(res, 200)
-  decode_task_titles(simulate.read_body(res))
-  |> expect.equal(["Active-card task"])
+  expect_project_task_titles(handler, session, project_id, "", [
+    "Active-card task",
+  ])
 }
 
 pub fn dependency_blocks_available_and_claimed_tasks_test() {
@@ -708,11 +694,9 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
   fx.create_task_dependency_status(handler, session, blocked, blocker)
   |> expect.equal(200)
 
-  let blocked_res =
-    fx.list_project_tasks_response(handler, session, project_id, "blocked=true")
-  expect.expect_status(blocked_res, 200)
-  decode_task_titles(simulate.read_body(blocked_res))
-  |> expect.equal(["Blocked"])
+  expect_project_task_titles(handler, session, project_id, "blocked=true", [
+    "Blocked",
+  ])
 
   let claim_blocked =
     fx.claim_task_response(
@@ -790,15 +774,7 @@ pub fn dependency_unblocks_when_dependency_closed_test() {
   fx.close_task_status(handler, session, blocker, fx.task_version(db, blocker))
   |> expect.equal(200)
 
-  let unblocked_res =
-    fx.list_project_tasks_response(
-      handler,
-      session,
-      project_id,
-      "blocked=false",
-    )
-  expect.expect_status(unblocked_res, 200)
-  decode_task_titles(simulate.read_body(unblocked_res))
+  project_task_titles(handler, session, project_id, "blocked=false")
   |> list.contains("Blocked")
   |> expect.is_true
   fx.claim_task_status(handler, session, blocked, fx.task_version(db, blocked))
@@ -965,11 +941,9 @@ pub fn pool_filters_by_user_capabilities_test() {
 
   let member_session = fx.require_login_session(handler, "cap-user@example.com")
 
-  let res =
-    fx.list_project_tasks_response(handler, member_session, project_id, "")
-  expect.expect_status(res, 200)
-  decode_task_titles(simulate.read_body(res))
-  |> expect.equal(["Visible frontend"])
+  expect_project_task_titles(handler, member_session, project_id, "", [
+    "Visible frontend",
+  ])
 }
 
 pub fn me_metrics_returns_counts_test() {
@@ -1276,66 +1250,22 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   fx.claim_task_status(handler, session, closed_id, 1) |> expect.equal(200)
   fx.close_task_status(handler, session, closed_id, 2) |> expect.equal(200)
 
-  let available_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/"
-          <> int.to_string(project_id)
-          <> "/tasks?status=available",
-      )
-      |> fx.with_session_cookies(session),
-    )
-
-  expect.expect_status(available_res, 200)
-  decode_task_titles(simulate.read_body(available_res))
-  |> expect.equal(["Available"])
-
-  let claimed_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/"
-          <> int.to_string(project_id)
-          <> "/tasks?status=claimed",
-      )
-      |> fx.with_session_cookies(session),
-    )
-
-  expect.expect_status(claimed_res, 200)
-  decode_task_titles(simulate.read_body(claimed_res))
-  |> expect.equal(["Claimed"])
-
-  let closed_filter_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/"
-          <> int.to_string(project_id)
-          <> "/tasks?status=closed",
-      )
-      |> fx.with_session_cookies(session),
-    )
-
-  expect.expect_status(closed_filter_res, 200)
-  decode_task_titles(simulate.read_body(closed_filter_res))
-  |> expect.equal(["Closed"])
-
-  let type_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/"
-          <> int.to_string(project_id)
-          <> "/tasks?type_id="
-          <> int.to_string(bug_type_id),
-      )
-      |> fx.with_session_cookies(session),
-    )
-
-  expect.expect_status(type_res, 200)
-  decode_task_titles(simulate.read_body(type_res))
-  |> expect.equal(["Closed", "Available"])
+  expect_project_task_titles(handler, session, project_id, "status=available", [
+    "Available",
+  ])
+  expect_project_task_titles(handler, session, project_id, "status=claimed", [
+    "Claimed",
+  ])
+  expect_project_task_titles(handler, session, project_id, "status=closed", [
+    "Closed",
+  ])
+  expect_project_task_titles(
+    handler,
+    session,
+    project_id,
+    "type_id=" <> int.to_string(bug_type_id),
+    ["Closed", "Available"],
+  )
 
   let invalid_status_res =
     fx.list_project_tasks_response(handler, session, project_id, "status=nope")
@@ -1805,6 +1735,17 @@ fn require_task_data(body: String, task_decoder: decode.Decoder(a)) -> a {
 
 fn decode_task_titles(body: String) -> List(String) {
   fx.require_data_string_list_field(body, "tasks", "title")
+}
+
+fn project_task_titles(handler, session, project_id, query) {
+  let res = fx.list_project_tasks_response(handler, session, project_id, query)
+  expect.expect_status(res, 200)
+  decode_task_titles(simulate.read_body(res))
+}
+
+fn expect_project_task_titles(handler, session, project_id, query, titles) {
+  project_task_titles(handler, session, project_id, query)
+  |> expect.equal(titles)
 }
 
 fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {
