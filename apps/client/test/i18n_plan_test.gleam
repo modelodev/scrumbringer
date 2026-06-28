@@ -17,7 +17,6 @@ pub fn plan_labels_es_test() {
   |> assert_equal("Sin tarjetas activas")
   i18n.t(locale.Es, text.PlanMode) |> assert_equal("Modo")
   i18n.t(locale.Es, text.PlanModeStructure) |> assert_equal("Estructura")
-  i18n.t(locale.Es, text.PlanModeKanban) |> assert_equal("Kanban")
   i18n.t(locale.Es, text.PlanClosed) |> assert_equal("cerradas")
   i18n.t(locale.Es, text.PlanEmptyCardScopeBody)
   |> assert_equal(
@@ -42,7 +41,6 @@ pub fn plan_labels_en_test() {
   |> assert_equal("No active cards")
   i18n.t(locale.En, text.PlanMode) |> assert_equal("Mode")
   i18n.t(locale.En, text.PlanModeStructure) |> assert_equal("Structure")
-  i18n.t(locale.En, text.PlanModeKanban) |> assert_equal("Kanban")
   i18n.t(locale.En, text.PlanClosed) |> assert_equal("Closed")
   i18n.t(locale.En, text.PlanEmptyCardScopeBody)
   |> assert_equal(

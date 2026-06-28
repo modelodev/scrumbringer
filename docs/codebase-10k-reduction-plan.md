@@ -924,12 +924,18 @@ Estado de ejecucion:
 - Eliminado el bloque legacy `ficha-detail-*`, `ficha-task-*` y
   `ficha-add-task-*` de `styles/ux.gleam`; esas clases no tenian consumidores y
   fueron sustituidas por las superficies actuales `card-show`/`detail-*`.
-- Delta parcial WP-11: `-20` lineas netas mantenidas.
+- Segundo pase i18n: eliminadas 190 variantes `Text` sin consumidor en
+  produccion, sus ramas de traduccion `en/es` y aserciones de tests que solo
+  protegian copy muerta. El barrido excluyo `i18n/text.gleam`, `i18n/en.gleam`
+  e `i18n/es.gleam` para no contar las propias definiciones como uso real.
+- Delta parcial WP-11: `-720` lineas netas mantenidas (`-20` estilos,
+  `-700` i18n/tests).
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
   - `cd apps/client && gleam test` (`1912 passed`);
   - `rg "ficha-detail|ficha-task|ficha-add-task" apps/client/src apps/client/test`.
+  - `rg "i18n_text\\.<clave>|text\\.<clave>" apps/client/src --glob '!**/i18n/text.gleam' --glob '!**/i18n/en.gleam' --glob '!**/i18n/es.gleam'` para las claves retiradas.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 

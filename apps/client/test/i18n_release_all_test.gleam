@@ -5,8 +5,6 @@ import scrumbringer_client/i18n/text
 pub fn release_all_labels_es_test() {
   let assert "Liberar todas" = i18n.t(locale.Es, text.ReleaseAll)
 
-  let assert "3 reclamadas" = i18n.t(locale.Es, text.ClaimedTasks(3))
-
   let assert "Confirmar liberación" =
     i18n.t(locale.Es, text.ReleaseAllConfirmTitle)
 
@@ -19,8 +17,6 @@ pub fn release_all_labels_es_test() {
 
 pub fn release_all_labels_en_test() {
   let assert "Release all" = i18n.t(locale.En, text.ReleaseAll)
-
-  let assert "3 claimed" = i18n.t(locale.En, text.ClaimedTasks(3))
 
   let assert "Confirm release" = i18n.t(locale.En, text.ReleaseAllConfirmTitle)
 

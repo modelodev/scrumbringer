@@ -41,12 +41,10 @@ pub fn spanish_metrics_copy_uses_localized_claim_vocabulary_test() {
     i18n.t(locale.Es, text.TimeToFirstClaim),
     i18n.t(locale.Es, text.Claims),
     i18n.t(locale.Es, text.FirstClaim),
-    i18n.t(locale.Es, text.MetricsFirstClaimAt),
   ]
 
   list.each(labels, assert_no_claim_word)
   i18n.t(locale.Es, text.Claims) |> assert_equal("Reclamaciones")
   i18n.t(locale.Es, text.Closures) |> assert_equal("Cierres")
   i18n.t(locale.Es, text.WipCount) |> assert_equal("Trabajo en curso")
-  i18n.t(locale.Es, text.Tracking) |> assert_equal("Seguimiento")
 }

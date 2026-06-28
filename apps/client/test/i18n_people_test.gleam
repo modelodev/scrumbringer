@@ -8,8 +8,6 @@ fn assert_equal(actual: String, expected: String) {
 
 pub fn people_labels_es_test() {
   i18n.t(locale.Es, text.People) |> assert_equal("Personas")
-  i18n.t(locale.Es, text.Busy) |> assert_equal("Ocupado")
-  i18n.t(locale.Es, text.Free) |> assert_equal("Libre")
   i18n.t(locale.Es, text.PeopleSearchPlaceholder)
   |> assert_equal("Buscar persona, tarea o tarjeta")
   i18n.t(locale.Es, text.PeopleEmpty)
@@ -41,8 +39,6 @@ pub fn people_labels_es_test() {
 
 pub fn people_labels_en_test() {
   i18n.t(locale.En, text.People) |> assert_equal("People")
-  i18n.t(locale.En, text.Busy) |> assert_equal("Busy")
-  i18n.t(locale.En, text.Free) |> assert_equal("Free")
   i18n.t(locale.En, text.PeopleSearchPlaceholder)
   |> assert_equal("Search person, task, or card")
   i18n.t(locale.En, text.PeopleEmpty)

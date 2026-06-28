@@ -14,9 +14,6 @@ pub fn translate(text: Text) -> String {
   case text {
     // App
     text.AppName -> "ScrumBringer"
-    text.AppSectionTitle -> "App"
-
-    // Auth
     text.LoginTitle -> "Acceso"
     text.LoginSubtitle -> "Inicia sesión para acceder a ScrumBringer."
     text.NoEmailIntegrationNote ->
@@ -69,9 +66,6 @@ pub fn translate(text: Text) -> String {
     text.NoteAdded -> "Nota añadida"
 
     // Task mutation errors
-    text.TaskClaimFailed -> "No se pudo reclamar la tarea"
-    text.TaskReleaseFailed -> "No se pudo liberar la tarea"
-    text.TaskCloseFailed -> "No se pudo cerrar la tarea"
     text.TaskVersionConflict -> "La tarea fue modificada. Por favor recarga."
     text.TaskAlreadyClaimed -> "La tarea ya está reclamada por otro usuario"
     text.TaskBlockedByDependencies -> "La tarea tiene dependencias abiertas"
@@ -178,10 +172,6 @@ pub fn translate(text: Text) -> String {
 
     // Member sections
     text.Pool -> "Pool"
-    text.MyBar -> "Mi barra"
-    text.MySkills -> "Mis capacidades"
-    text.MySkillsHelp ->
-      "Selecciona las capacidades que tienes. El Pool destacará las tareas que coincidan."
     text.MyTasks -> "Mis tareas"
     text.NoClaimedTasks ->
       "Aún no tienes tareas en Mis tareas. Reclama trabajo desde el Pool."
@@ -221,15 +211,11 @@ pub fn translate(text: Text) -> String {
     text.YLabel -> "y"
 
     // Member pool controls
-    text.ViewCanvas -> "Vista: canvas"
-    text.ViewList -> "Vista: lista"
     text.Canvas -> "Lienzo"
     text.List -> "Lista"
     text.Kanban -> "Kanban"
     text.CapabilitiesBoard -> "Capacidades"
     text.People -> "Personas"
-    text.Hierarchies -> "Jerarquías"
-    text.Tracking -> "Seguimiento"
     text.WorkSurfaceView -> "Vista"
     text.PlanScope -> "Alcance"
     text.PlanScopeProject -> "Proyecto"
@@ -240,14 +226,12 @@ pub fn translate(text: Text) -> String {
     text.PlanScopeNoActiveCards -> "Sin tarjetas activas"
     text.PlanMode -> "Modo"
     text.PlanModeStructure -> "Estructura"
-    text.PlanModeKanban -> "Kanban"
     text.KanbanColumnPending -> "Por iniciar"
     text.PlanEmptyCardScopeBody ->
       "Busca una tarjeta para ver su subárbol, capacidades, tareas y riesgo."
     text.PlanEmptyScopeTitle -> "No hay tarjetas en este alcance."
     text.PlanEmptyScopeBody ->
       "Crea una tarjeta o cambia el alcance para revisar otra parte del plan."
-    text.PlanCapabilityMode -> "Modo"
     text.PlanCapabilityList -> "Lista"
     text.PlanCapabilityMatrix -> "Matriz"
     text.PlanClosed -> "cerradas"
@@ -260,15 +244,12 @@ pub fn translate(text: Text) -> String {
     text.PoolVisibilityReadyToClaim -> "Reclamables"
     text.PoolVisibilityBlocked -> "Bloqueadas"
     text.PoolOpenCount -> "Abiertas"
-    text.PoolReadyCount -> "Reclamables"
-    text.PoolBlockedCount -> "Bloqueadas"
     text.PoolHealthyLimit -> "Límite sano"
     text.NewTask -> "Nueva tarea"
     text.Description -> "Descripción"
     text.Priority -> "Prioridad"
     text.PriorityHighest -> "más alta"
     text.PriorityLowest -> "más baja"
-    text.NewTaskShortcut -> "Nueva tarea (n)"
     text.AllOption -> "Todas"
     text.SelectType -> "Selecciona tipo"
     text.TypeLabel -> "Tipo"
@@ -279,13 +260,6 @@ pub fn translate(text: Text) -> String {
     text.SearchLabel -> "Buscar"
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Limpiar"
-    text.ActiveFilters(count) ->
-      int.to_string(count)
-      <> " filtro"
-      <> case count {
-        1 -> " activo"
-        _ -> "s activos"
-      }
     text.NoAvailableTasksRightNow -> "No hay tareas disponibles ahora"
     text.CreateFirstTaskToStartUsingPool ->
       "Crea tu primera tarea para empezar a usar el Pool."
@@ -306,17 +280,11 @@ pub fn translate(text: Text) -> String {
     text.ViewBlockedTasks -> "Ver bloqueadas"
     text.ViewOpenTasks -> "Ver abiertas"
     text.HideClosedTasks -> "Ocultar tareas cerradas"
-    text.TypeNumber(type_id) -> "Tipo #" <> int.to_string(type_id)
-    text.MetaType -> "tipo: "
-    text.MetaPriority -> "prioridad: "
-    text.MetaCreated -> "creada: "
     text.PriorityShort(priority) -> "P" <> int.to_string(priority)
     text.Claim -> "Reclamar"
     text.ClaimThisTask -> "Reclamar esta tarea y moverla a Mis tareas"
     text.ClaimedBy -> "Reclamada por"
     text.UnknownUser -> "Usuario desconocido"
-    text.Busy -> "Ocupado"
-    text.Free -> "Libre"
     text.PeopleSearchPlaceholder -> "Buscar persona, tarea o tarjeta"
     text.PeopleEmpty -> "No hay miembros en este proyecto"
     text.PeopleNoResults -> "No hay personas que coincidan con la búsqueda"
@@ -328,11 +296,6 @@ pub fn translate(text: Text) -> String {
     text.PeopleFreeLabel -> "Disponibles"
     text.PeopleBusyLabel -> "Con trabajo"
     text.PeopleWorkingLabel -> "Trabajando ahora"
-    text.PeopleClaimedLabel -> "Reclamadas"
-    text.PeopleFreeCount(count) -> int.to_string(count) <> " libres"
-    text.PeopleBusyCount(count) -> int.to_string(count) <> " ocupadas"
-    text.PeopleWorkingCount(count) -> int.to_string(count) <> " en curso"
-    text.PeopleClaimedTotal(count) -> int.to_string(count) <> " reclamadas"
     text.PeopleOngoingCount(count) -> int.to_string(count) <> " en curso"
     text.PeopleReservedCount(count) ->
       case count {
@@ -396,41 +359,14 @@ pub fn translate(text: Text) -> String {
       "No hay tareas activas por capacidad que coincidan con los filtros"
     text.CapabilityBoardLoadError ->
       "No se pudo cargar la vista por capacidades"
-    text.CapabilityBoardEmptyPending -> "Sin tareas pendientes"
-    text.CapabilityBoardEmptyClaimed -> "Sin tareas reclamadas"
-    text.CapabilityBoardEmptyOngoing -> "Sin tareas en curso"
     text.CapabilityBoardPurpose ->
       "Capacidad por tarjeta, derivada de tareas descendientes reales."
     text.CapabilityBoardCardColumn -> "Tarjeta"
     text.CapabilityBoardLevelColumn -> "Nivel"
     text.CapabilityBoardTotal -> "Total"
-    text.CapabilityBoardClosed -> "cerradas"
     text.CapabilityBoardNoTasks -> "Sin tareas activas"
     text.CapabilityBoardEmptyCell -> "Sin tareas"
-    text.CapabilityBoardOldest -> "Más antigua"
-    text.CapabilityBoardPressureBlocked -> "Bloqueada"
-    text.CapabilityBoardPressureNoTraction -> "Sin tracción"
-    text.CapabilityBoardPressureFlowing -> "Fluyendo"
     text.NoCapability -> "Sin capacidad"
-    text.HierarchiesEmpty -> "Aun no hay jerarquías"
-    text.HierarchiesNoResults ->
-      "No hay jerarquías que coincidan con los filtros"
-    text.HierarchiesLoadError -> "No se pudieron cargar las jerarquías"
-    text.HierarchiesPurpose ->
-      "Estructura de entrega por objetivo, trabajo suelto y avance de tarjetas."
-    text.CreateHierarchy -> "Crear jerarquía"
-    text.CreateFirstHierarchy -> "Crear primera jerarquía"
-    text.HierarchyCreated -> "Jerarquía creada"
-    text.HierarchyCreateFailed -> "No se pudo crear la jerarquía"
-    text.ShowClosedHierarchies -> "Ver cerradas"
-    text.ShowEmptyHierarchies -> "Ver vacíos"
-    text.HierarchiesActive -> "Activos"
-    text.HierarchiesClosed -> "cerradas"
-    text.HierarchyStateReady -> "Listo"
-    text.HierarchyStateActive -> "Activo"
-    text.HierarchyStateClosed -> "cerrada"
-    text.HierarchyEmptyHint -> "Sin trabajo asignado"
-    text.HierarchyClosed -> "cerrada"
     text.HierarchyActivationTitle -> "Activar jerarquía"
     text.HierarchyActivationBody(cards_count, tasks_count) ->
       "Esta acción es irreversible. Activará todo el contenido de la jerarquía ("
@@ -439,12 +375,7 @@ pub fn translate(text: Text) -> String {
       <> int.to_string(tasks_count)
       <> " tareas)."
     text.HierarchyActivationWarning -> "No podrás deshacer esta acción"
-    text.HierarchyDetails -> "Detalle"
-    text.HierarchyTabOverview -> "Resumen"
-    text.HierarchyTabContent -> "Contenido"
-    text.HierarchyTabPlanning -> "Planificación"
     text.ActivateHierarchy -> "Activar"
-    text.ActivatingHierarchy -> "Activando..."
     text.HierarchyActivated -> "Jerarquía activada"
     text.HierarchyActivationPoolImpact(pool_impact) ->
       "Al activar: +" <> int.to_string(pool_impact) <> " tareas"
@@ -454,31 +385,8 @@ pub fn translate(text: Text) -> String {
       <> "/"
       <> int.to_string(healthy_pool_limit)
     text.HierarchyActivateFailed -> "No se pudo activar la jerarquía"
-    text.EditHierarchy -> "Editar jerarquía"
-    text.DeleteHierarchy -> "Eliminar jerarquía"
-    text.DeleteHierarchyTitle -> "Eliminar jerarquía"
-    text.DeleteHierarchyConfirm(name) ->
-      "Eliminar permanentemente la jerarquía \"" <> name <> "\"?"
-    text.HierarchyUpdated -> "Jerarquía actualizada"
-    text.HierarchyUpdateFailed -> "No se pudo actualizar la jerarquía"
-    text.HierarchyDeleted -> "Jerarquía eliminada"
-    text.HierarchyDeleteFailed -> "No se pudo eliminar la jerarquía"
-    text.HierarchyDeleteNotAllowed -> "La jerarquía debe estar lista y vacía"
-    text.HierarchyAlreadyActive -> "Ya hay otra jerarquía activa"
-    text.HierarchyActivationIrreversible ->
-      "La jerarquía no se puede activar en su estado actual"
-    text.HierarchyOpenDetails -> "Ver detalle"
     text.HierarchyMoreActions -> "Acciones"
     text.HierarchyMoveTo -> "Mover"
-    text.HierarchyCardsLabel -> "Tarjetas"
-    text.HierarchyTasksLabel -> "Tareas"
-    text.HierarchyCardsProgress(closed, total) ->
-      "Tarjetas " <> int.to_string(closed) <> "/" <> int.to_string(total)
-    text.HierarchyTasksProgress(closed, total) ->
-      "Tareas " <> int.to_string(closed) <> "/" <> int.to_string(total)
-    text.HierarchyStructureSummary -> "Resumen estructural"
-    text.HierarchyActions -> "Acciones"
-    text.HierarchySearchPlaceholder -> "Buscar jerarquías"
     text.HierarchyScopeSubtitle ->
       "Revisa tarjetas anidadas y sus tareas dentro de este alcance."
     text.HierarchyScopeDirectTasks -> "Tareas directas"
@@ -488,43 +396,22 @@ pub fn translate(text: Text) -> String {
     text.HierarchyScopeEmptyDepthTitle -> "No hay tarjetas en este nivel"
     text.HierarchyScopeEmptyDepthBody(name) ->
       "Crea una tarjeta en este nivel para empezar a organizar " <> name
-    text.HierarchyLooseTasksNotice -> "Tareas sin tarjeta"
-    text.HierarchyLooseTasksHint ->
-      "Estas tareas todavía no están agrupadas dentro de una tarjeta"
-    text.HierarchyCardTasksEmpty -> "Esta tarjeta todavía no tiene tareas"
-    text.HierarchyCardTasksRegion(name) -> "Tareas de " <> name
-    text.HierarchyNoSelection -> "Selecciona una jerarquía"
-    text.HierarchyNoSelectionHint ->
-      "Elige una jerarquía de la lista para inspeccionar su contenido"
     text.OpenIn -> "Abrir en"
     text.ViewInPlan -> "Ver en Plan"
     text.ViewInKanban -> "Ver en Kanban"
     text.ViewInCapabilities -> "Ver en Capacidades"
     text.ViewInPeople -> "Ver en Personas"
-    text.HierarchyTotalTasksCount(tasks_count) ->
-      int.to_string(tasks_count) <> " tareas totales"
-    text.ExpandHierarchyCard(name) -> "Mostrar tareas de " <> name
-    text.CollapseHierarchyCard(name) -> "Ocultar tareas de " <> name
-    text.ExpandHierarchy(name) -> "Expandir jerarquía " <> name
-    text.CollapseHierarchy(name) -> "Colapsar jerarquía " <> name
     text.ExpandPerson(name) -> "Expandir estado de " <> name
     text.CollapsePerson(name) -> "Colapsar estado de " <> name
     text.Drag -> "Arrastrar"
-    text.StartNowWorking -> "Empezar a trabajar"
-    text.PauseNowWorking -> "Pausar trabajo"
-
-    // Now working
     text.NowWorking -> "En curso"
-    text.NowWorkingLoading -> "En curso: cargando…"
     text.NowWorkingNone ->
       "Nada activo. Empieza una tarea de Mis tareas cuando vayas a trabajar."
-    text.NowWorkingErrorPrefix -> "Error En curso: "
     text.Pause -> "Pausar"
     text.Release -> "Liberar"
     text.TaskNumber(task_id) -> "Tarea #" <> int.to_string(task_id)
 
     // Admin
-    text.Admin -> "Admin"
     text.AdminInvites -> "Invitaciones"
     text.AdminOrgSettings -> "Org"
     text.OrgSettingsHelp ->
@@ -553,7 +440,6 @@ pub fn translate(text: Text) -> String {
     text.DeactivateIntegrationConfirm ->
       "¿Desactivar esta identidad de integración? No podrá usarse para nuevos tokens salvo que se reactive más adelante."
     text.IntegrationRequired -> "La integración es obligatoria"
-    text.ApiTokens -> "Tokens API"
     text.CreateApiToken -> "Crear token API"
     text.ApiTokenCreatedSecretNotice ->
       "Copia este token ahora. No volverá a mostrarse."
@@ -604,27 +490,12 @@ pub fn translate(text: Text) -> String {
       }
     text.TeamLoadingMembers -> "Cargando miembros…"
     text.TeamLoadingProjects -> "Cargando proyectos…"
-    text.NoAdminPermissions -> "Sin permisos de admin"
     text.NotPermitted -> "No permitido"
     text.NotPermittedBody -> "No tienes permiso para acceder a esta sección."
 
     // Admin sidebar groups (SA01-SA05)
-    text.NavGroupOrganization -> "Organización"
-    text.NavGroupProjects -> "Proyectos"
-    text.NavGroupConfiguration -> "Configuración"
-    text.NavGroupContent -> "Contenido"
-
-    // Project selector
     text.ProjectLabel -> "Proyecto"
     text.AllProjects -> "Todos los proyectos"
-    text.SelectProjectToManageSettings ->
-      "Selecciona un proyecto para gestionar ajustes…"
-    text.ShowingTasksFromAllProjects ->
-      "Mostrando tareas de todos los proyectos"
-    text.SelectProjectToManageMembersOrTaskTypes ->
-      "Selecciona un proyecto para gestionar miembros o tipos de tarea"
-
-    // Metrics
     text.MyMetrics -> "Mis métricas"
     text.LoadingMetrics -> "Cargando métricas…"
     text.WindowDays(days) -> "Ventana: " <> int.to_string(days) <> " días"
@@ -651,8 +522,6 @@ pub fn translate(text: Text) -> String {
     text.StaleClaims -> "Reclamaciones estancadas"
     text.LastClaim -> "Última reclamación"
     text.TimeToFirstClaim -> "Tiempo hasta la primera reclamación"
-    text.TimeToFirstClaimP50(p50, sample_size) ->
-      "P50: " <> p50 <> " (n=" <> int.to_string(sample_size) <> ")"
     text.ReleaseRateDistribution -> "Distribución de tasa de liberación"
     text.Bucket -> "Rango"
     text.Count -> "Cantidad"
@@ -677,9 +546,7 @@ pub fn translate(text: Text) -> String {
     text.Role -> "Rol"
     text.Actions -> "Acciones"
     text.User -> "Usuario"
-    text.UserId -> "ID usuario"
     text.UserNumber(user_id) -> "Usuario #" <> int.to_string(user_id)
-    text.Created -> "Creado"
     text.SearchByEmail -> "Buscar por email"
     text.Searching -> "Buscando…"
     text.TypeAnEmailToSearch -> "Escribe un email para buscar"
@@ -691,9 +558,6 @@ pub fn translate(text: Text) -> String {
     // Invite links
     text.InvitesTitle -> "INVITACIONES"
     text.LatestInviteLink -> "Último enlace de invitación"
-    text.InviteLinks -> "Enlaces de invitación"
-    text.InviteLinksHelp ->
-      "Crea enlaces de invitación asociados a un email. Copia el enlace generado para dar de alta a un usuario."
     text.FailedToLoadInviteLinksPrefix -> "Error cargando enlaces: "
     text.NoInviteLinksYet -> "Aún no hay enlaces de invitación"
     text.Link -> "Enlace"
@@ -710,9 +574,6 @@ pub fn translate(text: Text) -> String {
     text.InviteStateUsed -> "Usada"
     text.InviteStateExpired -> "Expirada"
     text.CopyLink -> "Copiar enlace"
-    text.LinkCopied -> "¡Enlace copiado!"
-
-    // Projects
     text.Projects -> "Proyectos"
     text.CreateProject -> "Crear proyecto"
     text.Name -> "Nombre"
@@ -767,7 +628,6 @@ pub fn translate(text: Text) -> String {
     text.RemoveMemberConfirm(user_email, project_name) ->
       "¿Quitar " <> user_email <> " de " <> project_name <> "?"
     text.Remove -> "Quitar"
-    text.ClaimedTasks(count) -> int.to_string(count) <> " reclamadas"
     text.ReleaseAll -> "Liberar todas"
     text.ReleaseAllConfirmTitle -> "Confirmar liberación"
     text.ReleaseAllConfirmBody(count, user_name) ->
@@ -796,23 +656,9 @@ pub fn translate(text: Text) -> String {
     text.ManageMembers -> "Gestionar miembros"
 
     // User Projects dialog
-    text.UserProjectsTitle(user_email) -> "Proyectos de " <> user_email
     text.UserProjectsEmpty -> "Este usuario no pertenece a ningún proyecto."
     text.UserProjectsAdd -> "Añadir a proyecto"
     text.SelectProject -> "Seleccionar proyecto"
-    text.UserProjectRemove -> "Quitar"
-    text.RoleInProject -> "Rol en proyecto"
-    text.ProjectRoleUpdated -> "Rol de proyecto actualizado"
-
-    // Org Users main table
-    text.Manage -> "Gestionar"
-    text.SaveOrgRoleChanges -> "Guardar cambios de rol"
-    text.PendingChanges -> "cambios pendientes"
-    text.ProjectsSummary(count, summary) ->
-      case count {
-        0 -> "Sin proyectos"
-        _ -> int.to_string(count) <> ": " <> summary
-      }
     text.DeleteUser -> "Eliminar usuario"
     text.DeleteOwnUserBlocked -> "No puedes eliminar tu propio usuario"
     text.ConfirmDeleteUser(user_email) ->
@@ -896,38 +742,24 @@ pub fn translate(text: Text) -> String {
       "Cada nivel necesita nombres singular y plural"
 
     // Contextual hints (Story 4.9 AC21-22)
-    text.RulesHintTemplates ->
-      "Las reglas usan plantillas para crear tareas. Gestiona plantillas en "
-    text.RulesHintTemplatesLink -> "Plantillas"
     text.TemplatesHintRules ->
       "Las plantillas definen qué tareas crear. Las reglas determinan cuándo cada plantilla crea trabajo."
-    text.TemplatesHintRulesLink -> "Reglas"
-
     text.IdentitySection -> "Identidad"
-    text.AppearanceSection -> "Apariencia"
-    text.ConfigurationSection -> "Configuración"
     text.Icon -> "Icono"
     text.OptionalFields -> "Opcionales"
     text.SelectIcon -> "Seleccionar icono"
     text.UnknownIcon -> "Icono desconocido"
-    text.CapabilityOptional -> "Capacidad (opcional)"
     text.TaskTypeNameHint -> "Ej: Bug, Mejora, Documentacion"
-    text.LoadingCapabilities -> "Cargando capacidades…"
     text.NoTaskTypesYet -> "Aún no hay tipos de tarea"
     text.CreateFirstTaskTypeHint ->
       "Crea el primer tipo de tarea abajo para empezar a usar el Pool."
     text.TaskTypesExplain ->
       "Los tipos de tarea definen qué tareas se pueden crear (p.ej. Bug, Feature)."
-    text.HeroiconSearchPlaceholder -> "Busca nombre de heroicon (p.ej. bug-ant)"
-    text.WaitForIconPreview -> "Espera la previsualización del icono"
     text.TitleTooLongMax56 -> "Título demasiado largo (máx 56 caracteres)"
     text.NameAndIconRequired -> "Nombre e icono obligatorios"
     text.PriorityMustBe1To5 -> "La prioridad debe ser 1-5"
 
     // Popover
-    text.PopoverType -> "Tipo"
-    text.PopoverCreated -> "Creada"
-    text.PopoverStatus -> "Estado"
     text.CreatedAgoDays(days) -> {
       case days {
         0 -> "hoy"
@@ -951,7 +783,6 @@ pub fn translate(text: Text) -> String {
     text.CardPhaseActive -> "Activa"
     text.CardPhaseClosed -> "cerrada"
     text.CardTasks -> "Tareas"
-    text.CardProgress -> "Progreso"
     text.CardCreated -> "Tarjeta creada"
     text.CardUpdated -> "Tarjeta actualizada"
     text.CardDeleted -> "Tarjeta eliminada"
@@ -959,30 +790,19 @@ pub fn translate(text: Text) -> String {
     text.CardDeleteConfirm(card_title) ->
       "¿Eliminar la tarjeta \"" <> card_title <> "\"?"
     text.NoCardsYet -> "Aún no hay tarjetas"
-    text.CardTaskCount(closed, total) ->
-      int.to_string(closed) <> "/" <> int.to_string(total)
-    text.KanbanEmptyColumn -> "Sin tarjetas aquí"
     text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
     text.KanbanEmptyClosed -> "Las tarjetas cerradas aparecerán aquí"
     text.KanbanSurfacePurpose ->
       "Flujo de tarjetas por estado, con fricción y próximo trabajo visibles."
     text.KanbanSummaryCards -> "Tarjetas"
-    text.KanbanSummaryOngoing -> "En curso"
-
-    // Automatizaciones
     text.AdminAutomations -> "Automatizaciones"
-    text.AutomationsTitle -> "Automatizaciones"
-    text.OrganizationAutomationsTitle -> "Automatizaciones de la organización"
     text.AutomationEnginesProjectTitle(project_name) ->
       "Motores - " <> project_name
     text.SelectProjectForAutomations ->
       "Selecciona un proyecto para gestionar automatizaciones"
     text.AutomationEngineName -> "Nombre"
     text.AutomationEngineDescription -> "Descripción"
-    text.AutomationEngineScope -> "Alcance"
-    text.AutomationEngineScopeOrg -> "Organización"
-    text.AutomationEngineScopeProject -> "Proyecto"
     text.AutomationEngineRules -> "Reglas"
     text.AutomationEngineActive -> "Activo"
     text.AutomationEngineCreated -> "Motor creado"
@@ -1032,7 +852,6 @@ pub fn translate(text: Text) -> String {
     text.RuleGoal -> "Objetivo"
     text.RuleTaskType -> "Tipo de tarea"
     text.RuleActive -> "Activo"
-    text.RuleTemplates -> "Plantillas"
     text.CreateRule -> "Crear regla"
     text.EditRule -> "Editar regla"
     text.DeleteRule -> "Eliminar regla"
@@ -1113,7 +932,6 @@ pub fn translate(text: Text) -> String {
     text.ExpandRule -> "Expandir"
     text.CollapseRule -> "Colapsar"
     text.AttachedTemplates -> "Plantilla seleccionada"
-    text.NoTemplatesWontCreateTasks -> "Sin plantillas (no creará tareas)"
     text.AttachTemplateHint ->
       "Selecciona una plantilla para que esta regla cree una tarea automáticamente cuando se active."
 
@@ -1145,7 +963,6 @@ pub fn translate(text: Text) -> String {
     // Task Templates
     text.AdminTaskTemplates -> "Plantillas"
     text.TaskTemplatesTitle -> "Biblioteca de plantillas"
-    text.TaskTemplatesOrgTitle -> "Plantillas de la organización"
     text.TaskTemplatesProjectTitle(project_name) ->
       "Biblioteca de plantillas - " <> project_name
     text.AutomationTemplatesDescription ->
@@ -1155,7 +972,6 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDescription -> "Descripción"
     text.TaskTemplateType -> "Tipo"
     text.TaskTemplatePriority -> "Prioridad"
-    text.TaskTemplateScope -> "Alcance"
     text.TaskTemplateUsages -> "Usos"
     text.TaskTemplateUnused -> "Sin uso"
     text.TaskTemplateCreatedTasks -> "Creadas"
@@ -1185,14 +1001,12 @@ pub fn translate(text: Text) -> String {
 
     // Automation executions tab
     text.AdminRuleMetrics -> "Ejecuciones"
-    text.RuleMetricsTitle -> "Ejecuciones"
     text.RuleMetricsDescription ->
       "Revisa ejecuciones de automatización, tareas creadas y eventos ignorados."
     text.RuleMetricsHelp ->
       "Selecciona un rango de fechas (máx 90 días) para revisar ejecuciones y eventos ignorados."
     text.RuleMetricsFrom -> "Desde"
     text.RuleMetricsTo -> "Hasta"
-    text.RuleMetricsRefresh -> "Actualizar"
     text.RuleMetricsQuickRange -> "Rango rápido:"
     text.RuleMetrics7Days -> "7 días"
     text.RuleMetrics30Days -> "30 días"
@@ -1291,9 +1105,6 @@ pub fn translate(text: Text) -> String {
     text.CardTasksEmpty -> "No hay tareas"
     text.CardTasksClosed -> "cerradas"
     text.TaskType -> "Tipo de tarea"
-    text.TaskTitlePlaceholder -> "Título de la tarea..."
-
-    // Story 4.12 - Selector de tarjeta para nueva tarea
     text.NoCard -> "Sin tarjeta"
     text.NewTaskInCard(card_title) -> "Añadir tarea a " <> card_title
 
@@ -1305,22 +1116,15 @@ pub fn translate(text: Text) -> String {
     // Secciones del panel izquierdo
     text.Work -> "Trabajo"
     text.NewCard -> "Nueva tarjeta"
-    text.QuickCard -> "Nueva tarjeta"
-    text.QuickTask -> "Nueva tarea"
     text.NoTasksYet -> "Sin tareas todavía"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " tareas más"
-    text.NewCardInThisHierarchy -> "Nueva tarjeta en esta jerarquía"
-    text.HierarchyTarget -> "Jerarquía destino"
     text.Configuration -> "Configuración"
     text.Team -> "Equipo"
     // Note: text.Capabilities already translated in Capabilities section
     // Story 4.9: New config nav items
     text.CardsConfig -> "Tarjetas"
     text.TaskTypes -> "Tipos de Tarea"
-    text.Templates -> "Plantillas"
-    text.Rules -> "Reglas"
-    // Story 4.9: Cards config filters (UX improvements)
     text.ShowEmptyCards -> "Mostrar vacías"
     text.ShowClosedCards -> "Mostrar cerradas"
     text.Organization -> "Organización"
@@ -1331,10 +1135,6 @@ pub fn translate(text: Text) -> String {
     text.InProgress -> "en curso"
     text.Resume -> "Reanudar"
     text.MyCards -> "Contexto"
-    text.NoTasksClaimed -> "Sin tareas reclamadas"
-    text.NoCardsAssigned -> "Sin tarjetas asignadas"
-    text.NoTasksInProgress -> "Sin tareas en curso"
-    // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Explora Pool para reclamar una tarea"
     text.NoCardsAssignedHint -> "Ver Tarjetas para ver las disponibles"
     text.NoTasksInProgressHint -> "Inicia una tarea desde Mis Tareas"
@@ -1344,14 +1144,6 @@ pub fn translate(text: Text) -> String {
     text.EditCardTooltip -> "Editar tarjeta"
     text.DeleteCardTooltip -> "Eliminar tarjeta"
     // AC16: Rich tooltip on [!] indicator
-    text.NotesPreviewNewNotes -> "notas nuevas"
-    text.NotesPreviewTimeAgo -> "desde hace"
-    text.NotesPreviewLatest -> "Última:"
-    // AC21: Tab badge tooltip
-    text.TabBadgeTotalNotes -> "notas en total"
-    text.TabBadgeNewNotes -> "nuevas para ti"
-    // AC21: Tab labels
-    text.TabTasks -> "Tareas"
     text.TabNotes -> "Notas"
     text.TabSummary -> "Resumen"
     text.TabWork -> "Trabajo"
@@ -1363,7 +1155,6 @@ pub fn translate(text: Text) -> String {
       "Ver más (" <> int.to_string(remaining) <> ")"
     // 5.4.1: Task Show
     text.TabDetails -> "Detalles"
-    text.TabDependencies -> "Dependencias"
     text.TabBlockers -> "Bloqueos"
     text.EditTask -> "Editar tarea"
     text.TaskUpdated -> "Tarea actualizada"
@@ -1374,9 +1165,6 @@ pub fn translate(text: Text) -> String {
       "Puedes editar tareas sin reclamar, o reclamarla para seguir editándola mientras está en curso."
     text.TaskEditClosedReadOnly ->
       "Las tareas cerradas son de solo lectura. Reabre o duplica el trabajo antes de cambiar detalles."
-    text.HierarchyLabel -> "Jerarquía"
-    text.NoHierarchy -> "Sin jerarquía"
-    text.TaskHierarchyInheritedFromCard -> "Jerarquía heredada de la tarjeta"
     text.TaskDescriptionEmpty -> "Sin descripción todavía"
     text.TaskOperationalSummary -> "Resumen operativo"
     text.TaskOwner -> "Responsable"
@@ -1384,8 +1172,6 @@ pub fn translate(text: Text) -> String {
     text.TaskAutomationCreatedBy -> "Creada por automatización"
     text.TaskAutomationEngineLabel(engine_id) ->
       "Motor #" <> int.to_string(engine_id)
-    text.TaskAutomationExecutionLabel(execution_id) ->
-      "Ejecución #" <> int.to_string(execution_id)
     text.TaskAutomationRuleLabel(rule_id) -> "Regla #" <> int.to_string(rule_id)
     text.TaskAutomationRuleChip(rule_id) ->
       "Automatización #" <> int.to_string(rule_id)
@@ -1401,30 +1187,9 @@ pub fn translate(text: Text) -> String {
     text.TaskDueDateLabel -> "Vence"
     text.NoDueDate -> "Sin vencimiento"
     text.TaskBlockingClear -> "Sin bloqueos activos"
-    text.MetricsTasksTotal -> "Tareas totales"
-    text.MetricsTasksClosed -> "Tareas cerradas"
-    text.MetricsProgress -> "Progreso"
-    text.MetricsRebotesAvg -> "Rebotes promedio"
-    text.MetricsPoolLifetimeAvg -> "Vida en pool promedio"
     text.MetricsAvailable -> "Disponibles"
     text.MetricsClaimed -> "Reclamadas"
     text.MetricsOngoing -> "En curso"
-    text.MetricsExecutors -> "Ejecutores"
-    text.MetricsTotal -> "Total"
-    text.MetricsClaimCount -> "Veces reclamada"
-    text.MetricsReleaseCount -> "Veces liberada"
-    text.MetricsUniqueExecutors -> "Ejecutores unicos"
-    text.MetricsFirstClaimAt -> "Primera reclamación"
-    text.MetricsCurrentStateTime -> "Tiempo en estado actual"
-    text.MetricsPoolLifetime -> "Vida en pool acumulada"
-    text.MetricsSessionCount -> "Sesiones de trabajo"
-    text.MetricsTotalWorkTime -> "Tiempo total trabajado"
-    text.MetricsAvgExecutors -> "Ejecutores promedio"
-    text.MetricsAutomations -> "Automatizaciones"
-    text.MetricsMostActivated -> "Más activado"
-    text.MetricsNotAvailable -> "No disponible"
-    text.MetricsEmptyState -> "Sin datos suficientes para métricas"
-    text.MetricsLoadError -> "No se pudieron cargar métricas"
     text.ClaimTask -> "Reclamar tarea"
 
     // Error states
@@ -1432,13 +1197,7 @@ pub fn translate(text: Text) -> String {
 
     // Automatizaciones / Reglas
     text.BackToAutomations -> "← Volver a Automatizaciones"
-    text.ResourceTypeTask -> "tarea"
     text.RuleMetricsNoExecutions ->
       "No se encontraron ejecuciones de automatizaciones en el rango seleccionado."
-    text.RuleMetricsResults -> "Resultados"
-
-    // Icon picker
-    text.NoIconsFound -> "No se encontraron iconos"
-    text.SearchIconsPlaceholder -> "Buscar iconos..."
   }
 }

@@ -14,9 +14,6 @@ pub fn translate(text: Text) -> String {
   case text {
     // App
     text.AppName -> "ScrumBringer"
-    text.AppSectionTitle -> "App"
-
-    // Auth
     text.LoginTitle -> "Sign in"
     text.LoginSubtitle -> "Sign in to access ScrumBringer."
     text.NoEmailIntegrationNote ->
@@ -68,9 +65,6 @@ pub fn translate(text: Text) -> String {
     text.NoteAdded -> "Note added"
 
     // Task mutation errors
-    text.TaskClaimFailed -> "Could not claim task"
-    text.TaskReleaseFailed -> "Could not release task"
-    text.TaskCloseFailed -> "Could not close task"
     text.TaskVersionConflict -> "Task was modified. Please refresh."
     text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
     text.TaskBlockedByDependencies -> "Task has open dependencies"
@@ -171,10 +165,6 @@ pub fn translate(text: Text) -> String {
 
     // Member sections
     text.Pool -> "Pool"
-    text.MyBar -> "My Bar"
-    text.MySkills -> "My capabilities"
-    text.MySkillsHelp ->
-      "Select the capabilities you have. The Pool will highlight matching tasks."
     text.MyTasks -> "My tasks"
     text.NoClaimedTasks ->
       "No tasks in My Tasks yet. Claim work from the Pool first."
@@ -215,15 +205,11 @@ pub fn translate(text: Text) -> String {
     text.YLabel -> "y"
 
     // Member pool controls
-    text.ViewCanvas -> "View: canvas"
-    text.ViewList -> "View: list"
     text.Canvas -> "Canvas"
     text.List -> "List"
     text.Kanban -> "Kanban"
     text.CapabilitiesBoard -> "Capabilities"
     text.People -> "People"
-    text.Hierarchies -> "Hierarchies"
-    text.Tracking -> "Tracking"
     text.WorkSurfaceView -> "View"
     text.PlanScope -> "Scope"
     text.PlanScopeProject -> "Project"
@@ -234,14 +220,12 @@ pub fn translate(text: Text) -> String {
     text.PlanScopeNoActiveCards -> "No active cards"
     text.PlanMode -> "Mode"
     text.PlanModeStructure -> "Structure"
-    text.PlanModeKanban -> "Kanban"
     text.KanbanColumnPending -> "Pending"
     text.PlanEmptyCardScopeBody ->
       "Search for a card to review its subtree, capabilities, tasks, and risk."
     text.PlanEmptyScopeTitle -> "No cards in this scope."
     text.PlanEmptyScopeBody ->
       "Create a card or change the scope to review another part of the plan."
-    text.PlanCapabilityMode -> "Mode"
     text.PlanCapabilityList -> "List"
     text.PlanCapabilityMatrix -> "Matrix"
     text.PlanClosed -> "Closed"
@@ -253,15 +237,12 @@ pub fn translate(text: Text) -> String {
     text.PoolVisibilityReadyToClaim -> "Claimable"
     text.PoolVisibilityBlocked -> "Blocked"
     text.PoolOpenCount -> "Open"
-    text.PoolReadyCount -> "Claimable"
-    text.PoolBlockedCount -> "Blocked"
     text.PoolHealthyLimit -> "Healthy limit"
     text.NewTask -> "New task"
     text.Description -> "Description"
     text.Priority -> "Priority"
     text.PriorityHighest -> "highest"
     text.PriorityLowest -> "lowest"
-    text.NewTaskShortcut -> "New task (n)"
     text.AllOption -> "All"
     text.SelectType -> "Select type"
     text.TypeLabel -> "Type"
@@ -272,13 +253,6 @@ pub fn translate(text: Text) -> String {
     text.SearchLabel -> "Search"
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Clear"
-    text.ActiveFilters(count) ->
-      int.to_string(count)
-      <> " active filter"
-      <> case count {
-        1 -> ""
-        _ -> "s"
-      }
     text.NoAvailableTasksRightNow -> "No available tasks right now"
     text.CreateFirstTaskToStartUsingPool ->
       "Create your first task to start using the Pool."
@@ -299,17 +273,11 @@ pub fn translate(text: Text) -> String {
     text.ViewBlockedTasks -> "View blocked"
     text.ViewOpenTasks -> "View open"
     text.HideClosedTasks -> "Hide closed tasks"
-    text.TypeNumber(type_id) -> "Type #" <> int.to_string(type_id)
-    text.MetaType -> "type: "
-    text.MetaPriority -> "priority: "
-    text.MetaCreated -> "created: "
     text.PriorityShort(priority) -> "P" <> int.to_string(priority)
     text.Claim -> "Claim"
     text.ClaimThisTask -> "Claim this task and move it to My Tasks"
     text.ClaimedBy -> "Claimed by"
     text.UnknownUser -> "Unknown user"
-    text.Busy -> "Busy"
-    text.Free -> "Free"
     text.PeopleSearchPlaceholder -> "Search person, task, or card"
     text.PeopleEmpty -> "No members in this project"
     text.PeopleNoResults -> "No people match your search"
@@ -321,11 +289,6 @@ pub fn translate(text: Text) -> String {
     text.PeopleFreeLabel -> "Available"
     text.PeopleBusyLabel -> "With work"
     text.PeopleWorkingLabel -> "Working now"
-    text.PeopleClaimedLabel -> "Claimed"
-    text.PeopleFreeCount(count) -> int.to_string(count) <> " free"
-    text.PeopleBusyCount(count) -> int.to_string(count) <> " busy"
-    text.PeopleWorkingCount(count) -> int.to_string(count) <> " working now"
-    text.PeopleClaimedTotal(count) -> int.to_string(count) <> " claimed"
     text.PeopleOngoingCount(count) -> int.to_string(count) <> " ongoing"
     text.PeopleReservedCount(count) -> int.to_string(count) <> " claimed"
     text.PeopleBlockedCount(count) -> int.to_string(count) <> " blocked"
@@ -379,40 +342,14 @@ pub fn translate(text: Text) -> String {
     text.CapabilityBoardNoResults ->
       "No active tasks grouped by capability match the current filters"
     text.CapabilityBoardLoadError -> "Could not load the capability board"
-    text.CapabilityBoardEmptyPending -> "No pending tasks"
-    text.CapabilityBoardEmptyClaimed -> "No claimed tasks"
-    text.CapabilityBoardEmptyOngoing -> "No ongoing tasks"
     text.CapabilityBoardPurpose ->
       "Capacity by card, derived from real descendant tasks."
     text.CapabilityBoardCardColumn -> "Card"
     text.CapabilityBoardLevelColumn -> "Level"
     text.CapabilityBoardTotal -> "Total"
-    text.CapabilityBoardClosed -> "closed"
     text.CapabilityBoardNoTasks -> "No active tasks"
     text.CapabilityBoardEmptyCell -> "No tasks"
-    text.CapabilityBoardOldest -> "Oldest"
-    text.CapabilityBoardPressureBlocked -> "Blocked"
-    text.CapabilityBoardPressureNoTraction -> "No traction"
-    text.CapabilityBoardPressureFlowing -> "Flowing"
     text.NoCapability -> "No capability"
-    text.HierarchiesEmpty -> "No hierarchies yet"
-    text.HierarchiesNoResults -> "No hierarchies match current filters"
-    text.HierarchiesLoadError -> "Could not load hierarchies"
-    text.HierarchiesPurpose ->
-      "Delivery structure by objective, loose work, and card progress."
-    text.CreateHierarchy -> "Create hierarchy"
-    text.CreateFirstHierarchy -> "Create first hierarchy"
-    text.HierarchyCreated -> "Hierarchy created"
-    text.HierarchyCreateFailed -> "Could not create hierarchy"
-    text.ShowClosedHierarchies -> "Show closed"
-    text.ShowEmptyHierarchies -> "Show empty"
-    text.HierarchiesActive -> "Active"
-    text.HierarchiesClosed -> "Closed"
-    text.HierarchyStateReady -> "Ready"
-    text.HierarchyStateActive -> "Active"
-    text.HierarchyStateClosed -> "Closed"
-    text.HierarchyEmptyHint -> "No work assigned yet"
-    text.HierarchyClosed -> "Closed"
     text.HierarchyActivationTitle -> "Activate hierarchy"
     text.HierarchyActivationBody(cards_count, tasks_count) ->
       "This action is irreversible. It will activate all content in this hierarchy ("
@@ -422,12 +359,7 @@ pub fn translate(text: Text) -> String {
       <> " tasks)."
     text.HierarchyActivationWarning ->
       "You will not be able to undo this action"
-    text.HierarchyDetails -> "Details"
-    text.HierarchyTabOverview -> "Overview"
-    text.HierarchyTabContent -> "Content"
-    text.HierarchyTabPlanning -> "Planning"
     text.ActivateHierarchy -> "Activate"
-    text.ActivatingHierarchy -> "Activating..."
     text.HierarchyActivated -> "Hierarchy activated"
     text.HierarchyActivationPoolImpact(pool_impact) ->
       "On activation: +" <> int.to_string(pool_impact) <> " tasks"
@@ -437,31 +369,8 @@ pub fn translate(text: Text) -> String {
       <> "/"
       <> int.to_string(healthy_pool_limit)
     text.HierarchyActivateFailed -> "Could not activate hierarchy"
-    text.EditHierarchy -> "Edit hierarchy"
-    text.DeleteHierarchy -> "Delete hierarchy"
-    text.DeleteHierarchyTitle -> "Delete hierarchy"
-    text.DeleteHierarchyConfirm(name) ->
-      "Permanently delete hierarchy \"" <> name <> "\"?"
-    text.HierarchyUpdated -> "Hierarchy updated"
-    text.HierarchyUpdateFailed -> "Could not update hierarchy"
-    text.HierarchyDeleted -> "Hierarchy deleted"
-    text.HierarchyDeleteFailed -> "Could not delete hierarchy"
-    text.HierarchyDeleteNotAllowed -> "Hierarchy must be ready and empty"
-    text.HierarchyAlreadyActive -> "Another hierarchy is already active"
-    text.HierarchyActivationIrreversible ->
-      "Hierarchy cannot be activated in its current state"
-    text.HierarchyOpenDetails -> "Open details"
     text.HierarchyMoreActions -> "More actions"
     text.HierarchyMoveTo -> "Move"
-    text.HierarchyCardsLabel -> "Cards"
-    text.HierarchyTasksLabel -> "Tasks"
-    text.HierarchyCardsProgress(closed, total) ->
-      "Cards " <> int.to_string(closed) <> "/" <> int.to_string(total)
-    text.HierarchyTasksProgress(closed, total) ->
-      "Tasks " <> int.to_string(closed) <> "/" <> int.to_string(total)
-    text.HierarchyStructureSummary -> "Structure summary"
-    text.HierarchyActions -> "Actions"
-    text.HierarchySearchPlaceholder -> "Search hierarchies"
     text.HierarchyScopeSubtitle ->
       "Review nested cards and their tasks in this scope."
     text.HierarchyScopeDirectTasks -> "Direct tasks"
@@ -470,43 +379,22 @@ pub fn translate(text: Text) -> String {
     text.HierarchyScopeEmptyDepthTitle -> "No cards at this level"
     text.HierarchyScopeEmptyDepthBody(name) ->
       "Create a card at this level to start organizing " <> name
-    text.HierarchyLooseTasksNotice -> "Tasks without card"
-    text.HierarchyLooseTasksHint ->
-      "These tasks are not grouped inside a card yet"
-    text.HierarchyCardTasksEmpty -> "This card has no tasks yet"
-    text.HierarchyCardTasksRegion(name) -> "Tasks for " <> name
-    text.HierarchyNoSelection -> "Select a hierarchy"
-    text.HierarchyNoSelectionHint ->
-      "Choose a hierarchy from the list to inspect its content"
     text.OpenIn -> "Open in"
     text.ViewInPlan -> "View in Plan"
     text.ViewInKanban -> "View in Kanban"
     text.ViewInCapabilities -> "View in Capabilities"
     text.ViewInPeople -> "View in People"
-    text.HierarchyTotalTasksCount(tasks_count) ->
-      int.to_string(tasks_count) <> " total tasks"
-    text.ExpandHierarchyCard(name) -> "Show tasks for " <> name
-    text.CollapseHierarchyCard(name) -> "Hide tasks for " <> name
-    text.ExpandHierarchy(name) -> "Expand hierarchy " <> name
-    text.CollapseHierarchy(name) -> "Collapse hierarchy " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name
     text.CollapsePerson(name) -> "Collapse status for " <> name
     text.Drag -> "Drag"
-    text.StartNowWorking -> "Start working"
-    text.PauseNowWorking -> "Pause work"
-
-    // Now working
     text.NowWorking -> "Working now"
-    text.NowWorkingLoading -> "Working now: loading…"
     text.NowWorkingNone ->
       "Nothing active. Start a task from My Tasks when you are ready to work."
-    text.NowWorkingErrorPrefix -> "Working now error: "
     text.Pause -> "Pause"
     text.Release -> "Release"
     text.TaskNumber(task_id) -> "Task #" <> int.to_string(task_id)
 
     // Admin
-    text.Admin -> "Admin"
     text.AdminInvites -> "Invites"
     text.AdminOrgSettings -> "Org Settings"
     text.OrgSettingsHelp ->
@@ -535,7 +423,6 @@ pub fn translate(text: Text) -> String {
     text.DeactivateIntegrationConfirm ->
       "Deactivate this integration identity? It cannot be used for new tokens unless reactivated later."
     text.IntegrationRequired -> "Integration is required"
-    text.ApiTokens -> "API tokens"
     text.CreateApiToken -> "Create API token"
     text.ApiTokenCreatedSecretNotice ->
       "Copy this token now. It will not be shown again."
@@ -583,25 +470,12 @@ pub fn translate(text: Text) -> String {
       }
     text.TeamLoadingMembers -> "Loading members…"
     text.TeamLoadingProjects -> "Loading projects…"
-    text.NoAdminPermissions -> "No admin permissions"
     text.NotPermitted -> "Not permitted"
     text.NotPermittedBody -> "You don't have permission to access this section."
 
     // Admin sidebar groups (SA01-SA05)
-    text.NavGroupOrganization -> "Organization"
-    text.NavGroupProjects -> "Projects"
-    text.NavGroupConfiguration -> "Configuration"
-    text.NavGroupContent -> "Content"
-
-    // Project selector
     text.ProjectLabel -> "Project"
     text.AllProjects -> "All projects"
-    text.SelectProjectToManageSettings -> "Select a project to manage settings…"
-    text.ShowingTasksFromAllProjects -> "Showing tasks from all projects"
-    text.SelectProjectToManageMembersOrTaskTypes ->
-      "Select a project to manage members or task types"
-
-    // Metrics
     text.MyMetrics -> "My Metrics"
     text.LoadingMetrics -> "Loading metrics…"
     text.WindowDays(days) -> "Window: " <> int.to_string(days) <> " days"
@@ -628,8 +502,6 @@ pub fn translate(text: Text) -> String {
     text.StaleClaims -> "Stale claims"
     text.LastClaim -> "Last claim"
     text.TimeToFirstClaim -> "Time to first claim"
-    text.TimeToFirstClaimP50(p50, sample_size) ->
-      "P50: " <> p50 <> " (n=" <> int.to_string(sample_size) <> ")"
     text.ReleaseRateDistribution -> "Release rate distribution"
     text.Bucket -> "Bucket"
     text.Count -> "Count"
@@ -653,9 +525,7 @@ pub fn translate(text: Text) -> String {
     text.Role -> "Role"
     text.Actions -> "Actions"
     text.User -> "User"
-    text.UserId -> "User ID"
     text.UserNumber(user_id) -> "User #" <> int.to_string(user_id)
-    text.Created -> "Created"
     text.SearchByEmail -> "Search by email"
     text.Searching -> "Searching…"
     text.TypeAnEmailToSearch -> "Type an email to search"
@@ -667,9 +537,6 @@ pub fn translate(text: Text) -> String {
     // Invite links
     text.InvitesTitle -> "INVITES"
     text.LatestInviteLink -> "Latest invite link"
-    text.InviteLinks -> "Invite links"
-    text.InviteLinksHelp ->
-      "Create invite links tied to a specific email. Copy the generated link to onboard a user."
     text.FailedToLoadInviteLinksPrefix -> "Failed to load invite links: "
     text.NoInviteLinksYet -> "No invite links yet"
     text.Link -> "Link"
@@ -684,9 +551,6 @@ pub fn translate(text: Text) -> String {
     text.InviteStateUsed -> "Used"
     text.InviteStateExpired -> "Expired"
     text.CopyLink -> "Copy link"
-    text.LinkCopied -> "Link copied!"
-
-    // Projects
     text.Projects -> "Projects"
     text.CreateProject -> "Create Project"
     text.Name -> "Name"
@@ -737,7 +601,6 @@ pub fn translate(text: Text) -> String {
     text.RemoveMemberConfirm(user_email, project_name) ->
       "Remove " <> user_email <> " from " <> project_name <> "?"
     text.Remove -> "Remove"
-    text.ClaimedTasks(count) -> int.to_string(count) <> " claimed"
     text.ReleaseAll -> "Release all"
     text.ReleaseAllConfirmTitle -> "Confirm release"
     text.ReleaseAllConfirmBody(count, user_name) ->
@@ -765,23 +628,9 @@ pub fn translate(text: Text) -> String {
     text.ManageMembers -> "Manage members"
 
     // User Projects dialog
-    text.UserProjectsTitle(user_email) -> "Projects for " <> user_email
     text.UserProjectsEmpty -> "This user does not belong to any projects."
     text.UserProjectsAdd -> "Add to project"
     text.SelectProject -> "Select project"
-    text.UserProjectRemove -> "Remove"
-    text.RoleInProject -> "Role in project"
-    text.ProjectRoleUpdated -> "Project role updated"
-
-    // Org Users main table
-    text.Manage -> "Manage"
-    text.SaveOrgRoleChanges -> "Save role changes"
-    text.PendingChanges -> "pending changes"
-    text.ProjectsSummary(count, summary) ->
-      case count {
-        0 -> "No projects"
-        _ -> int.to_string(count) <> ": " <> summary
-      }
     text.DeleteUser -> "Delete user"
     text.DeleteOwnUserBlocked -> "Cannot delete your own user"
     text.ConfirmDeleteUser(user_email) ->
@@ -862,38 +711,24 @@ pub fn translate(text: Text) -> String {
       "Every level needs singular and plural names"
 
     // Contextual hints (Story 4.9 AC21-22)
-    text.RulesHintTemplates ->
-      "Rules use templates to create tasks. Manage templates in "
-    text.RulesHintTemplatesLink -> "Templates"
     text.TemplatesHintRules ->
       "Templates define what tasks to create. Rules determine when each template creates work."
-    text.TemplatesHintRulesLink -> "Rules"
-
     text.IdentitySection -> "Identity"
-    text.AppearanceSection -> "Appearance"
-    text.ConfigurationSection -> "Configuration"
     text.Icon -> "Icon"
     text.OptionalFields -> "Optional"
     text.SelectIcon -> "Select icon"
     text.UnknownIcon -> "Unknown icon"
-    text.CapabilityOptional -> "Capability (optional)"
     text.TaskTypeNameHint -> "e.g. Bug, Feature, Docs"
-    text.LoadingCapabilities -> "Loading capabilities…"
     text.NoTaskTypesYet -> "No task types yet"
     text.CreateFirstTaskTypeHint ->
       "Create the first task type below to start using the Pool."
     text.TaskTypesExplain ->
       "Task types define what cards people can create (e.g., Bug, Feature)."
-    text.HeroiconSearchPlaceholder -> "Search heroicon name (e.g. bug-ant)"
-    text.WaitForIconPreview -> "Wait for icon preview"
     text.TitleTooLongMax56 -> "Title too long (max 56 characters)"
     text.NameAndIconRequired -> "Name and icon are required"
     text.PriorityMustBe1To5 -> "Priority must be 1-5"
 
     // Popover
-    text.PopoverType -> "Type"
-    text.PopoverCreated -> "Created"
-    text.PopoverStatus -> "Status"
     text.CreatedAgoDays(days) -> {
       case days {
         0 -> "today"
@@ -916,7 +751,6 @@ pub fn translate(text: Text) -> String {
     text.CardPhaseActive -> "Active"
     text.CardPhaseClosed -> "Closed"
     text.CardTasks -> "Tasks"
-    text.CardProgress -> "Progress"
     text.CardCreated -> "Card created"
     text.CardUpdated -> "Card updated"
     text.CardDeleted -> "Card deleted"
@@ -924,29 +758,18 @@ pub fn translate(text: Text) -> String {
     text.CardDeleteConfirm(card_title) ->
       "Delete card \"" <> card_title <> "\"?"
     text.NoCardsYet -> "No cards yet"
-    text.CardTaskCount(closed, total) ->
-      int.to_string(closed) <> "/" <> int.to_string(total)
-    text.KanbanEmptyColumn -> "No cards here"
     text.KanbanEmptyDraft -> "No cards are waiting for work"
     text.KanbanEmptyActive -> "No active cards need attention"
     text.KanbanEmptyClosed -> "Closed cards will appear here"
     text.KanbanSurfacePurpose ->
       "Card flow by state, with friction and next work visible at a glance."
     text.KanbanSummaryCards -> "Cards"
-    text.KanbanSummaryOngoing -> "Ongoing"
-
-    // Automations
     text.AdminAutomations -> "Automations"
-    text.AutomationsTitle -> "Automations"
-    text.OrganizationAutomationsTitle -> "Organization automations"
     text.AutomationEnginesProjectTitle(project_name) ->
       "Engines - " <> project_name
     text.SelectProjectForAutomations -> "Select a project to manage automations"
     text.AutomationEngineName -> "Name"
     text.AutomationEngineDescription -> "Description"
-    text.AutomationEngineScope -> "Scope"
-    text.AutomationEngineScopeOrg -> "Organization"
-    text.AutomationEngineScopeProject -> "Project"
     text.AutomationEngineRules -> "Rules"
     text.AutomationEngineActive -> "Active"
     text.AutomationEngineCreated -> "Engine created"
@@ -996,7 +819,6 @@ pub fn translate(text: Text) -> String {
     text.RuleGoal -> "Goal"
     text.RuleTaskType -> "Task Type"
     text.RuleActive -> "Active"
-    text.RuleTemplates -> "Templates"
     text.CreateRule -> "Create Rule"
     text.EditRule -> "Edit Rule"
     text.DeleteRule -> "Delete Rule"
@@ -1076,7 +898,6 @@ pub fn translate(text: Text) -> String {
     text.ExpandRule -> "Expand"
     text.CollapseRule -> "Collapse"
     text.AttachedTemplates -> "Selected Template"
-    text.NoTemplatesWontCreateTasks -> "No templates (won't create tasks)"
     text.AttachTemplateHint ->
       "Select a template so this rule creates one task automatically when triggered."
 
@@ -1108,7 +929,6 @@ pub fn translate(text: Text) -> String {
     // Task Templates
     text.AdminTaskTemplates -> "Templates"
     text.TaskTemplatesTitle -> "Template library"
-    text.TaskTemplatesOrgTitle -> "Organization templates"
     text.TaskTemplatesProjectTitle(project_name) ->
       "Template library - " <> project_name
     text.AutomationTemplatesDescription ->
@@ -1118,7 +938,6 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDescription -> "Description"
     text.TaskTemplateType -> "Type"
     text.TaskTemplatePriority -> "Priority"
-    text.TaskTemplateScope -> "Scope"
     text.TaskTemplateUsages -> "Uses"
     text.TaskTemplateUnused -> "Unused"
     text.TaskTemplateCreatedTasks -> "Created"
@@ -1148,14 +967,12 @@ pub fn translate(text: Text) -> String {
 
     // Automation executions tab
     text.AdminRuleMetrics -> "Executions"
-    text.RuleMetricsTitle -> "Executions"
     text.RuleMetricsDescription ->
       "Review automation executions, created tasks, and ignored events."
     text.RuleMetricsHelp ->
       "Select a date range (max 90 days) to review automation executions and ignored events."
     text.RuleMetricsFrom -> "From"
     text.RuleMetricsTo -> "To"
-    text.RuleMetricsRefresh -> "Refresh"
     text.RuleMetricsQuickRange -> "Quick range:"
     text.RuleMetrics7Days -> "7 days"
     text.RuleMetrics30Days -> "30 days"
@@ -1256,9 +1073,6 @@ pub fn translate(text: Text) -> String {
     text.CardTasksEmpty -> "No tasks"
     text.CardTasksClosed -> "closed"
     text.TaskType -> "Task type"
-    text.TaskTitlePlaceholder -> "Task title..."
-
-    // Story 4.12 - Card selector for new task
     text.NoCard -> "No card"
     text.NewTaskInCard(card_title) -> "Add task to " <> card_title
 
@@ -1270,22 +1084,15 @@ pub fn translate(text: Text) -> String {
     // Left panel sections
     text.Work -> "Work"
     text.NewCard -> "New Card"
-    text.QuickCard -> "New card"
-    text.QuickTask -> "New task"
     text.NoTasksYet -> "No tasks yet"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " more tasks"
-    text.NewCardInThisHierarchy -> "New card in this hierarchy"
-    text.HierarchyTarget -> "Destination hierarchy"
     text.Configuration -> "Configuration"
     text.Team -> "Team"
     // Note: text.Capabilities already translated in Capabilities section
     // Story 4.9: New config nav items
     text.CardsConfig -> "Cards"
     text.TaskTypes -> "Task Types"
-    text.Templates -> "Templates"
-    text.Rules -> "Rules"
-    // Story 4.9: Cards config filters (UX improvements)
     text.ShowEmptyCards -> "Show empty"
     text.ShowClosedCards -> "Show closed"
     text.Organization -> "Organization"
@@ -1296,10 +1103,6 @@ pub fn translate(text: Text) -> String {
     text.InProgress -> "In Progress"
     text.Resume -> "Resume"
     text.MyCards -> "Context"
-    text.NoTasksClaimed -> "No tasks claimed"
-    text.NoCardsAssigned -> "No cards assigned"
-    text.NoTasksInProgress -> "No tasks in progress"
-    // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Browse Pool to claim a task"
     text.NoCardsAssignedHint -> "View Cards to see available cards"
     text.NoTasksInProgressHint -> "Start a task from My Tasks"
@@ -1309,14 +1112,6 @@ pub fn translate(text: Text) -> String {
     text.EditCardTooltip -> "Edit card"
     text.DeleteCardTooltip -> "Delete card"
     // AC16: Rich tooltip on [!] indicator
-    text.NotesPreviewNewNotes -> "new notes"
-    text.NotesPreviewTimeAgo -> "since"
-    text.NotesPreviewLatest -> "Latest:"
-    // AC21: Tab badge tooltip
-    text.TabBadgeTotalNotes -> "notes total"
-    text.TabBadgeNewNotes -> "new for you"
-    // AC21: Tab labels
-    text.TabTasks -> "Tasks"
     text.TabNotes -> "Notes"
     text.TabSummary -> "Summary"
     text.TabWork -> "Work"
@@ -1328,7 +1123,6 @@ pub fn translate(text: Text) -> String {
       "Load more (" <> int.to_string(remaining) <> ")"
     // 5.4.1: Task Show
     text.TabDetails -> "Details"
-    text.TabDependencies -> "Dependencies"
     text.TabBlockers -> "Blockers"
     text.EditTask -> "Edit task"
     text.TaskUpdated -> "Task updated"
@@ -1339,9 +1133,6 @@ pub fn translate(text: Text) -> String {
       "You can edit unclaimed tasks, or claim the task to keep editing it while in progress."
     text.TaskEditClosedReadOnly ->
       "Closed tasks are read-only. Reopen or duplicate the work before changing details."
-    text.HierarchyLabel -> "Hierarchy"
-    text.NoHierarchy -> "No hierarchy"
-    text.TaskHierarchyInheritedFromCard -> "Hierarchy inherited from the card"
     text.TaskDescriptionEmpty -> "No description yet"
     text.TaskOperationalSummary -> "Operational summary"
     text.TaskOwner -> "Owner"
@@ -1349,8 +1140,6 @@ pub fn translate(text: Text) -> String {
     text.TaskAutomationCreatedBy -> "Created by automation"
     text.TaskAutomationEngineLabel(engine_id) ->
       "Engine #" <> int.to_string(engine_id)
-    text.TaskAutomationExecutionLabel(execution_id) ->
-      "Execution #" <> int.to_string(execution_id)
     text.TaskAutomationRuleLabel(rule_id) -> "Rule #" <> int.to_string(rule_id)
     text.TaskAutomationRuleChip(rule_id) ->
       "Automation #" <> int.to_string(rule_id)
@@ -1366,30 +1155,9 @@ pub fn translate(text: Text) -> String {
     text.TaskDueDateLabel -> "Due"
     text.NoDueDate -> "No due date"
     text.TaskBlockingClear -> "No active blockers"
-    text.MetricsTasksTotal -> "Tasks total"
-    text.MetricsTasksClosed -> "Tasks closed"
-    text.MetricsProgress -> "Progress"
-    text.MetricsRebotesAvg -> "Average bounces"
-    text.MetricsPoolLifetimeAvg -> "Average pool lifetime"
     text.MetricsAvailable -> "Available"
     text.MetricsClaimed -> "Claimed"
     text.MetricsOngoing -> "Ongoing"
-    text.MetricsExecutors -> "Executors"
-    text.MetricsTotal -> "Total"
-    text.MetricsClaimCount -> "Claim count"
-    text.MetricsReleaseCount -> "Release count"
-    text.MetricsUniqueExecutors -> "Unique executors"
-    text.MetricsFirstClaimAt -> "First claim at"
-    text.MetricsCurrentStateTime -> "Current state time"
-    text.MetricsPoolLifetime -> "Pool lifetime"
-    text.MetricsSessionCount -> "Session count"
-    text.MetricsTotalWorkTime -> "Total work time"
-    text.MetricsAvgExecutors -> "Avg executors"
-    text.MetricsAutomations -> "Automations"
-    text.MetricsMostActivated -> "Most activated"
-    text.MetricsNotAvailable -> "Not available"
-    text.MetricsEmptyState -> "Not enough data for metrics"
-    text.MetricsLoadError -> "Could not load metrics"
     text.ClaimTask -> "Claim task"
 
     // Error states
@@ -1397,13 +1165,7 @@ pub fn translate(text: Text) -> String {
 
     // Automations / Rules
     text.BackToAutomations -> "← Back to Automations"
-    text.ResourceTypeTask -> "task"
     text.RuleMetricsNoExecutions ->
       "No automation executions found in the selected range."
-    text.RuleMetricsResults -> "Results"
-
-    // Icon picker
-    text.NoIconsFound -> "No icons found"
-    text.SearchIconsPlaceholder -> "Search icons..."
   }
 }

@@ -6,7 +6,6 @@
 pub type Text {
   // App
   AppName
-  AppSectionTitle
 
   // Auth flows
   LoginTitle
@@ -58,9 +57,6 @@ pub type Text {
   NoteAdded
 
   // Task mutation errors
-  TaskClaimFailed
-  TaskReleaseFailed
-  TaskCloseFailed
   TaskVersionConflict
   TaskAlreadyClaimed
   TaskBlockedByDependencies
@@ -152,9 +148,6 @@ pub type Text {
 
   // Member sections
   Pool
-  MyBar
-  MySkills
-  MySkillsHelp
   MyTasks
   NoClaimedTasks
   GoToPoolToClaimTasks
@@ -188,15 +181,11 @@ pub type Text {
   YLabel
 
   // Member pool controls
-  ViewCanvas
-  ViewList
   Canvas
   List
   Kanban
   CapabilitiesBoard
   People
-  Hierarchies
-  Tracking
   WorkSurfaceView
   PlanScope
   PlanScopeProject
@@ -207,12 +196,10 @@ pub type Text {
   PlanScopeNoActiveCards
   PlanMode
   PlanModeStructure
-  PlanModeKanban
   KanbanColumnPending
   PlanEmptyCardScopeBody
   PlanEmptyScopeTitle
   PlanEmptyScopeBody
-  PlanCapabilityMode
   PlanCapabilityList
   PlanCapabilityMatrix
   PlanClosed
@@ -224,15 +211,12 @@ pub type Text {
   PoolVisibilityReadyToClaim
   PoolVisibilityBlocked
   PoolOpenCount
-  PoolReadyCount
-  PoolBlockedCount
   PoolHealthyLimit
   NewTask
   Description
   Priority
   PriorityHighest
   PriorityLowest
-  NewTaskShortcut
   AllOption
   SelectType
   TypeLabel
@@ -243,7 +227,6 @@ pub type Text {
   SearchLabel
   SearchPlaceholder
   ClearFilters
-  ActiveFilters(count: Int)
   NoAvailableTasksRightNow
   CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
@@ -257,17 +240,11 @@ pub type Text {
   ViewBlockedTasks
   ViewOpenTasks
   HideClosedTasks
-  TypeNumber(type_id: Int)
-  MetaType
-  MetaPriority
-  MetaCreated
   PriorityShort(priority: Int)
   Claim
   ClaimThisTask
   ClaimedBy
   UnknownUser
-  Busy
-  Free
   PeopleSearchPlaceholder
   PeopleEmpty
   PeopleNoResults
@@ -278,11 +255,6 @@ pub type Text {
   PeopleFreeLabel
   PeopleBusyLabel
   PeopleWorkingLabel
-  PeopleClaimedLabel
-  PeopleFreeCount(count: Int)
-  PeopleBusyCount(count: Int)
-  PeopleWorkingCount(count: Int)
-  PeopleClaimedTotal(count: Int)
   PeopleOngoingCount(count: Int)
   PeopleReservedCount(count: Int)
   PeopleBlockedCount(count: Int)
@@ -328,47 +300,17 @@ pub type Text {
   CapabilityBoardEmpty
   CapabilityBoardNoResults
   CapabilityBoardLoadError
-  CapabilityBoardEmptyPending
-  CapabilityBoardEmptyClaimed
-  CapabilityBoardEmptyOngoing
   CapabilityBoardPurpose
   CapabilityBoardCardColumn
   CapabilityBoardLevelColumn
   CapabilityBoardTotal
-  CapabilityBoardClosed
   CapabilityBoardNoTasks
   CapabilityBoardEmptyCell
-  CapabilityBoardOldest
-  CapabilityBoardPressureBlocked
-  CapabilityBoardPressureNoTraction
-  CapabilityBoardPressureFlowing
   NoCapability
-  HierarchiesEmpty
-  HierarchiesNoResults
-  HierarchiesLoadError
-  HierarchiesPurpose
-  CreateHierarchy
-  CreateFirstHierarchy
-  HierarchyCreated
-  HierarchyCreateFailed
-  ShowClosedHierarchies
-  ShowEmptyHierarchies
-  HierarchiesActive
-  HierarchiesClosed
-  HierarchyStateReady
-  HierarchyStateActive
-  HierarchyStateClosed
-  HierarchyEmptyHint
-  HierarchyClosed
   HierarchyActivationTitle
   HierarchyActivationBody(cards_count: Int, tasks_count: Int)
   HierarchyActivationWarning
-  HierarchyDetails
-  HierarchyTabOverview
-  HierarchyTabContent
-  HierarchyTabPlanning
   ActivateHierarchy
-  ActivatingHierarchy
   HierarchyActivated
   HierarchyActivationPoolImpact(pool_impact: Int)
   HierarchyActivationPoolSaturated(
@@ -376,66 +318,31 @@ pub type Text {
     healthy_pool_limit: Int,
   )
   HierarchyActivateFailed
-  EditHierarchy
-  DeleteHierarchy
-  DeleteHierarchyTitle
-  DeleteHierarchyConfirm(name: String)
-  HierarchyUpdated
-  HierarchyUpdateFailed
-  HierarchyDeleted
-  HierarchyDeleteFailed
-  HierarchyDeleteNotAllowed
-  HierarchyAlreadyActive
-  HierarchyActivationIrreversible
-  HierarchyOpenDetails
   HierarchyMoreActions
   HierarchyMoveTo
-  HierarchyCardsLabel
-  HierarchyTasksLabel
-  HierarchyCardsProgress(closed: Int, total: Int)
-  HierarchyTasksProgress(closed: Int, total: Int)
-  HierarchyStructureSummary
-  HierarchyActions
-  HierarchySearchPlaceholder
   HierarchyScopeSubtitle
   HierarchyScopeDirectTasks
   HierarchyScopeCardTitle
   HierarchyScopeDepthFallback(depth: Int)
   HierarchyScopeEmptyDepthTitle
   HierarchyScopeEmptyDepthBody(name: String)
-  HierarchyLooseTasksNotice
-  HierarchyLooseTasksHint
-  HierarchyCardTasksEmpty
-  HierarchyCardTasksRegion(name: String)
-  HierarchyNoSelection
-  HierarchyNoSelectionHint
   OpenIn
   ViewInPlan
   ViewInKanban
   ViewInCapabilities
   ViewInPeople
-  HierarchyTotalTasksCount(tasks_count: Int)
-  ExpandHierarchyCard(name: String)
-  CollapseHierarchyCard(name: String)
-  ExpandHierarchy(name: String)
-  CollapseHierarchy(name: String)
   ExpandPerson(name: String)
   CollapsePerson(name: String)
   Drag
-  StartNowWorking
-  PauseNowWorking
 
   // Now working
   NowWorking
-  NowWorkingLoading
   NowWorkingNone
-  NowWorkingErrorPrefix
   Pause
   Release
   TaskNumber(task_id: Int)
 
   // Admin
-  Admin
   AdminInvites
   AdminOrgSettings
   OrgSettingsHelp
@@ -460,7 +367,6 @@ pub type Text {
   DeactivateIntegration
   DeactivateIntegrationConfirm
   IntegrationRequired
-  ApiTokens
   CreateApiToken
   ApiTokenCreatedSecretNotice
   ApiTokenSecret
@@ -495,22 +401,13 @@ pub type Text {
   TeamProjectsCount(count: Int)
   TeamLoadingMembers
   TeamLoadingProjects
-  NoAdminPermissions
   NotPermitted
   NotPermittedBody
 
   // Admin sidebar groups (SA01-SA05)
-  NavGroupOrganization
-  NavGroupProjects
-  NavGroupConfiguration
-  NavGroupContent
-
   // Project selector
   ProjectLabel
   AllProjects
-  SelectProjectToManageSettings
-  ShowingTasksFromAllProjects
-  SelectProjectToManageMembersOrTaskTypes
 
   // Metrics (member + org)
   MyMetrics
@@ -539,7 +436,6 @@ pub type Text {
   StaleClaims
   LastClaim
   TimeToFirstClaim
-  TimeToFirstClaimP50(p50: String, sample_size: Int)
   ReleaseRateDistribution
   Bucket
   Count
@@ -563,9 +459,7 @@ pub type Text {
   Role
   Actions
   User
-  UserId
   UserNumber(user_id: Int)
-  Created
   SearchByEmail
   Searching
   TypeAnEmailToSearch
@@ -577,8 +471,6 @@ pub type Text {
   // Invite links
   InvitesTitle
   LatestInviteLink
-  InviteLinks
-  InviteLinksHelp
   FailedToLoadInviteLinksPrefix
   NoInviteLinksYet
   Link
@@ -592,7 +484,6 @@ pub type Text {
   InviteStateUsed
   InviteStateExpired
   CopyLink
-  LinkCopied
 
   // Projects
   Projects
@@ -626,7 +517,6 @@ pub type Text {
   RemoveMemberTitle
   RemoveMemberConfirm(user_email: String, project_name: String)
   Remove
-  ClaimedTasks(count: Int)
   ReleaseAll
   ReleaseAllConfirmTitle
   ReleaseAllConfirmBody(count: Int, user_name: String)
@@ -645,19 +535,11 @@ pub type Text {
   ManageMembers
 
   // User Projects dialog
-  UserProjectsTitle(user_email: String)
   UserProjectsEmpty
   UserProjectsAdd
   SelectProject
-  UserProjectRemove
-  RoleInProject
-  ProjectRoleUpdated
 
   // Org Users main table
-  Manage
-  SaveOrgRoleChanges
-  PendingChanges
-  ProjectsSummary(count: Int, summary: String)
   DeleteUser
   DeleteOwnUserBlocked
   ConfirmDeleteUser(user_email: String)
@@ -712,34 +594,22 @@ pub type Text {
   ProjectDepthNamesRequired
 
   // Contextual hints (Story 4.9 AC21-22)
-  RulesHintTemplates
-  RulesHintTemplatesLink
   TemplatesHintRules
-  TemplatesHintRulesLink
 
   IdentitySection
-  AppearanceSection
-  ConfigurationSection
   Icon
   OptionalFields
   SelectIcon
   UnknownIcon
-  CapabilityOptional
   TaskTypeNameHint
-  LoadingCapabilities
   NoTaskTypesYet
   CreateFirstTaskTypeHint
   TaskTypesExplain
-  HeroiconSearchPlaceholder
-  WaitForIconPreview
   TitleTooLongMax56
   NameAndIconRequired
   PriorityMustBe1To5
 
   // Popover labels
-  PopoverType
-  PopoverCreated
-  PopoverStatus
   CreatedAgoDays(days: Int)
 
   // Cards
@@ -756,33 +626,24 @@ pub type Text {
   CardPhaseActive
   CardPhaseClosed
   CardTasks
-  CardProgress
   CardCreated
   CardUpdated
   CardDeleted
   CardDeleteBlocked
   CardDeleteConfirm(card_title: String)
   NoCardsYet
-  CardTaskCount(closed: Int, total: Int)
-  KanbanEmptyColumn
   KanbanEmptyDraft
   KanbanEmptyActive
   KanbanEmptyClosed
   KanbanSurfacePurpose
   KanbanSummaryCards
-  KanbanSummaryOngoing
 
   // Automations
   AdminAutomations
-  AutomationsTitle
-  OrganizationAutomationsTitle
   AutomationEnginesProjectTitle(project_name: String)
   SelectProjectForAutomations
   AutomationEngineName
   AutomationEngineDescription
-  AutomationEngineScope
-  AutomationEngineScopeOrg
-  AutomationEngineScopeProject
   AutomationEngineRules
   AutomationEngineActive
   AutomationEngineCreated
@@ -820,7 +681,6 @@ pub type Text {
   RuleGoal
   RuleTaskType
   RuleActive
-  RuleTemplates
   CreateRule
   EditRule
   DeleteRule
@@ -882,7 +742,6 @@ pub type Text {
   ExpandRule
   CollapseRule
   AttachedTemplates
-  NoTemplatesWontCreateTasks
   AttachTemplateHint
 
   // Task States (for Rules)
@@ -913,7 +772,6 @@ pub type Text {
   // Task Templates
   AdminTaskTemplates
   TaskTemplatesTitle
-  TaskTemplatesOrgTitle
   TaskTemplatesProjectTitle(project_name: String)
   AutomationTemplatesDescription
   AutomationTemplatesSearchPlaceholder
@@ -921,7 +779,6 @@ pub type Text {
   TaskTemplateDescription
   TaskTemplateType
   TaskTemplatePriority
-  TaskTemplateScope
   TaskTemplateUsages
   TaskTemplateUnused
   TaskTemplateCreatedTasks
@@ -945,12 +802,10 @@ pub type Text {
 
   // Rule Metrics Tab
   AdminRuleMetrics
-  RuleMetricsTitle
   RuleMetricsDescription
   RuleMetricsHelp
   RuleMetricsFrom
   RuleMetricsTo
-  RuleMetricsRefresh
   RuleMetricsQuickRange
   RuleMetrics7Days
   RuleMetrics30Days
@@ -1031,7 +886,6 @@ pub type Text {
   CardTasksEmpty
   CardTasksClosed
   TaskType
-  TaskTitlePlaceholder
 
   // Story 4.12 - Card selector for new task
   NoCard
@@ -1045,20 +899,14 @@ pub type Text {
   // Left panel sections
   Work
   NewCard
-  QuickCard
-  QuickTask
   NoTasksYet
   CardTasksMore(hidden_count: Int)
-  NewCardInThisHierarchy
-  HierarchyTarget
   Configuration
   Team
   // Note: Capabilities is already defined in the Capabilities section above
   // Story 4.9: New config nav items
   CardsConfig
   TaskTypes
-  Templates
-  Rules
   // Story 4.9: Cards config filters (UX improvements)
   ShowEmptyCards
   ShowClosedCards
@@ -1070,9 +918,6 @@ pub type Text {
   InProgress
   Resume
   MyCards
-  NoTasksClaimed
-  NoCardsAssigned
-  NoTasksInProgress
   // AC32: Empty state hints with CTAs
   NoTasksClaimedHint
   NoCardsAssignedHint
@@ -1083,14 +928,8 @@ pub type Text {
   EditCardTooltip
   DeleteCardTooltip
   // AC16: Rich tooltip on [!] indicator
-  NotesPreviewNewNotes
-  NotesPreviewTimeAgo
-  NotesPreviewLatest
   // AC21: Tab badge tooltip
-  TabBadgeTotalNotes
-  TabBadgeNewNotes
   // AC21: Tab labels
-  TabTasks
   TabNotes
   TabSummary
   TabWork
@@ -1101,7 +940,6 @@ pub type Text {
   ActivityLoadMore(remaining: Int)
   // 5.4.1: Task Show
   TabDetails
-  TabDependencies
   TabBlockers
   EditTask
   TaskUpdated
@@ -1110,16 +948,12 @@ pub type Text {
   TaskEditKeyboardHint
   TaskEditRequiresClaim
   TaskEditClosedReadOnly
-  HierarchyLabel
-  NoHierarchy
-  TaskHierarchyInheritedFromCard
   TaskDescriptionEmpty
   TaskOperationalSummary
   TaskOwner
   TaskAutomationOrigin
   TaskAutomationCreatedBy
   TaskAutomationEngineLabel(engine_id: Int)
-  TaskAutomationExecutionLabel(execution_id: Int)
   TaskAutomationRuleLabel(rule_id: Int)
   TaskAutomationRuleChip(rule_id: Int)
   TaskAutomationRuleSignal(rule_id: Int)
@@ -1132,30 +966,9 @@ pub type Text {
   TaskDueDateLabel
   NoDueDate
   TaskBlockingClear
-  MetricsTasksTotal
-  MetricsTasksClosed
-  MetricsProgress
-  MetricsRebotesAvg
-  MetricsPoolLifetimeAvg
   MetricsAvailable
   MetricsClaimed
   MetricsOngoing
-  MetricsExecutors
-  MetricsTotal
-  MetricsClaimCount
-  MetricsReleaseCount
-  MetricsUniqueExecutors
-  MetricsFirstClaimAt
-  MetricsCurrentStateTime
-  MetricsPoolLifetime
-  MetricsSessionCount
-  MetricsTotalWorkTime
-  MetricsAvgExecutors
-  MetricsAutomations
-  MetricsMostActivated
-  MetricsNotAvailable
-  MetricsEmptyState
-  MetricsLoadError
   ClaimTask
 
   // Error states
@@ -1163,11 +976,6 @@ pub type Text {
 
   // Automations / Rules
   BackToAutomations
-  ResourceTypeTask
   RuleMetricsNoExecutions
-  RuleMetricsResults
-
   // Icon picker
-  NoIconsFound
-  SearchIconsPlaceholder
 }
