@@ -6,19 +6,13 @@ import support/render_assertions
 import domain/api_error.{ApiError}
 import domain/card.{type Card, type CardPhase, Active, Blue, Card, Closed, Draft}
 import domain/remote.{Failed, Loaded}
-import domain/task_type.{type TaskType, TaskType}
+import domain/task_type.{type TaskType}
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/pool/create_dialog
 import scrumbringer_client/i18n/locale
 
 fn task_type() -> TaskType {
-  TaskType(
-    id: 5,
-    name: "Bug",
-    icon: "bug-ant",
-    capability_id: opt.None,
-    tasks_count: 0,
-  )
+  domain_fixtures.task_type(5, "Bug")
 }
 
 fn card() -> Card {

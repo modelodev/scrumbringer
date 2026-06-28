@@ -1492,7 +1492,14 @@ Estado de ejecucion:
   (`plan_kanban_view` y `pool_task_card`). Se retiran descripcion, version,
   prioridad y contexto de card cuando el componente recibe esos datos por
   `Config` o solo necesita asociacion a card.
-- Delta parcial WP-12: `-3.639` lineas netas mantenidas (`-44` del primer pase
+- Trigesimosexto pase de fixtures de dominio aplicado a tipos de tarea y
+  capacidades (`pool_create_dialog`, `task_types_view`, `task_types_update`,
+  `pool_available_tasks`, `center_panel_data`, `pool_control_bar`,
+  `work_filters_bar` y `capabilities_view`). Se retiran constructores locales
+  repetidos usando `domain_fixtures.task_type` y
+  `domain_fixtures.capability`, conservando overrides de icono,
+  `capability_id` y `tasks_count` donde gobiernan el contrato.
+- Delta parcial WP-12: `-3.665` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1550,7 +1557,8 @@ Estado de ejecucion:
   de cliente, `-35` del trigesimotercer pase de fixtures de dominio
   compartidas en tests de cliente, `-46` del trigesimocuarto pase de fixtures
   de dominio compartidas en tests de cliente, `-15` del trigesimoquinto pase
-  de fixtures de dominio compartidas en tests de cliente).
+  de fixtures de dominio compartidas en tests de cliente, `-26` del
+  trigesimosexto pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

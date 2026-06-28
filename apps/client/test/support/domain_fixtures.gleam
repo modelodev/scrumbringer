@@ -1,9 +1,10 @@
 import gleam/option
 
+import domain/capability.{type Capability, Capability}
 import domain/card.{type Card, Card, Draft}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
+import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 
 pub fn card(id: Int, project_id: Int, title: String) -> Card {
   Card(
@@ -70,4 +71,18 @@ pub fn dependency(depends_on_task_id: Int) -> TaskDependency {
     state: task_state.Available,
     claimed_by: option.None,
   )
+}
+
+pub fn task_type(id: Int, name: String) -> TaskType {
+  TaskType(
+    id: id,
+    name: name,
+    icon: "bug-ant",
+    capability_id: option.None,
+    tasks_count: 0,
+  )
+}
+
+pub fn capability(id: Int, name: String) -> Capability {
+  Capability(id: id, name: name)
 }

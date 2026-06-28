@@ -1,9 +1,8 @@
 import gleam/option.{None}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
-import domain/capability.{Capability}
-import domain/task_type.{TaskType}
 import scrumbringer_client/capability_scope.{AllCapabilities}
 import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/visibility.{AllOpen}
@@ -53,16 +52,8 @@ pub fn pool_control_bar_renders_pool_owned_work_filters_test() {
 fn config() -> control_bar.Config(String) {
   control_bar.Config(
     locale: locale.Es,
-    task_types: [
-      TaskType(
-        id: 1,
-        name: "Bug",
-        icon: "bug-ant",
-        capability_id: None,
-        tasks_count: 0,
-      ),
-    ],
-    capabilities: [Capability(id: 2, name: "Backend")],
+    task_types: [domain_fixtures.task_type(1, "Bug")],
+    capabilities: [domain_fixtures.capability(2, "Backend")],
     capability_scope: AllCapabilities,
     type_filter: None,
     capability_filter: None,

@@ -1,6 +1,7 @@
 import gleam/option
 
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/remote
@@ -10,13 +11,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/task_types/update as task_types_update
 
 fn task_type(id: Int, name: String) -> TaskType {
-  TaskType(
-    id: id,
-    name: name,
-    icon: "box",
-    capability_id: option.None,
-    tasks_count: 0,
-  )
+  TaskType(..domain_fixtures.task_type(id, name), icon: "box")
 }
 
 fn context(selected_project_id) -> task_types_update.Context(Nil) {

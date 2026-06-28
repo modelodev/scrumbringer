@@ -2,9 +2,9 @@ import gleam/dict
 import gleam/int
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
-import domain/capability.{type Capability, Capability}
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
 import domain/project.{type ProjectMember, ProjectMember}
@@ -15,10 +15,6 @@ import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/admin/capabilities_view
 import scrumbringer_client/i18n/locale
-
-fn capability(id: Int, name: String) -> Capability {
-  Capability(id: id, name: name)
-}
 
 fn project_member(user_id: Int) -> ProjectMember {
   ProjectMember(
@@ -73,7 +69,7 @@ pub fn capabilities_view_renders_list_from_config_without_root_model_test() {
   let capabilities =
     admin_capabilities.Model(
       ..admin_capabilities.default_model(),
-      capabilities: Loaded([capability(1, "Backend")]),
+      capabilities: Loaded([domain_fixtures.capability(1, "Backend")]),
       capability_members_cache: member_counts,
     )
 
@@ -93,7 +89,7 @@ pub fn capabilities_view_renders_members_dialog_from_config_without_root_model_t
   let capabilities =
     admin_capabilities.Model(
       ..admin_capabilities.default_model(),
-      capabilities: Loaded([capability(1, "Backend")]),
+      capabilities: Loaded([domain_fixtures.capability(1, "Backend")]),
       capability_members_dialog_capability_id: opt.Some(1),
       capability_members_selected: [10],
     )
@@ -125,7 +121,7 @@ pub fn capabilities_view_delete_dialog_uses_shared_danger_button_test() {
   let capabilities =
     admin_capabilities.Model(
       ..admin_capabilities.default_model(),
-      capabilities: Loaded([capability(1, "Backend")]),
+      capabilities: Loaded([domain_fixtures.capability(1, "Backend")]),
       capability_delete_dialog_id: opt.Some(1),
       capability_delete_in_flight: True,
     )

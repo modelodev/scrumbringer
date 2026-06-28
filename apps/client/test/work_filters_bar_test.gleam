@@ -2,10 +2,9 @@ import gleam/int
 import gleam/option.{type Option, None, Some}
 import lustre/element
 import lustre/element/html
+import support/domain_fixtures
 import support/render_assertions
 
-import domain/capability.{Capability}
-import domain/task_type.{TaskType}
 import scrumbringer_client/capability_scope
 import scrumbringer_client/features/pool/visibility
 import scrumbringer_client/features/work_filters_bar
@@ -93,16 +92,8 @@ fn config() -> work_filters_bar.Config(String) {
   work_filters_bar.Config(
     locale: locale.Es,
     id_prefix: "test-work-filter",
-    task_types: [
-      TaskType(
-        id: 1,
-        name: "Bug",
-        icon: "bug-ant",
-        capability_id: None,
-        tasks_count: 0,
-      ),
-    ],
-    capabilities: [Capability(id: 2, name: "Backend")],
+    task_types: [domain_fixtures.task_type(1, "Bug")],
+    capabilities: [domain_fixtures.capability(2, "Backend")],
     capability_scope: capability_scope.AllCapabilities,
     type_filter: None,
     capability_filter: None,

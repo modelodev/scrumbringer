@@ -1,6 +1,5 @@
-import gleam/option.{None}
+import support/domain_fixtures
 
-import domain/capability.{Capability}
 import domain/org.{OrgUser}
 import domain/org_role
 import domain/remote.{Loaded, NotAsked}
@@ -10,13 +9,11 @@ import scrumbringer_client/features/layout/center_panel_data
 pub fn from_remotes_uses_loaded_values_test() {
   let task_type =
     TaskType(
-      id: 1,
-      name: "Feature",
+      ..domain_fixtures.task_type(1, "Feature"),
       icon: "sparkles",
-      capability_id: None,
       tasks_count: 2,
     )
-  let capability = Capability(id: 3, name: "Backend")
+  let capability = domain_fixtures.capability(3, "Backend")
   let org_user =
     OrgUser(
       id: 7,

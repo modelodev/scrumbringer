@@ -18,11 +18,8 @@ fn task(id: Int, title: String, type_id: Int, state) -> Task {
 
 fn task_type(id: Int, capability_id) {
   TaskType(
-    id: id,
-    name: "Type",
-    icon: "box",
+    ..domain_fixtures.task_type(id, "Type"),
     capability_id: capability_id,
-    tasks_count: 0,
   )
 }
 

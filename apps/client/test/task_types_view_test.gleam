@@ -1,9 +1,9 @@
 import gleam/int
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
-import domain/capability.{Capability}
 import domain/remote.{Loaded}
 import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
@@ -13,9 +13,7 @@ import scrumbringer_client/theme
 
 fn task_type(id: Int, name: String, capability_id: opt.Option(Int)) -> TaskType {
   TaskType(
-    id: id,
-    name: name,
-    icon: "bug-ant",
+    ..domain_fixtures.task_type(id, name),
     capability_id: capability_id,
     tasks_count: 3,
   )
@@ -28,7 +26,7 @@ fn config(model: admin_task_types.Model) -> task_types_view.Config(String) {
     project_id: 7,
     project_name: "Roadmap",
     model: model,
-    capabilities: Loaded([Capability(id: 1, name: "Backend")]),
+    capabilities: Loaded([domain_fixtures.capability(1, "Backend")]),
     on_create_opened: "create-opened",
     on_edit_opened: fn(task_type) { "edit:" <> int.to_string(task_type.id) },
     on_delete_opened: fn(task_type) { "delete:" <> int.to_string(task_type.id) },
