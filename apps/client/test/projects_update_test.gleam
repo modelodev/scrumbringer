@@ -1,10 +1,10 @@
 import gleam/option
 
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/project.{type Project, Project, ProjectDepthName}
-import domain/project_role
+import domain/project.{type Project, ProjectDepthName}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
@@ -14,15 +14,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/projects/update as projects_update
 
 fn project(id: Int, name: String) -> Project {
-  Project(
-    id: id,
-    name: name,
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  domain_fixtures.project(id, name)
 }
 
 fn edit_form(id: Int, name: String) -> admin_projects.ProjectDialogForm {

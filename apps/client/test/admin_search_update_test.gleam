@@ -1,10 +1,10 @@
 import gleam/option
 
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/org.{type OrgUser, OrgUser}
-import domain/org_role
+import domain/org.{type OrgUser}
 import domain/project.{ProjectMember}
 import domain/project_role
 import domain/remote
@@ -13,12 +13,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/search
 
 fn user(id: Int, email: String) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: email,
-    org_role: org_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  domain_fixtures.org_user(id, email)
 }
 
 fn context() -> search.Context(String) {

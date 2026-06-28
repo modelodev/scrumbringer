@@ -2,6 +2,10 @@ import gleam/option
 
 import domain/capability.{type Capability, Capability}
 import domain/card.{type Card, Card, Draft}
+import domain/org.{type OrgUser, OrgUser}
+import domain/org_role
+import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/project_role
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
@@ -85,4 +89,34 @@ pub fn task_type(id: Int, name: String) -> TaskType {
 
 pub fn capability(id: Int, name: String) -> Capability {
   Capability(id: id, name: name)
+}
+
+pub fn org_user(id: Int, email: String) -> OrgUser {
+  OrgUser(
+    id: id,
+    email: email,
+    org_role: org_role.Member,
+    created_at: "2026-01-01T00:00:00Z",
+  )
+}
+
+pub fn project(id: Int, name: String) -> Project {
+  Project(
+    id: id,
+    name: name,
+    my_role: project_role.Manager,
+    created_at: "2026-01-01T00:00:00Z",
+    members_count: 1,
+    card_depth_names: [],
+    healthy_pool_limit: 20,
+  )
+}
+
+pub fn project_member(user_id: Int) -> ProjectMember {
+  ProjectMember(
+    user_id: user_id,
+    role: project_role.Member,
+    created_at: "2026-01-01T00:00:00Z",
+    claimed_count: 0,
+  )
 }

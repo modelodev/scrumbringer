@@ -1,6 +1,7 @@
 import gleam/int
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/org.{OrgUser}
@@ -11,12 +12,7 @@ import scrumbringer_client/features/admin/org_settings_view
 import scrumbringer_client/i18n/locale
 
 fn user(id: Int, email: String, role: org_role.OrgRole) {
-  OrgUser(
-    id: id,
-    email: email,
-    org_role: role,
-    created_at: "2026-02-06T00:00:00Z",
-  )
+  OrgUser(..domain_fixtures.org_user(id, email), org_role: role)
 }
 
 fn config(model: admin_members.Model) -> org_settings_view.Config(String) {

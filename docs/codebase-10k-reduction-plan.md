@@ -1499,7 +1499,13 @@ Estado de ejecucion:
   repetidos usando `domain_fixtures.task_type` y
   `domain_fixtures.capability`, conservando overrides de icono,
   `capability_id` y `tasks_count` donde gobiernan el contrato.
-- Delta parcial WP-12: `-3.665` lineas netas mantenidas (`-44` del primer pase
+- Trigesimoseptimo pase de fixtures de dominio aplicado a usuarios,
+  proyectos y miembros (`org_user`, `project`, `project_member`) en rutas y
+  vistas de administracion, asignaciones, proyectos y capacidades. Se eliminan
+  constructores locales repetidos y se conservan overrides explicitos de rol,
+  `members_count` o `claimed_count` cuando esos campos son parte del contrato
+  del test.
+- Delta parcial WP-12: `-3.820` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1558,7 +1564,9 @@ Estado de ejecucion:
   compartidas en tests de cliente, `-46` del trigesimocuarto pase de fixtures
   de dominio compartidas en tests de cliente, `-15` del trigesimoquinto pase
   de fixtures de dominio compartidas en tests de cliente, `-26` del
-  trigesimosexto pase de fixtures de dominio compartidas en tests de cliente).
+  trigesimosexto pase de fixtures de dominio compartidas en tests de cliente,
+  `-155` del trigesimoseptimo pase de fixtures de dominio compartidas en tests
+  de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

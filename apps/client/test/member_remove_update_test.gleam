@@ -1,22 +1,17 @@
 import gleam/option
 
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/org.{type OrgUser, OrgUser}
-import domain/org_role
+import domain/org.{type OrgUser}
 import domain/remote
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/features/admin/member_remove
 import scrumbringer_client/features/admin/msg as admin_messages
 
 fn user(id: Int, email: String) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: email,
-    org_role: org_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  domain_fixtures.org_user(id, email)
 }
 
 fn context(selected_project_id) -> member_remove.Context(String) {

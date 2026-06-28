@@ -3,6 +3,7 @@ import gleam/option
 import gleam/set
 import lustre/effect
 import support/assertions.{assert_equal}
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
@@ -36,24 +37,11 @@ fn model() -> assignments_state.AssignmentsModel {
 }
 
 fn project(id: Int, role) -> Project {
-  Project(
-    id: id,
-    name: "Project",
-    my_role: role,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  Project(..domain_fixtures.project(id, "Project"), my_role: role)
 }
 
 fn member(user_id: Int, role) -> ProjectMember {
-  ProjectMember(
-    user_id: user_id,
-    role: role,
-    created_at: "2026-01-01T00:00:00Z",
-    claimed_count: 0,
-  )
+  ProjectMember(..domain_fixtures.project_member(user_id), role: role)
 }
 
 fn feedback_context() -> assignments_update.FeedbackContext(Nil) {

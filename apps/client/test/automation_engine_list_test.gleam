@@ -1,10 +1,10 @@
 import gleam/int
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/project.{type Project, Project}
-import domain/project_role
 import domain/remote.{Loaded}
 import domain/workflow.{type Workflow, Workflow}
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
@@ -27,15 +27,7 @@ fn engine(id: Int, name: String, active: Bool) -> Workflow {
 }
 
 fn selected_project() -> Project {
-  Project(
-    id: 7,
-    name: "Roadmap",
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 3,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  Project(..domain_fixtures.project(7, "Roadmap"), members_count: 3)
 }
 
 fn config() -> engine_list.Config(String) {

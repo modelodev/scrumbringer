@@ -1,7 +1,5 @@
-import domain/capability.{Capability}
-import domain/org.{type OrgUser, OrgUser}
-import domain/org_role
-import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/org.{type OrgUser}
+import domain/project.{type Project, type ProjectMember}
 import domain/project_role
 import domain/remote.{Loaded}
 import gleam/int
@@ -9,6 +7,7 @@ import gleam/option as opt
 import gleam/string
 import lustre/effect
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/client_state
@@ -23,37 +22,19 @@ import scrumbringer_client/features/admin/views/members
 import scrumbringer_client/i18n/locale
 
 fn sample_user(id: Int, email: String) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: email,
-    org_role: org_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  domain_fixtures.org_user(id, email)
 }
 
 fn sample_project() -> Project {
-  Project(
-    id: 8,
-    name: "Proyecto Alpha",
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  domain_fixtures.project(8, "Proyecto Alpha")
 }
 
 fn sample_member(user_id: Int) -> ProjectMember {
-  ProjectMember(
-    user_id: user_id,
-    role: project_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-    claimed_count: 0,
-  )
+  domain_fixtures.project_member(user_id)
 }
 
 fn sample_capability(id: Int, name: String) {
-  Capability(id: id, name: name)
+  domain_fixtures.capability(id, name)
 }
 
 fn base_model() -> client_state.Model {

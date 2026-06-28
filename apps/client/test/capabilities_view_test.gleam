@@ -5,10 +5,8 @@ import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
-import domain/org.{type OrgUser, OrgUser}
-import domain/org_role
-import domain/project.{type ProjectMember, ProjectMember}
-import domain/project_role
+import domain/org.{type OrgUser}
+import domain/project.{type ProjectMember}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/members as admin_members
@@ -17,21 +15,11 @@ import scrumbringer_client/features/admin/capabilities_view
 import scrumbringer_client/i18n/locale
 
 fn project_member(user_id: Int) -> ProjectMember {
-  ProjectMember(
-    user_id: user_id,
-    role: project_role.Member,
-    created_at: "2026-02-06T00:00:00Z",
-    claimed_count: 0,
-  )
+  domain_fixtures.project_member(user_id)
 }
 
 fn org_user(id: Int, email: String) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: email,
-    org_role: org_role.Member,
-    created_at: "2026-02-06T00:00:00Z",
-  )
+  domain_fixtures.org_user(id, email)
 }
 
 fn config(

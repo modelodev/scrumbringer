@@ -1,14 +1,14 @@
 import gleam/int
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/metrics.{
   type OrgMetricsOverview, NoSample, OrgMetricsOverview, WindowDays,
 }
-import domain/org.{type OrgUser, OrgUser}
-import domain/org_role
-import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/org.{type OrgUser}
+import domain/project.{type Project, type ProjectMember, ProjectMember}
 import domain/project_role.{type ProjectRole, Manager}
 import domain/remote
 import scrumbringer_client/client_state/admin/assignments as assignments_state
@@ -16,33 +16,15 @@ import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/i18n/locale
 
 fn project() -> Project {
-  Project(
-    id: 11,
-    name: "Platform",
-    my_role: Manager,
-    created_at: "2026-03-20",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  domain_fixtures.project(11, "Platform")
 }
 
 fn member() -> ProjectMember {
-  ProjectMember(
-    user_id: 7,
-    role: Manager,
-    created_at: "2026-03-20",
-    claimed_count: 0,
-  )
+  ProjectMember(..domain_fixtures.project_member(7), role: Manager)
 }
 
 fn org_user() -> OrgUser {
-  OrgUser(
-    id: 7,
-    email: "member@example.com",
-    org_role: org_role.Member,
-    created_at: "2026-03-20",
-  )
+  domain_fixtures.org_user(7, "member@example.com")
 }
 
 fn metrics() -> OrgMetricsOverview {

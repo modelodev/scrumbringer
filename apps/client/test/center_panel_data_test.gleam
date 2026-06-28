@@ -1,7 +1,5 @@
 import support/domain_fixtures
 
-import domain/org.{OrgUser}
-import domain/org_role
 import domain/remote.{Loaded, NotAsked}
 import domain/task_type.{TaskType}
 import scrumbringer_client/features/layout/center_panel_data
@@ -14,13 +12,7 @@ pub fn from_remotes_uses_loaded_values_test() {
       tasks_count: 2,
     )
   let capability = domain_fixtures.capability(3, "Backend")
-  let org_user =
-    OrgUser(
-      id: 7,
-      email: "member@example.test",
-      org_role: org_role.Member,
-      created_at: "2026-06-01T10:00:00Z",
-    )
+  let org_user = domain_fixtures.org_user(7, "member@example.test")
 
   let data =
     center_panel_data.from_remotes(

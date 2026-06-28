@@ -5,7 +5,6 @@ import support/render_assertions
 
 import domain/card.{Card}
 import domain/project.{Project}
-import domain/project_role.{Manager}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state.{
   type Model, default_model, update_admin, update_member,
@@ -20,15 +19,7 @@ fn base_model() -> Model {
 }
 
 fn sample_project() {
-  Project(
-    id: 1,
-    name: "Project Alpha",
-    my_role: Manager,
-    created_at: "2026-01-01",
-    members_count: 2,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  Project(..domain_fixtures.project(1, "Project Alpha"), members_count: 2)
 }
 
 fn sample_card() {

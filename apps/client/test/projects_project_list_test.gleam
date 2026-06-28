@@ -1,7 +1,7 @@
 import gleam/option.{None, Some}
+import support/domain_fixtures
 
 import domain/project.{type Project, Project}
-import domain/project_role
 import domain/remote.{Loaded, Loading}
 import scrumbringer_client/features/projects/project_list
 
@@ -55,13 +55,5 @@ pub fn selected_after_delete_clears_only_deleted_selection_test() {
 }
 
 fn sample_project(id: Int, name: String) -> Project {
-  Project(
-    id: id,
-    name: name,
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  domain_fixtures.project(id, name)
 }

@@ -1,12 +1,11 @@
 import domain/api_error.{ApiError}
-import domain/org.{type OrgUser, OrgUser}
-import domain/org_role
+import domain/org.{type OrgUser}
 import domain/project.{ProjectMember}
-import domain/project_role
 import domain/remote.{Loaded}
 import gleam/int
 import gleam/option
 import lustre/effect
+import support/domain_fixtures
 
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/members as admin_members
@@ -54,19 +53,12 @@ fn no_project_context() -> member_release_all.Context(String) {
 }
 
 fn sample_user(id: Int, email: String) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: email,
-    org_role: org_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  domain_fixtures.org_user(id, email)
 }
 
 fn sample_member(user_id: Int, claimed_count: Int) {
   ProjectMember(
-    user_id: user_id,
-    role: project_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
+    ..domain_fixtures.project_member(user_id),
     claimed_count: claimed_count,
   )
 }

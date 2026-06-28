@@ -1,9 +1,9 @@
 import gleam/option as opt
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/project.{type Project, Project}
-import domain/project_role
+import domain/project.{type Project}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -24,15 +24,7 @@ fn base_model() -> client_state.Model {
 }
 
 fn project(id: Int, name: String) -> Project {
-  Project(
-    id: id,
-    name: name,
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  domain_fixtures.project(id, name)
 }
 
 pub fn try_update_routes_project_created_and_syncs_core_test() {

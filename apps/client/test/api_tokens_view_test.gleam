@@ -1,6 +1,7 @@
 import gleam/int
 import gleam/option
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/api_token.{
@@ -8,8 +9,7 @@ import domain/api_token.{
 }
 import domain/api_token_scope
 import domain/org_role
-import domain/project.{type Project, Project}
-import domain/project_role
+import domain/project.{type Project}
 import domain/remote
 import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 import scrumbringer_client/client_state/types.{DialogOpen, Idle}
@@ -17,15 +17,7 @@ import scrumbringer_client/features/admin/api_tokens_view
 import scrumbringer_client/i18n/locale
 
 fn project() -> Project {
-  Project(
-    id: 7,
-    name: "Core",
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T10:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  domain_fixtures.project(7, "Core")
 }
 
 fn integration_user() -> IntegrationUser {

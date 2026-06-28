@@ -4,6 +4,7 @@ import domain/project_role.{type ProjectRole, Manager, Member}
 import domain/remote.{Loaded, NotAsked}
 import gleam/option
 import lustre/effect
+import support/domain_fixtures
 
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/members as admin_members
@@ -12,12 +13,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/ui/toast
 
 fn sample_member(user_id: Int, role: ProjectRole) {
-  ProjectMember(
-    user_id: user_id,
-    role: role,
-    created_at: "2026-01-01T00:00:00Z",
-    claimed_count: 0,
-  )
+  ProjectMember(..domain_fixtures.project_member(user_id), role: role)
 }
 
 fn context() -> member_role.Context(String) {

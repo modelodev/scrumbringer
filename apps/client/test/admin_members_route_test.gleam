@@ -1,10 +1,10 @@
 import gleam/list
 import gleam/option as opt
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/project.{ProjectMember}
-import domain/project_role
+import domain/project.{type ProjectMember}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state
 import scrumbringer_client/features/admin/members_route
@@ -26,13 +26,8 @@ fn no_refresh(model: client_state.Model) {
   #(model, effect.none())
 }
 
-fn sample_member(user_id: Int) {
-  ProjectMember(
-    user_id: user_id,
-    role: project_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-    claimed_count: 0,
-  )
+fn sample_member(user_id: Int) -> ProjectMember {
+  domain_fixtures.project_member(user_id)
 }
 
 pub fn try_update_routes_member_list_messages_test() {

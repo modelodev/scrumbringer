@@ -1,6 +1,7 @@
 import gleam/dict
 import gleam/option as opt
 import lustre/effect
+import support/domain_fixtures
 
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role.{Admin}
@@ -22,12 +23,7 @@ fn base_model() -> client_state.Model {
 }
 
 fn user(id: Int) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: "ana@example.com",
-    org_role: Admin,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  OrgUser(..domain_fixtures.org_user(id, "ana@example.com"), org_role: Admin)
 }
 
 pub fn try_update_routes_assignment_messages_test() {

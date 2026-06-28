@@ -1,9 +1,9 @@
 import gleam/option
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/project.{ProjectMember}
-import domain/project_role
+import domain/project.{type ProjectMember}
 import domain/remote
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/features/admin/member_list
@@ -16,13 +16,8 @@ fn context(selected_project_id) -> member_list.Context(Nil) {
   )
 }
 
-fn sample_member(user_id: Int) {
-  ProjectMember(
-    user_id: user_id,
-    role: project_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-    claimed_count: 0,
-  )
+fn sample_member(user_id: Int) -> ProjectMember {
+  domain_fixtures.project_member(user_id)
 }
 
 pub fn members_fetched_ok_loads_members_and_preloads_capabilities_test() {

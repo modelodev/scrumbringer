@@ -1,6 +1,7 @@
 import gleam/dict
 import gleam/option as opt
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/org.{type OrgUser, OrgUser}
@@ -25,12 +26,7 @@ fn base_model() -> client_state.Model {
 }
 
 fn org_user(id: Int, role: org_role.OrgRole) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: "ana@example.com",
-    org_role: role,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  OrgUser(..domain_fixtures.org_user(id, "ana@example.com"), org_role: role)
 }
 
 pub fn try_update_routes_cache_fetch_and_starts_assignments_fetch_test() {
