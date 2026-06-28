@@ -2444,6 +2444,22 @@ Estado de ejecucion:
     build/CI para ejecutar Squirrel con DB disponible antes de compilar. Se
     mantiene como candidato separado de alto impacto y riesgo medio/alto, no
     como limpieza segura del tramo actual.
+- Octavo pase de limpieza de artefactos generados de auditoria:
+  - eliminado del control de versiones
+    `docs/audits/codebase-inventory.yml`, un volcado bruto de `56.657` lineas
+    generado por `scripts/codebase_audit.py` y obsoleto respecto al HEAD actual;
+  - anadida exclusion en `.gitignore` para que futuras ejecuciones de la
+    auditoria puedan generar el inventario localmente sin volver a versionar el
+    artefacto pesado;
+  - mantenidos versionados los informes curados (`endpoint-map.md`,
+    `component-map.md`, `module-map.md`, `test-coverage-map.md`,
+    `refactor-candidates.md`, `refactor-work-packages.md`) y el script fuente;
+  - actualizados los documentos de auditoria para aclarar que el inventario
+    bruto es local/regenerable, mientras que los mapas curados son el contrato
+    revisable;
+  - delta adicional fuera de codigo Gleam: `-56.657` lineas de documentacion
+    generada versionada. Cuenta como limpieza de repositorio, no como
+    cumplimiento del subobjetivo mantenido no generado de Gleam.
 
 ## Orden recomendado de ejecucion
 

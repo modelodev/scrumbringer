@@ -645,9 +645,11 @@ o helpers con consumidores reales en mas de una frontera.
 ## Primer corte recomendado
 
 La primera ejecucion de la auditoria deberia limitarse a producir estos cuatro
-artefactos:
+artefactos. El inventario bruto se genera en disco para revision local, pero no
+debe versionarse porque es derivado, muy voluminoso y queda obsoleto en cuanto
+cambia la rama:
 
-1. `docs/audits/codebase-inventory.yml`
+1. `docs/audits/codebase-inventory.yml` local/regenerable
 2. `docs/audits/endpoint-map.md`
 3. `docs/audits/component-map.md`
 4. `docs/audits/test-coverage-map.md`

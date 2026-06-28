@@ -79,7 +79,8 @@ The inventory includes tracked files plus untracked, non-ignored files in the cu
 
 ## Deliverables
 
-- `codebase-inventory.yml`: file-by-file inventory.
+- `codebase-inventory.yml`: raw file-by-file inventory generated locally by
+  `scripts/codebase_audit.py` and intentionally not versioned.
 - `endpoint-map.md`: server routes, handlers, client call-site counts and static mismatches.
 - `component-map.md`: frontend views/components with state/accessibility/test signals.
 - `module-map.md`: all Gleam modules with public surface and consumers.
@@ -89,4 +90,4 @@ The inventory includes tracked files plus untracked, non-ignored files in the cu
 
 ## Completion status
 
-This audit has completed the inventory and generated the requested maps. The next step is not to refactor globally, but to review and execute the work packages one by one, starting with candidates that delete duplicated code or close accidental public APIs.
+This audit has completed the inventory and generated the requested maps. The raw inventory is reproducible with `python3 scripts/codebase_audit.py`; the curated maps and work packages remain versioned. The next step is not to refactor globally, but to review and execute the work packages one by one, starting with candidates that delete duplicated code or close accidental public APIs.

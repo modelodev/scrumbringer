@@ -60,6 +60,9 @@ node_modules/
 # QA artifacts (decision pending)
 docs/qa/
 
+# Generated audit inventories
+docs/audits/codebase-inventory.yml
+
 # Playwright scaffolding (not used in this repo)
 package.json
 package-lock.json
