@@ -2533,9 +2533,9 @@ Estado de ejecucion:
   - verificacion enfocada:
     `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 erl -noshell -pa build/dev/erlang/*/ebin -eval '...'`
     sobre `unit@http@task_conflict_handlers_test` (`7 passed`);
-  - verificacion global pendiente: `gleam test` fallo repetidamente por
-    timeouts de PostgreSQL en modulos no modificados (`cards_http_test` y
-    `tasks_http_test`) tras haber compilado correctamente.
+  - verificacion global: tras descartar ejecuciones paralelas manuales contra
+    la misma DB de test, `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+    paso con `553 passed`.
 - Auditoria de contabilidad tras el duodecimo pase:
   - total Gleam actual: `198.497` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.517` lineas;
