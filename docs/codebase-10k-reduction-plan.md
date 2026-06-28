@@ -916,6 +916,27 @@ Estado de ejecucion:
   - `rg` de los modulos retirados sin consumidores;
   - `cd apps/client && gleam format --check src test && gleam build`;
   - `cd apps/client && gleam test` (`1912 passed`).
+- Pase de simbolos publicos sin consumidor:
+  - retirado el modulo plantilla `shared/src/shared.gleam`, sin importadores
+    reales;
+  - retirados helpers publicos de API cliente, routing, UI, estado y backend
+    que tenian una sola aparicion global y no formaban parte de ningun flujo
+    activo;
+  - eliminados codecs compartidos que existian solo como API publica
+    accidental; los tests usan los decoders publicos de contrato
+    (`decode_card_create`, `decode_card_move`, `decode_card_close`, etc.);
+  - retirados imports residuales detectados por el compilador.
+- Delta adicional del pase: `-526` lineas mantenidas.
+- Delta acumulado WP-10: `-734` lineas mantenidas.
+- Verificacion:
+  - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
+  - `cd apps/client && gleam format --check src test && gleam test`
+    (`1912 passed`);
+  - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
+    (`560 passed`);
+  - `rg` exacto de los simbolos retirados sin consumidores;
+  - `git diff --check`;
+  - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test` sin resultados.
 
 ### WP-11. i18n, estilos y clases muertas
 

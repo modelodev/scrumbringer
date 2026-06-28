@@ -185,15 +185,6 @@ pub fn rows_in_section(
   list.filter(rows, fn(row) { row.section == section })
 }
 
-pub fn section_rank(section: RosterSection) -> Int {
-  case section {
-    NeedsAttention -> 4
-    RosterWorkingNow -> 3
-    RosterReservedWork -> 2
-    RosterAvailable -> 1
-  }
-}
-
 fn roster_row(person: PersonWorkload) -> PersonRosterRow {
   case person.attention {
     [task, ..] ->

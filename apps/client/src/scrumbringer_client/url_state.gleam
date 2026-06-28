@@ -205,11 +205,6 @@ pub fn with_card_work_scope(state: UrlState, card_id: Int) -> UrlState {
   )
 }
 
-/// Builder: clears the contextual work scope.
-pub fn without_work_scope(state: UrlState) -> UrlState {
-  UrlState(..state, work_scope: option.None)
-}
-
 /// Builder: opens Card Show without changing the primary view scope.
 pub fn with_card_show(state: UrlState, card_id: Int) -> UrlState {
   UrlState(..state, show: option.Some(CardShowParam(card_id)))
@@ -220,11 +215,6 @@ pub fn with_task_show(state: UrlState, task_id: Int) -> UrlState {
   UrlState(..state, show: option.Some(TaskShowParam(task_id)))
 }
 
-/// Builder: clears any entity show without changing filters or scope.
-pub fn without_show(state: UrlState) -> UrlState {
-  UrlState(..state, show: option.None)
-}
-
 /// Builder: actualiza el modo de vista de assignments.
 pub fn with_assignments_view(
   state: UrlState,
@@ -233,16 +223,6 @@ pub fn with_assignments_view(
   UrlState(
     ..state,
     view: option.Some(AssignmentsView(mode)),
-    plan_mode: option.None,
-    card_depth: option.None,
-  )
-}
-
-/// Builder: limpia la vista explicita.
-pub fn without_view(state: UrlState) -> UrlState {
-  UrlState(
-    ..state,
-    view: option.None,
     plan_mode: option.None,
     card_depth: option.None,
   )

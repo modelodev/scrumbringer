@@ -238,22 +238,6 @@ pub fn add_member_capability(
   Ok(Nil)
 }
 
-/// Removes a capability from a project member.
-pub fn remove_member_capability(
-  db: pog.Connection,
-  project_id: Int,
-  user_id: Int,
-  capability_id: Int,
-) -> Result(Bool, pog.QueryError) {
-  use returned <- result.try(sql.project_member_capabilities_delete(
-    db,
-    project_id,
-    user_id,
-    capability_id,
-  ))
-  Ok(returned.count > 0)
-}
-
 /// Removes all capabilities from a project member.
 pub fn remove_all_member_capabilities(
   db: pog.Connection,

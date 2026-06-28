@@ -90,22 +90,3 @@ fn view_open(
     ),
   ])
 }
-
-/// Mini task bar for mobile (shows current task)
-pub fn mini_task_bar(
-  task_title: String,
-  elapsed: String,
-  on_click: msg,
-) -> Element(msg) {
-  button(
-    [
-      attribute.class("mini-task-bar"),
-      attribute.attribute("data-testid", "mini-task-bar"),
-      event.on_click(on_click),
-    ],
-    [
-      div([attribute.class("mini-task-title")], [element.text(task_title)]),
-      div([attribute.class("mini-task-timer")], [element.text(elapsed)]),
-    ],
-  )
-}

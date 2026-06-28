@@ -101,11 +101,6 @@ pub fn init() -> ToastState {
 /// Duration in milliseconds before auto-dismiss (3 seconds).
 pub const auto_dismiss_ms = 3000
 
-/// Check if there are any toasts to display.
-pub fn has_toasts(state: ToastState) -> Bool {
-  !list.is_empty(state.toasts)
-}
-
 // =============================================================================
 // Generic State Update Helpers (Story 4.8)
 // =============================================================================
@@ -149,11 +144,6 @@ pub fn tick(state: ToastState, now: Int) -> #(ToastState, Bool) {
   let new_toasts = list.filter(state.toasts, fn(t) { t.created_at > cutoff })
   let should_schedule = !list.is_empty(new_toasts)
   #(ToastState(..state, toasts: new_toasts), should_schedule)
-}
-
-/// Get the current list of toasts.
-pub fn get_toasts(state: ToastState) -> List(Toast) {
-  state.toasts
 }
 
 // =============================================================================

@@ -138,17 +138,6 @@ pub fn depth_singular_label(
   }
 }
 
-/// Return the configured plural label for a depth.
-pub fn depth_plural_label(
-  depth_names: List(scope_view.DepthName),
-  depth: Int,
-) -> String {
-  case list.find(depth_names, fn(name) { name.depth == depth }) {
-    Ok(scope_view.DepthName(plural_name: name, ..)) -> name
-    Error(_) -> "Level " <> int_to_string(depth)
-  }
-}
-
 /// Returns true when `candidate_id` is the ancestor card or below it.
 pub fn card_in_subtree(
   candidate_id: Int,

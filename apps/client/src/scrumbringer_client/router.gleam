@@ -403,12 +403,6 @@ pub fn replace_team_view(
   replace_url(format_team(Some(view)))
 }
 
-pub fn push_team_view(
-  view: assignments_view_mode.AssignmentsViewMode,
-) -> Effect(msg) {
-  push_url(format_team(Some(view)))
-}
-
 fn search_to_query(search: String) -> String {
   case string.starts_with(search, "?") {
     True -> string.drop_start(search, 1)

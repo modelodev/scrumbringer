@@ -175,17 +175,6 @@ fn variant_to_class(variant: BadgeVariant) -> String {
   }
 }
 
-/// Convert variant to text label (for debugging/logging).
-pub fn variant_label(variant: BadgeVariant) -> String {
-  case variant {
-    Primary -> "primary"
-    Success -> "success"
-    Warning -> "warning"
-    Danger -> "danger"
-    Neutral -> "neutral"
-  }
-}
-
 // =============================================================================
 // Convenience Functions
 // =============================================================================

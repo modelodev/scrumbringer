@@ -87,12 +87,6 @@ pub fn deactivate_integration_user(
   )
 }
 
-pub fn integration_user_payload_decoder() -> decode.Decoder(
-  api_token.IntegrationUser,
-) {
-  decode.field("integration_user", integration_user_decoder(), decode.success)
-}
-
 pub fn integration_users_payload_decoder() -> decode.Decoder(
   List(api_token.IntegrationUser),
 ) {

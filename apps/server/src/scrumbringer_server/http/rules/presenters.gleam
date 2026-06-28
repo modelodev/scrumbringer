@@ -16,10 +16,6 @@ pub fn rule(rule: rules_db.RuleRecord) -> json.Json {
   rule_with_template(rule, None)
 }
 
-pub fn rule_response(value: rules_db.RuleRecord) -> json.Json {
-  json.object([#("rule", rule(value))])
-}
-
 pub fn rule_response_with_template(
   rule: rules_db.RuleRecord,
   template: Option(workflow.RuleTemplate),

@@ -242,11 +242,6 @@ pub type EventId {
   EventId(value: String)
 }
 
-pub fn event_id_to_string(event_id: EventId) -> String {
-  let EventId(value) = event_id
-  value
-}
-
 pub type TriggerParseError {
   UnsupportedTransition
 }

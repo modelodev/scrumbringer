@@ -101,21 +101,3 @@ pub fn view(
     [text(initials)],
   )
 }
-
-/// Renders a small card color indicator (just the dot, no initials).
-pub fn view_color_dot(color: Option(CardColor)) -> Element(msg) {
-  case color {
-    option.None -> element.none()
-    option.Some(c) ->
-      span(
-        [
-          attribute.class("color-picker-swatch"),
-          attribute.attribute(
-            "style",
-            "background: " <> color_picker.css_var(c),
-          ),
-        ],
-        [],
-      )
-  }
-}

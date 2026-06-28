@@ -88,7 +88,7 @@ pub fn card_create_request_rejects_invalid_due_date_test() {
     contracts.decode_card_create(payload)
 }
 
-pub fn card_create_request_codec_accepts_parent_card_test() {
+pub fn decode_card_create_accepts_parent_card_test() {
   let assert Ok(payload) =
     json.parse(
       "{\"title\":\"Feature\",\"description\":\"Desc\",\"color\":\"blue\",\"parent_card_id\":5}",

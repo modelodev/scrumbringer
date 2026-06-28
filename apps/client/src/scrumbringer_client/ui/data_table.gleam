@@ -320,23 +320,6 @@ pub fn sortable_column(
   )
 }
 
-/// Create a sortable column with CSS classes.
-pub fn sortable_column_with_class(
-  header: String,
-  render: fn(row) -> Element(msg),
-  on_sort: msg,
-  header_class: String,
-  cell_class: String,
-) -> Column(row, msg) {
-  Column(
-    header:,
-    render:,
-    on_sort: Some(on_sort),
-    header_class: Some(header_class),
-    cell_class: Some(cell_class),
-  )
-}
-
 // =============================================================================
 // Remote Data Support
 // =============================================================================

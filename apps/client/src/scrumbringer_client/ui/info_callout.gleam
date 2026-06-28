@@ -39,11 +39,6 @@ pub fn simple(content: String) -> Element(msg) {
   new(content) |> view
 }
 
-/// Info callout with title.
-pub fn titled(title: String, content: String) -> Element(msg) {
-  with_title(title, content) |> view
-}
-
 /// Info callout with custom content element.
 pub fn view_with_content(
   title: opt.Option(String),

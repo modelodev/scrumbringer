@@ -33,13 +33,6 @@ pub type UserIdentityParseError {
   IntegrationIdentityHasPassword
 }
 
-pub fn user_kind_to_string(kind: UserKind) -> String {
-  case kind {
-    Human -> "human"
-    Integration -> "integration"
-  }
-}
-
 pub fn parse_user_kind(value: String) -> Result(UserKind, UserKindParseError) {
   case value {
     "human" -> Ok(Human)

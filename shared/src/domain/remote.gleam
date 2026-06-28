@@ -62,16 +62,6 @@ pub fn unwrap(remote: Remote(a), default: a) -> a {
   }
 }
 
-/// Check if loaded.
-pub fn is_loaded(remote: Remote(a)) -> Bool {
-  case remote {
-    Loaded(_) -> True
-    NotAsked -> False
-    Loading -> False
-    Failed(_) -> False
-  }
-}
-
 /// Check if loading.
 pub fn is_loading(remote: Remote(a)) -> Bool {
   case remote {
@@ -79,16 +69,6 @@ pub fn is_loading(remote: Remote(a)) -> Bool {
     NotAsked -> False
     Loaded(_) -> False
     Failed(_) -> False
-  }
-}
-
-/// Check if failed.
-pub fn is_failed(remote: Remote(a)) -> Bool {
-  case remote {
-    Failed(_) -> True
-    NotAsked -> False
-    Loading -> False
-    Loaded(_) -> False
   }
 }
 

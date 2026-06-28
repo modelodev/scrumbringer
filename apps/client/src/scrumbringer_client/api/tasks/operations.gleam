@@ -321,24 +321,3 @@ fn optional_int(value: option.Option(Int)) -> json.Json {
     option.None -> json.null()
   }
 }
-
-/// Update hierarchy assignment for a task.
-pub fn update_task_hierarchy(
-  task_id: Int,
-  parent_card_id: option.Option(Int),
-  to_msg: fn(ApiResult(Task)) -> msg,
-) -> Effect(msg) {
-  let fields = case parent_card_id {
-    option.Some(id) -> [#("parent_card_id", json.int(id))]
-    option.None -> [#("parent_card_id", json.null())]
-  }
-  let body = json.object(fields)
-  let decoder = decode.field("task", decoders.task_decoder(), decode.success)
-  core.request(
-    core.Patch,
-    "/api/v1/tasks/" <> int.to_string(task_id),
-    option.Some(body),
-    decoder,
-    to_msg,
-  )
-}

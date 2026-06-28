@@ -331,8 +331,3 @@ pub fn search(query: String) -> List(CatalogIcon) {
       })
   }
 }
-
-/// Get the default fallback icon ID.
-pub fn fallback_id() -> String {
-  "question-mark-circle"
-}

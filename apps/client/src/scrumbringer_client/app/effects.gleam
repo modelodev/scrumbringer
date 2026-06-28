@@ -35,19 +35,7 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/storage
-import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/toast
-
-// =============================================================================
-// Theme Persistence Effects
-// =============================================================================
-
-/// Save theme preference to localStorage.
-///
-/// Persists the user's theme choice for future sessions.
-pub fn save_theme(t: Theme) -> Effect(msg) {
-  effect.from(fn(_dispatch) { theme.save_to_storage(t) })
-}
 
 // =============================================================================
 // Pool Preferences Persistence Effects

@@ -4,7 +4,6 @@
 //// used across all API endpoints.
 
 import envoy
-import gleam/http
 import gleam/http/cookie
 import gleam/http/response
 import gleam/int
@@ -72,14 +71,6 @@ pub fn clear_auth_cookies(response: wisp.Response) -> wisp.Response {
   response
   |> response.expire_cookie(cookie_session_name, session_cookie_attributes())
   |> response.expire_cookie(csrf.cookie_csrf_name, csrf_cookie_attributes())
-}
-
-/// Returns True for HTTP methods that modify state.
-pub fn is_mutating_method(method: http.Method) -> Bool {
-  case method {
-    http.Post | http.Put | http.Patch | http.Delete -> True
-    _ -> False
-  }
 }
 
 /// Check if we should use secure cookies (default: True).

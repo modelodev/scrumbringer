@@ -271,10 +271,6 @@ pub fn execution_outcome_suppression_reason_name(
   automation.rule_execution_suppression_reason_name(outcome)
 }
 
-pub fn rule_suppression_reason_name(reason: RuleSuppressionReason) -> String {
-  automation.rule_suppression_reason_to_string(reason)
-}
-
 /// Pagination info.
 pub type Pagination {
   Pagination(limit: Int, offset: Int, total: Int)

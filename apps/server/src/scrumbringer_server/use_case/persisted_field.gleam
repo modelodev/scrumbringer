@@ -5,7 +5,6 @@
 //// unexpected data shape" pattern.
 
 import gleam/dynamic/decode
-import gleam/option.{type Option, None, Some}
 import pog
 import scrumbringer_server/use_case/service_error.{type ServiceError, Unexpected}
 
@@ -17,21 +16,6 @@ pub fn required(
   case parse(value) {
     Ok(parsed) -> Ok(parsed)
     Error(_) -> Error(Unexpected(message <> ": " <> value))
-  }
-}
-
-pub fn optional_blank(
-  value: String,
-  parse: fn(String) -> Result(parsed, error),
-  message: String,
-) -> Result(Option(parsed), ServiceError) {
-  case value {
-    "" -> Ok(None)
-    other ->
-      case required(other, parse, message) {
-        Ok(parsed) -> Ok(Some(parsed))
-        Error(error) -> Error(error)
-      }
   }
 }
 

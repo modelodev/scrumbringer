@@ -45,13 +45,6 @@ pub fn label_key(visibility: PoolVisibility) -> i18n_text.Text {
   }
 }
 
-pub fn allows_blocked(visibility: PoolVisibility) -> Bool {
-  case visibility {
-    AllOpen | Blocked -> True
-    ReadyToClaim -> False
-  }
-}
-
 pub fn matches(visibility: PoolVisibility, blocked_count: Int) -> Bool {
   case visibility {
     AllOpen -> True

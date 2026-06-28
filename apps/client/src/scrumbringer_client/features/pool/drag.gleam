@@ -82,13 +82,6 @@ pub fn offset_resolved(
   member_pool.Model(..model, member_drag: updated)
 }
 
-pub fn is_idle(model: member_pool.Model) -> Bool {
-  case model.member_drag {
-    member_pool.DragIdle -> True
-    _ -> False
-  }
-}
-
 pub fn is_pending(model: member_pool.Model) -> Bool {
   case model.member_drag {
     member_pool.DragPending(_) -> True

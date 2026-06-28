@@ -68,34 +68,6 @@ pub fn depth_scope_codec() -> decode.Decoder(DepthScope) {
   }
 }
 
-pub fn card_scope_codec() -> decode.Decoder(CardScope) {
-  use raw <- decode.field("scope", decode.string)
-  case raw {
-    "card" -> decode.success(CardOnly)
-    "children" -> decode.success(CardChildren)
-    "descendants" -> decode.success(CardDescendants)
-    _ -> decode.failure(CardOnly, "CardScope")
-  }
-}
-
-pub fn card_create_request_codec() -> decode.Decoder(CardCreateRequest) {
-  use raw <- decode.then(card_create_raw_codec())
-  case raw_to_create_request(raw) {
-    Ok(request) -> decode.success(request)
-    Error(_) ->
-      decode.failure(
-        CardCreateRequest(
-          title: "",
-          description: None,
-          color: None,
-          parent_card_id: None,
-          due_date: None,
-        ),
-        "CardCreateRequest",
-      )
-  }
-}
-
 fn card_create_raw_codec() {
   use title <- decode.field("title", decode.string)
   use description <- decode.optional_field("description", "", decode.string)
@@ -136,22 +108,6 @@ pub fn card_move_request_codec() -> decode.Decoder(CardMoveRequest) {
     decode.optional(decode.int),
   )
   decode.success(CardMoveRequest(parent_card_id: parent_card_id))
-}
-
-pub fn card_close_request_codec() -> decode.Decoder(CardCloseRequest) {
-  use reason <- decode.optional_field(
-    "reason",
-    "manually_closed",
-    decode.string,
-  )
-  case parse_closed_reason(reason) {
-    Ok(parsed_reason) -> decode.success(CardCloseRequest(reason: parsed_reason))
-    Error(_) ->
-      decode.failure(
-        CardCloseRequest(reason: card_state.ManuallyClosed),
-        "CardClosedReason",
-      )
-  }
 }
 
 pub fn decode_card_create(

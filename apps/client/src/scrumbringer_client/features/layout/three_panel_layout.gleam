@@ -74,14 +74,6 @@ pub fn with_right_panel(
   LayoutConfig(..config, right_panel: content)
 }
 
-/// Adds extra attributes to the layout container
-pub fn with_attrs(
-  config: LayoutConfig(msg),
-  attrs: List(Attribute(msg)),
-) -> LayoutConfig(msg) {
-  LayoutConfig(..config, extra_attrs: attrs)
-}
-
 // =============================================================================
 // Rendering
 // =============================================================================

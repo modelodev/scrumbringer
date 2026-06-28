@@ -120,7 +120,6 @@ import scrumbringer_client/features/layout/right_panel_data
 import scrumbringer_client/features/layout/three_panel_layout
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/helpers/options as helpers_options
-import scrumbringer_client/helpers/time as helpers_time
 import scrumbringer_client/i18n/i18n
 
 // =============================================================================
@@ -413,19 +412,6 @@ fn auth_config(model: client_state.Model) -> auth_view.Config(client_state.Msg) 
     on_reset_password: fn(msg) {
       client_state.auth_msg(auth_messages.ResetPassword(msg))
     },
-  )
-}
-
-/// Test helper for now_working elapsed time calculation.
-pub fn now_working_elapsed_from_ms_for_test(
-  accumulated_s: Int,
-  started_ms: Int,
-  server_now_ms: Int,
-) -> String {
-  helpers_time.now_working_elapsed_from_ms(
-    accumulated_s,
-    started_ms,
-    server_now_ms,
   )
 }
 

@@ -371,21 +371,6 @@ pub fn add_icon_button_with_size_and_testid(
   )
 }
 
-/// Creates a settings button with cog icon.
-pub fn settings_button(title: String, on_click: msg) -> Element(msg) {
-  icon_button(
-    title,
-    on_click,
-    icons.Cog,
-    ui_button.Neutral,
-    SizeXs,
-    False,
-    "",
-    None,
-    None,
-  )
-}
-
 /// Creates a settings button with a data-testid attribute.
 pub fn settings_button_with_testid(
   title: String,
@@ -418,21 +403,6 @@ pub fn edit_delete_row(
   ])
 }
 
-/// Creates a row with edit, delete and data-testid attributes.
-pub fn edit_delete_row_with_testid(
-  edit_title edit_title: String,
-  edit_click edit_click: msg,
-  edit_testid edit_testid: String,
-  delete_title delete_title: String,
-  delete_click delete_click: msg,
-  delete_testid delete_testid: String,
-) -> Element(msg) {
-  html.div([], [
-    edit_button_with_testid(edit_title, edit_click, edit_testid),
-    delete_button_with_testid(delete_title, delete_click, delete_testid),
-  ])
-}
-
 /// Creates a button to add a new task to a specific card.
 pub fn create_task_in_card_button(title: String, on_click: msg) -> Element(msg) {
   icon_button(
@@ -446,13 +416,4 @@ pub fn create_task_in_card_button(title: String, on_click: msg) -> Element(msg) 
     None,
     None,
   )
-}
-
-/// Creates a create-task-in-card button with custom size.
-pub fn create_task_in_card_button_with_size(
-  title: String,
-  on_click: msg,
-  size: ButtonSize,
-) -> Element(msg) {
-  add_button_with_size(title, on_click, size)
 }

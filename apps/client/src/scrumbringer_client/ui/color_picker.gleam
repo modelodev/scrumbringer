@@ -69,20 +69,6 @@ pub fn css_var(color: CardColor) -> String {
   "var(--sb-card-" <> card.color_to_string(color) <> ")"
 }
 
-/// Get a color circle emoji for display in selects/text.
-pub fn color_emoji(color: CardColor) -> String {
-  case color {
-    card.Gray -> "⚪"
-    card.Red -> "🔴"
-    card.Orange -> "🟠"
-    card.Yellow -> "🟡"
-    card.Green -> "🟢"
-    card.Blue -> "🔵"
-    card.Purple -> "🟣"
-    card.Pink -> "🩷"
-  }
-}
-
 /// Get the i18n key for a color.
 pub fn color_i18n_key(color: CardColor) -> i18n_text.Text {
   case color {

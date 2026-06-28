@@ -30,25 +30,6 @@ pub type DecodeError {
   InvalidClosedReason
 }
 
-pub fn close_task_request_codec() -> decode.Decoder(CloseTaskRequest) {
-  use version <- decode.field("version", decode.int)
-  use reason <- decode.optional_field(
-    "reason",
-    "manually_closed",
-    decode.string,
-  )
-
-  case parse_closed_reason(reason) {
-    Ok(parsed_reason) ->
-      decode.success(CloseTaskRequest(version: version, reason: parsed_reason))
-    Error(_) ->
-      decode.failure(
-        CloseTaskRequest(version: version, reason: ManuallyClosed),
-        "TaskClosedReason",
-      )
-  }
-}
-
 pub fn create_dependency_request_codec() -> decode.Decoder(
   CreateDependencyRequest,
 ) {

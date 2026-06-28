@@ -1,7 +1,5 @@
 //// Shared admin error feedback derivations.
 
-import lustre/effect.{type Effect}
-
 import domain/api_error.{type ApiError}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -19,15 +17,5 @@ pub fn forbidden_feedback(locale: Locale, err: ApiError) -> ForbiddenFeedback {
         warning: True,
       )
     _ -> ForbiddenFeedback(message: err.message, warning: False)
-  }
-}
-
-pub fn warning_effect(
-  feedback: ForbiddenFeedback,
-  on_warning_toast: fn(String) -> Effect(msg),
-) -> Effect(msg) {
-  case feedback.warning {
-    True -> on_warning_toast(feedback.message)
-    False -> effect.none()
   }
 }

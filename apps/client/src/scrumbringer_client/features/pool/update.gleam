@@ -1185,10 +1185,3 @@ fn close_card_dialog_focus_target(
 ) -> opt.Option(String) {
   opt.None
 }
-
-/// Test helper: exposes close-card-dialog focus target resolution.
-pub fn close_card_dialog_focus_target_for_test(
-  model: client_state.Model,
-) -> opt.Option(String) {
-  close_card_dialog_focus_target(model)
-}

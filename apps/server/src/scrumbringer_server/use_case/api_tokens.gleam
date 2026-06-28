@@ -325,10 +325,6 @@ pub fn parse_scope(
   })
 }
 
-pub fn supported_scopes() -> List(api_token_scope.Scope) {
-  api_token_scope.supported()
-}
-
 pub fn supported_scope_strings() -> List(String) {
   api_token_scope.supported_strings()
 }
