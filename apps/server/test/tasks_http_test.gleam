@@ -12,11 +12,7 @@ import support/assertions as expect
 import wisp/simulate
 
 pub fn task_types_list_sorted_by_name_test() {
-  let app = fx.require_app()
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
+  let #(_, handler, session, project_id) = fx.require_project_context("Core")
 
   fx.require_task_type(handler, session, project_id, "Zulu", "bug-ant")
   fx.require_task_type(handler, session, project_id, "Alpha", "bolt")
@@ -86,12 +82,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn tasks_list_filters_sorting_and_q_search_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
+  let #(db, handler, session, project_id) = fx.require_project_context("Core")
 
   let cap1 = insert_capability(db, project_id, "Frontend")
   let cap2 = insert_capability(db, project_id, "Backend")
@@ -181,14 +172,8 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
 }
 
 pub fn tasks_list_includes_task_contract_fields_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
@@ -222,14 +207,8 @@ pub fn tasks_list_includes_task_contract_fields_test() {
 }
 
 pub fn task_get_includes_task_contract_fields_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -249,14 +228,8 @@ pub fn task_get_includes_task_contract_fields_test() {
 }
 
 pub fn task_get_includes_ongoing_by_when_active_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -368,14 +341,8 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 }
 
 pub fn audit_events_persist_for_lifecycle_actions_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let admin_id =
     fx.require_query_int(
@@ -403,14 +370,8 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
 }
 
 pub fn delete_task_without_operational_history_removes_task_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
   let task_id =
     fx.require_task(handler, session, project_id, "Clean", "", 3, type_id)
 
@@ -420,14 +381,8 @@ pub fn delete_task_without_operational_history_removes_task_test() {
 }
 
 pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
   let task_id =
     fx.require_task(handler, session, project_id, "Claimed", "", 3, type_id)
 
@@ -441,14 +396,8 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
 }
 
 pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
   let noted_task =
     fx.require_task(handler, session, project_id, "Noted", "", 3, type_id)
   let blocked_task =
@@ -473,14 +422,8 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
 }
 
 pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Editable Available")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Editable Available")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Editable", "", 3, type_id)
@@ -502,12 +445,8 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
 }
 
 pub fn release_all_tasks_for_member_success_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Bulk Release")
+  let #(db, handler, session, project_id) =
+    fx.require_project_context("Bulk Release")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -595,13 +534,8 @@ pub fn release_all_tasks_for_member_success_test() {
 }
 
 pub fn release_all_tasks_for_member_forbidden_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id =
-    fx.require_project(handler, session, "Bulk Release Forbidden")
+  let #(db, handler, session, project_id) =
+    fx.require_project_context("Bulk Release Forbidden")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -634,12 +568,8 @@ pub fn release_all_tasks_for_member_forbidden_test() {
 }
 
 pub fn release_all_tasks_for_member_self_release_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Bulk Release Self")
+  let #(db, handler, session, project_id) =
+    fx.require_project_context("Bulk Release Self")
 
   let admin_id =
     fx.require_query_int(
@@ -683,238 +613,6 @@ pub fn release_all_tasks_for_member_not_found_test() {
   string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
-pub fn task_dependencies_reject_circular_dependency_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Deps")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
-
-  let task_a =
-    fx.require_task(handler, session, project_id, "Task A", "", 1, type_id)
-  let task_b =
-    fx.require_task(handler, session, project_id, "Task B", "", 1, type_id)
-
-  let dep_res =
-    fx.create_task_dependency_response(handler, session, task_a, task_b)
-  expect.expect_status(dep_res, 200)
-
-  let circular_res =
-    fx.create_task_dependency_response(handler, session, task_b, task_a)
-  expect.expect_status(circular_res, 422)
-  simulate.read_body(circular_res)
-  |> string.contains("Circular dependency detected")
-  |> expect.is_true
-}
-
-pub fn task_dependencies_reject_cross_project_dependency_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-
-  let project_one_id = fx.require_project(handler, session, "Deps One")
-  let project_two_id = fx.require_project(handler, session, "Deps Two")
-
-  let type_one_id =
-    fx.require_task_type(handler, session, project_one_id, "Bug", "bug-ant")
-  let type_two_id =
-    fx.require_task_type(handler, session, project_two_id, "Bug", "bug-ant")
-
-  let task_one =
-    fx.require_task(
-      handler,
-      session,
-      project_one_id,
-      "Task One",
-      "",
-      1,
-      type_one_id,
-    )
-  let task_two =
-    fx.require_task(
-      handler,
-      session,
-      project_two_id,
-      "Task Two",
-      "",
-      1,
-      type_two_id,
-    )
-
-  let cross_res =
-    fx.create_task_dependency_response(handler, session, task_one, task_two)
-  expect.expect_status(cross_res, 422)
-  simulate.read_body(cross_res)
-  |> string.contains("Dependency must be in same project")
-  |> expect.is_true
-}
-
-pub fn task_dependencies_reject_closed_dependency_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Deps Closed")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
-
-  let task_blocked =
-    fx.require_task(
-      handler,
-      session,
-      project_id,
-      "Task Blocked",
-      "",
-      1,
-      type_id,
-    )
-  let task_closed =
-    fx.require_task(handler, session, project_id, "Task Closed", "", 1, type_id)
-
-  let claim_status =
-    fx.claim_task_status(
-      handler,
-      session,
-      task_closed,
-      fx.task_version(db, task_closed),
-    )
-  claim_status |> expect.equal(200)
-
-  let close_status =
-    fx.close_task_status(
-      handler,
-      session,
-      task_closed,
-      fx.task_version(db, task_closed),
-    )
-  close_status |> expect.equal(200)
-
-  let closed_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_blocked) <> "/dependencies",
-    )
-    |> fx.with_auth(session)
-    |> simulate.json_body(
-      json.object([#("depends_on_task_id", json.int(task_closed))]),
-    )
-
-  let closed_res = handler(closed_req)
-  expect.expect_status(closed_res, 422)
-  simulate.read_body(closed_res)
-  |> string.contains("Dependency task is already closed")
-  |> expect.is_true
-}
-
-pub fn blocked_task_claim_returns_conflict_blocked_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Blocked Claim")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
-
-  let task_blocked =
-    fx.require_task(handler, session, project_id, "Blocked", "", 1, type_id)
-  let task_blocker =
-    fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
-
-  fx.create_task_dependency_status(handler, session, task_blocked, task_blocker)
-  |> expect.equal(200)
-
-  let claim_res =
-    fx.claim_task_response(
-      handler,
-      session,
-      task_blocked,
-      fx.task_version(db, task_blocked),
-    )
-
-  expect.expect_status(claim_res, 409)
-  simulate.read_body(claim_res)
-  |> string.contains("CONFLICT_BLOCKED")
-  |> expect.is_true
-  task_claimed_by(db, task_blocked) |> expect.equal(0)
-}
-
-pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Blocked Claim Closed")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
-
-  let task_blocked =
-    fx.require_task(handler, session, project_id, "Blocked", "", 1, type_id)
-  let task_blocker =
-    fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
-
-  fx.create_task_dependency_status(handler, session, task_blocked, task_blocker)
-  |> expect.equal(200)
-  fx.claim_task_status(
-    handler,
-    session,
-    task_blocker,
-    fx.task_version(db, task_blocker),
-  )
-  |> expect.equal(200)
-  fx.close_task_status(
-    handler,
-    session,
-    task_blocker,
-    fx.task_version(db, task_blocker),
-  )
-  |> expect.equal(200)
-
-  fx.claim_task_status(
-    handler,
-    session,
-    task_blocked,
-    fx.task_version(db, task_blocked),
-  )
-  |> expect.equal(200)
-}
-
-pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Blocked Claim Removed")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
-
-  let task_blocked =
-    fx.require_task(handler, session, project_id, "Blocked", "", 1, type_id)
-  let task_blocker =
-    fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
-
-  fx.create_task_dependency_status(handler, session, task_blocked, task_blocker)
-  |> expect.equal(200)
-  fx.delete_task_dependency_status(handler, session, task_blocked, task_blocker)
-  |> expect.equal(204)
-
-  fx.claim_task_status(
-    handler,
-    session,
-    task_blocked,
-    fx.task_version(db, task_blocked),
-  )
-  |> expect.equal(200)
-}
-
 pub fn task_dependencies_schema_indices_present_test() {
   let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -938,7 +636,7 @@ pub fn task_dependencies_schema_indices_present_test() {
 
 pub fn pool_includes_available_active_card_task_test() {
   let #(_, handler, session, project_id, type_id) =
-    ht08_project("HT08 Active Card Pool")
+    fx.require_task_project("HT08 Active Card Pool")
 
   fx.require_task(
     handler,
@@ -958,7 +656,7 @@ pub fn pool_includes_available_active_card_task_test() {
 
 pub fn pool_excludes_task_under_draft_card_test() {
   let #(db, handler, session, project_id, type_id) =
-    ht08_project("HT08 Draft Card")
+    fx.require_task_project("HT08 Draft Card")
   let draft_card = insert_card_state(db, project_id, "Draft", "draft")
 
   fx.require_task_with_card_full(
@@ -979,7 +677,7 @@ pub fn pool_excludes_task_under_draft_card_test() {
 
 pub fn pool_includes_task_under_active_card_test() {
   let #(db, handler, session, project_id, type_id) =
-    ht08_project("HT08 Active Card")
+    fx.require_task_project("HT08 Active Card")
   let active_card = insert_card_state(db, project_id, "Active", "active")
 
   fx.require_task_with_card_full(
@@ -1001,7 +699,7 @@ pub fn pool_includes_task_under_active_card_test() {
 
 pub fn dependency_blocks_available_and_claimed_tasks_test() {
   let #(db, handler, session, project_id, type_id) =
-    ht08_project("HT08 Blocked")
+    fx.require_task_project("HT08 Blocked")
   let blocked =
     fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
@@ -1043,7 +741,7 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
 
 pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
   let #(db, handler, session, project_id, type_id) =
-    ht08_project("HT08 Claimed Blocked Close")
+    fx.require_task_project("HT08 Claimed Blocked Close")
   let blocked =
     fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
@@ -1079,7 +777,7 @@ pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
 
 pub fn dependency_unblocks_when_dependency_closed_test() {
   let #(db, handler, session, project_id, type_id) =
-    ht08_project("HT08 Closed Dependency")
+    fx.require_task_project("HT08 Closed Dependency")
   let blocked =
     fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
@@ -1109,7 +807,7 @@ pub fn dependency_unblocks_when_dependency_closed_test() {
 
 pub fn delete_dependency_target_unblocks_task_test() {
   let #(db, handler, session, project_id, type_id) =
-    ht08_project("HT08 Delete Dependency")
+    fx.require_task_project("HT08 Delete Dependency")
   let blocked =
     fx.require_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
@@ -1125,7 +823,7 @@ pub fn delete_dependency_target_unblocks_task_test() {
 
 pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
   let #(db, handler, admin_session, project_id, type_id) =
-    ht08_project("HT08 Close Owner")
+    fx.require_task_project("HT08 Close Owner")
 
   let owner_id =
     fx.require_member_user(handler, db, "owner@example.com", "inv_owner")
@@ -1172,7 +870,8 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
 }
 
 pub fn dependency_would_create_cycle_is_rejected_test() {
-  let #(_, handler, session, project_id, type_id) = ht08_project("HT08 Cycle")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("HT08 Cycle")
   let task_a =
     fx.require_task(handler, session, project_id, "Task A", "", 3, type_id)
   let task_b =
@@ -1186,7 +885,7 @@ pub fn dependency_would_create_cycle_is_rejected_test() {
 
 pub fn cross_project_dependency_is_rejected_test() {
   let #(_db, handler, session, project_one_id, type_one_id) =
-    ht08_project("HT08 Cross One")
+    fx.require_task_project("HT08 Cross One")
   let project_two_id = fx.require_project(handler, session, "HT08 Cross Two")
   let type_two_id =
     fx.require_task_type(handler, session, project_two_id, "Bug", "bug-ant")
@@ -1218,7 +917,7 @@ pub fn cross_project_dependency_is_rejected_test() {
 
 pub fn pool_filters_by_user_capabilities_test() {
   let #(db, handler, admin_session, project_id, _) =
-    ht08_project("HT08 Capabilities")
+    fx.require_task_project("HT08 Capabilities")
   let frontend = insert_capability(db, project_id, "Frontend")
   let backend = insert_capability(db, project_id, "Backend")
   let frontend_type =
@@ -1274,14 +973,8 @@ pub fn pool_filters_by_user_capabilities_test() {
 }
 
 pub fn me_metrics_returns_counts_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -1343,14 +1036,8 @@ pub fn org_metrics_overview_requires_org_admin_test() {
 }
 
 pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -1517,12 +1204,8 @@ pub fn org_metrics_users_invalid_window_days_returns_422_test() {
 }
 
 pub fn tasks_list_requires_membership_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
+  let #(db, handler, _admin_session, project_id) =
+    fx.require_project_context("Core")
 
   fx.require_member_user(handler, db, "outsider@example.com", "inv_out")
   let outsider_session =
@@ -1535,14 +1218,8 @@ pub fn tasks_list_requires_membership_test() {
 }
 
 pub fn task_get_requires_membership_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Secret", "", 3, type_id)
@@ -1763,14 +1440,8 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 }
 
 pub fn patch_rejects_blank_title_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -1795,14 +1466,8 @@ pub fn patch_rejects_blank_title_test() {
 }
 
 pub fn me_work_session_start_pause_and_persist_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -1863,14 +1528,8 @@ pub fn me_work_session_start_pause_and_persist_test() {
 }
 
 pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -1926,14 +1585,8 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
 }
 
 pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let t1 = fx.require_task(handler, session, project_id, "T1", "", 3, type_id)
   let t2 = fx.require_task(handler, session, project_id, "T2", "", 3, type_id)
@@ -1966,14 +1619,8 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
 }
 
 pub fn me_work_session_start_returns_409_when_not_claimed_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: _db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -1985,14 +1632,8 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
 }
 
 pub fn me_work_session_clears_before_release_and_close_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, session, "Core")
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -2234,18 +1875,4 @@ fn insert_card_state(
     |> pog.execute(db)
 
   id
-}
-
-fn ht08_project(name: String) {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let session = fx.require_login_session(handler, "admin@example.com")
-
-  let project_id = fx.require_project(handler, session, name)
-  let type_id =
-    fx.require_task_type(handler, session, project_id, "Bug", "bug-ant")
-
-  #(db, handler, session, project_id, type_id)
 }

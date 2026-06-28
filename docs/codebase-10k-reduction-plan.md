@@ -2410,6 +2410,40 @@ Estado de ejecucion:
   - delta adicional: `-26` lineas mantenidas netas;
   - verificacion: `cd apps/client && gleam format src test && gleam test`
     (`1819 passed`).
+- Septimo pase de consolidacion de tests HTTP de servidor:
+  - eliminado un bloque antiguo de seis tests de dependencias/bloqueo en
+    `tasks_http_test.gleam` que duplicaba contratos ya cubiertos por los casos
+    HT08 posteriores: ciclo, dependencia cross-project, dependencia cerrada,
+    claim bloqueado, desbloqueo por cierre y desbloqueo por borrado;
+  - extraidos en `fixtures.gleam` los helpers estrechos
+    `require_project_context` y `require_task_project`, que solo centralizan
+    `app -> handler -> login admin -> project -> task type` y no esconden
+    autorizacion, asserts ni reglas de negocio;
+  - migrados usos repetidos en `tasks_http_test.gleam` manteniendo explicitos
+    los escenarios con miembros, permisos, varios proyectos o queries
+    temporales;
+  - delta adicional: `-429` lineas mantenidas netas;
+  - verificacion:
+    - `gleam format apps/server/test/fixtures.gleam apps/server/test/tasks_http_test.gleam`;
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el septimo pase:
+  - total Gleam actual en `apps/client/src`, `apps/client/test`,
+    `apps/server/src`, `apps/server/test`, `shared/src` y `shared/test`:
+    `198.672` lineas;
+  - `apps/server/src/scrumbringer_server/sql.gleam`: `9.174` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.342` lineas;
+  - reduccion real excluyendo `sql.gleam` en ambos extremos:
+    `204.438 -> 189.498`, es decir `-14.940` lineas mantenidas no generadas;
+  - conclusion: el objetivo base `-20k` aun no esta cerrado. Comparar
+    `189.498` contra el total original `214.014` sobreestima la reduccion
+    porque mezcla una medicion sin generado con una medicion que si lo incluye.
+  - decision sobre `sql.gleam`: no desversionarlo como atajo dentro de este
+    paquete. Hoy `make build`, `make ci` y `scripts/build-prod.sh` compilan
+    con `sql.gleam` ya presente tras checkout; quitarlo exigiria redisenar
+    build/CI para ejecutar Squirrel con DB disponible antes de compilar. Se
+    mantiene como candidato separado de alto impacto y riesgo medio/alto, no
+    como limpieza segura del tramo actual.
 
 ## Orden recomendado de ejecucion
 

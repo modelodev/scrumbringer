@@ -278,6 +278,24 @@ pub fn require_project(handler: Handler, session: Session, name: String) -> Int 
   create_project(handler, session, name) |> expect.ok
 }
 
+pub fn require_project_context(name: String) {
+  let app = require_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+  let session = require_login_session(handler, "admin@example.com")
+  let project_id = require_project(handler, session, name)
+
+  #(db, handler, session, project_id)
+}
+
+pub fn require_task_project(name: String) {
+  let #(db, handler, session, project_id) = require_project_context(name)
+  let type_id =
+    require_task_type(handler, session, project_id, "Bug", "bug-ant")
+
+  #(db, handler, session, project_id, type_id)
+}
+
 fn project_create_json(name: String) -> json.Json {
   json.object([
     #("name", json.string(name)),
