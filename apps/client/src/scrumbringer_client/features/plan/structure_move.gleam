@@ -39,20 +39,16 @@ pub fn moving_card(
   }
 }
 
-pub fn move_query(move_mode: member_pool.PlanMoveMode) -> String {
-  case move_mode {
-    member_pool.PlanMovingCard(_, query) -> query
-    member_pool.PlanNotMoving -> ""
-  }
-}
-
 pub fn search_state(
   cards: List(Card),
   tasks: List(Task),
   depth_names: List(scope_view.DepthName),
   move_mode: member_pool.PlanMoveMode,
 ) -> #(String, List(card_target.CardTargetOption)) {
-  let query = move_query(move_mode)
+  let query = case move_mode {
+    member_pool.PlanMovingCard(_, query) -> query
+    member_pool.PlanNotMoving -> ""
+  }
   let options = case moving_card(cards, move_mode) {
     Some(card) ->
       card_policy.move_destination_entries(card, cards, tasks)

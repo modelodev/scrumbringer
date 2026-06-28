@@ -32,9 +32,7 @@ pub fn selected_project(model: client_state.Model) -> Option(Project) {
 }
 
 /// Get the first active work session, if any.
-pub fn now_working_active_session(
-  model: client_state.Model,
-) -> Option(WorkSession) {
+fn now_working_active_session(model: client_state.Model) -> Option(WorkSession) {
   case model.member.metrics.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) -> Some(first)
     _ -> None

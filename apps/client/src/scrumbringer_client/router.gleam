@@ -380,7 +380,7 @@ fn query_option(query: String) -> Option(String) {
 // Team view helpers
 // =============================================================================
 
-pub fn format_team(
+fn format_team(
   view: Option(assignments_view_mode.AssignmentsViewMode),
 ) -> String {
   let base = "/org/team"

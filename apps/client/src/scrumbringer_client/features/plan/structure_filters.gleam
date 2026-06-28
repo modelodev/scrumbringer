@@ -110,7 +110,7 @@ pub fn is_collapsed(collapsed_card_ids: List(Int), card_id: Int) -> Bool {
   list.contains(collapsed_card_ids, card_id)
 }
 
-pub fn card_state_rank(card: Card) -> Int {
+fn card_state_rank(card: Card) -> Int {
   case card.state {
     Active -> 0
     Draft -> 1

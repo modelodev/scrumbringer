@@ -470,7 +470,7 @@ fn project_rule_execution_decoder() -> decode.Decoder(ProjectRuleExecution) {
 }
 
 /// Provides project execution history response decoder.
-pub fn project_rule_executions_response_decoder() -> decode.Decoder(
+fn project_rule_executions_response_decoder() -> decode.Decoder(
   ProjectRuleExecutionsResponse,
 ) {
   use project_id <- decode.field("project_id", decode.int)

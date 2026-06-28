@@ -1073,6 +1073,18 @@ Estado de ejecucion:
     `api_tokens.created_token_payload_decoder` pasan a privados porque solo son
     callbacks internos del modulo;
   - delta adicional: `-22` lineas mantenidas y cuatro exports menos.
+- Micro-pase adicional de superficie publica accidental cliente:
+  - retirados wrappers triviales sin consumidor externo:
+    `api_tokens.default_scopes`, `theme.encode_storage` y
+    `plan/structure_move.move_query`;
+  - pasan a privados helpers usados solo dentro de su modulo:
+    `rule_metrics.project_rule_executions_response_decoder`,
+    `selectors.now_working_active_session`, `urgency.age_severity`,
+    `urgency.max_severity`, `structure_filters.card_state_rank`,
+    `mutation_state.restore_snapshot`, `show_editor.permission_hint`,
+    `show_editor.view_intro`, `cards/policy.move_destinations_with_tasks`,
+    `locale.detect` y `router.format_team`;
+  - delta adicional: `-15` lineas mantenidas y once exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1086,10 +1098,12 @@ Estado de ejecucion:
     `1887 passed` tras retirar `decode_optional_int_attribute` y privatizar
     helpers cliente sin consumidores externos;
     `1887 passed` tras retirar wrappers de notas con URL y privatizar decoders
-    de `api_tokens`);
+    de `api_tokens`;
+    `1887 passed` tras retirar wrappers triviales y privatizar helpers cliente
+    sin consumidores externos);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.442` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.457` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

@@ -59,7 +59,7 @@ fn can_edit_task(config: Config(msg), current_task: Task) -> Bool {
   show_permissions.can_edit(config.current_user_id, current_task)
 }
 
-pub fn permission_hint(
+fn permission_hint(
   config: Config(msg),
   current_task: Task,
 ) -> opt.Option(String) {
@@ -151,7 +151,7 @@ fn view_edit_section(
   ])
 }
 
-pub fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
+fn view_intro(config: Config(msg), current_task: Task) -> Element(msg) {
   let can_edit = can_edit_task(config, current_task)
 
   div([attribute.class("task-details-intro")], [

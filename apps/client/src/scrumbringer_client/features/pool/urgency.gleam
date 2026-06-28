@@ -36,7 +36,7 @@ pub fn shake_class(
   ))
 }
 
-pub fn age_severity(age_days: Int) -> Severity {
+fn age_severity(age_days: Int) -> Severity {
   case age_days {
     d if d < 9 -> Neutral
     d if d < 18 -> Low
@@ -70,7 +70,7 @@ fn due_date_severity_for_dates(
   }
 }
 
-pub fn max_severity(a: Severity, b: Severity) -> Severity {
+fn max_severity(a: Severity, b: Severity) -> Severity {
   case int.compare(rank(a), rank(b)) {
     order.Lt -> b
     _ -> a

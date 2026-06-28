@@ -37,13 +37,9 @@ pub fn default_token_form() -> Form {
     name: "",
     integration: "",
     project_id: option.None,
-    scopes: default_scopes(),
+    scopes: [api_token_scope.ProjectsRead, api_token_scope.TasksRead],
     expires_at: "",
   )
-}
-
-pub fn default_scopes() -> List(api_token_scope.Scope) {
-  [api_token_scope.ProjectsRead, api_token_scope.TasksRead]
 }
 
 pub fn default_model() -> Model {

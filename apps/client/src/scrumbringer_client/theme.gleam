@@ -44,11 +44,6 @@ pub fn parse(value: String) -> Result(Theme, ThemeParseError) {
   }
 }
 
-/// Encodes a theme for storage.
-pub fn encode_storage(theme: Theme) -> String {
-  serialize(theme)
-}
-
 /// Decodes a stored theme value with explicit invalid state.
 pub fn decode_storage(value: String) -> ThemeStorage {
   case parse(value) {
@@ -98,7 +93,7 @@ fn stored_theme_or_default(stored: ThemeStorage) -> Theme {
 
 /// Saves the theme preference to localStorage.
 pub fn save_to_storage(theme: Theme) -> Nil {
-  local_storage_set(storage_key, encode_storage(theme))
+  local_storage_set(storage_key, serialize(theme))
 }
 
 /// Returns the CSS custom property values for a theme.

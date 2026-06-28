@@ -96,7 +96,7 @@ pub fn confirm_task(model: member_pool.Model, task: Task) -> member_pool.Model {
   )
 }
 
-pub fn restore_snapshot(model: member_pool.Model) -> member_pool.Model {
+fn restore_snapshot(model: member_pool.Model) -> member_pool.Model {
   case model.member_tasks_snapshot {
     opt.Some(tasks) -> member_pool.Model(..model, member_tasks: Loaded(tasks))
     opt.None -> model

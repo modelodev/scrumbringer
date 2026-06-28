@@ -168,7 +168,7 @@ pub fn move_to_root_blocked_reason(card: Card) -> Option(MoveBlockedReason) {
   }
 }
 
-pub fn move_destinations_with_tasks(
+fn move_destinations_with_tasks(
   card: Card,
   cards: List(Card),
   tasks: List(Task),

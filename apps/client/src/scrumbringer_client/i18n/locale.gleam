@@ -69,7 +69,7 @@ fn navigator_language_ffi() -> String {
 }
 
 /// Detects the user's preferred locale from the browser.
-pub fn detect() -> Locale {
+fn detect() -> Locale {
   navigator_language_ffi()
   |> normalize_language
 }
