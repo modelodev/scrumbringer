@@ -418,6 +418,12 @@ Estado de ejecucion:
   `fixtures.create_child_card` para setup jerarquico de cards, retirando el
   helper local duplicado y manteniendo explicitos los nombres que cada escenario
   necesita para el contrato.
+- Micro-pase de acciones HTTP de card: `fixtures.gleam` expone
+  `activate_card_response` y `close_card_response`, y `cards_http_test`,
+  `activity_http_test` y `integration/rules_trigger_on_close_test` dejan de
+  construir localmente los mismos requests de activacion/cierre. La reduccion
+  neta es pequena por el coste del helper compartido, pero concentra el contrato
+  HTTP reutilizable y evita drift entre tests.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -432,6 +438,7 @@ Estado de ejecucion:
   - invite-link insert local,
   - query helpers locales,
   - helper local de child card,
+  - requests locales repetidos de activar/cerrar card,
   - FFI local de `os.getenv`.
 - Delta por archivo:
   - `org_invites_http_test.gleam`: `-193` lineas netas;
@@ -447,8 +454,9 @@ Estado de ejecucion:
   - `tasks_http_test.gleam` primera pasada: `-186` lineas netas;
   - `notes_and_positions_http_test.gleam` primera pasada: `-147` lineas netas;
   - `cards_http_test.gleam` pase child-card fixture: `-18` lineas netas;
+  - acciones HTTP compartidas de card en tests: `-13` lineas netas;
   - `fixtures.gleam`: `+45` lineas netas;
-  - total parcial WP-01: `-3.290` lineas netas mantenidas.
+  - total parcial WP-01: `-3.303` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).

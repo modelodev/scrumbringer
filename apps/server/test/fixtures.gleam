@@ -781,15 +781,7 @@ pub fn activate_card(
   session: Session,
   card_id: Int,
 ) -> Result(Nil, String) {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
-      )
-      |> with_auth(session)
-      |> simulate.json_body(json.object([])),
-    )
+  let res = activate_card_response(handler, session, card_id)
 
   case res.status {
     200 -> Ok(Nil)
@@ -805,12 +797,44 @@ pub fn activate_card(
   }
 }
 
+pub fn activate_card_response(
+  handler: Handler,
+  session: Session,
+  card_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
+    )
+    |> with_auth(session)
+    |> simulate.json_body(json.object([])),
+  )
+}
+
 pub fn require_activate_card(
   handler: Handler,
   session: Session,
   card_id: Int,
 ) -> Nil {
   activate_card(handler, session, card_id) |> expect.ok
+}
+
+pub fn close_card_response(
+  handler: Handler,
+  session: Session,
+  card_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/close",
+    )
+    |> with_auth(session)
+    |> simulate.json_body(
+      json.object([#("reason", json.string("manually_closed"))]),
+    ),
+  )
 }
 
 /// Create a task associated with a card and return its ID.

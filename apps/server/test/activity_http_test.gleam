@@ -104,7 +104,8 @@ pub fn card_activity_includes_descendant_task_activity_items_test() {
       "Fix callback",
     )
 
-  let activate_res = activate_card(handler, session, parent_card_id)
+  let activate_res =
+    fixtures.activate_card_response(handler, session, parent_card_id)
   expect.expect_status(activate_res, 200)
 
   let res =
@@ -461,21 +462,6 @@ fn card_note_pin(
         <> "/pin",
     )
     |> fixtures.with_auth(session),
-  )
-}
-
-fn activate_card(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  card_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(json.object([])),
   )
 }
 

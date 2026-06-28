@@ -29,21 +29,6 @@ fn create_card_req(
   )
 }
 
-fn activate_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  card_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(json.object([])),
-  )
-}
-
 fn claim_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: fixtures.Session,
@@ -72,23 +57,6 @@ fn close_task(
     )
     |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("version", json.int(version))])),
-  )
-}
-
-fn close_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  card_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/close",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(
-      json.object([#("reason", json.string("manually_closed"))]),
-    ),
   )
 }
 
@@ -316,7 +284,7 @@ pub fn activate_card_cascades_and_reports_descendant_pool_impact_test() {
       "Leaf task",
     )
 
-  let res = activate_card(handler, session, root_id)
+  let res = fixtures.activate_card_response(handler, session, root_id)
 
   expect.expect_status(res, 200)
   string.contains(simulate.read_body(res), "\"pool_impact\":1")
@@ -359,10 +327,13 @@ pub fn close_card_blocks_claimed_descendant_task_test() {
       "Claimed leaf task",
     )
 
-  expect.expect_status(activate_card(handler, session, root_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, root_id),
+    200,
+  )
   expect.expect_status(claim_task(handler, session, task_id), 200)
 
-  let res = close_card(handler, session, root_id)
+  let res = fixtures.close_card_response(handler, session, root_id)
 
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CARD_HAS_CLAIMED_DESCENDANT")
@@ -389,8 +360,11 @@ pub fn close_card_closes_available_descendant_tasks_test() {
       "Available task",
     )
 
-  expect.expect_status(activate_card(handler, session, root_id), 200)
-  let res = close_card(handler, session, root_id)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, root_id),
+    200,
+  )
+  let res = fixtures.close_card_response(handler, session, root_id)
 
   expect.expect_status(res, 200)
   let assert Ok(task_state) =
@@ -430,8 +404,11 @@ pub fn activate_card_rejects_closed_card_test() {
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Closed card")
 
-  expect.expect_status(close_card(handler, session, card_id), 200)
-  let res = activate_card(handler, session, card_id)
+  expect.expect_status(
+    fixtures.close_card_response(handler, session, card_id),
+    200,
+  )
+  let res = fixtures.activate_card_response(handler, session, card_id)
 
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CARD_CLOSED") |> expect.is_true
@@ -443,7 +420,10 @@ pub fn activate_empty_card_exposes_persisted_active_state_test() {
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Empty active card")
 
-  expect.expect_status(activate_card(handler, session, card_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, card_id),
+    200,
+  )
   let res =
     handler(
       simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(card_id))
@@ -463,7 +443,10 @@ pub fn create_task_rejects_closed_card_test() {
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Closed card")
 
-  expect.expect_status(close_card(handler, session, card_id), 200)
+  expect.expect_status(
+    fixtures.close_card_response(handler, session, card_id),
+    200,
+  )
   let res =
     create_task_with_card_response(
       handler,
@@ -570,7 +553,7 @@ pub fn draft_card_task_enters_pool_when_card_activates_test() {
     )
   pool_time_before |> expect.equal("")
 
-  let activate_res = activate_card(handler, session, card_id)
+  let activate_res = fixtures.activate_card_response(handler, session, card_id)
   expect.expect_status(activate_res, 200)
 
   let assert Ok(pool_time_after) =
@@ -606,7 +589,10 @@ pub fn claim_task_rejects_draft_card_task_until_activation_test() {
   string.contains(simulate.read_body(draft_claim), "TASK_CARD_NOT_ACTIVE")
   |> expect.is_true
 
-  expect.expect_status(activate_card(handler, session, card_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, card_id),
+    200,
+  )
   expect.expect_status(claim_task(handler, session, task_id), 200)
 }
 
@@ -630,7 +616,10 @@ pub fn close_task_rolls_up_direct_parent_cards_test() {
       "Leaf task",
     )
 
-  expect.expect_status(activate_card(handler, session, root_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, root_id),
+    200,
+  )
   expect.expect_status(claim_task(handler, session, task_id), 200)
   expect.expect_status(close_task(handler, session, task_id, 2), 200)
 
@@ -700,7 +689,10 @@ pub fn close_task_does_not_roll_up_when_child_card_stays_open_test() {
       "Leaf task",
     )
 
-  expect.expect_status(activate_card(handler, session, root_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, root_id),
+    200,
+  )
   expect.expect_status(claim_task(handler, session, task_id), 200)
   expect.expect_status(close_task(handler, session, task_id, 2), 200)
 
@@ -781,7 +773,10 @@ pub fn move_card_rejects_closed_destination_test() {
   let assert Ok(child_id) =
     fixtures.create_child_card(handler, session, project_id, root_a_id, "Child")
 
-  expect.expect_status(close_card(handler, session, root_b_id), 200)
+  expect.expect_status(
+    fixtures.close_card_response(handler, session, root_b_id),
+    200,
+  )
   let res = move_card(handler, session, child_id, root_b_id)
 
   expect.expect_status(res, 409)
@@ -989,7 +984,10 @@ pub fn delete_card_conflict_when_operational_history_exists_test() {
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Activated card")
 
-  expect.expect_status(activate_card(handler, session, card_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, card_id),
+    200,
+  )
   let res =
     handler(
       simulate.request(http.Delete, "/api/v1/cards/" <> int.to_string(card_id))

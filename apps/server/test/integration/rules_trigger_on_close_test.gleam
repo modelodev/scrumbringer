@@ -17,43 +17,10 @@ import gleeunit
 import pog
 import scrumbringer_server
 import support/assertions as expect
-import wisp
 import wisp/simulate
 
 pub fn main() {
   gleeunit.main()
-}
-
-fn activate_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  card_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(json.object([])),
-  )
-}
-
-fn close_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  card_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/close",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(
-      json.object([#("reason", json.string("manually_closed"))]),
-    ),
-  )
 }
 
 // =============================================================================
@@ -811,7 +778,10 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
 
   let assert Ok(root_card_id) =
     fixtures.create_card(handler, session, project_id, "Root activation")
-  expect.expect_status(activate_card(handler, session, root_card_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, root_card_id),
+    200,
+  )
 
   let assert Ok(activation_count) =
     fixtures.query_int(
@@ -823,7 +793,10 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
 
   let assert Ok(root_close_id) =
     fixtures.create_card(handler, session, project_id, "Root close mismatch")
-  expect.expect_status(close_card(handler, session, root_close_id), 200)
+  expect.expect_status(
+    fixtures.close_card_response(handler, session, root_close_id),
+    200,
+  )
 
   let assert Ok(close_mismatch_count) =
     fixtures.query_int(
@@ -843,7 +816,10 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
       parent_card_id,
       "Child",
     )
-  expect.expect_status(close_card(handler, session, child_card_id), 200)
+  expect.expect_status(
+    fixtures.close_card_response(handler, session, child_card_id),
+    200,
+  )
 
   let assert Ok(close_match_count) =
     fixtures.query_int(
@@ -894,7 +870,10 @@ pub fn close_task_with_card_creates_child_tasks_with_same_card_test() {
     )
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Feature Card")
-  expect.expect_status(activate_card(handler, session, card_id), 200)
+  expect.expect_status(
+    fixtures.activate_card_response(handler, session, card_id),
+    200,
+  )
 
   // Create workflow with rule and template
   let assert Ok(workflow_id) =
