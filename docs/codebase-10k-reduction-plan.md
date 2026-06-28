@@ -959,8 +959,8 @@ Estado de ejecucion:
   - `insert_project_db`;
   - `insert_member_db`.
 - Se mantuvieron helpers publicos con consumidores reales o uso interno
-  justificado, como `insert_user_db`, `extract_session`,
-  `task_trigger_state_with_card` y `card_trigger_state_full`.
+  justificado, como `insert_user_db`; los wrappers usados solo dentro del
+  modulo quedan privados o se eliminan en micro-pases posteriores.
 - Delta del pase: `-108` lineas mantenidas.
 - Verificacion:
   - `rg` de los simbolos retirados en `apps/server/test`, `apps/server/src`,
@@ -1011,13 +1011,20 @@ Estado de ejecucion:
   - retirados `ToastMsg`, `ConsumeError`, `TaskCreationSource` y
     `RuleTriggerSource`; no tenian constructores ni firmas consumidoras;
   - delta adicional: `-19` lineas mantenidas.
+- Micro-pase adicional de fixtures server:
+  - `extract_session` pasa a ser privado porque solo se consume dentro de
+    `fixtures.gleam`;
+  - eliminados `task_trigger_state_with_card` y `card_trigger_state_full`, dos
+    wrappers publicos sin consumidores externos y con un unico consumidor
+    interno;
+  - delta adicional: `-46` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
     (`1912 passed`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-796` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-842` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

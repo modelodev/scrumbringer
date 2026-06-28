@@ -141,9 +141,7 @@ pub fn reset_database(db: pog.Connection) -> Result(Nil, String) {
 }
 
 /// Extract session and CSRF tokens from response headers.
-pub fn extract_session(
-  headers: List(#(String, String)),
-) -> Result(Session, String) {
+fn extract_session(headers: List(#(String, String))) -> Result(Session, String) {
   case
     find_cookie_value(headers, "sb_session"),
     find_cookie_value(headers, "sb_csrf")
@@ -1201,29 +1199,6 @@ pub fn task_trigger_state(
   to_state: task_state.TaskExecutionState,
   task_type_id: Int,
 ) -> rules_engine.StateChange {
-  task_trigger_state_with_card(
-    task_id,
-    project_id,
-    org_id,
-    user_id,
-    from_state,
-    to_state,
-    task_type_id,
-    None,
-  )
-}
-
-/// Create a StateChange for a task resource with card_id.
-pub fn task_trigger_state_with_card(
-  task_id: Int,
-  project_id: Int,
-  org_id: Int,
-  user_id: Int,
-  from_state: Option(task_state.TaskExecutionState),
-  to_state: task_state.TaskExecutionState,
-  task_type_id: Int,
-  card_id: Option(Int),
-) -> rules_engine.StateChange {
   task_trigger_state_full(
     task_id,
     project_id,
@@ -1233,7 +1208,7 @@ pub fn task_trigger_state_with_card(
     to_state,
     task_type_id,
     True,
-    card_id,
+    None,
   )
 }
 
@@ -1298,27 +1273,6 @@ pub fn card_trigger_state(
   from_state: Option(domain_card.CardPhase),
   to_state: domain_card.CardPhase,
 ) -> rules_engine.StateChange {
-  card_trigger_state_full(
-    card_id,
-    project_id,
-    org_id,
-    user_id,
-    from_state,
-    to_state,
-    True,
-  )
-}
-
-/// Create a StateChange for a card resource with explicit user_triggered.
-pub fn card_trigger_state_full(
-  card_id: Int,
-  project_id: Int,
-  org_id: Int,
-  user_id: Int,
-  from_state: Option(domain_card.CardPhase),
-  to_state: domain_card.CardPhase,
-  user_triggered: Bool,
-) -> rules_engine.StateChange {
   rules_engine.CardChange(
     card_id: card_id,
     project_id: project_id,
@@ -1326,7 +1280,7 @@ pub fn card_trigger_state_full(
     from_state: from_state,
     to_state: to_state,
     user_id: user_id,
-    user_triggered: user_triggered,
+    user_triggered: True,
   )
 }
 
