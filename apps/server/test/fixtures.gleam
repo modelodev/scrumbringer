@@ -837,6 +837,50 @@ pub fn close_card_response(
   )
 }
 
+pub fn claim_task_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+) -> wisp.Response {
+  task_versioned_action_response(handler, session, task_id, version, "claim")
+}
+
+pub fn release_task_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+) -> wisp.Response {
+  task_versioned_action_response(handler, session, task_id, version, "release")
+}
+
+pub fn close_task_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+) -> wisp.Response {
+  task_versioned_action_response(handler, session, task_id, version, "close")
+}
+
+fn task_versioned_action_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+  action: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/" <> action,
+    )
+    |> with_auth(session)
+    |> simulate.json_body(json.object([#("version", json.int(version))])),
+  )
+}
+
 /// Create a task associated with a card and return its ID.
 pub fn create_task_with_card(
   handler: Handler,

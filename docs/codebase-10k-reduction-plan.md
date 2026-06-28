@@ -424,6 +424,13 @@ Estado de ejecucion:
   construir localmente los mismos requests de activacion/cierre. La reduccion
   neta es pequena por el coste del helper compartido, pero concentra el contrato
   HTTP reutilizable y evita drift entre tests.
+- Micro-pase de acciones HTTP de task: `fixtures.gleam` expone
+  `claim_task_response`, `release_task_response` y `close_task_response` sobre
+  un helper privado versionado. `cards_http_test`, `activity_http_test`,
+  `work_sessions_http_test`, `unit/http/task_conflict_handlers_test` y
+  `tasks_http_test` dejan de duplicar los requests de `claim`, `release` y
+  `close`; `tasks_http_test` conserva wrappers locales de status porque reducen
+  ruido en el test grande sin reabrir la duplicacion HTTP.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -439,6 +446,7 @@ Estado de ejecucion:
   - query helpers locales,
   - helper local de child card,
   - requests locales repetidos de activar/cerrar card,
+  - requests locales repetidos de claim/release/close de task,
   - FFI local de `os.getenv`.
 - Delta por archivo:
   - `org_invites_http_test.gleam`: `-193` lineas netas;
@@ -455,8 +463,10 @@ Estado de ejecucion:
   - `notes_and_positions_http_test.gleam` primera pasada: `-147` lineas netas;
   - `cards_http_test.gleam` pase child-card fixture: `-18` lineas netas;
   - acciones HTTP compartidas de card en tests: `-13` lineas netas;
-  - `fixtures.gleam`: `+45` lineas netas;
-  - total parcial WP-01: `-3.303` lineas netas mantenidas.
+  - acciones HTTP compartidas de task en tests: `-74` lineas netas;
+  - `fixtures.gleam` en migraciones base: `+45` lineas netas; los incrementos
+    posteriores quedan incluidos en los micro-pases compartidos;
+  - total parcial WP-01: `-3.377` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).

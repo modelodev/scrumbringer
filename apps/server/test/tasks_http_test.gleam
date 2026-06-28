@@ -983,7 +983,7 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
   |> expect.equal(200)
 
   let claim_res =
-    claim_task_response(
+    fx.claim_task_response(
       handler,
       session,
       task_blocked,
@@ -1149,7 +1149,7 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
   |> expect.equal(["Blocked"])
 
   let claim_blocked =
-    claim_task_response(handler, session, blocked, task_version(db, blocked))
+    fx.claim_task_response(handler, session, blocked, task_version(db, blocked))
   expect.expect_status(claim_blocked, 409)
   simulate.read_body(claim_blocked)
   |> string.contains("CONFLICT_BLOCKED")
@@ -1159,7 +1159,7 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
   |> expect.equal(200)
 
   let still_blocked =
-    claim_task_response(handler, session, blocked, task_version(db, blocked))
+    fx.claim_task_response(handler, session, blocked, task_version(db, blocked))
   expect.expect_status(still_blocked, 409)
 }
 
@@ -1177,7 +1177,7 @@ pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
   |> expect.equal(200)
 
   let close_blocked =
-    close_task_response(handler, session, blocked, task_version(db, blocked))
+    fx.close_task_response(handler, session, blocked, task_version(db, blocked))
   expect.expect_status(close_blocked, 409)
   simulate.read_body(close_blocked)
   |> string.contains("CONFLICT_BLOCKED")
@@ -1256,7 +1256,7 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
   |> expect.equal(200)
 
   let other_close =
-    close_task_response(
+    fx.close_task_response(
       handler,
       other_session,
       task_id,
@@ -2349,24 +2349,8 @@ fn claim_task(
   task_id: Int,
   version: Int,
 ) -> Int {
-  let res = claim_task_response(handler, session, task_id, version)
+  let res = fx.claim_task_response(handler, session, task_id, version)
   res.status
-}
-
-fn claim_task_response(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  version: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
-    )
-    |> fx.with_auth(session)
-    |> simulate.json_body(json.object([#("version", json.int(version))])),
-  )
 }
 
 fn create_dependency(
@@ -2417,16 +2401,7 @@ fn release_task(
   task_id: Int,
   version: Int,
 ) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
-      )
-      |> fx.with_auth(session)
-      |> simulate.json_body(json.object([#("version", json.int(version))])),
-    )
-
+  let res = fx.release_task_response(handler, session, task_id, version)
   res.status
 }
 
@@ -2436,27 +2411,8 @@ fn close_task(
   task_id: Int,
   version: Int,
 ) -> Int {
-  let res = close_task_response(handler, session, task_id, version)
+  let res = fx.close_task_response(handler, session, task_id, version)
   res.status
-}
-
-fn close_task_response(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  version: Int,
-) -> wisp.Response {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
-      )
-      |> fx.with_auth(session)
-      |> simulate.json_body(json.object([#("version", json.int(version))])),
-    )
-
-  res
 }
 
 fn decode_task_titles(body: String) -> List(String) {

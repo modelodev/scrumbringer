@@ -1,52 +1,11 @@
 import domain/org_role
 import fixtures
-import gleam/http
-import gleam/http/request
-import gleam/int
-import gleam/json
 import gleam/string
 import pog
 import scrumbringer_server
 import scrumbringer_server/http/tasks/conflict_handlers
 import support/assertions as expect
-import wisp
 import wisp/simulate
-
-fn claim_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  task_id: Int,
-  version: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
-    )
-    |> request.set_cookie("sb_session", session.token)
-    |> request.set_cookie("sb_csrf", session.csrf)
-    |> request.set_header("X-CSRF", session.csrf)
-    |> simulate.json_body(json.object([#("version", json.int(version))])),
-  )
-}
-
-fn close_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  task_id: Int,
-  version: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
-    )
-    |> request.set_cookie("sb_session", session.token)
-    |> request.set_cookie("sb_csrf", session.csrf)
-    |> request.set_header("X-CSRF", session.csrf)
-    |> simulate.json_body(json.object([#("version", json.int(version))])),
-  )
-}
 
 pub fn handle_claim_conflict_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
@@ -114,7 +73,10 @@ pub fn handle_claim_conflict_returns_claimed_conflict_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Claimed")
 
-  expect.expect_status(claim_task(handler, session, task_id, 1), 200)
+  expect.expect_status(
+    fixtures.claim_task_response(handler, session, task_id, 1),
+    200,
+  )
 
   let res = conflict_handlers.handle_claim_conflict(db, task_id, user_id)
   expect.expect_status(res, 409)
@@ -132,8 +94,14 @@ pub fn handle_claim_conflict_returns_validation_for_closed_task_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Closed")
 
-  expect.expect_status(claim_task(handler, session, task_id, 1), 200)
-  expect.expect_status(close_task(handler, session, task_id, 2), 200)
+  expect.expect_status(
+    fixtures.claim_task_response(handler, session, task_id, 1),
+    200,
+  )
+  expect.expect_status(
+    fixtures.close_task_response(handler, session, task_id, 2),
+    200,
+  )
 
   let res = conflict_handlers.handle_claim_conflict(db, task_id, user_id)
   expect.expect_status(res, 422)
@@ -150,7 +118,10 @@ pub fn handle_version_or_claim_conflict_forbidden_when_claimed_by_other_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Claimed")
 
-  expect.expect_status(claim_task(handler, session, task_id, 1), 200)
+  expect.expect_status(
+    fixtures.claim_task_response(handler, session, task_id, 1),
+    200,
+  )
 
   let assert Ok(other_user_id) =
     fixtures.insert_user_db(db, 1, "member@example.com", org_role.Member)

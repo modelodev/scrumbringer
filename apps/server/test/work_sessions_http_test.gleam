@@ -2,7 +2,6 @@ import domain/task/state as task_state
 import fixtures
 import gleam/http
 import gleam/http/request
-import gleam/int
 import gleam/json
 import gleam/option as opt
 import gleam/string
@@ -30,22 +29,6 @@ fn heartbeat_request(task_id: Int, session: fixtures.Session) -> wisp.Request {
   simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
   |> fixtures.with_auth(session)
   |> simulate.json_body(json.object([#("task_id", json.int(task_id))]))
-}
-
-fn claim_task(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  task_id: Int,
-  version: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(json.object([#("version", json.int(version))])),
-  )
 }
 
 pub fn start_rejects_unclaimed_task_test() {
@@ -126,7 +109,7 @@ pub fn start_is_idempotent_when_session_exists_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Duplicate")
 
-  let claim_res = claim_task(handler, session, task_id, 1)
+  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
   expect.expect_status(claim_res, 200)
 
   let first_start = handler(start_session_request(task_id, session))
@@ -223,7 +206,7 @@ pub fn heartbeat_rate_limited_on_second_call_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Rate limit")
 
-  let claim_res = claim_task(handler, session, task_id, 1)
+  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
   expect.expect_status(claim_res, 200)
 
   let start_res = handler(start_session_request(task_id, session))

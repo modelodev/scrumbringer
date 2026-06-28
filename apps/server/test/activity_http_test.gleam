@@ -24,7 +24,7 @@ pub fn task_activity_lists_real_audit_events_with_limit_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
-  let claim_res = claim_task(handler, session, task_id)
+  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
   expect.expect_status(claim_res, 200)
 
   let res =
@@ -62,7 +62,7 @@ pub fn task_activity_paginates_with_offset_and_metadata_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
-  let claim_res = claim_task(handler, session, task_id)
+  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
   expect.expect_status(claim_res, 200)
 
   let res =
@@ -330,21 +330,6 @@ pub fn activity_rejects_invalid_offset_test() {
     )
 
   expect.expect_status(res, 400)
-}
-
-fn claim_task(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  task_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
-    )
-    |> fixtures.with_auth(session)
-    |> simulate.json_body(json.object([#("version", json.int(1))])),
-  )
 }
 
 fn create_task_note(
