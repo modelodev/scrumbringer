@@ -122,7 +122,6 @@ fn metric(
   task_metric_chip.view(task_metric_chip.Config(
     locale: config.locale,
     metric: task_metric.metric(kind, value),
-    variant: task_metric_chip.Compact,
     extra_class: option.Some("card-summary-metric"),
     testid: option.Some("card-summary-metric-" <> key),
   ))

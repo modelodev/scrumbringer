@@ -815,7 +815,6 @@ fn card_task_metric(
   task_metric_chip.view(task_metric_chip.Config(
     locale: locale,
     metric: task_metric.metric(kind, value),
-    variant: task_metric_chip.Compact,
     extra_class: option.Some("card-task-metric"),
     testid: option.Some(testid),
   ))

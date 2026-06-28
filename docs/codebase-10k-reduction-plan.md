@@ -1334,6 +1334,17 @@ Estado de ejecucion:
     depende de operaciones publicas y no de constructores internos;
   - delta adicional WP-10: `-12` lineas mantenidas, una funcion publica menos
     y dos constructores publicos menos.
+- Micro-pase adicional de variante textual obsoleta en metricas de tareas:
+  - retirados `task_metric_chip.Full`, `task_metric_chip.Compact` y el campo
+    `variant` de `task_metric_chip.Config`; el componente vivo queda fijado a
+    icono+numero con `title` y `aria-label`;
+  - eliminados estilos `.task-metric-chip.is-full` y
+    `.task-metric-chip-label`, sin consumidores de producto tras la
+    unificacion visual;
+  - los tests cubren ahora el contrato accesible del chip compacto y la
+    ausencia de label textual visible;
+  - delta adicional WP-10: `-55` lineas mantenidas y dos constructores
+    publicos menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1373,10 +1384,11 @@ Estado de ejecucion:
     `1822 passed` tras retirar API preventiva de `modal_header`;
     `1821 passed` tras retirar API preventiva de headers/chips UI;
     `1821 passed` tras retirar API textual preventiva de `action_menu`;
-    `1821 passed` tras encapsular `toast`);
+    `1821 passed` tras encapsular `toast`;
+    `1820 passed` tras retirar la variante textual de `task_metric_chip`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.019` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.074` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

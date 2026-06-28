@@ -349,7 +349,6 @@ pub fn css() -> List(String) {
     ".card-summary-signal-title { color: var(--sb-text-strong); font-weight: var(--sb-weight-bold); line-height: var(--sb-line-title); }",
     ".card-summary-signal-body { color: var(--sb-muted-strong); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
     ".card-summary-metrics { display: flex; flex-wrap: wrap; gap: 8px; }",
-    ".card-summary-metric.task-metric-chip.is-full { min-height: 32px; }",
     ".card-summary-block { display: flex; flex-direction: column; gap: 8px; padding: 0; border: 0; border-top: 1px solid color-mix(in oklab, var(--sb-border) 76%, transparent); border-radius: 0; background: transparent; padding-top: 12px; }",
     ".card-summary-structure { display: grid; gap: 10px; }",
     ".card-summary-description { max-width: var(--sb-measure-prose); }",

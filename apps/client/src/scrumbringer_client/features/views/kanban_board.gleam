@@ -510,7 +510,6 @@ fn view_task_metric_chip(
   task_metric_chip.view(task_metric_chip.Config(
     locale: locale,
     metric: task_metric.metric(kind, value),
-    variant: task_metric_chip.Compact,
     extra_class: Some("kanban-card-task-metric-chip"),
     testid: Some("task-metric-chip"),
   ))
