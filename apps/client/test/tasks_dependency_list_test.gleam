@@ -1,4 +1,3 @@
-import gleam/option.{Some}
 import support/domain_fixtures
 
 import domain/remote.{Loaded, Loading}
@@ -64,9 +63,5 @@ fn closed_done_state() -> task_state.TaskExecutionState {
 }
 
 fn sample_task() -> Task {
-  Task(
-    ..domain_fixtures.task(42, "Task", 1),
-    description: Some("Details"),
-    priority: 1,
-  )
+  domain_fixtures.task(42, "Task", 1)
 }

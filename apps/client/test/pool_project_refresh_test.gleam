@@ -160,7 +160,7 @@ fn api_error() {
 }
 
 fn task(id: Int) -> Task {
-  Task(..domain_fixtures.task(id, "Task", 1), description: None)
+  domain_fixtures.task(id, "Task", 1)
 }
 
 fn task_type(id: Int) -> TaskType {

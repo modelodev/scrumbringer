@@ -14,13 +14,7 @@ fn sample_dependency() -> TaskDependency {
 }
 
 fn sample_task() -> Task {
-  Task(
-    ..domain_fixtures.task(42, "Prepare release", 1),
-    description: Some("Review checklist."),
-    priority: 2,
-    created_at: "2026-03-20T14:00:00Z",
-    version: 3,
-  )
+  Task(..domain_fixtures.task(42, "Prepare release", 1), version: 3)
 }
 
 pub fn dependency_state_open_and_close_dialog_test() {

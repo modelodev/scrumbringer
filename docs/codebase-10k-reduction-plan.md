@@ -1455,7 +1455,11 @@ Estado de ejecucion:
   task (`tasks_claimability`, `tasks_show_actions`, `tasks_task_list` y
   `work_sessions_state`). Se conservan solo id/titulo, estado, bloqueo y
   version cuando el contrato los observa.
-- Delta parcial WP-12: `-3.442` lineas netas mantenidas (`-44` del primer pase
+- Vigesimoctavo pase de fixtures de dominio aplicado a helpers de lookup,
+  refresh y dependencias (`update_helpers`, `pool_project_refresh`,
+  `tasks_dependency_list` y `tasks_dependency_state`). Se retiran descripcion,
+  prioridad y fechas que no participan en la igualdad ni en las transiciones.
+- Delta parcial WP-12: `-3.453` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1504,7 +1508,8 @@ Estado de ejecucion:
   vigesimoquinto pase de fixtures de dominio compartidas en tests de cliente,
   `-37` del vigesimosexto pase de fixtures de dominio compartidas en tests de
   cliente, `-19` del vigesimoseptimo pase de fixtures de dominio compartidas
-  en tests de cliente).
+  en tests de cliente, `-11` del vigesimoctavo pase de fixtures de dominio
+  compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

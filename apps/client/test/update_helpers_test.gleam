@@ -44,7 +44,7 @@ pub fn find_task_by_id_in_cache_falls_back_to_project_cache_test() {
 }
 
 fn task_with_state(id: Int, state: task_state.TaskExecutionState) -> Task {
-  Task(..domain_fixtures.task(id, "T", 1), description: None, state: state)
+  Task(..domain_fixtures.task(id, "T", 1), state: state)
 }
 
 pub fn resolve_org_user_returns_none_when_not_loaded_test() {
