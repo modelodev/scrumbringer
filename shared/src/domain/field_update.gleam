@@ -72,26 +72,6 @@ pub fn to_sentinel(field: FieldUpdate(a), sentinel: a) -> a {
 }
 
 // =============================================================================
-// Predicates
-// =============================================================================
-
-/// Check if the field update is unchanged.
-pub fn is_unchanged(field: FieldUpdate(a)) -> Bool {
-  case field {
-    Unchanged -> True
-    Set(_) -> False
-  }
-}
-
-/// Check if the field update has a new value.
-pub fn is_set(field: FieldUpdate(a)) -> Bool {
-  case field {
-    Unchanged -> False
-    Set(_) -> True
-  }
-}
-
-// =============================================================================
 // Transformations
 // =============================================================================
 

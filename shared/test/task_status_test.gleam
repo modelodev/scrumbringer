@@ -38,17 +38,3 @@ pub fn task_status_to_string_keeps_ongoing_as_claimed_phase_test() {
   let assert "claimed" = task_status.task_status_to_string(Claimed(Ongoing))
   let assert "closed" = task_status.task_status_to_string(Closed)
 }
-
-pub fn parse_error_to_string_returns_stable_messages_test() {
-  task_status.UnknownTaskPhase("archived")
-  |> task_status.parse_error_to_string
-  |> fn(message) {
-    let assert "Unknown task status: archived" = message
-  }
-
-  task_status.UnknownWorkState("blocked")
-  |> task_status.parse_error_to_string
-  |> fn(message) {
-    let assert "Unknown work state: blocked" = message
-  }
-}

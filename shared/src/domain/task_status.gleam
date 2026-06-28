@@ -160,14 +160,6 @@ pub fn parse_work_state(value: String) -> Result(WorkState, TaskPhaseParseError)
   }
 }
 
-/// Convert parse errors into stable labels for diagnostics.
-pub fn parse_error_to_string(error: TaskPhaseParseError) -> String {
-  case error {
-    UnknownTaskPhase(value) -> "Unknown task status: " <> value
-    UnknownWorkState(value) -> "Unknown work state: " <> value
-  }
-}
-
 /// Convert WorkState to the external API/UI serialization string.
 ///
 /// ## Example

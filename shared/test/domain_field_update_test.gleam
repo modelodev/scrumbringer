@@ -62,34 +62,6 @@ pub fn to_sentinel_set_returns_value_test() {
 }
 
 // =============================================================================
-// Predicate tests
-// =============================================================================
-
-pub fn is_unchanged_returns_true_for_unchanged_test() {
-  let assert True =
-    Unchanged
-    |> field_update.is_unchanged
-}
-
-pub fn is_unchanged_returns_false_for_set_test() {
-  let assert False =
-    Set(1)
-    |> field_update.is_unchanged
-}
-
-pub fn is_set_returns_true_for_set_test() {
-  let assert True =
-    Set("x")
-    |> field_update.is_set
-}
-
-pub fn is_set_returns_false_for_unchanged_test() {
-  let assert False =
-    Unchanged
-    |> field_update.is_set
-}
-
-// =============================================================================
 // Transformation tests
 // =============================================================================
 

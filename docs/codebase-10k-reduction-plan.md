@@ -1397,6 +1397,14 @@ Estado de ejecucion:
     siendo `panel_attributes` y `passive_panel_attributes`;
   - delta adicional WP-10: `-2` lineas mantenidas y dos funciones publicas
     menos.
+- Micro-pase adicional de helpers compartidos test-only:
+  - retirados `field_update.is_unchanged`, `field_update.is_set` y
+    `task_status.parse_error_to_string`, sin consumidores de produccion y
+    cubiertos solo por tests directos del helper;
+  - eliminados esos tests de implementacion para no conservar API publica por
+    cobertura artificial;
+  - delta adicional WP-10: `-70` lineas mantenidas y tres funciones publicas
+    menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
