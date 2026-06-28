@@ -1360,7 +1360,11 @@ Estado de ejecucion:
   (`dependency_state`, `dependency_update` y `dependency_list`). Se retiran
   constructores completos repetidos manteniendo explicitos los campos de
   dependencia, versionado y contadores bloqueados que gobiernan cada caso.
-- Delta parcial WP-12: `-2.502` lineas netas mantenidas (`-44` del primer pase
+- Cuarto pase de fixtures de dominio aplicado a tests de `tasks/show`
+  (`actions`, `permissions` y `show_state`). Se conserva la intencion de cada
+  escenario mediante overrides de estado, version, ids de card, permisos y
+  valores de formulario.
+- Delta parcial WP-12: `-2.545` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1382,7 +1386,8 @@ Estado de ejecucion:
   aserciones de strings compartidas en tests de cliente, `-85` del pase de
   fixtures de dominio compartidas en tests de cliente, `-74` del segundo pase
   de fixtures de dominio compartidas en tests de cliente, `-67` del tercer
-  pase de fixtures de dominio compartidas en tests de cliente).
+  pase de fixtures de dominio compartidas en tests de cliente, `-43` del
+  cuarto pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
