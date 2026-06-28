@@ -67,7 +67,7 @@ pub type ToastAction {
 }
 
 /// A toast notification with type-safe ID.
-pub type Toast {
+pub opaque type Toast {
   Toast(
     id: ToastId,
     message: String,
@@ -78,7 +78,7 @@ pub type Toast {
 }
 
 /// State for managing multiple toasts.
-pub type ToastState {
+pub opaque type ToastState {
   ToastState(toasts: List(Toast), next_id: Int)
 }
 
@@ -97,18 +97,6 @@ pub const auto_dismiss_ms = 3000
 // =============================================================================
 // Generic State Update Helpers (Story 4.8)
 // =============================================================================
-
-/// Show a new toast, returning the updated state.
-///
-/// Call this from your main update handler, then schedule your own tick effect.
-pub fn show(
-  state: ToastState,
-  message: String,
-  variant: ToastVariant,
-  now: Int,
-) -> ToastState {
-  show_with_action(state, message, variant, None, now)
-}
 
 /// Show a new toast with optional action.
 pub fn show_with_action(

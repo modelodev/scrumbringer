@@ -1327,6 +1327,13 @@ Estado de ejecucion:
     ruta viva de popover, roles y enlaces;
   - delta adicional WP-10: `-36` lineas mantenidas y tres entradas publicas
     menos.
+- Micro-pase adicional de encapsulacion de `toast`:
+  - retirado `toast.show`, wrapper sin consumidores; el flujo real usa
+    `toast.show_with_action`;
+  - `Toast` y `ToastState` pasan a `pub opaque`, de modo que el resto de la app
+    depende de operaciones publicas y no de constructores internos;
+  - delta adicional WP-10: `-12` lineas mantenidas, una funcion publica menos
+    y dos constructores publicos menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1365,10 +1372,11 @@ Estado de ejecucion:
     `1849 passed` tras retirar helpers UI preventivos;
     `1822 passed` tras retirar API preventiva de `modal_header`;
     `1821 passed` tras retirar API preventiva de headers/chips UI;
-    `1821 passed` tras retirar API textual preventiva de `action_menu`);
+    `1821 passed` tras retirar API textual preventiva de `action_menu`;
+    `1821 passed` tras encapsular `toast`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.007` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.019` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
