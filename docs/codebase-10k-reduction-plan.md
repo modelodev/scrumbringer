@@ -1043,15 +1043,23 @@ Estado de ejecucion:
     `assignments_view_param`, conservando la cobertura del parametro
     `view=users`;
   - delta adicional: `-17` lineas mantenidas.
+- Micro-pase adicional de accessors URL de show:
+  - retirados `url_state.card_show` y `url_state.task_show`, sin consumidores
+    de produccion;
+  - los tests pasan a verificar el ADT publico `ShowParam` mediante
+    `url_state.show`, que es el contrato que consume `client_update`;
+  - delta adicional: `-20` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
     (`1912 passed`; `1888 passed` tras retirar `workspace_state_test.gleam`;
     `1887 passed` tras retirar `url_state.without_project`;
-    `1887 passed` tras retirar `url_state.assignments_view`);
+    `1887 passed` tras retirar `url_state.assignments_view`;
+    `1887 passed` tras retirar `url_state.card_show` y
+    `url_state.task_show`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.370` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.390` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

@@ -136,8 +136,7 @@ pub fn parse_card_show_does_not_activate_card_work_scope_test() {
   state |> url_state.project |> assert_equal(Some(8))
   state |> url_state.view |> assert_equal(view_mode.Cards)
   state |> url_state.card_work_scope |> assert_none
-  state |> url_state.card_show |> assert_equal(Some(42))
-  state |> url_state.task_show |> assert_none
+  state |> url_state.show |> assert_equal(Some(url_state.CardShowParam(42)))
 }
 
 pub fn parse_task_show_test() {
@@ -145,8 +144,7 @@ pub fn parse_task_show_test() {
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> assert_equal(Some(8))
-  state |> url_state.task_show |> assert_equal(Some(825))
-  state |> url_state.card_show |> assert_none
+  state |> url_state.show |> assert_equal(Some(url_state.TaskShowParam(825)))
 }
 
 pub fn parse_card_work_scope_and_card_show_keep_separate_ids_test() {
@@ -158,7 +156,7 @@ pub fn parse_card_work_scope_and_card_show_keep_separate_ids_test() {
 
   state |> url_state.card_work_scope |> assert_equal(Some(15))
   state |> url_state.expanded_card |> assert_equal(Some(15))
-  state |> url_state.card_show |> assert_equal(Some(42))
+  state |> url_state.show |> assert_equal(Some(url_state.CardShowParam(42)))
 }
 
 pub fn parse_card_work_scope_without_card_redirects_and_clears_scope_test() {
@@ -253,22 +251,21 @@ pub fn parse_card_show_without_show_card_redirects_and_clears_show_test() {
   let assert Ok(uri) = uri.parse("/app?show=card")
   let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
-  state |> url_state.card_show |> assert_none
-  state |> url_state.task_show |> assert_none
+  state |> url_state.show |> assert_none
 }
 
 pub fn parse_show_card_without_show_redirects_and_clears_show_test() {
   let assert Ok(uri) = uri.parse("/app?show_card=42")
   let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
-  state |> url_state.card_show |> assert_none
+  state |> url_state.show |> assert_none
 }
 
 pub fn parse_task_show_without_task_redirects_and_clears_show_test() {
   let assert Ok(uri) = uri.parse("/app?show=task")
   let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
-  state |> url_state.task_show |> assert_none
+  state |> url_state.show |> assert_none
 }
 
 pub fn config_context_rejects_capability_scope_test() {
@@ -701,7 +698,7 @@ pub fn roundtrip_scope_and_card_show_test() {
   let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
 
   reparsed |> url_state.card_work_scope |> assert_equal(Some(15))
-  reparsed |> url_state.card_show |> assert_equal(Some(42))
+  reparsed |> url_state.show |> assert_equal(Some(url_state.CardShowParam(42)))
 }
 
 pub fn roundtrip_task_show_test() {
@@ -714,8 +711,7 @@ pub fn roundtrip_task_show_test() {
   let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
 
   reparsed |> url_state.project |> assert_equal(Some(8))
-  reparsed |> url_state.task_show |> assert_equal(Some(825))
-  reparsed |> url_state.card_show |> assert_none
+  reparsed |> url_state.show |> assert_equal(Some(url_state.TaskShowParam(825)))
 }
 
 pub fn roundtrip_with_encoded_search_test() {

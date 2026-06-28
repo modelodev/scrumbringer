@@ -392,22 +392,6 @@ pub fn card_depth(state: UrlState) -> option.Option(Int) {
   }
 }
 
-/// Provides the currently open Card Show id, if present.
-pub fn card_show(state: UrlState) -> option.Option(Int) {
-  case state.show {
-    option.Some(CardShowParam(card_id)) -> option.Some(card_id)
-    _ -> option.None
-  }
-}
-
-/// Provides the currently open Task Show id, if present.
-pub fn task_show(state: UrlState) -> option.Option(Int) {
-  case state.show {
-    option.Some(TaskShowParam(task_id)) -> option.Some(task_id)
-    _ -> option.None
-  }
-}
-
 pub fn show(state: UrlState) -> option.Option(ShowParam) {
   state.show
 }
