@@ -3,13 +3,12 @@
 import gleam/list
 
 import domain/task.{type Task}
+import scrumbringer_client/features/tasks/rollup
 
 pub fn is_blocked(task: Task) -> Bool {
-  task.blocked_count > 0
+  rollup.is_blocked(task)
 }
 
 pub fn blocked_count(tasks: List(Task)) -> Int {
-  tasks
-  |> list.filter(is_blocked)
-  |> list.length
+  list.count(tasks, rollup.is_blocked)
 }

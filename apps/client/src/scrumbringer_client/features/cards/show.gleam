@@ -1367,7 +1367,7 @@ fn task_group_label(model: Model, group: TaskWorkGroup) -> String {
 fn tasks_for_group(tasks: List(Task), group: TaskWorkGroup) -> List(Task) {
   let predicate = case group {
     AvailableWork -> is_available_unblocked
-    BlockedWork -> is_blocked
+    BlockedWork -> blocking_status.is_blocked
     ClaimedWork -> is_claimed_taken
     OngoingWork -> is_ongoing
     ClosedWork -> is_closed
@@ -1419,10 +1419,6 @@ fn is_available_unblocked(task: Task) -> Bool {
     task_state.Available, 0 -> True
     _, _ -> False
   }
-}
-
-fn is_blocked(task: Task) -> Bool {
-  blocking_status.is_blocked(task)
 }
 
 fn is_claimed_taken(task: Task) -> Bool {

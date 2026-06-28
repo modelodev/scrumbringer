@@ -316,6 +316,34 @@ pub fn create_task_type(
   name: String,
   icon: String,
 ) -> Result(Int, String) {
+  create_task_type_with_capability(
+    handler,
+    session,
+    project_id,
+    name,
+    icon,
+    None,
+  )
+}
+
+fn create_task_type_with_capability(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> Result(Int, String) {
+  let fields = [
+    #("name", json.string(name)),
+    #("icon", json.string(icon)),
+  ]
+
+  let body = case capability_id {
+    None -> json.object(fields)
+    Some(id) -> json.object([#("capability_id", json.int(id)), ..fields])
+  }
+
   let res =
     handler(
       simulate.request(
@@ -323,12 +351,7 @@ pub fn create_task_type(
         "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
       )
       |> with_auth(session)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string(name)),
-          #("icon", json.string(icon)),
-        ]),
-      ),
+      |> simulate.json_body(body),
     )
 
   case res.status {
@@ -353,6 +376,25 @@ pub fn require_task_type(
   icon: String,
 ) -> Int {
   create_task_type(handler, session, project_id, name, icon) |> expect.ok
+}
+
+pub fn require_task_type_with_capability(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Int,
+) -> Int {
+  create_task_type_with_capability(
+    handler,
+    session,
+    project_id,
+    name,
+    icon,
+    Some(capability_id),
+  )
+  |> expect.ok
 }
 
 /// Create a workflow and return its ID.

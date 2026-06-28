@@ -605,8 +605,16 @@ Estado de ejecucion:
     tareas reales de dominio;
   - verificacion: `cd apps/client && gleam format --check src test &&
     gleam build && gleam test` (`1873 passed`);
-  - delta neto: `+15` lineas mantenidas, aceptado por mejora de DRY,
+  - delta neto: `+10` lineas mantenidas, aceptado por mejora de DRY,
     frontera de tipos y testeabilidad.
+- Segundo pase de rollups de task:
+  - `features/tasks/blocking_status` delega en `features/tasks/rollup` para
+    el predicado canonico de bloqueo;
+  - `cards/show` deja de mantener un wrapper local `is_blocked` y consume el
+    selector compartido;
+  - verificacion: `cd apps/client && gleam format --check src test &&
+    gleam test` (`1873 passed`);
+  - delta neto adicional: `-5` lineas mantenidas.
 
 ### WP-05. Dialogos CRUD y controles UI sin abstraccion universal
 
@@ -1621,7 +1629,13 @@ Estado de ejecucion:
   retirando wrappers locales equivalentes y el helper de activacion que quedo
   sin uso; los tests siguen expresando titulo, descripcion, prioridad y tipo
   en cada escenario.
-- Delta parcial WP-12: `-4.024` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimoquinto pase de fixtures HTTP aplicado a `tasks_http_test`.
+  El helper local `create_task_type(..., capability_id: Int)` desaparece:
+  las tareas sin capacidad usan `fixtures.require_task_type` y los escenarios
+  con capacidad usan `fixtures.require_task_type_with_capability`, eliminando
+  el sentinel `0` del test. La construccion opcional del payload queda privada
+  dentro de `fixtures.gleam` para no ampliar API publica accidental.
+- Delta parcial WP-12: `-4.011` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1635,6 +1649,7 @@ Estado de ejecucion:
   `with_session_cookies` tipado en `fixtures.gleam`, `-4` del pase de
   `int.to_string` en `rules_http_test.gleam`, `-141` del pase de modulos
   `support` huerfanos, `-26` del pase de wrappers `require_*` compartidos,
+  `+13` del pase de task types con capacidad tipada en fixtures,
   `-9` del pase de `projects_http_test.gleam`, `-202` del pase de decoders de
   envelope HTTP en tests, `-74` del pase de `require_data_list` en
   `tasks_http_test.gleam`, `-141` del pase de `require_data` para payloads
@@ -2140,9 +2155,9 @@ anterior:
 
 | Candidato | Motivo | Estado / guardarrail |
 | --- | --- | --- |
-| Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
+| Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; `tasks_http_test` ya no mantiene helper local de task type; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
 | Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; repetir `rg "fn assert_contains|fn assert_not_contains" apps/client/test`. |
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
-| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
+| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
 | Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; repetir comparacion de clases usadas en views contra `styles/*`. |
