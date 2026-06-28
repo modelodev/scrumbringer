@@ -992,6 +992,30 @@ pub fn query_string(
   }
 }
 
+/// Query a single boolean value from the database.
+pub fn query_bool(
+  db: pog.Connection,
+  sql: String,
+  params: List(pog.Value),
+) -> Result(Bool, String) {
+  let decoder = {
+    use value <- decode.field(0, decode.bool)
+    decode.success(value)
+  }
+
+  let query =
+    params
+    |> list.fold(pog.query(sql), fn(query, param) {
+      pog.parameter(query, param)
+    })
+
+  case pog.returning(query, decoder) |> pog.execute(db) {
+    Ok(pog.Returned(rows: [value, ..], ..)) -> Ok(value)
+    Ok(pog.Returned(rows: [], ..)) -> Error("No rows returned")
+    Error(e) -> Error("Query error: " <> string.inspect(e))
+  }
+}
+
 /// Return the default project created by bootstrap for organization 1.
 pub fn default_project_id(db: pog.Connection) -> Result(Int, String) {
   query_int(db, "select id from projects where org_id = 1 limit 1", [])

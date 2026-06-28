@@ -332,11 +332,19 @@ Estado de ejecucion:
   `fixtures.with_auth`, `fixtures.query_int` y `fixtures.default_project_id`;
   conserva solo inserts SQL especificos para reglas, historial y tareas
   generadas por automatizaciones.
+- `apps/server/test/rules_http_test.gleam` migrado a `fixtures.bootstrap`,
+  `fixtures.create_project`, `fixtures.create_task_type`,
+  `fixtures.create_workflow`, `fixtures.create_template`,
+  `fixtures.create_task_rule_with_trigger`, `fixtures.create_member_user`,
+  `fixtures.add_member`, `fixtures.login`, `fixtures.with_auth`,
+  `fixtures.query_int` y `fixtures.query_bool`; conserva payloads, decoders de
+  reglas e inserts SQL especificos para historial/origen de automatizaciones.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
   retirar queries repetidas sobre el proyecto creado por bootstrap y
-  `user_id_by_email` para retirar queries repetidas de usuario.
+  `user_id_by_email` para retirar queries repetidas de usuario, y `query_bool`
+  como equivalente tipado de `query_int` para asserts de persistencia booleanos.
 - Codigo eliminado:
   - bootstrap local,
   - login local,
@@ -354,8 +362,9 @@ Estado de ejecucion:
   - `org_users_http_test.gleam`: `-249` lineas netas;
   - `task_templates_http_test.gleam`: `-458` lineas netas;
   - `workflows_http_test.gleam`: `-426` lineas netas;
-  - `fixtures.gleam`: `+21` lineas netas;
-  - total parcial WP-01: `-1.992` lineas netas mantenidas.
+  - `rules_http_test.gleam`: `-535` lineas netas;
+  - `fixtures.gleam`: `+45` lineas netas;
+  - total parcial WP-01: `-2.503` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).

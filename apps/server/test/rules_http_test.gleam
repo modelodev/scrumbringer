@@ -1,63 +1,52 @@
+import fixtures
 import gleam/dynamic/decode
-import gleam/erlang/charlist
 import gleam/http
-import gleam/http/request
+import gleam/int
 import gleam/json
-import gleam/list
+import gleam/option.{Some}
 import gleam/string
 import pog
 import scrumbringer_server
 import support/assertions as expect
-import wisp
 import wisp/simulate
-
-const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn rules_crud_with_selected_template_test() {
-  let app = bootstrap_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  create_project(handler, session, csrf, "Core")
   let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+    fixtures.create_project(handler, session, "Core")
+    |> expect.ok
 
-  create_task_type(handler, session, csrf, project_id, "QA", "bug-ant")
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'QA'",
-      [pog.int(project_id)],
-    )
+    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
+    |> expect.ok
 
   let workflow_id =
-    create_workflow(handler, session, csrf, project_id, "Rule Workflow")
+    fixtures.create_workflow(handler, session, project_id, "Rule Workflow")
+    |> expect.ok
 
   let template_id =
-    create_template(
+    fixtures.create_template(
       handler,
       session,
-      csrf,
       project_id,
       type_id,
       "Rule Template",
     )
+    |> expect.ok
 
   let rule_id =
-    create_rule(
+    fixtures.create_task_rule_with_trigger(
       handler,
       session,
-      csrf,
       workflow_id,
-      type_id,
-      template_id,
+      Some(type_id),
       "Rule 1",
+      "task_closed",
+      template_id,
     )
+    |> expect.ok
 
   let list_res =
     handler(
@@ -65,8 +54,7 @@ pub fn rules_crud_with_selected_template_test() {
         http.Get,
         "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(list_res, 200)
@@ -80,9 +68,7 @@ pub fn rules_crud_with_selected_template_test() {
   let patch_res =
     handler(
       simulate.request(http.Patch, "/api/v1/rules/" <> int_to_string(rule_id))
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("name", json.string("Rule 1 Updated")),
@@ -100,58 +86,49 @@ pub fn rules_crud_with_selected_template_test() {
   let delete_res =
     handler(
       simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(delete_res, 204)
 }
 
 pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  create_project(handler, session, csrf, "RuleHistory")
   let project_id =
-    single_int(db, "select id from projects where name = 'RuleHistory'", [])
+    fixtures.create_project(handler, session, "RuleHistory")
+    |> expect.ok
 
-  create_task_type(handler, session, csrf, project_id, "QA", "bug-ant")
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'QA'",
-      [pog.int(project_id)],
-    )
+    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
+    |> expect.ok
 
   let workflow_id =
-    create_workflow(handler, session, csrf, project_id, "History Workflow")
+    fixtures.create_workflow(handler, session, project_id, "History Workflow")
+    |> expect.ok
 
   let template_id =
-    create_template(
+    fixtures.create_template(
       handler,
       session,
-      csrf,
       project_id,
       type_id,
       "History Template",
     )
+    |> expect.ok
 
   let rule_id =
-    create_rule(
+    fixtures.create_task_rule_with_trigger(
       handler,
       session,
-      csrf,
       workflow_id,
-      type_id,
-      template_id,
+      Some(type_id),
       "History Rule",
+      "task_closed",
+      template_id,
     )
+    |> expect.ok
 
   let task_id = insert_origin_task(db, project_id, type_id)
   insert_rule_execution(db, rule_id, task_id, "rule-delete")
@@ -159,107 +136,104 @@ pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
   let delete_res =
     handler(
       simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(delete_res, 204)
-  single_int(db, "select count(*)::int from rules where id = $1", [
+  fixtures.query_int(db, "select count(*)::int from rules where id = $1", [
     pog.int(rule_id),
   ])
+  |> expect.ok
   |> expect.equal(1)
-  single_bool(db, "select active from rules where id = $1", [pog.int(rule_id)])
+  fixtures.query_bool(db, "select active from rules where id = $1", [
+    pog.int(rule_id),
+  ])
+  |> expect.ok
   |> expect.equal(False)
-  single_int(
+  fixtures.query_int(
     db,
     "select count(*)::int from rule_executions where rule_id = $1",
     [pog.int(rule_id)],
   )
+  |> expect.ok
   |> expect.equal(1)
 }
 
 pub fn rule_delete_with_created_task_pauses_and_preserves_origin_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  create_project(handler, session, csrf, "RuleOrigin")
   let project_id =
-    single_int(db, "select id from projects where name = 'RuleOrigin'", [])
+    fixtures.create_project(handler, session, "RuleOrigin")
+    |> expect.ok
 
-  create_task_type(handler, session, csrf, project_id, "QA", "bug-ant")
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'QA'",
-      [pog.int(project_id)],
-    )
+    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
+    |> expect.ok
 
   let workflow_id =
-    create_workflow(handler, session, csrf, project_id, "Origin Workflow")
+    fixtures.create_workflow(handler, session, project_id, "Origin Workflow")
+    |> expect.ok
   let template_id =
-    create_template(handler, session, csrf, project_id, type_id, "Origin Task")
-  let rule_id =
-    create_rule(
+    fixtures.create_template(
       handler,
       session,
-      csrf,
-      workflow_id,
+      project_id,
       type_id,
-      template_id,
-      "Origin Rule",
+      "Origin Task",
     )
+    |> expect.ok
+  let rule_id =
+    fixtures.create_task_rule_with_trigger(
+      handler,
+      session,
+      workflow_id,
+      Some(type_id),
+      "Origin Rule",
+      "task_closed",
+      template_id,
+    )
+    |> expect.ok
   let created_task_id =
     insert_created_task_from_rule(db, project_id, type_id, rule_id)
 
   let delete_res =
     handler(
       simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(delete_res, 204)
-  single_int(db, "select count(*)::int from rules where id = $1", [
+  fixtures.query_int(db, "select count(*)::int from rules where id = $1", [
     pog.int(rule_id),
   ])
+  |> expect.ok
   |> expect.equal(1)
-  single_bool(db, "select active from rules where id = $1", [pog.int(rule_id)])
+  fixtures.query_bool(db, "select active from rules where id = $1", [
+    pog.int(rule_id),
+  ])
+  |> expect.ok
   |> expect.equal(False)
-  single_int(
+  fixtures.query_int(
     db,
     "select count(*)::int from tasks where id = $1 and created_from_rule_id = $2",
     [pog.int(created_task_id), pog.int(rule_id)],
   )
+  |> expect.ok
   |> expect.equal(1)
 }
 
 pub fn rules_invalid_payload_returns_400_test() {
-  let app = bootstrap_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
 
   // Create a valid project and workflow first
-  create_project(handler, session, csrf, "InvalidPayloadTest")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'InvalidPayloadTest'",
-      [],
-    )
+    fixtures.create_project(handler, session, "InvalidPayloadTest")
+    |> expect.ok
 
   let workflow_id =
-    create_workflow(handler, session, csrf, project_id, "Test Workflow")
+    fixtures.create_workflow(handler, session, project_id, "Test Workflow")
+    |> expect.ok
 
   // Now test with invalid payload (name is an int instead of string)
   let bad_res =
@@ -268,9 +242,7 @@ pub fn rules_invalid_payload_returns_400_test() {
         http.Post,
         "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("name", json.int(1))])),
     )
 
@@ -278,30 +250,17 @@ pub fn rules_invalid_payload_returns_400_test() {
 }
 
 pub fn rule_create_without_template_returns_400_test() {
-  let app = bootstrap_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  create_project(handler, session, csrf, "MissingTemplateTest")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'MissingTemplateTest'",
-      [],
-    )
-  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant")
+    fixtures.create_project(handler, session, "MissingTemplateTest")
+    |> expect.ok
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
-    )
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+    |> expect.ok
   let workflow_id =
-    create_workflow(handler, session, csrf, project_id, "Missing Template")
+    fixtures.create_workflow(handler, session, project_id, "Missing Template")
+    |> expect.ok
 
   let res =
     handler(
@@ -309,9 +268,7 @@ pub fn rule_create_without_template_returns_400_test() {
         http.Post,
         "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("name", json.string("No Template")),
@@ -332,32 +289,21 @@ pub fn rule_create_without_template_returns_400_test() {
 }
 
 pub fn rule_create_rejects_missing_card_depth_scope_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  create_project(handler, session, csrf, "MissingCardDepthRule")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'MissingCardDepthRule'",
-      [],
-    )
-  create_task_type(handler, session, csrf, project_id, "Checklist", "list")
+    fixtures.create_project(handler, session, "MissingCardDepthRule")
+    |> expect.ok
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Checklist'",
-      [pog.int(project_id)],
-    )
+    fixtures.create_task_type(handler, session, project_id, "Checklist", "list")
+    |> expect.ok
   let workflow_id =
-    create_workflow(handler, session, csrf, project_id, "Card Depth Rule")
+    fixtures.create_workflow(handler, session, project_id, "Card Depth Rule")
+    |> expect.ok
   let template_id =
-    create_template(handler, session, csrf, project_id, type_id, "Card task")
+    fixtures.create_template(handler, session, project_id, type_id, "Card task")
+    |> expect.ok
 
   let res =
     handler(
@@ -365,9 +311,7 @@ pub fn rule_create_rejects_missing_card_depth_scope_test() {
         http.Post,
         "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("name", json.string("Stale card depth")),
@@ -400,79 +344,66 @@ pub fn rule_create_rejects_missing_card_depth_scope_test() {
   expect.expect_status(res, 422)
   let body = simulate.read_body(res)
   let assert True = string.contains(body, "Card level is no longer available")
-  single_int(db, "select count(*)::int from rules where workflow_id = $1", [
-    pog.int(workflow_id),
-  ])
+  fixtures.query_int(
+    db,
+    "select count(*)::int from rules where workflow_id = $1",
+    [
+      pog.int(workflow_id),
+    ],
+  )
+  |> expect.ok
   |> expect.equal(0)
 }
 
 pub fn rules_project_scope_requires_project_manager_test() {
-  let app = bootstrap_app()
+  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
-
-  create_project(handler, admin_session, admin_csrf, "Rule Permissions")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'Rule Permissions'",
-      [],
-    )
+    fixtures.create_project(handler, admin_session, "Rule Permissions")
+    |> expect.ok
 
-  create_task_type(handler, admin_session, admin_csrf, project_id, "QA", "bug")
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'QA'",
-      [pog.int(project_id)],
-    )
+    fixtures.create_task_type(handler, admin_session, project_id, "QA", "bug")
+    |> expect.ok
   let workflow_id =
-    create_workflow(handler, admin_session, admin_csrf, project_id, "Rules")
+    fixtures.create_workflow(handler, admin_session, project_id, "Rules")
+    |> expect.ok
   let template_id =
-    create_template(
+    fixtures.create_template(
       handler,
       admin_session,
-      admin_csrf,
       project_id,
       type_id,
       "Follow-up",
     )
+    |> expect.ok
   let rule_id =
-    create_rule(
+    fixtures.create_task_rule_with_trigger(
       handler,
       admin_session,
-      admin_csrf,
       workflow_id,
-      type_id,
-      template_id,
+      Some(type_id),
       "Protected Rule",
+      "task_closed",
+      template_id,
     )
+    |> expect.ok
 
-  create_member_user(handler, db, "member@example.com", "rule_member_invite")
   let member_id =
-    single_int(
+    fixtures.create_member_user(
+      handler,
       db,
-      "select id from users where email = 'member@example.com'",
-      [],
+      "member@example.com",
+      "rule_member_invite",
     )
-  add_member(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    member_id,
-    "member",
-  )
+    |> expect.ok
+  fixtures.add_member(handler, admin_session, project_id, member_id, "member")
+  |> expect.ok
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let member_session =
+    fixtures.login(handler, "member@example.com", "passwordpassword")
+    |> expect.ok
 
   let list_res =
     handler(
@@ -480,8 +411,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
         http.Get,
         "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
       )
-      |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf),
+      |> fixtures.with_auth(member_session),
     )
   expect.expect_status(list_res, 403)
 
@@ -491,9 +421,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
         http.Post,
         "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
       )
-      |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(rule_create_json(
         "Member Rule",
         type_id,
@@ -505,9 +433,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
   let update_res =
     handler(
       simulate.request(http.Patch, "/api/v1/rules/" <> int_to_string(rule_id))
-      |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(
         json.object([
           #("name", json.string("Member Updated Rule")),
@@ -520,191 +446,14 @@ pub fn rules_project_scope_requires_project_manager_test() {
   let delete_res =
     handler(
       simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
-      |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf)
-      |> request.set_header("X-CSRF", member_csrf),
+      |> fixtures.with_auth(member_session),
     )
   expect.expect_status(delete_res, 403)
-  single_bool(db, "select active from rules where id = $1", [pog.int(rule_id)])
+  fixtures.query_bool(db, "select active from rules where id = $1", [
+    pog.int(rule_id),
+  ])
+  |> expect.ok
   |> expect.equal(True)
-}
-
-fn create_project(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  name: String,
-) {
-  let req =
-    simulate.request(http.Post, "/api/v1/projects")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(project_create_json(name))
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn project_create_json(name: String) -> json.Json {
-  json.object([
-    #("name", json.string(name)),
-    #("healthy_pool_limit", json.int(20)),
-    #(
-      "card_depth_names",
-      json.array(
-        [
-          project_depth_name_json(1, "Initiative", "Initiatives"),
-          project_depth_name_json(2, "Feature", "Features"),
-          project_depth_name_json(3, "Task group", "Task groups"),
-        ],
-        of: fn(value) { value },
-      ),
-    ),
-  ])
-}
-
-fn project_depth_name_json(
-  depth: Int,
-  singular_name: String,
-  plural_name: String,
-) -> json.Json {
-  json.object([
-    #("depth", json.int(depth)),
-    #("singular_name", json.string(singular_name)),
-    #("plural_name", json.string(plural_name)),
-  ])
-}
-
-fn create_task_type(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  project_id: Int,
-  name: String,
-  icon: String,
-) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
-    )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(
-      json.object([
-        #("name", json.string(name)),
-        #("icon", json.string(icon)),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn create_workflow(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  project_id: Int,
-  name: String,
-) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string(name)),
-          #("description", json.string("Rules")),
-        ]),
-      ),
-    )
-
-  expect.expect_status(res, 200)
-  decode_workflow_id(simulate.read_body(res))
-}
-
-fn create_template(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  project_id: Int,
-  type_id: Int,
-  name: String,
-) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/task-templates",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string(name)),
-          #("description", json.string("Template desc")),
-          #("type_id", json.int(type_id)),
-          #("priority", json.int(3)),
-        ]),
-      ),
-    )
-
-  expect.expect_status(res, 200)
-  decode_template_id(simulate.read_body(res))
-}
-
-fn create_rule(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  workflow_id: Int,
-  type_id: Int,
-  template_id: Int,
-  name: String,
-) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string(name)),
-          #("goal", json.string("Test")),
-          #(
-            "trigger",
-            json.object([
-              #("type", json.string("task_closed")),
-              #("task_type_id", json.int(type_id)),
-            ]),
-          ),
-          #(
-            "action",
-            json.object([
-              #("type", json.string("create_task")),
-              #("template_id", json.int(template_id)),
-            ]),
-          ),
-          #("status", json.object([#("type", json.string("active"))])),
-        ]),
-      ),
-    )
-
-  expect.expect_status(res, 200)
-  decode_rule_id(simulate.read_body(res))
 }
 
 fn rule_create_json(name: String, type_id: Int, template_id: Int) -> json.Json {
@@ -727,120 +476,6 @@ fn rule_create_json(name: String, type_id: Int, template_id: Int) -> json.Json {
     ),
     #("status", json.object([#("type", json.string("active"))])),
   ])
-}
-
-fn add_member(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  project_id: Int,
-  user_id: Int,
-  role: String,
-) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
-    )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(
-      json.object([
-        #("user_id", json.int(user_id)),
-        #("role", json.string(role)),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn create_member_user(
-  handler: fn(wisp.Request) -> wisp.Response,
-  db: pog.Connection,
-  email: String,
-  invite_code: String,
-) {
-  insert_invite_link_active(db, invite_code, email)
-
-  let req =
-    simulate.request(http.Post, "/api/v1/auth/register")
-    |> simulate.json_body(
-      json.object([
-        #("password", json.string("passwordpassword")),
-        #("invite_token", json.string(invite_code)),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn decode_workflow_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let workflow_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use workflow <- decode.field("workflow", workflow_decoder)
-    decode.success(workflow)
-  }
-
-  let response_decoder = {
-    use workflow_id <- decode.field("data", data_decoder)
-    decode.success(workflow_id)
-  }
-
-  let assert Ok(workflow_id) = decode.run(dynamic, response_decoder)
-  workflow_id
-}
-
-fn decode_template_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let template_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use template <- decode.field("template", template_decoder)
-    decode.success(template)
-  }
-
-  let response_decoder = {
-    use template_id <- decode.field("data", data_decoder)
-    decode.success(template_id)
-  }
-
-  let assert Ok(template_id) = decode.run(dynamic, response_decoder)
-  template_id
-}
-
-fn decode_rule_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let rule_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use rule <- decode.field("rule", rule_decoder)
-    decode.success(rule)
-  }
-
-  let response_decoder = {
-    use rule_id <- decode.field("data", data_decoder)
-    decode.success(rule_id)
-  }
-
-  let assert Ok(rule_id) = decode.run(dynamic, response_decoder)
-  rule_id
 }
 
 fn decode_rule_name(body: String) -> String {
@@ -914,158 +549,14 @@ fn decode_first_rule_template_name(body: String) -> String {
   name
 }
 
-fn login_as(
-  handler: fn(wisp.Request) -> wisp.Response,
-  email: String,
-  password: String,
-) -> wisp.Response {
-  let req =
-    simulate.request(http.Post, "/api/v1/auth/login")
-    |> simulate.json_body(
-      json.object([
-        #("email", json.string(email)),
-        #("password", json.string(password)),
-      ]),
-    )
-
-  handler(req)
-}
-
-fn new_test_app() -> scrumbringer_server.App {
-  let database_url = require_database_url()
-  let assert Ok(app) = scrumbringer_server.new_app(secret, database_url)
-  app
-}
-
-fn bootstrap_app() -> scrumbringer_server.App {
-  let app = new_test_app()
-  let handler = scrumbringer_server.handler(app)
-  let scrumbringer_server.App(db: db, ..) = app
-
-  reset_db(db)
-  reset_workflow_tables(db)
-
-  let res =
-    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  expect.expect_status(res, 200)
-
-  app
-}
-
-fn bootstrap_request(email: String, password: String, org_name: String) {
-  simulate.request(http.Post, "/api/v1/auth/register")
-  |> simulate.json_body(
-    json.object([
-      #("email", json.string(email)),
-      #("password", json.string(password)),
-      #("org_name", json.string(org_name)),
-    ]),
-  )
-}
-
-fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
-  headers
-  |> list.filter_map(fn(h) {
-    case h.0 {
-      "set-cookie" -> Ok(h.1)
-      _ -> Error(Nil)
-    }
-  })
-}
-
-fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
-  let target = name <> "="
-
-  let assert Ok(header) =
-    set_cookie_headers(headers)
-    |> list.find(fn(h) { string.starts_with(h, target) })
-
-  let assert Ok(#(value, _)) =
-    header
-    |> string.drop_start(string.length(target))
-    |> string.split_once(";")
-
-  value
-}
-
-fn require_database_url() -> String {
-  case getenv("DATABASE_URL", "") {
-    "" -> {
-      expect.fail()
-      ""
-    }
-
-    url -> url
-  }
-}
-
-fn reset_db(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn reset_workflow_tables(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
-  let decoder = {
-    use value <- decode.field(0, decode.int)
-    decode.success(value)
-  }
-
-  let query =
-    params
-    |> list.fold(pog.query(sql), fn(query, param) {
-      pog.parameter(query, param)
-    })
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    query
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
-}
-
-fn single_bool(db: pog.Connection, sql: String, params: List(pog.Value)) -> Bool {
-  let decoder = {
-    use value <- decode.field(0, decode.bool)
-    decode.success(value)
-  }
-
-  let query =
-    params
-    |> list.fold(pog.query(sql), fn(query, param) {
-      pog.parameter(query, param)
-    })
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    query
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
-}
-
 fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
   let card_id = insert_active_card(db, project_id, "Automation origin card")
-  single_int(
+  fixtures.query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, $3, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id)],
   )
+  |> expect.ok
 }
 
 fn insert_created_task_from_rule(
@@ -1075,19 +566,21 @@ fn insert_created_task_from_rule(
   rule_id: Int,
 ) -> Int {
   let card_id = insert_active_card(db, project_id, "Generated task card")
-  single_int(
+  fixtures.query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, $4, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id), pog.int(rule_id)],
   )
+  |> expect.ok
 }
 
 fn insert_active_card(db: pog.Connection, project_id: Int, title: String) -> Int {
-  single_int(
+  fixtures.query_int(
     db,
     "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, 'active') returning id",
     [pog.int(project_id), pog.text(title)],
   )
+  |> expect.ok
 }
 
 fn insert_rule_execution(
@@ -1110,34 +603,6 @@ fn insert_rule_execution(
   Nil
 }
 
-fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
-  let assert Ok(_) =
-    pog.query(
-      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
-    )
-    |> pog.parameter(pog.text(email))
-    |> pog.parameter(pog.text(token))
-    |> pog.execute(db)
-
-  Nil
-}
-
 fn int_to_string(value: Int) -> String {
-  value |> int_to_string_unsafe
+  int.to_string(value)
 }
-
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string_unsafe(value: Int) -> String
-
-fn getenv(key: String, default: String) -> String {
-  let key_charlist = charlist.from_string(key)
-  let default_charlist = charlist.from_string(default)
-  getenv_charlist(key_charlist, default_charlist)
-  |> charlist.to_string
-}
-
-@external(erlang, "os", "getenv")
-fn getenv_charlist(
-  key: charlist.Charlist,
-  default: charlist.Charlist,
-) -> charlist.Charlist
