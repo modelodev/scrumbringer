@@ -1,16 +1,13 @@
 import gleam/list
 import lustre/element
 import lustre/element/html.{text}
+import support/assertions.{assert_equal}
 import support/render_assertions
 
 import scrumbringer_client/features/layout/responsive_drawer
 
 pub type TestMsg {
   NoOp
-}
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
 }
 
 pub fn drawer_closed_has_no_open_class_test() {

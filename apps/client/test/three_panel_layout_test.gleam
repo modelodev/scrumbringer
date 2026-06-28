@@ -1,11 +1,8 @@
 import lustre/element
 import lustre/element/html.{div, text}
 import scrumbringer_client/features/layout/three_panel_layout as layout
+import support/assertions.{assert_not_equal}
 import support/render_assertions
-
-fn assert_not_equal(actual: a, unexpected: a) {
-  let assert False = actual == unexpected
-}
 
 // =============================================================================
 // Builder tests

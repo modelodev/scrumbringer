@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/option
 import gleam/set
 import lustre/effect
+import support/assertions.{assert_equal}
 
 import domain/api_error.{ApiError}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
@@ -13,10 +14,6 @@ import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/update as assignments_update
 import scrumbringer_client/permissions.{Team}
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 fn model() -> assignments_state.AssignmentsModel {
   assignments_state.AssignmentsModel(

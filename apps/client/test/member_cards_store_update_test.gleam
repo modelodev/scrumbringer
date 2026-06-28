@@ -8,14 +8,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/state/normalized_store
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
-
-fn assert_not_equal(actual: a, unexpected: a) {
-  let assert False = actual == unexpected
-}
+import support/assertions.{assert_equal, assert_not_equal}
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(

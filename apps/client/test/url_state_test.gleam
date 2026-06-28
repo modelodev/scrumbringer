@@ -1,21 +1,10 @@
 import domain/view_mode
-import gleam/option.{type Option, None, Some}
+import gleam/option.{Some}
 import gleam/uri
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/url_state
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
-
-fn assert_not_equal(actual: a, unexpected: a) {
-  let assert False = actual == unexpected
-}
-
-fn assert_none(value: Option(a)) {
-  let assert None = value
-}
+import support/assertions.{assert_equal, assert_none, assert_not_equal}
 
 // =============================================================================
 // parse tests

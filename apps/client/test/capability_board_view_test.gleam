@@ -10,6 +10,7 @@ import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/assertions.{assert_true}
 import support/render_assertions
 
 import scrumbringer_client/capability_scope
@@ -19,10 +20,6 @@ import scrumbringer_client/features/capability_board/view as capability_board
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_true(value: Bool) {
-  let assert True = value
-}
 
 fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int) {
   capability_board.Config(

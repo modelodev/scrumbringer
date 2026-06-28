@@ -1,4 +1,5 @@
 import gleam/option.{type Option, None, Some}
+import support/assertions.{assert_equal}
 
 import domain/org_role
 import scrumbringer_client/automation_deep_link
@@ -6,10 +7,6 @@ import scrumbringer_client/hydration
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 pub fn admin_members_unknown_auth_requires_fetch_me_test() {
   let snap =

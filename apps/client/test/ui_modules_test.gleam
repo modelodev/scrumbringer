@@ -1,5 +1,7 @@
 //// Tests for UI modules: css_class, icons, empty_state, info_callout.
 
+import support/assertions.{assert_equal}
+
 import lustre/element
 import support/render_assertions
 
@@ -7,10 +9,6 @@ import scrumbringer_client/permissions
 import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 // =============================================================================
 // css_class Tests

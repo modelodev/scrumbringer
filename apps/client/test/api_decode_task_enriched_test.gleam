@@ -2,10 +2,7 @@ import domain/task/state as task_state
 import domain/task/task_codec
 import gleam/dynamic/decode
 import gleam/json
-
-fn assert_error(result: Result(a, b)) {
-  let assert Error(_) = result
-}
+import support/assertions.{assert_error}
 
 pub fn task_decoder_accepts_enriched_task_type_and_work_state_test() {
   let body =

@@ -1,13 +1,10 @@
 import gleam/list
 import gleam/string
+import support/assertions.{assert_equal}
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text
-
-fn assert_equal(actual: String, expected: String) {
-  let assert True = actual == expected
-}
 
 fn assert_no_claim_word(copy: String) {
   let assert False = string.contains(copy, "claim")

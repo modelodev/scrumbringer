@@ -1339,7 +1339,12 @@ Estado de ejecucion:
   completar la familia de helpers `require_query_*`. Se retiran pipelines
   directos `query_* |> expect.ok` en auth, capabilities, invite links,
   invites, org users, password resets, projects, rules, templates y workflows.
-- Delta parcial WP-12: `-2.212` lineas netas mantenidas (`-44` del primer pase
+- `apps/client/test/support/assertions.gleam` centraliza aserciones triviales
+  de tests de cliente (`assert_equal`, `assert_not_equal`, `assert_none`,
+  `assert_true`, `assert_error`). Se retiran helpers locales equivalentes en
+  23 tests de cliente, manteniendo helpers locales con semantica distinta
+  como los checks de strings no vacios con trim.
+- Delta parcial WP-12: `-2.268` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1356,11 +1361,14 @@ Estado de ejecucion:
   `-9` del pase de `projects_http_test.gleam`, `-202` del pase de decoders de
   envelope HTTP en tests, `-74` del pase de `require_data_list` en
   `tasks_http_test.gleam`, `-141` del pase de `require_data` para payloads
-  HTTP no-lista, `-3` del pase de helpers `require_query_string/bool`).
+  HTTP no-lista, `-3` del pase de helpers `require_query_string/bool`, `-56`
+  del pase de aserciones compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+  - `cd apps/client && gleam format --check src test && gleam build`;
+  - `cd apps/client && gleam test` (`1887 passed`).
 
 ### WP-13. Fase 2: consolidar proyecciones SQL task/card
 

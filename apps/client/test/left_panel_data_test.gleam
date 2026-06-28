@@ -7,10 +7,7 @@ import scrumbringer_client/features/layout/left_panel_data
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
+import support/assertions.{assert_equal}
 
 fn base_config() -> left_panel_data.MemberRouteConfig {
   left_panel_data.MemberRouteConfig(

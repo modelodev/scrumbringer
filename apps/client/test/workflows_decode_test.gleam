@@ -1,5 +1,7 @@
 //// Decoder tests for workflows, rules, and task templates.
 
+import support/assertions.{assert_error}
+
 import domain/automation
 import domain/workflow
 import gleam/dynamic/decode
@@ -9,10 +11,6 @@ import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/api/workflows/rules as api_rules
 import scrumbringer_client/api/workflows/task_templates as api_task_templates
-
-fn assert_error(result: Result(a, b)) {
-  let assert Error(_) = result
-}
 
 pub fn workflow_payload_decoder_decodes_enveloped_workflow_test() {
   let body =

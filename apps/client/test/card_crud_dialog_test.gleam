@@ -2,6 +2,8 @@
 ////
 //// Tests Model construction, Msg type constructors, and DialogMode type.
 
+import support/assertions.{assert_equal}
+
 import lustre/effect
 import lustre/element
 import support/render_assertions
@@ -25,10 +27,6 @@ import scrumbringer_client/components/crud_dialog_base.{
   Closed, Creating, Deleting, Editing,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 // =============================================================================
 // Model Tests

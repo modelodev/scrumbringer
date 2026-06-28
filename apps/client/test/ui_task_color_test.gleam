@@ -1,10 +1,7 @@
 import domain/card
 import gleam/option.{None, Some}
 import scrumbringer_client/ui/task_color
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
+import support/assertions.{assert_equal}
 
 pub fn task_color_returns_empty_for_none_test() {
   task_color.card_border_class(None) |> assert_equal("")

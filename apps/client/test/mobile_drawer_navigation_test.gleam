@@ -10,10 +10,7 @@ import scrumbringer_client/client_update
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
+import support/assertions.{assert_equal}
 
 pub fn navigate_to_closes_mobile_drawers_test() {
   let model =

@@ -1,12 +1,9 @@
 import gleam/option
+import support/assertions.{assert_equal}
 
 import domain/api_error.{ApiError}
 import scrumbringer_client/reset_password
 import scrumbringer_client/token_flow
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 pub fn init_without_token_stays_no_token_test() {
   let #(model, action) = reset_password.init("")

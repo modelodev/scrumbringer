@@ -1,10 +1,7 @@
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text
-
-fn assert_equal(actual: String, expected: String) {
-  let assert True = actual == expected
-}
+import support/assertions.{assert_equal}
 
 pub fn people_labels_es_test() {
   i18n.t(locale.Es, text.People) |> assert_equal("Personas")

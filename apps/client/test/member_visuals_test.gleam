@@ -1,8 +1,5 @@
 import scrumbringer_client/member_visuals
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
+import support/assertions.{assert_equal}
 
 pub fn priority_to_px_mapping_test() {
   member_visuals.priority_to_px(1) |> assert_equal(64)

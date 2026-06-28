@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/uri
+import support/assertions.{assert_equal}
 
 import domain/view_mode
 import scrumbringer_client/automation_deep_link
@@ -10,10 +11,6 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 // Story 4.5: New /config/* routes
 pub fn parse_config_members_with_project_test() {

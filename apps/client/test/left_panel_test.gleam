@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option as opt
 import gleam/string
 import lustre/element
+import support/assertions.{assert_equal, assert_true}
 import support/render_assertions
 
 import domain/view_mode as view_mode_module
@@ -12,14 +13,6 @@ import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
-
-fn assert_true(value: Bool) {
-  let assert True = value
-}
-
-fn assert_equal(actual: a, expected: a) {
-  let assert True = actual == expected
-}
 
 fn count_occurrences(haystack: String, needle: String) -> Int {
   string.split(haystack, needle)
