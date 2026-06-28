@@ -1,6 +1,5 @@
 import fixtures
 import gleam/dynamic/decode
-import gleam/erlang/charlist
 import gleam/http
 import gleam/http/request
 import gleam/json
@@ -12,8 +11,6 @@ import scrumbringer_server
 import support/assertions as expect
 import wisp
 import wisp/simulate
-
-const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 fn fixture_session(token: String, csrf: String) -> fixtures.Session {
   fixtures.Session(token: token, csrf: csrf)
@@ -3627,36 +3624,9 @@ fn login_as(
   handler(req)
 }
 
-fn new_test_app() -> scrumbringer_server.App {
-  let database_url = require_database_url()
-  let assert Ok(app) = scrumbringer_server.new_app(secret, database_url)
-  app
-}
-
 fn bootstrap_app() -> scrumbringer_server.App {
-  let app = new_test_app()
-  let handler = scrumbringer_server.handler(app)
-  let scrumbringer_server.App(db: db, ..) = app
-
-  reset_db(db)
-  reset_workflow_tables(db)
-
-  let res =
-    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  expect.expect_status(res, 200)
-
+  let #(app, _, _) = fixtures.bootstrap() |> expect.ok
   app
-}
-
-fn bootstrap_request(email: String, password: String, org_name: String) {
-  simulate.request(http.Post, "/api/v1/auth/register")
-  |> simulate.json_body(
-    json.object([
-      #("email", json.string(email)),
-      #("password", json.string(password)),
-      #("org_name", json.string(org_name)),
-    ]),
-  )
 }
 
 fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
@@ -3684,37 +3654,6 @@ fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
   value
 }
 
-fn require_database_url() -> String {
-  case getenv("DATABASE_URL", "") {
-    "" -> {
-      expect.fail()
-      ""
-    }
-
-    url -> url
-  }
-}
-
-fn reset_db(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn reset_workflow_tables(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
   fixtures.query_int(db, sql, params)
   |> expect.ok
@@ -3726,14 +3665,3 @@ fn int_to_string(value: Int) -> String {
 
 @external(erlang, "erlang", "integer_to_binary")
 fn int_to_string_unsafe(value: Int) -> String
-
-fn getenv(key: String, default: String) -> String {
-  getenv_charlist(charlist.from_string(key), charlist.from_string(default))
-  |> charlist.to_string
-}
-
-@external(erlang, "os", "getenv")
-fn getenv_charlist(
-  key: charlist.Charlist,
-  default: charlist.Charlist,
-) -> charlist.Charlist
