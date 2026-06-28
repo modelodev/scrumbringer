@@ -339,23 +339,6 @@ fn member_view_or_default(
   }
 }
 
-/// Provides assignments view (default ByProject).
-pub fn assignments_view(
-  state: UrlState,
-) -> assignments_view_mode.AssignmentsViewMode {
-  assignments_view_param(state)
-  |> assignments_view_or_default
-}
-
-fn assignments_view_or_default(
-  view: option.Option(assignments_view_mode.AssignmentsViewMode),
-) -> assignments_view_mode.AssignmentsViewMode {
-  case view {
-    option.None -> assignments_view_mode.ByProject
-    option.Some(mode) -> mode
-  }
-}
-
 /// Provides type filter.
 ///
 /// Example:

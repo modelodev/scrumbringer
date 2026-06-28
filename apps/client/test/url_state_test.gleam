@@ -283,8 +283,8 @@ pub fn org_team_accepts_users_view_test() {
     url_state.parse_query("view=users", url_state.OrgTeam)
 
   state
-  |> url_state.assignments_view
-  |> assert_equal(assignments_view_mode.ByUser)
+  |> url_state.assignments_view_param
+  |> assert_equal(Some(assignments_view_mode.ByUser))
 }
 
 pub fn member_context_rejects_assignments_view_test() {

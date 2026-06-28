@@ -1036,14 +1036,22 @@ Estado de ejecucion:
     de contrato;
   - retirado su test unitario directo en `url_state_test.gleam`;
   - delta adicional: `-14` lineas mantenidas.
+- Micro-pase adicional de accessor URL accidental:
+  - retirado `url_state.assignments_view`, sin consumidores de produccion y
+    usado solo por un test unitario directo;
+  - el test pasa a verificar el contrato real de parseo con
+    `assignments_view_param`, conservando la cobertura del parametro
+    `view=users`;
+  - delta adicional: `-17` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
     (`1912 passed`; `1888 passed` tras retirar `workspace_state_test.gleam`;
-    `1887 passed` tras retirar `url_state.without_project`);
+    `1887 passed` tras retirar `url_state.without_project`;
+    `1887 passed` tras retirar `url_state.assignments_view`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.353` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.370` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
