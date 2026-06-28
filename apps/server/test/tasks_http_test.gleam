@@ -196,27 +196,8 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let task_type_decoder = {
-    use id <- decode.field("id", decode.int)
-    use name <- decode.field("name", decode.string)
-    use icon <- decode.field("icon", decode.string)
-    decode.success(#(id, name, icon))
-  }
-
-  let ongoing_by_decoder =
-    decode.optional({
-      use user_id <- decode.field("user_id", decode.int)
-      decode.success(user_id)
-    })
-
-  let task_decoder = {
-    use status <- decode.field("status", decode.string)
-    use work_state <- decode.field("work_state", decode.string)
-    use task_type <- decode.field("task_type", task_type_decoder)
-    use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
-    decode.success(#(status, work_state, task_type, ongoing_by))
-  }
-  let tasks = fx.require_data_list(body, "tasks", task_decoder)
+  let tasks =
+    fx.require_data_list(body, "tasks", task_contract_fields_decoder())
 
   case tasks {
     [
@@ -257,40 +238,8 @@ pub fn task_get_includes_task_contract_fields_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let task_type_decoder = {
-    use id <- decode.field("id", decode.int)
-    use name <- decode.field("name", decode.string)
-    use icon <- decode.field("icon", decode.string)
-    decode.success(#(id, name, icon))
-  }
-
-  let ongoing_by_decoder =
-    decode.optional({
-      use user_id <- decode.field("user_id", decode.int)
-      decode.success(user_id)
-    })
-
-  let task_decoder = {
-    use work_state <- decode.field("work_state", decode.string)
-    use task_type <- decode.field("task_type", task_type_decoder)
-    use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
-    decode.success(#(work_state, task_type, ongoing_by))
-  }
-
-  let data_decoder = {
-    use task <- decode.field("task", task_decoder)
-    decode.success(task)
-  }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(#(
-    work_state,
-    #(task_type_id, task_type_name, task_type_icon),
-    ongoing_by,
-  )) = decode.run(dynamic, response_decoder)
+  let #(work_state, #(task_type_id, task_type_name, task_type_icon), ongoing_by) =
+    require_task_data(body, task_get_contract_fields_decoder())
 
   work_state |> expect.equal("available")
   task_type_id |> expect.equal(type_id)
@@ -329,42 +278,12 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let task_type_decoder = {
-    use id <- decode.field("id", decode.int)
-    use name <- decode.field("name", decode.string)
-    use icon <- decode.field("icon", decode.string)
-    decode.success(#(id, name, icon))
-  }
-
-  let ongoing_by_decoder =
-    decode.optional({
-      use user_id <- decode.field("user_id", decode.int)
-      decode.success(user_id)
-    })
-
-  let task_decoder = {
-    use status <- decode.field("status", decode.string)
-    use work_state <- decode.field("work_state", decode.string)
-    use task_type <- decode.field("task_type", task_type_decoder)
-    use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
-    decode.success(#(status, work_state, task_type, ongoing_by))
-  }
-
-  let data_decoder = {
-    use task <- decode.field("task", task_decoder)
-    decode.success(task)
-  }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(#(
+  let #(
     status,
     work_state,
     #(task_type_id, task_type_name, task_type_icon),
     ongoing_by,
-  )) = decode.run(dynamic, response_decoder)
+  ) = require_task_data(body, task_contract_fields_decoder())
 
   status |> expect.equal("claimed")
   work_state |> expect.equal("ongoing")
@@ -2205,6 +2124,42 @@ fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
   fx.require_query_int(db, "select count(*) from tasks where id = $1", [
     pog.int(task_id),
   ])
+}
+
+fn task_type_contract_decoder() {
+  use id <- decode.field("id", decode.int)
+  use name <- decode.field("name", decode.string)
+  use icon <- decode.field("icon", decode.string)
+  decode.success(#(id, name, icon))
+}
+
+fn ongoing_by_decoder() {
+  decode.optional({
+    use user_id <- decode.field("user_id", decode.int)
+    decode.success(user_id)
+  })
+}
+
+fn task_contract_fields_decoder() {
+  use status <- decode.field("status", decode.string)
+  use work_state <- decode.field("work_state", decode.string)
+  use task_type <- decode.field("task_type", task_type_contract_decoder())
+  use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder())
+  decode.success(#(status, work_state, task_type, ongoing_by))
+}
+
+fn task_get_contract_fields_decoder() {
+  use work_state <- decode.field("work_state", decode.string)
+  use task_type <- decode.field("task_type", task_type_contract_decoder())
+  use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder())
+  decode.success(#(work_state, task_type, ongoing_by))
+}
+
+fn require_task_data(body: String, task_decoder: decode.Decoder(a)) -> a {
+  fx.require_data(body, {
+    use task <- decode.field("task", task_decoder)
+    decode.success(task)
+  })
 }
 
 fn decode_task_titles(body: String) -> List(String) {

@@ -1951,7 +1951,12 @@ Estado de ejecucion:
   proyecto, tipo y estados. Guardarrail: el barrido
   `rg "fixtures\\.task_trigger_state\\(|fixtures\\.card_trigger_state\\(" apps/server/test/rules_engine_test.gleam`
   queda limitado a los helpers locales.
-- Delta parcial WP-12: `-4.071` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimoctavo pase aplicado a `tasks_http_test`: se extraen decoders
+  locales del contrato task (`task_type`, `work_state`, `status` y
+  `ongoing_by`) para retirar tres copias inline. Se mantiene el helper dentro
+  del test porque caracteriza ese contrato HTTP concreto y no infraestructura
+  general.
+- Delta parcial WP-12: `-4.116` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -2023,11 +2028,13 @@ Estado de ejecucion:
   compartidas en tests de cliente, `-5` del cuadragesimocuarto pase de
   fixtures HTTP compartidas en tests de servidor, `-7` del cuadragesimosexto
   pase de fixtures HTTP de task/work-session en tests de servidor, `-53` del
-  pase de eventos locales tipados en `rules_engine_test`).
+  pase de eventos locales tipados en `rules_engine_test` y `-45` del pase de
+  decoders locales de contrato task en `tasks_http_test`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`).
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`) tras el pase de decoders locales de contrato task.
   - `cd apps/client && gleam format --check src test && gleam build`;
   - `cd apps/client && gleam test` (`1887 passed`).
 
