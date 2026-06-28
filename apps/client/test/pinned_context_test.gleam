@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/pinned_context
@@ -8,7 +7,7 @@ import scrumbringer_client/ui/pinned_context
 pub fn pinned_context_hides_when_empty_test() {
   let html =
     pinned_context.view(config([]))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "pinned-context")
 }
@@ -23,7 +22,7 @@ pub fn pinned_context_limits_visible_notes_to_three_test() {
         note(4, "Fourth"),
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Contexto fijado")
   render_assertions.contains(html, "First")
@@ -42,7 +41,7 @@ pub fn pinned_context_does_not_show_more_button_at_three_notes_test() {
         note(3, "Third"),
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "pinned-context-more")
 }

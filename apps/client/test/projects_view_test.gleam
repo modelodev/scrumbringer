@@ -1,5 +1,4 @@
 import gleam/int
-import lustre/element
 import support/render_assertions
 
 import domain/project.{type Project, Project, ProjectDepthName}
@@ -74,7 +73,7 @@ fn config(
 pub fn projects_view_loaded_projects_uses_config_data_test() {
   let html =
     projects_view.view_projects(config(remote.Loaded([project()])))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Projects")
   render_assertions.contains(html, "Project Alpha")
@@ -97,7 +96,7 @@ pub fn projects_view_delete_dialog_uses_shared_danger_button_test() {
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Delete project")
   render_assertions.contains(html, "Deleting")
@@ -131,7 +130,7 @@ pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"project-structure-settings\"")
   render_assertions.contains(html, "Elige cuánta profundidad")
@@ -165,7 +164,7 @@ pub fn projects_create_dialog_general_step_hides_structure_test() {
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Step 1 of 5")
   render_assertions.contains(html, "General")
@@ -201,7 +200,7 @@ pub fn projects_create_dialog_review_step_summarizes_configuration_test() {
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Step 5 of 5")
   render_assertions.contains(html, "Review")
@@ -236,7 +235,7 @@ pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() 
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"project-structure-settings\"")
   render_assertions.contains(html, "Pool soft limit")
@@ -276,7 +275,7 @@ pub fn projects_edit_dialog_localizes_structure_settings_to_spanish_test() {
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Estructura y Pool")
   render_assertions.contains(html, "Profundidad maxima")
@@ -328,7 +327,7 @@ pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
         project_dialog: dialog,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,

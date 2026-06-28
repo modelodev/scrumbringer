@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -39,7 +38,7 @@ pub fn cards_view_renders_detail_button_test() {
 
   let html =
     admin_view.view_cards(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "section admin-surface")
   render_assertions.contains(html, "admin-surface-filters")
@@ -62,7 +61,7 @@ pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
 
   let html =
     admin_view.view_cards(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-delete-btn")
   render_assertions.contains(html, "btn-delete-blocked")
@@ -87,7 +86,7 @@ pub fn cards_view_keeps_delete_available_for_empty_cards_test() {
 
   let html =
     admin_view.view_cards(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-delete-btn")
   render_assertions.contains(html, "aria-label=\"Delete Card\"")
@@ -111,7 +110,7 @@ pub fn card_crud_dialog_passes_parent_card_for_child_creation_test() {
 
   let html =
     admin_view.view_card_crud_dialog(model, 1)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "mode=\"create\"")
   render_assertions.contains(html, "parent-card-id=\"42\"")
@@ -138,7 +137,7 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
 
   let html =
     admin_view.view_cards(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-show")
 }
@@ -160,7 +159,7 @@ pub fn cards_view_does_not_render_local_crud_dialog_test() {
 
   let html =
     admin_view.view_cards(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "card-crud-dialog")
 }

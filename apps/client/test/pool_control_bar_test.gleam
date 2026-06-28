@@ -1,5 +1,4 @@
 import gleam/option.{None}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -12,7 +11,7 @@ import scrumbringer_client/pool_prefs
 pub fn pool_control_bar_renders_visibility_selector_test() {
   let html =
     control_bar.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"pool-control-bar\"")
   render_assertions.contains(html, "data-testid=\"work-filter-visibility\"")
@@ -25,7 +24,7 @@ pub fn pool_control_bar_renders_visibility_selector_test() {
 pub fn pool_control_bar_renders_canvas_list_toggle_test() {
   let html =
     control_bar.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"pool-view-mode-toggle\"")
   render_assertions.contains(html, "data-testid=\"pool-view-mode-canvas\"")
@@ -37,7 +36,7 @@ pub fn pool_control_bar_renders_canvas_list_toggle_test() {
 pub fn pool_control_bar_renders_pool_owned_work_filters_test() {
   let html =
     control_bar.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"work-filter-search\"")
   render_assertions.contains(html, "data-testid=\"work-filter-type\"")

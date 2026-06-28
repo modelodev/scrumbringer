@@ -2,7 +2,6 @@
 
 import support/assertions.{assert_equal}
 
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/permissions
@@ -53,7 +52,7 @@ pub fn section_icon_workflows_test() {
 pub fn section_header_title_is_semantic_heading_test() {
   let html =
     section_header.view(icons.OrgUsers, "Members")
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "<h2")
   render_assertions.contains(html, "admin-section-title")

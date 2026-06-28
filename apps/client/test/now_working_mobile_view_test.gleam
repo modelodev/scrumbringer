@@ -1,5 +1,4 @@
 import gleam/int
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -50,7 +49,7 @@ fn config() -> mobile.Config(String) {
 pub fn mobile_panel_sheet_renders_from_config_test() {
   let html =
     mobile.view_panel_sheet(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Working now")
   render_assertions.contains(
@@ -66,7 +65,7 @@ pub fn mobile_panel_sheet_renders_from_config_test() {
 pub fn mobile_mini_bar_renders_session_count_from_config_test() {
   let html =
     mobile.view_mini_bar(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Working now (0)")
 }

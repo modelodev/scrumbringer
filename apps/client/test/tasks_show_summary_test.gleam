@@ -1,6 +1,5 @@
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -25,7 +24,7 @@ pub fn task_show_summary_renders_operational_context_test() {
       dependencies: Loaded([]),
       parent_card_title: Some("Release card"),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Operational summary")
   render_assertions.contains(html, "task-inspector-facts")
@@ -57,7 +56,7 @@ pub fn task_show_summary_uses_loaded_dependency_blockers_test() {
       ]),
       parent_card_title: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Blocked by 1 tasks")
 }
@@ -82,7 +81,7 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
       dependencies: Loaded([]),
       parent_card_title: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Origin")
   render_assertions.contains(html, "Created by automation")
@@ -151,7 +150,7 @@ pub fn task_show_summary_localizes_automation_origin_test() {
       dependencies: Loaded([]),
       parent_card_title: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Origen")
   render_assertions.contains(html, "Creada por automatización")
@@ -182,7 +181,7 @@ pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
       dependencies: Loaded([]),
       parent_card_title: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,

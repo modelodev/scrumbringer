@@ -3,7 +3,6 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/features/cards/card_target
@@ -130,7 +129,7 @@ pub fn card_target_field_failed_state_renders_retry_test() {
       on_selected: fn(_) { Nil },
       on_retry: Some(Nil),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Could not load active cards")
   render_assertions.contains(html, "Retry")

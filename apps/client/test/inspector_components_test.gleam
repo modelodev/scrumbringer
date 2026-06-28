@@ -2,7 +2,6 @@ import gleam/option as opt
 import support/render_assertions
 
 import lustre/attribute
-import lustre/element
 import lustre/element/html
 
 import scrumbringer_client/ui/inspector_header
@@ -25,7 +24,7 @@ pub fn inspector_header_uses_single_actions_slot_test() {
       on_close: "close",
       extra_class: "card-inspector-header",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "inspector-action-bar")
   render_assertions.contains(html, "id=\"card-show-title\"")
@@ -45,7 +44,7 @@ pub fn inspector_shell_uses_passive_dialog_contract_test() {
       ),
       [html.div([], [html.text("Body")])],
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "role=\"dialog\"")
   render_assertions.contains(html, "aria-modal=\"true\"")

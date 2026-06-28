@@ -1,5 +1,4 @@
 import gleam/dict
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/features/views/grouped_list
@@ -22,7 +21,7 @@ pub fn grouped_list_renders_empty_state_test() {
       on_task_claim: fn(a, b) { a + b },
     )
 
-  let html = grouped_list.view(config) |> element.to_document_string
+  let html = grouped_list.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "No available tasks right now")
 }

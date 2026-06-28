@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -30,7 +29,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
       current_user_id: Some(7),
       on_open: "open",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-card-preview")
   render_assertions.contains(html, "Card")
@@ -71,7 +70,7 @@ pub fn task_hover_hides_empty_optional_sections_test() {
       current_user_id: Some(7),
       on_open: "open",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Age")
   render_assertions.contains(html, "today")

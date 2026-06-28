@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/option.{None}
 import gleam/string
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -97,15 +96,15 @@ pub fn pool_card_applies_highlight_classes_test() {
 
   let source_html =
     pool_view.view_task_card(pool_context(model), source)
-    |> element.to_document_string
+    |> render_assertions.html
 
   let target_html =
     pool_view.view_task_card(pool_context(model), target)
-    |> element.to_document_string
+    |> render_assertions.html
 
   let other_html =
     pool_view.view_task_card(pool_context(model), other)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(source_html, "is-highlight-source")
   render_assertions.contains(source_html, "highlight-warning")
@@ -133,7 +132,7 @@ pub fn pool_card_shows_hidden_blockers_message_test() {
 
   let html =
     pool_view.view_task_card(pool_context(model), source)
-    |> element.to_document_string
+    |> render_assertions.html
 
   let has_hidden_message =
     string.contains(html, "1 bloqueadoras fuera de vista por filtros")
@@ -162,11 +161,11 @@ pub fn pool_card_applies_created_highlight_info_class_test() {
 
   let created_html =
     pool_view.view_task_card(pool_context(model), created)
-    |> element.to_document_string
+    |> render_assertions.html
 
   let other_html =
     pool_view.view_task_card(pool_context(model), other)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(created_html, "is-highlight-source")
   render_assertions.contains(created_html, "highlight-info")

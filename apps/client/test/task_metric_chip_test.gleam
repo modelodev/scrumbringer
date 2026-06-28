@@ -1,5 +1,4 @@
 import gleam/option.{Some}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/i18n/locale
@@ -16,7 +15,7 @@ pub fn full_task_metric_chip_renders_icon_value_label_and_accessibility_test() {
       testid: Some("surface-available"),
     )
     |> task_metric_chip.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-metric-chip is-full available")
   render_assertions.contains(html, "work-surface-chip")
@@ -37,7 +36,7 @@ pub fn compact_task_metric_chip_hides_visible_label_but_keeps_meaning_test() {
       locale.En,
       task_metric.metric(task_metric.Blocked, 1),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-metric-chip is-compact blocked")
   render_assertions.contains(html, "data-testid=\"task-metric-blocked\"")

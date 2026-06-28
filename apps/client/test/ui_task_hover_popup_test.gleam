@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/task_hover_popup
@@ -26,7 +25,7 @@ pub fn task_hover_popup_hides_card_and_description_when_empty_test() {
       open_label: "Abrir tarea",
       on_open: "msg",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "Tarjeta")
   render_assertions.not_contains(html, "Descripción")
@@ -60,7 +59,7 @@ pub fn task_hover_popup_renders_card_and_description_test() {
       open_label: "Abrir tarea",
       on_open: "msg",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Sprint Planning")
   render_assertions.contains(html, "Revisar cambios")

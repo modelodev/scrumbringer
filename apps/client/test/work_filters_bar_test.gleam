@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option.{type Option, None, Some}
-import lustre/element
 import lustre/element/html
 import support/domain_fixtures
 import support/render_assertions
@@ -14,7 +13,7 @@ pub fn work_filters_bar_renders_scope_control_with_active_state_test() {
   let html =
     config()
     |> work_filters_bar.view_capability_scope_control
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -38,7 +37,7 @@ pub fn work_filters_bar_renders_enabled_controls_with_stable_testids_test() {
   let html =
     config()
     |> work_filters_bar.view_bar
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"work-filter-bar\"")
   render_assertions.contains(html, "data-testid=\"work-filter-search\"")
@@ -63,7 +62,7 @@ pub fn work_filters_bar_hides_disabled_controls_test() {
       visibility_control: work_filters_bar.NoVisibilityControl,
     )
     |> work_filters_bar.view_bar
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "data-testid=\"work-filter-search\"")
   render_assertions.not_contains(html, "data-testid=\"work-filter-type\"")
@@ -78,7 +77,7 @@ pub fn work_filters_bar_hides_disabled_controls_test() {
 pub fn work_filters_bar_refinement_controls_fit_plan_scope_bar_test() {
   let html =
     html.div([], work_filters_bar.view_refinement_controls(config()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "plan-filter-control")
   render_assertions.contains(

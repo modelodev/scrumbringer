@@ -7,7 +7,6 @@ import domain/task_status.{
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -24,7 +23,7 @@ fn assert_before(text: String, first: String, second: String) {
 }
 
 fn render(config: structure_view.Config(Int)) -> String {
-  structure_view.view(config) |> element.to_document_string
+  structure_view.view(config) |> render_assertions.html
 }
 
 pub fn project_scope_shows_tree_without_internal_mode_selector_test() {

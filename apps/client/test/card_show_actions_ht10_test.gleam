@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -108,7 +107,7 @@ pub fn active_task_group_show_offers_create_task_only_test() {
 pub fn create_task_without_card_requires_active_card_test() {
   let html =
     create_dialog.view(create_config(opt.None, []))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Choose an active card to create the task")
   render_assertions.contains(html, "disabled")
@@ -117,7 +116,7 @@ pub fn create_task_without_card_requires_active_card_test() {
 pub fn draft_card_create_task_is_blocked_test() {
   let html =
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Draft)]))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Only active cards can receive new tasks")
   render_assertions.contains(html, "disabled")
@@ -126,7 +125,7 @@ pub fn draft_card_create_task_is_blocked_test() {
 pub fn active_card_create_task_adds_task_to_pool_test() {
   let html =
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Card 1")
 }
@@ -134,7 +133,7 @@ pub fn active_card_create_task_adds_task_to_pool_test() {
 pub fn active_card_create_task_explains_pool_entry_test() {
   let html =
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Active card")
 }

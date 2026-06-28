@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/features/pool/position_edit_dialog
@@ -18,7 +17,7 @@ pub fn position_edit_dialog_renders_fields_test() {
       on_y_changed: fn(value) { "y-" <> value },
       on_submit: "submit",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Edit position")
   render_assertions.contains(html, "value=\"12\"")
@@ -39,7 +38,7 @@ pub fn position_edit_dialog_renders_loading_and_error_test() {
       on_y_changed: fn(value) { "y-" <> value },
       on_submit: "submit",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Invalid coordinates")
   render_assertions.contains(html, "btn-loading")

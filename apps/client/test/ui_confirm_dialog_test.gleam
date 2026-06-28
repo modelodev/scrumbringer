@@ -1,5 +1,4 @@
 import gleam/option
-import lustre/element
 import lustre/element/html.{text}
 import support/render_assertions
 
@@ -20,7 +19,7 @@ pub fn confirm_dialog_uses_typed_danger_intent_test() {
       error: option.None,
       confirm_intent: button.Danger,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-danger")
   render_assertions.contains(html, "btn-entity-action")
@@ -41,7 +40,7 @@ pub fn confirm_dialog_adds_loading_class_internally_test() {
       error: option.None,
       confirm_intent: button.Primary,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-primary")
   render_assertions.contains(html, "btn-loading")

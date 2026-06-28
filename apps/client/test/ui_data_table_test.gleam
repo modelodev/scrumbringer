@@ -1,6 +1,5 @@
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, NotAsked}
-import lustre/element
 import lustre/element/html.{text}
 import scrumbringer_client/ui/data_table
 import support/render_assertions
@@ -22,7 +21,7 @@ pub fn view_remote_renders_loading_state_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "Loading...")
 }
 
@@ -37,7 +36,7 @@ pub fn view_remote_renders_error_state_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "Boom")
 }
 
@@ -50,7 +49,7 @@ pub fn view_remote_renders_empty_state_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "No rows")
 }
 
@@ -63,7 +62,7 @@ pub fn view_remote_renders_table_rows_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "Alice")
 }
 
@@ -76,7 +75,7 @@ pub fn view_remote_renders_table_headers_with_class_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "table-header")
 }
 
@@ -89,7 +88,7 @@ pub fn view_uses_responsive_data_table_class_by_default_test() {
     |> data_table.with_rows(["Long value"], fn(value) { value })
     |> data_table.view()
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "data-table-scroll")
   render_assertions.contains(html, "class=\"table data-table\"")
   render_assertions.contains(html, "scope=\"col\"")
@@ -104,7 +103,7 @@ pub fn loading_state_is_announced_without_blocking_page_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "role=\"status\"")
   render_assertions.contains(html, "aria-live=\"polite\"")
   render_assertions.contains(html, "aria-busy=\"true\"")
@@ -122,7 +121,7 @@ pub fn forbidden_state_is_alerted_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "role=\"alert\"")
   render_assertions.contains(html, "No permission for this table")
 }
@@ -138,6 +137,6 @@ pub fn empty_error_message_gets_safe_fallback_test() {
       config: base_config(),
     )
 
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
   render_assertions.contains(html, "SERVER (500)")
 }

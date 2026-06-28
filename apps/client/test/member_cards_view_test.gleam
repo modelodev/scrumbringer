@@ -1,6 +1,5 @@
 import domain/remote.{NotAsked}
 import gleam/option as opt
-import lustre/element
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -46,7 +45,7 @@ pub fn cards_view_shows_empty_state_for_member_cards_test() {
     model
     |> cards_config
     |> cards_view.view_cards
-    |> element.to_document_string
+    |> render_assertions.html
 
   let expected = i18n.t(model.ui.locale, i18n_text.MemberCardsEmpty)
   render_assertions.contains(html, expected)

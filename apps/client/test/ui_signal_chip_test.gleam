@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/signal_chip
@@ -10,7 +9,7 @@ pub fn metric_chip_renders_value_label_and_tone_test() {
     signal_chip.metric("Available", "4", tone.Available)
     |> signal_chip.with_testid("metric-chip")
     |> signal_chip.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "signal-chip available")
   render_assertions.contains(html, "data-testid=\"metric-chip\"")
@@ -25,7 +24,7 @@ pub fn text_chip_renders_label_without_metric_parts_test() {
   let html =
     signal_chip.text("2 blocked", tone.Blocked)
     |> signal_chip.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "signal-chip blocked")
   render_assertions.contains(html, ">2 blocked<")
@@ -41,7 +40,7 @@ pub fn metric_if_positive_hides_zero_test() {
   let html =
     chip
     |> signal_chip.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, ">2<")
 }
@@ -54,7 +53,7 @@ pub fn custom_class_preserves_view_contract_test() {
     |> signal_chip.with_testid("custom-health-chip")
     |> signal_chip.with_title("Blocked: 1")
     |> signal_chip.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "custom-health-chip blocked")
   render_assertions.contains(html, "custom-health-value")

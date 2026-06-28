@@ -1,7 +1,6 @@
 //// Tests for notes preview tooltip (AC16).
 
 import gleam/option.{None, Some}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/tooltips/notes_preview_tooltip
@@ -23,7 +22,7 @@ pub fn renders_count_and_time_test() {
       ),
     )
 
-  let html = notes_preview_tooltip.view(config) |> element.to_document_string
+  let html = notes_preview_tooltip.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "2")
   render_assertions.contains(html, "notas nuevas")
@@ -47,7 +46,7 @@ pub fn shows_last_note_when_present_test() {
       ),
     )
 
-  let html = notes_preview_tooltip.view(config) |> element.to_document_string
+  let html = notes_preview_tooltip.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "Última:")
   render_assertions.contains(html, "Revisé los mockups...")
@@ -70,7 +69,7 @@ pub fn hides_last_note_when_none_test() {
       ),
     )
 
-  let html = notes_preview_tooltip.view(config) |> element.to_document_string
+  let html = notes_preview_tooltip.view(config) |> render_assertions.html
 
   render_assertions.not_contains(html, "Última:")
 }

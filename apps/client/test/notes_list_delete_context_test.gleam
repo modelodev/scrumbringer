@@ -2,7 +2,6 @@
 
 import gleam/int
 import gleam/option
-import lustre/element
 import support/render_assertions
 
 import domain/note/entity.{type Note, Note}
@@ -108,7 +107,7 @@ pub fn delete_button_shows_own_note_label_test() {
       fn(id) { id },
       fn(id, _pinned) { id },
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Eliminar nota")
   render_assertions.not_contains(html, "(como admin)")
@@ -173,7 +172,7 @@ pub fn delete_button_shows_admin_context_test() {
       fn(id) { id },
       fn(id, _pinned) { id },
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Eliminar nota (como admin)")
 }
@@ -208,7 +207,7 @@ pub fn pin_button_uses_pinned_state_test() {
       fn(id) { id },
       fn(id, _pinned) { id },
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Desfijar nota")
   render_assertions.contains(html, "data-testid=\"note-pin-action\"")
@@ -244,7 +243,7 @@ pub fn pin_button_explains_blocked_permission_test() {
       fn(id) { id },
       fn(id, _pinned) { id },
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Solo autor o manager")
   render_assertions.contains(html, "aria-disabled=\"true\"")

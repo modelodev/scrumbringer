@@ -1,5 +1,4 @@
 import gleam/dict
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -28,7 +27,7 @@ import scrumbringer_client/features/projects/view as projects_view
 
 fn render_assignments(model: client_state.Model) -> String {
   assignments_view.view_assignments(config_from_model(model))
-  |> element.to_document_string
+  |> render_assertions.html
 }
 
 fn config_from_model(

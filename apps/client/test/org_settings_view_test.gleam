@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -40,7 +39,7 @@ pub fn org_settings_view_renders_table_from_config_without_root_model_test() {
 
   let html =
     org_settings_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Users")
   render_assertions.contains(html, "Manage org roles")
@@ -74,7 +73,7 @@ pub fn org_settings_view_renders_delete_dialog_from_config_without_root_model_te
 
   let html =
     org_settings_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Delete user")
   render_assertions.contains(html, "member@example.com")

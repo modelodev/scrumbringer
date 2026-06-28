@@ -1,6 +1,5 @@
 import gleam/string
 import lustre/attribute
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/button
@@ -18,7 +17,7 @@ pub fn primary_global_button_renders_semantic_classes_test() {
     |> button.with_class("pool-header-action")
     |> button.with_testid("btn-new-task")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-primary")
   render_assertions.contains(html, "btn-global-action")
@@ -38,7 +37,7 @@ pub fn icon_only_button_has_accessible_label_test() {
       button.EntityAction,
     )
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-danger-icon")
   render_assertions.contains(html, "btn-entity-action")
@@ -51,7 +50,7 @@ pub fn text_button_can_use_contextual_accessible_label_test() {
     button.text("Remove", "msg", button.Danger, button.EntityAction)
     |> button.with_accessible_label("Remove: Platform")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, ">Remove<")
   render_assertions.contains(html, "aria-label=\"Remove: Platform\"")
@@ -65,7 +64,7 @@ pub fn disabled_button_and_id_are_preserved_test() {
     |> button.with_id("activate-button")
     |> button.with_testid("activate-testid")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "disabled")
   render_assertions.contains(html, "id=\"activate-button\"")
@@ -78,7 +77,7 @@ pub fn submit_button_can_target_external_form_test() {
     |> button.with_form("profile-form")
     |> button.with_disabled(True)
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "type=\"submit\"")
   render_assertions.contains(html, "form=\"profile-form\"")
@@ -97,7 +96,7 @@ pub fn submit_icon_text_button_keeps_submit_semantics_test() {
     |> button.with_form("card-create-form")
     |> button.with_testid("card-create-and-activate")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "type=\"submit\"")
   render_assertions.contains(html, "form=\"card-create-form\"")
@@ -114,7 +113,7 @@ pub fn extra_classes_are_accumulated_test() {
     |> button.with_class("btn-compact")
     |> button.with_class("btn-loading")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-compact")
   render_assertions.contains(html, "btn-loading")
@@ -130,7 +129,7 @@ pub fn neutral_icon_button_does_not_force_intent_class_test() {
       button.EntityAction,
     )
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-icon")
   render_assertions.contains(html, "btn-xs")
@@ -150,7 +149,7 @@ pub fn tooltip_is_rendered_when_provided_test() {
     )
     |> button.with_tooltip("Claim")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-tooltip=\"Claim\"")
   render_assertions.contains(html, "aria-label=\"Claim task\"")
@@ -168,7 +167,7 @@ pub fn button_can_carry_specific_accessibility_attributes_test() {
     |> button.with_attribute(attribute.attribute("aria-haspopup", "dialog"))
     |> button.with_attribute(attribute.attribute("aria-expanded", "true"))
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "aria-haspopup=\"dialog\"")
   render_assertions.contains(html, "aria-expanded=\"true\"")
@@ -187,7 +186,7 @@ pub fn blocked_reason_removes_click_and_keeps_button_focusable_test() {
     )
     |> button.with_blocked_reason("Cannot delete: has tasks")
     |> button.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "aria-disabled=\"true\"")
   render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")

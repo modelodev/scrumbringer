@@ -1,5 +1,4 @@
 import gleam/option
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -90,7 +89,7 @@ pub fn cards_uses_cache_when_available_test() {
     model
     |> cards_config
     |> cards_view.view_cards
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Card A")
 }
@@ -116,7 +115,7 @@ pub fn cards_shows_loading_only_without_cache_test() {
     model
     |> cards_config
     |> cards_view.view_cards
-    |> element.to_document_string
+    |> render_assertions.html
 
   let expected = i18n.t(model.ui.locale, i18n_text.LoadingEllipsis)
   render_assertions.contains(html, expected)
@@ -144,7 +143,7 @@ pub fn cards_shows_empty_without_cache_or_pending_test() {
     model
     |> cards_config
     |> cards_view.view_cards
-    |> element.to_document_string
+    |> render_assertions.html
 
   let expected = i18n.t(model.ui.locale, i18n_text.MemberCardsEmpty)
   render_assertions.contains(html, expected)

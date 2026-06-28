@@ -5,7 +5,6 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import gleam/dict
 import gleam/option.{Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -77,7 +76,7 @@ pub fn grouped_list_renders_claimed_by_and_border_class_test() {
   let html =
     base_config([claimed_task()], [sample_card()])
     |> grouped_list.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Claimed by admin@example.com")
   render_assertions.contains(html, "task-status-indicator")
@@ -90,7 +89,7 @@ pub fn grouped_list_renders_available_label_and_claim_button_test() {
   let html =
     base_config([available_task()], [sample_card()])
     |> grouped_list.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Available")
   render_assertions.contains(html, "task-claim-btn")
@@ -102,7 +101,7 @@ pub fn grouped_list_shows_notes_indicator_test() {
   let html =
     base_config([available_task()], [card])
     |> grouped_list.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-notes-indicator")
 }

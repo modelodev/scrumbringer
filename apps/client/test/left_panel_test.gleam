@@ -2,7 +2,6 @@ import gleam/int
 import gleam/list
 import gleam/option as opt
 import gleam/string
-import lustre/element
 import support/assertions.{assert_equal, assert_true}
 import support/render_assertions
 
@@ -112,7 +111,7 @@ fn appears_before(html: String, first: String, second: String) -> Bool {
 pub fn left_panel_active_nav_has_active_class_test() {
   let rendered =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "nav-link active")
 }
@@ -126,14 +125,14 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
   ]
   |> list.each(fn(mode) {
     let rendered = left_panel.view(base_config(opt.Some(member_route(mode))))
-    let html = element.to_document_string(rendered)
+    let html = render_assertions.html(rendered)
     render_assertions.contains(html, "nav-link active")
   })
 }
 
 pub fn left_panel_kanban_route_can_be_active_test() {
   let rendered = left_panel.view(base_config(opt.Some(member_kanban_route())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(
     html,
@@ -150,7 +149,7 @@ pub fn left_panel_kanban_route_can_be_active_test() {
 pub fn left_panel_does_not_render_removed_hierarchy_nav_test() {
   let rendered =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.not_contains(html, "nav-hierarchies")
 }
@@ -161,7 +160,7 @@ pub fn left_panel_create_actions_are_global_shortcuts_test() {
       ..base_config(opt.Some(member_route(view_mode_module.Pool))),
       is_pm: True,
     )
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "btn-action btn-action-shortcut")
   render_assertions.contains(html, "data-testid=\"btn-new-task\"")
@@ -178,7 +177,7 @@ pub fn left_panel_config_section_active_test() {
       config_collapsed: False,
     )
   let rendered = left_panel.view(config)
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   // Should have active class on the Team nav item
   render_assertions.contains(html, "nav-link active")
@@ -191,7 +190,7 @@ pub fn left_panel_config_has_single_automations_entry_test() {
       is_pm: True,
       config_collapsed: False,
     )
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"nav-automations\"")
   render_assertions.contains(
@@ -223,7 +222,7 @@ pub fn left_panel_automation_entry_active_for_all_console_modes_test() {
         is_pm: True,
         config_collapsed: False,
       )
-    let html = left_panel.view(config) |> element.to_document_string
+    let html = left_panel.view(config) |> render_assertions.html
 
     render_assertions.contains(
       html,
@@ -242,7 +241,7 @@ pub fn left_panel_org_section_active_test() {
       org_collapsed: False,
     )
   let rendered = left_panel.view(config)
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   // Should have active class on the Invites nav item
   render_assertions.contains(html, "nav-link active")
@@ -255,7 +254,7 @@ pub fn left_panel_collapsed_config_items_are_not_rendered_test() {
       is_pm: True,
       config_collapsed: True,
     )
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"section-config\"")
   render_assertions.not_contains(html, "data-testid=\"nav-team\"")
@@ -268,7 +267,7 @@ pub fn left_panel_collapsed_config_route_still_renders_active_item_test() {
       is_pm: True,
       config_collapsed: True,
     )
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -284,7 +283,7 @@ pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
       is_org_admin: True,
       org_collapsed: True,
     )
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"section-org\"")
   render_assertions.not_contains(html, "data-testid=\"nav-projects\"")
@@ -297,7 +296,7 @@ pub fn left_panel_collapsed_org_route_still_renders_active_item_test() {
       is_org_admin: True,
       org_collapsed: True,
     )
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -309,7 +308,7 @@ pub fn left_panel_collapsed_org_route_still_renders_active_item_test() {
 pub fn left_panel_work_nav_order_is_pool_kanban_plan_capabilities_people_en_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
-    |> element.to_document_string
+    |> render_assertions.html
 
   appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-kanban\"")
   |> assert_true
@@ -345,7 +344,7 @@ pub fn left_panel_work_nav_order_is_pool_kanban_plan_capabilities_people_en_test
 pub fn left_sidebar_does_not_render_depth_names_from_project_config_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Cards))))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "data-testid=\"nav-depth-1\"")
   render_assertions.not_contains(html, "<span class=\"nav-label\">Epics</span>")
@@ -363,7 +362,7 @@ pub fn left_sidebar_does_not_render_depth_names_from_project_config_test() {
 pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Cards))))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -384,7 +383,7 @@ pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
 pub fn left_sidebar_kanban_route_does_not_activate_plan_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_kanban_route())))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -401,7 +400,7 @@ pub fn left_sidebar_kanban_route_does_not_activate_plan_test() {
 pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_depth_route(2))))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "data-testid=\"nav-depth-2\"")
   render_assertions.contains(
@@ -419,7 +418,7 @@ pub fn left_panel_work_nav_order_is_pool_kanban_plan_capacidades_personas_es_tes
       locale: i18n_locale.Es,
     )
 
-  let html = left_panel.view(config) |> element.to_document_string
+  let html = left_panel.view(config) |> render_assertions.html
 
   appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-kanban\"")
   |> assert_true

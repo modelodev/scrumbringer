@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/i18n/locale
@@ -31,7 +30,7 @@ pub fn login_error_renders_error_banner_test() {
       login_error: opt.Some("Bad creds"),
     )
 
-  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "error-banner")
   render_assertions.contains(html, "Bad creds")
@@ -41,7 +40,7 @@ pub fn login_in_flight_adds_loading_class_test() {
   let auth =
     auth_state.AuthModel(..auth_state.default_model(), login_in_flight: True)
 
-  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "btn-loading")
   render_assertions.contains(html, "btn-primary")
@@ -52,7 +51,7 @@ pub fn login_in_flight_adds_loading_class_test() {
 pub fn forgot_password_trigger_uses_semantic_button_test() {
   let auth = auth_state.default_model()
 
-  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "Forgot password?")
   render_assertions.contains(html, "auth-forgot")
@@ -70,7 +69,7 @@ pub fn forgot_password_error_renders_error_block_test() {
       forgot_password_error: opt.Some("Email not found"),
     )
 
-  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "class=\"error\"")
   render_assertions.contains(html, "Email not found")
@@ -84,7 +83,7 @@ pub fn forgot_password_submit_uses_semantic_button_test() {
       forgot_password_in_flight: True,
     )
 
-  let html = auth_view.view_login(config(auth)) |> element.to_document_string
+  let html = auth_view.view_login(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "Working")
   render_assertions.contains(html, "btn-primary")
@@ -107,7 +106,7 @@ pub fn accept_invite_submit_uses_semantic_button_test() {
     )
 
   let html =
-    auth_view.view_accept_invite(config(auth)) |> element.to_document_string
+    auth_view.view_accept_invite(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "Register")
   render_assertions.contains(html, "btn-primary")
@@ -129,7 +128,7 @@ pub fn reset_password_submit_uses_semantic_button_test() {
     )
 
   let html =
-    auth_view.view_reset_password(config(auth)) |> element.to_document_string
+    auth_view.view_reset_password(config(auth)) |> render_assertions.html
 
   render_assertions.contains(html, "Save new password")
   render_assertions.contains(html, "btn-primary")

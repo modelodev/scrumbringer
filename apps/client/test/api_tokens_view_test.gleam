@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -96,7 +95,7 @@ fn config(model: api_tokens_state.Model) -> api_tokens_view.Config(String) {
 pub fn api_tokens_view_has_single_primary_creation_flow_test() {
   let html =
     api_tokens_view.view(config(model()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "section admin-surface")
   render_assertions.contains(html, "admin-surface-content")
@@ -131,7 +130,7 @@ pub fn api_tokens_create_dialog_renders_permission_matrix_without_project_write_
 
   let html =
     api_tokens_view.view(config(open_model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Integration")
   render_assertions.contains(html, "Permissions")
@@ -152,7 +151,7 @@ pub fn api_tokens_view_renders_secret_copy_control_test() {
 
   let html =
     api_tokens_view.view(config(with_secret))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "sbt_public_secret")
   render_assertions.contains(html, "Copy")
@@ -179,7 +178,7 @@ pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
 
   let html =
     api_tokens_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "zapier")
   render_assertions.contains(html, "Deactivate integration")
@@ -196,7 +195,7 @@ pub fn api_tokens_view_hides_revoke_action_for_revoked_tokens_test() {
 
   let html =
     api_tokens_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Revoked")
   render_assertions.contains(html, "Rename API token")

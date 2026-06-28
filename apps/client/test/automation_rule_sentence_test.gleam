@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import support/render_assertions
 
 import domain/automation
@@ -72,7 +71,7 @@ pub fn rule_sentence_renders_task_closed_cause_and_effect_test() {
       ]),
       opt.Some("Bug"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "When a Bug task is closed")
   render_assertions.contains(html, "-&gt; Create Bug triage in the Pool")
@@ -87,7 +86,7 @@ pub fn rule_sentence_renders_spanish_task_closed_cause_test() {
       ]),
       opt.Some("Bug"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Cuando una tarea Bug sea cerrada")
   render_assertions.contains(html, "-&gt; Crear Seguimiento en el Pool")
@@ -102,7 +101,7 @@ pub fn rule_sentence_renders_task_created_without_available_ambiguity_test() {
       ]),
       opt.None,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "When any task is created")
 }
@@ -116,7 +115,7 @@ pub fn rule_sentence_renders_task_claimed_cause_test() {
       ]),
       opt.Some("Bug"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "When a Bug task is claimed")
   render_assertions.contains(html, "-&gt; Create Follow-up in the Pool")
@@ -131,7 +130,7 @@ pub fn rule_sentence_renders_task_released_cause_test() {
       ]),
       opt.None,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "When any task is released")
   render_assertions.contains(html, "-&gt; Create Pool review in the Pool")
@@ -156,7 +155,7 @@ pub fn rule_sentence_renders_card_activation_scope_test() {
       ]),
       opt.None,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "When any card is activated")
   render_assertions.contains(html, "-&gt; Create Activation review in the Pool")
@@ -173,7 +172,7 @@ pub fn rule_sentence_renders_card_depth_scope_test() {
       ]),
       opt.None,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "When a card at level 2 is closed")
   render_assertions.contains(html, "-&gt; Create Delivery review in the Pool")
@@ -190,7 +189,7 @@ pub fn rule_sentence_renders_spanish_card_closed_scope_test() {
       ]),
       opt.None,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Cuando una tarjeta de nivel 2 se cierre")
   render_assertions.contains(html, "-&gt; Crear Revisión de entrega en el Pool")

@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -41,7 +40,7 @@ pub fn task_dependencies_renders_loaded_dependencies_test() {
       candidates: remote.NotAsked,
       selected_task_id: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Dependencies (1)")
   render_assertions.contains(html, "Configure API")
@@ -59,7 +58,7 @@ pub fn task_dependencies_renders_empty_state_test() {
       candidates: remote.NotAsked,
       selected_task_id: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Dependencies")
   render_assertions.contains(html, "No dependencies")
@@ -88,7 +87,7 @@ pub fn task_dependencies_dialog_filters_candidates_test() {
       ]),
       selected_task_id: Some(12),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "This task depends on")
   render_assertions.contains(html, "API client")
@@ -116,7 +115,7 @@ pub fn task_dependencies_dialog_renders_loading_submit_state_test() {
         add_in_flight: True,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-loading")
   render_assertions.contains(html, "Adding")

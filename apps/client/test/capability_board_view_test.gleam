@@ -8,7 +8,6 @@ import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import lustre/element
 import support/assertions.{assert_true}
 import support/domain_fixtures
 import support/render_assertions
@@ -162,7 +161,7 @@ pub fn capability_board_list_groups_tasks_by_capability_and_card_test() {
       ]),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"plan-scope-bar\"")
   render_assertions.contains(html, "data-testid=\"capability-mode-list\"")
@@ -204,7 +203,7 @@ pub fn capability_board_matrix_is_read_only_and_hides_empty_affordances_test() {
       selected_depth: Some(2),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"capability-matrix\"")
   render_assertions.contains(
@@ -235,7 +234,7 @@ pub fn capability_board_list_marks_hidden_preview_tasks_test() {
       ]),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Task one")
   render_assertions.contains(html, "Task two")
@@ -265,7 +264,7 @@ pub fn capability_board_list_expands_hidden_preview_tasks_below_link_test() {
       ]),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Task four")
   render_assertions.contains(html, "aria-expanded=\"true\"")
@@ -287,7 +286,7 @@ pub fn capability_board_more_tasks_link_counts_multiple_hidden_tasks_test() {
       ]),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "+2 more tasks")
   render_assertions.not_contains(html, "Task four")
@@ -309,7 +308,7 @@ pub fn capability_board_card_scope_rows_direct_children_test() {
       capability_mode: member_pool.PlanCapabilityMatrix,
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"plan-scope-card-search\"")
   render_assertions.not_contains(html, "data-testid=\"plan-scope-card\"")
@@ -329,7 +328,7 @@ pub fn capability_board_show_closed_includes_closed_tasks_test() {
       show_closed: Some(True),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Closed task")
   render_assertions.contains(html, "closed")
@@ -349,7 +348,7 @@ pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {
       capability_scope: capability_scope.MyCapabilities,
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Backend API")
   render_assertions.not_contains(html, "Frontend polish")
@@ -364,7 +363,7 @@ pub fn capability_board_shows_no_results_after_filters_test() {
       search_query: "missing",
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -376,7 +375,7 @@ pub fn capability_board_shows_loading_state_test() {
   let html =
     base_config(remote.Loading)
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Loading capabilities...")
 }
@@ -391,7 +390,7 @@ pub fn capability_board_shows_error_state_test() {
       )),
     )
     |> capability_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   assert_true(string.contains(
     html,

@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -82,7 +81,7 @@ fn bar_config(tasks: List(Task)) -> my_bar_view.Config(String) {
 pub fn member_bar_task_row_renders_from_config_test() {
   let html =
     my_bar_view.view_member_bar_task_row(config(), claimed_task())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Prepare release")
   render_assertions.contains(html, "Release card")
@@ -96,7 +95,7 @@ pub fn member_bar_task_row_renders_from_config_test() {
 pub fn my_bar_section_renders_from_config_test() {
   let html =
     my_bar_view.view_bar(bar_config([claimed_task_with_card()]))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "My Metrics")
   render_assertions.contains(html, "Window: 14 days")

@@ -1,8 +1,6 @@
 import gleam/option
 import support/render_assertions
 
-import lustre/element
-
 import scrumbringer_client/i18n/locale.{En}
 import scrumbringer_client/ui/task_metric
 import scrumbringer_client/ui/task_metric_chip
@@ -15,7 +13,7 @@ fn render(variant: task_metric_chip.Variant) -> String {
     extra_class: option.None,
     testid: option.Some("metric-under-test"),
   ))
-  |> element.to_document_string
+  |> render_assertions.html
 }
 
 pub fn compact_metric_keeps_icon_number_and_accessible_label_test() {

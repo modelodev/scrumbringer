@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -23,7 +22,7 @@ import scrumbringer_client/theme
 pub fn pool_renders_header_control_bar_and_body_test() {
   let html =
     pool_view.view_pool_main(main_config(pool_prefs.Canvas))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "class=\"work-surface pool-view\"")
   render_assertions.contains(html, "work-surface-chrome")
@@ -40,7 +39,7 @@ pub fn pool_renders_header_control_bar_and_body_test() {
 pub fn pool_list_mode_renders_task_rows_test() {
   let html =
     pool_view.view_pool_main(main_config(pool_prefs.List))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "class=\"task-list\"")
   render_assertions.contains(html, "task-row")
@@ -55,7 +54,7 @@ pub fn pool_ready_to_claim_empty_mentions_blocked_tasks_test() {
       Loaded([blocked]),
       ReadyToClaim,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No claimable tasks right now")
   render_assertions.contains(html, "There are 1 blocked tasks")
@@ -70,7 +69,7 @@ pub fn pool_blocked_empty_does_not_suggest_new_task_test() {
       Loaded([sample_task()]),
       Blocked,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No blocked tasks")
   render_assertions.contains(html, "View open")

@@ -1,7 +1,6 @@
 import gleam/dict
 import gleam/option as opt
 import lustre/effect
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -286,7 +285,7 @@ pub fn task_show_surface_renders_edit_controls_for_owner_test() {
     model_with_task()
     |> model_with_notes_task_id(42)
     |> task_show_view(42)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-show-edit-toggle")
   render_assertions.contains(html, "btn-secondary")
@@ -314,7 +313,7 @@ pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
       )
     })
     |> task_show_view(42)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "activity-feed-more")
   render_assertions.contains(html, "Load more (1)")
@@ -335,7 +334,7 @@ pub fn task_show_surface_renders_edit_controls_for_unclaimed_task_test() {
       )
     })
     |> task_show_view(42)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-show-edit-toggle")
   render_assertions.contains(html, "Edit task")

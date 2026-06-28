@@ -1,6 +1,5 @@
 import domain/card.{type Card, Active, Card, Closed}
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -13,7 +12,7 @@ pub fn overdue_open_card_uses_danger_due_date_style_test() {
     card_with_tasks_surface.view(config(
       Card(..sample_card(), state: Active, due_date: Some("2026-06-18")),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-due-date")
   render_assertions.contains(html, "card-due-date-overdue")
@@ -26,7 +25,7 @@ pub fn closed_card_does_not_show_overdue_alarm_test() {
     card_with_tasks_surface.view(config(
       Card(..sample_card(), state: Closed, due_date: Some("2026-06-18")),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-due-date")
   render_assertions.contains(html, "2026-06-18")
@@ -39,7 +38,7 @@ pub fn invalid_card_due_date_does_not_show_overdue_alarm_test() {
     card_with_tasks_surface.view(config(
       Card(..sample_card(), state: Active, due_date: Some("not-a-date")),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-due-date")
   render_assertions.contains(html, "not-a-date")

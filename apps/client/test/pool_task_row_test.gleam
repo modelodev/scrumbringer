@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -22,7 +21,7 @@ pub fn task_row_renders_claimable_list_item_without_root_model_test() {
       on_claim: "claim",
       on_open: "open",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-row card-border-blue")
   render_assertions.contains(html, "is-highlight-source highlight-info")
@@ -45,7 +44,7 @@ pub fn task_row_hides_claim_action_when_blocked_test() {
       on_claim: "claim",
       on_open: "open",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-blocked")
   render_assertions.contains(html, "task-blocked-count")
@@ -79,7 +78,7 @@ pub fn task_row_localizes_automation_origin_chip_test() {
       on_claim: "claim",
       on_open: "open",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,

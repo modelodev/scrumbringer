@@ -1,5 +1,4 @@
 import gleam/option.{None}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/capability_scope
@@ -52,7 +51,7 @@ pub fn kanban_column_headers_show_icons_test() {
       on_search_change: fn(_value) { 0 },
     )
 
-  let html = kanban_board.view(config) |> element.to_document_string
+  let html = kanban_board.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "kanban-column-icon")
   render_assertions.contains(html, "aria-hidden")

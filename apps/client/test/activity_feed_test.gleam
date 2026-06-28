@@ -1,7 +1,6 @@
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/element
 import support/render_assertions
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
@@ -30,7 +29,7 @@ pub fn activity_feed_renders_empty_state_test() {
       error_label: "Could not load activity.",
       load_more: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No activity yet.")
   render_assertions.not_contains(html, "activity-feed-item")
@@ -45,7 +44,7 @@ pub fn activity_feed_renders_event_actor_summary_and_time_test() {
       error_label: "Could not load activity.",
       load_more: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "activity-feed-item")
   render_assertions.contains(html, "admin@example.com")
@@ -69,7 +68,7 @@ pub fn activity_feed_groups_loaded_events_by_date_test() {
       error_label: "Could not load activity.",
       load_more: None,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "activity-feed-group")
   render_assertions.contains(html, "activity-feed-date")
@@ -94,7 +93,7 @@ pub fn activity_feed_renders_load_more_control_when_available_test() {
         on_click: Nil,
       )),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "activity-feed-more")
   render_assertions.contains(html, "Ver mas")

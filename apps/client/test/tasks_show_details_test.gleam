@@ -1,5 +1,4 @@
 import gleam/option.{type Option, None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -14,7 +13,7 @@ import scrumbringer_client/ui/pinned_context
 pub fn task_show_details_renders_loaded_task_without_root_model_test() {
   let html =
     task_show_details.view(config(Some(claimed_task()), Some(7)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Details")
   render_assertions.contains(html, "Edit task")
@@ -27,7 +26,7 @@ pub fn task_show_details_renders_loaded_task_without_root_model_test() {
 pub fn task_show_details_renders_loading_state_test() {
   let html =
     task_show_details.view(config(None, None))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Loading")
   render_assertions.contains(html, "task-details-section")
@@ -44,7 +43,7 @@ pub fn task_show_details_renders_pinned_context_test() {
         pinned_note(4, "Extra"),
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Pinned context")
   render_assertions.contains(html, "Spec")

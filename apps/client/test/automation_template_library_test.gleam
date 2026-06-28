@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/render_assertions
 
 import domain/remote.{Loaded}
@@ -95,7 +94,7 @@ fn config() -> template_library.Config(String) {
 pub fn automation_template_library_renders_from_config_without_root_model_test() {
   let html =
     template_library.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Template library")
   render_assertions.contains(html, "filter-bar automation-templates-filters")
@@ -137,7 +136,7 @@ pub fn automation_template_library_localizes_unused_template_warning_test() {
     template_library.view(
       template_library.Config(..config(), locale: locale.Es),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Usos")
   render_assertions.contains(html, "Sin uso")
@@ -154,7 +153,7 @@ pub fn automation_template_library_renders_empty_state_without_root_model_test()
     template_library.view(
       template_library.Config(..config(), templates: Loaded([])),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No templates yet")
 }
@@ -164,7 +163,7 @@ pub fn automation_template_library_filters_library_by_search_query_test() {
     template_library.view(
       template_library.Config(..config(), search_query: "missing"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No templates yet")
   render_assertions.not_contains(html, "Regression checklist")
@@ -175,7 +174,7 @@ pub fn automation_template_library_marks_selected_template_test() {
     template_library.view(
       template_library.Config(..config(), selected_template_id: opt.Some(7)),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-template-row\"")
   render_assertions.contains(html, "data-selected=\"true\"")
@@ -194,7 +193,7 @@ pub fn automation_template_library_renders_feature_local_create_panel_test() {
         form_priority: "4",
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "automation-template-panel")
   render_assertions.contains(html, "inert")
@@ -256,7 +255,7 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Delete Template")
   render_assertions.contains(html, "inert")
@@ -294,7 +293,7 @@ pub fn automation_template_library_warns_when_editing_used_template_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Edit Template")
   render_assertions.contains(html, "automation-template-panel__warning")
@@ -315,7 +314,7 @@ pub fn automation_template_library_skips_future_warning_for_unused_template_test
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Edit Template")
   render_assertions.not_contains(html, "automation-template-panel__warning")

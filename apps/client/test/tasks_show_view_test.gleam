@@ -1,7 +1,6 @@
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/element
 import support/render_assertions
 
 import domain/card.{type Card, Active, Card}
@@ -21,7 +20,7 @@ fn forbidden_fragment(parts: List(String)) -> String {
 pub fn task_show_renders_as_panel_not_modal_test() {
   let html =
     task_show.view_task_show(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-show-panel")
   render_assertions.contains(html, "task-show-content")
@@ -48,7 +47,7 @@ pub fn task_show_renders_as_panel_not_modal_test() {
 pub fn task_show_header_uses_operational_headline_without_legacy_meta_test() {
   let html =
     task_show.view_task_show(config_with_parent_card())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Ready to claim · Release card")
   render_assertions.contains(html, "Operational summary")
@@ -70,7 +69,7 @@ pub fn task_show_header_uses_operational_headline_without_legacy_meta_test() {
 pub fn task_show_contains_parent_navigation_in_open_in_menu_test() {
   let html =
     task_show.view_task_show(config_with_parent_card())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"inspector-open-in-trigger\"")
   render_assertions.contains(html, "inspector-open-in-menu")
@@ -99,7 +98,7 @@ pub fn task_show_editing_uses_footer_edit_actions_only_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-show-edit-form")
   render_assertions.contains(html, "task-inspector-edit-actions")

@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -73,7 +72,7 @@ fn config() -> create_dialog.Config(String) {
 pub fn create_dialog_renders_card_target_field_test() {
   let html =
     create_dialog.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "New task")
   render_assertions.contains(html, "Fix login")
@@ -99,7 +98,7 @@ pub fn create_dialog_opened_without_card_requires_card_and_blocks_submit_test() 
     create_dialog.view(
       create_dialog.Config(..config(), card_id: opt.None, cards: [card()]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Choose an active card to create the task")
   render_assertions.contains(
@@ -124,7 +123,7 @@ pub fn create_dialog_card_target_search_shows_matching_cards_test() {
         cards: [card()],
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"task-create-card-option\"")
   render_assertions.contains(html, "Release card")
@@ -141,7 +140,7 @@ pub fn create_dialog_card_target_uses_spanish_locale_test() {
         cards: [card_with(10, opt.None, "Activa", Active)],
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Tarjeta activa")
   render_assertions.contains(html, "Activa")
@@ -156,7 +155,7 @@ pub fn create_dialog_retry_uses_shared_button_classes_test() {
         task_types: Failed(ApiError(status: 500, code: "ERR", message: "boom")),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Retry")
   render_assertions.contains(html, "btn-secondary")
@@ -174,7 +173,7 @@ pub fn create_dialog_disables_submit_when_context_card_has_child_cards_test() {
         child,
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "This card already contains child cards")
   render_assertions.contains(html, "disabled")
@@ -187,7 +186,7 @@ pub fn create_dialog_disables_submit_when_context_card_is_closed_test() {
         card_with(10, opt.None, "Archivada", Closed),
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Closed cards cannot receive new tasks")
   render_assertions.contains(html, "disabled")
@@ -203,7 +202,7 @@ pub fn create_dialog_closed_context_uses_spanish_locale_test() {
         cards: [card_with(10, opt.None, "Archivada", Closed)],
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -220,7 +219,7 @@ pub fn create_dialog_keeps_submit_enabled_for_active_leaf_card_test() {
         card_with(10, opt.None, "Active leaf", Active),
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Active leaf")
   render_assertions.not_contains(html, "disabled")
@@ -233,7 +232,7 @@ pub fn create_dialog_disables_submit_when_title_is_missing_even_with_active_card
         card_with(10, opt.None, "Active leaf", Active),
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Active leaf")
   render_assertions.contains(html, "disabled")
@@ -249,7 +248,7 @@ pub fn create_dialog_disables_submit_when_type_is_missing_even_with_active_card_
         cards: [card_with(10, opt.None, "Active leaf", Active)],
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Active leaf")
   render_assertions.contains(html, "disabled")

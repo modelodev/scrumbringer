@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -20,7 +19,7 @@ pub fn task_show_header_renders_loaded_task_test() {
       actions: None,
       on_close: "close",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Prepare release")
   render_assertions.contains(html, "Release card")
@@ -51,7 +50,7 @@ pub fn task_show_header_renders_claimed_state_without_owner_chip_test() {
       actions: None,
       on_close: "close",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "In My Tasks, ready to start")
   render_assertions.not_contains(html, "Claimed")
@@ -74,7 +73,7 @@ pub fn task_show_header_renders_loading_title_test() {
       actions: None,
       on_close: "close",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Loading")
   render_assertions.contains(html, "task-show-title")
@@ -91,7 +90,7 @@ pub fn task_show_header_localizes_close_label_test() {
       actions: None,
       on_close: "close",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "aria-label=\"Cerrar\"")
 }
@@ -110,7 +109,7 @@ pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {
       actions: None,
       on_close: "close",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Due 2026-06-24")
   render_assertions.contains(html, "Blocked by 1 tasks")

@@ -1,5 +1,4 @@
 import gleeunit
-import lustre/element
 import support/render_assertions
 
 import domain/metrics.{
@@ -61,7 +60,7 @@ pub fn overview_no_sample_renders_label_test() {
       on_project_selected: fn(project_id) { project_id },
     )
 
-  let html = metrics_view.view_metrics(config) |> element.to_document_string
+  let html = metrics_view.view_metrics(config) |> render_assertions.html
 
   render_assertions.contains(html, "Flow health")
   render_assertions.contains(html, "No sample (n=0)")

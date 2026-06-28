@@ -1,5 +1,4 @@
 import gleam/option.{Some}
-import lustre/element
 import support/render_assertions
 
 import domain/task_status
@@ -31,7 +30,7 @@ pub fn full_status_indicator_renders_label_and_accessibility_test() {
       locale.En,
       task_status.Claimed(task_status.Ongoing),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-status-indicator is-full ongoing")
   render_assertions.contains(html, "data-testid=\"task-status-indicator\"")
@@ -49,7 +48,7 @@ pub fn full_status_indicator_renders_label_and_accessibility_test() {
 pub fn compact_status_indicator_hides_label_but_keeps_accessibility_test() {
   let html =
     task_status_indicator.compact(locale.En, task_status.Closed)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-status-indicator is-compact success")
   render_assertions.contains(html, "title=\"Closed and no longer actionable\"")
@@ -72,7 +71,7 @@ pub fn status_indicator_accepts_contextual_visible_label_test() {
       extra_class: Some("task-claimed-by"),
       testid: Some("claimed-by"),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-claimed-by")
   render_assertions.contains(html, "data-testid=\"claimed-by\"")

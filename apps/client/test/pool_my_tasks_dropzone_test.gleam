@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -21,7 +20,7 @@ pub fn my_tasks_dropzone_renders_drag_empty_state_without_root_model_test() {
       claimed_tasks: [],
       task_row_config: row_config(),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "My tasks")
   render_assertions.contains(html, "pool-my-tasks-dropzone drag-active")
@@ -38,7 +37,7 @@ pub fn my_tasks_dropzone_renders_claimed_tasks_without_root_model_test() {
       claimed_tasks: [claimed_task()],
       task_row_config: row_config(),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "pool-my-tasks-dropzone drop-over")
   render_assertions.contains(html, "Prepare release")

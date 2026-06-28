@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -65,7 +64,7 @@ fn config(current_user_id) -> show_editor.Config(String) {
 pub fn show_editor_renders_config_data_without_root_model_test() {
   let html =
     show_editor.view_readonly_fields(config(Some(7)), claimed_task())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Details")
   render_assertions.contains(html, "Edit task")
@@ -75,7 +74,7 @@ pub fn show_editor_renders_config_data_without_root_model_test() {
 pub fn show_editor_hides_edit_for_other_claimed_task_test() {
   let html =
     show_editor.view_readonly_fields(config(Some(8)), claimed_task())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "Edit task")
   render_assertions.contains(html, "claim the task to keep editing")
@@ -87,7 +86,7 @@ pub fn show_editor_hides_edit_for_closed_task_test() {
   let task = Task(..claimed_task(), state: closed_state)
   let html =
     show_editor.view_readonly_fields(config(Some(7)), task)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "Edit task")
   render_assertions.contains(html, "Closed tasks are read-only")
@@ -112,7 +111,7 @@ pub fn show_editor_marks_current_type_option_selected_test() {
       ),
       claimed_task(),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "value=\"1\"")
   render_assertions.contains(html, "selected")
@@ -124,7 +123,7 @@ pub fn show_editor_renders_segmented_priority_test() {
       show_editor.Config(..config(Some(7)), editing: True),
       claimed_task(),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-priority-segmented")
   render_assertions.contains(html, "P1")

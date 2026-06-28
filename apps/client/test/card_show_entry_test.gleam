@@ -1,6 +1,5 @@
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -52,7 +51,7 @@ fn config(card) -> show_entry.Config(String) {
 pub fn card_show_entry_renders_without_root_model_test() {
   let html =
     show_entry.view(config(Some(sample_card())))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-show")
   render_assertions.contains(html, "inspector-shell")
@@ -71,7 +70,7 @@ pub fn card_show_entry_renders_without_current_user_test() {
     show_entry.view(
       show_entry.Config(..config(Some(sample_card())), current_user_id: None),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-show")
   render_assertions.contains(html, "Customer Card")
@@ -80,7 +79,7 @@ pub fn card_show_entry_renders_without_current_user_test() {
 pub fn card_show_secondary_actions_render_as_menu_items_test() {
   let html =
     show_entry.view(config(Some(sample_card())))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -111,7 +110,7 @@ pub fn card_show_task_group_uses_single_header_create_action_test() {
 
   let html =
     show_entry.view(config(Some(card)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"card-create-task-action\"")
   render_assertions.contains(html, "Add task")
@@ -154,7 +153,7 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
         blocked_again,
       ]),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"card-header-path\"")
   render_assertions.contains(html, "Release")
@@ -184,7 +183,7 @@ pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
 
   let html =
     show_entry.view(config(Some(empty_card)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "inspector-empty-work")
   render_assertions.not_contains(html, "card-empty-work-decision")
@@ -221,7 +220,7 @@ pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-summary-block")
   render_assertions.contains(html, "card-summary-signal")
@@ -247,7 +246,7 @@ pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
 pub fn card_show_entry_omits_missing_card_test() {
   let html =
     show_entry.view(config(None))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "card-show")
 }

@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import lustre/element/html
 import support/render_assertions
 
@@ -28,7 +27,7 @@ pub fn clickable_task_item_preserves_accessible_button_metadata_test() {
       ),
       task_item.Div,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"shared-task-item\"")
   render_assertions.contains(html, "data-testid=\"shared-task-item-open\"")

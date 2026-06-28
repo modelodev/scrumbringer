@@ -4,7 +4,6 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/user.{User}
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -65,7 +64,7 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
   let html =
     base_config([], [active], [])
     |> right_panel.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "active-task-card card-border-blue")
   render_assertions.contains(html, "task-type-icon")
@@ -86,7 +85,7 @@ pub fn right_panel_my_task_renders_border_and_actions_test() {
   let html =
     base_config([task], [], [])
     |> right_panel.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-item card-border-blue")
   render_assertions.contains(html, "task-card-identity-swatch")
@@ -111,7 +110,7 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
   let html =
     base_config([], [], [card])
     |> right_panel.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "my-card-item card-border-blue")
   render_assertions.contains(html, "1 of 3 tasks closed")
@@ -127,7 +126,7 @@ pub fn right_panel_preferences_popup_is_accessible_dialog_test() {
       preferences_popup_open: True,
     )
     |> right_panel.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "role=\"dialog\"")
   render_assertions.contains(html, "aria-modal=\"true\"")
@@ -160,7 +159,7 @@ pub fn right_panel_profile_actions_have_labels_and_expanded_state_test() {
       preferences_popup_open: True,
     )
     |> right_panel.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "aria-live=\"polite\"")
   render_assertions.contains(

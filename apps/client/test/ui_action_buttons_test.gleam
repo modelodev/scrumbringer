@@ -1,5 +1,4 @@
 import gleam/option
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/action_buttons
@@ -17,7 +16,7 @@ pub fn task_icon_button_preserves_tooltip_and_testid_test() {
       option.Some("Claim"),
       option.Some("claim-testid"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-icon")
   render_assertions.contains(html, "btn-xs")
@@ -30,7 +29,7 @@ pub fn task_icon_button_preserves_tooltip_and_testid_test() {
 pub fn delete_button_uses_danger_icon_contract_test() {
   let html =
     action_buttons.delete_button_with_testid("Delete", "msg", "delete-testid")
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-danger-icon")
   render_assertions.contains(html, "btn-entity-action")
@@ -46,7 +45,7 @@ pub fn delete_button_with_disabled_and_testid_preserves_contract_test() {
       True,
       "delete-user-testid",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-danger-icon")
   render_assertions.contains(html, "btn-entity-action")
@@ -62,7 +61,7 @@ pub fn delete_button_blocked_with_testid_explains_blocked_action_test() {
       "msg",
       "delete-blocked-testid",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-danger-icon")
   render_assertions.contains(html, "btn-delete-blocked")
@@ -80,7 +79,7 @@ pub fn delete_button_availability_distinguishes_busy_and_blocked_test() {
       action_buttons.Busy,
       "delete-testid",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(busy_html, "disabled")
   render_assertions.contains(busy_html, "aria-label=\"Delete\"")
@@ -92,7 +91,7 @@ pub fn delete_button_availability_distinguishes_busy_and_blocked_test() {
       action_buttons.Blocked("Cannot delete: has tasks"),
       "delete-testid",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(blocked_html, "aria-disabled=\"true\"")
   render_assertions.contains(

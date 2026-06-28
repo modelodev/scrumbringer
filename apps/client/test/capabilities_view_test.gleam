@@ -1,7 +1,6 @@
 import gleam/dict
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -63,7 +62,7 @@ pub fn capabilities_view_renders_list_from_config_without_root_model_test() {
 
   let html =
     capabilities_view.view(config(capabilities, admin_members.default_model()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Capabilities")
   render_assertions.contains(html, "Create Capability")
@@ -94,7 +93,7 @@ pub fn capabilities_view_renders_members_dialog_from_config_without_root_model_t
 
   let html =
     capabilities_view.view(config(capabilities, members))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Members with Backend in Roadmap")
   render_assertions.contains(html, "data-testid=\"members-checklist\"")
@@ -116,7 +115,7 @@ pub fn capabilities_view_delete_dialog_uses_shared_danger_button_test() {
 
   let html =
     capabilities_view.view(config(capabilities, admin_members.default_model()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Delete Capability")
   render_assertions.contains(html, "Deleting")
@@ -135,7 +134,7 @@ pub fn capabilities_view_renders_create_dialog_from_config_without_root_model_te
 
   let html =
     capabilities_view.view(config(capabilities, admin_members.default_model()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "capability-create-form")
   render_assertions.contains(html, "Frontend")

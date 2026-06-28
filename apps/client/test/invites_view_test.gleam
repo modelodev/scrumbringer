@@ -1,5 +1,4 @@
 import gleam/option
-import lustre/element
 import support/render_assertions
 
 import domain/org.{type InviteLink, Active, InviteLink}
@@ -48,7 +47,7 @@ pub fn invites_view_loaded_links_uses_config_data_test() {
 
   let html =
     invites_view.view_invites(config(state))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "INVITES")
   render_assertions.contains(html, "new@example.test")
@@ -71,7 +70,7 @@ pub fn invites_view_active_state_uses_spanish_open_copy_test() {
     invites_view.view_invites(
       invites_view.Config(..config(state), locale: locale.Es),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Por aceptar")
   render_assertions.not_contains(html, "Draft")

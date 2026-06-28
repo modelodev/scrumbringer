@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -49,7 +48,7 @@ pub fn task_types_view_renders_list_from_config_without_root_model_test() {
 
   let html =
     task_types_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Task Types - Roadmap")
   render_assertions.contains(html, "Create type")
@@ -78,7 +77,7 @@ pub fn task_types_view_keeps_delete_available_when_type_has_no_tasks_test() {
 
   let html =
     task_types_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-type-delete-btn")
   render_assertions.contains(html, "aria-label=\"Delete Task Type\"")
@@ -93,7 +92,7 @@ pub fn task_types_view_renders_crud_dialog_from_config_without_root_model_test()
 
   let html =
     task_types_view.view(config(model))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-type-crud-dialog")
   render_assertions.contains(html, "locale=\"en\"")

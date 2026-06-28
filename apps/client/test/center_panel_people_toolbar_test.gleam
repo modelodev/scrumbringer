@@ -1,4 +1,3 @@
-import lustre/element
 import lustre/element/html
 import support/render_assertions
 
@@ -25,7 +24,7 @@ fn base_config(
 pub fn people_toolbar_is_owned_by_people_view_test() {
   let html =
     center_panel.view(base_config(view_mode.People))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"people-view\"")
   render_assertions.not_contains(html, "data-testid=\"people-toolbar\"")
@@ -37,7 +36,7 @@ pub fn people_toolbar_is_owned_by_people_view_test() {
 pub fn pool_toolbar_is_owned_by_pool_view_test() {
   let html =
     center_panel.view(base_config(view_mode.Pool))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"pool-canvas\"")
   render_assertions.not_contains(html, "data-testid=\"filter-type\"")
@@ -51,7 +50,7 @@ pub fn pool_toolbar_is_owned_by_pool_view_test() {
 pub fn plan_toolbar_does_not_render_pool_filters_test() {
   let html =
     center_panel.view(base_config(view_mode.Cards))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"plan-view\"")
   render_assertions.not_contains(html, "data-testid=\"filter-type\"")
@@ -65,7 +64,7 @@ pub fn plan_toolbar_does_not_render_pool_filters_test() {
 pub fn capabilities_toolbar_does_not_render_global_pool_filters_test() {
   let html =
     center_panel.view(base_config(view_mode.Capabilities))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"capabilities-view\"")
   render_assertions.not_contains(html, "data-testid=\"capabilities-toolbar\"")

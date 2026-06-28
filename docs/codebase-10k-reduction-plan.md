@@ -496,13 +496,19 @@ Estado de ejecucion:
   `styles_btn_loading_test.gleam`, `people_view_test.gleam` y el resto de tests
   de vista/render que repetian helpers locales `assert_contains` o
   `assert_not_contains`.
-- Delta WP-02 hasta este punto: `-329` lineas netas mantenidas (`-17` del pase
-  inicial y `-312` del pase amplio de asserts). La reduccion queda por debajo
-  de la estimacion porque esta iteracion no introdujo builders de dominio
-  agresivos: se priorizo retirar duplicacion exacta sin esconder expectativas.
+- Segundo pase amplio sobre render HTML: 85 tests que ya importaban
+  `support/render_assertions` dejan de importar `lustre/element` solo para
+  llamar a `element.to_document_string`; ahora usan `render_assertions.html`.
+  Se excluyen los tests que usan `element.to_string`, `element.none` u otras
+  primitivas reales de Lustre.
+- Delta WP-02 hasta este punto: `-415` lineas netas mantenidas (`-17` del pase
+  inicial, `-312` del pase amplio de asserts y `-86` del pase de
+  `render_assertions.html`). La reduccion queda por debajo de la estimacion
+  porque esta iteracion no introdujo builders de dominio agresivos: se priorizo
+  retirar duplicacion exacta sin esconder expectativas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
-  - `cd apps/client && gleam test` (`1912 passed`).
+  - `cd apps/client && gleam test` (`1873 passed`).
 
 ### WP-03. Reducir roots Lustre por owners reales
 
@@ -2156,7 +2162,7 @@ anterior:
 | Candidato | Motivo | Estado / guardarrail |
 | --- | --- | --- |
 | Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; `tasks_http_test` ya no mantiene helper local de task type; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
-| Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; repetir `rg "fn assert_contains|fn assert_not_contains" apps/client/test`. |
+| Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; helpers locales ya migrados y primer pase de `render_assertions.html` aplicado. Repetir `rg "element\\.to_document_string" apps/client/test` para detectar usos que aun deban pasar por soporte compartido. |
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
 | Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |

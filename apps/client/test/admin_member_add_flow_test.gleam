@@ -6,7 +6,6 @@ import gleam/int
 import gleam/option as opt
 import gleam/string
 import lustre/effect
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -230,7 +229,7 @@ pub fn members_dialog_shows_selected_user_feedback_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "member-add-selected-user")
   render_assertions.contains(html, "qa@example.com")
@@ -257,7 +256,7 @@ pub fn members_dialog_search_result_uses_semantic_select_button_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "qa@example.com")
   render_assertions.contains(html, "Select")
@@ -281,7 +280,7 @@ pub fn members_dialog_add_submit_uses_semantic_loading_button_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Working")
   render_assertions.contains(html, "btn-primary")
@@ -303,7 +302,7 @@ pub fn members_remove_dialog_uses_typed_danger_confirm_button_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Remove")
   render_assertions.contains(html, "btn-danger")
@@ -328,7 +327,7 @@ pub fn members_release_all_dialog_uses_typed_primary_confirm_button_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Release")
   render_assertions.contains(html, "btn-primary")
@@ -357,7 +356,7 @@ pub fn members_capabilities_save_uses_semantic_loading_button_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Saving")
   render_assertions.contains(html, "btn-primary")
@@ -383,7 +382,7 @@ pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   let has_no_results =
     string.contains(html, "Sin resultados")
@@ -412,7 +411,7 @@ pub fn members_dialog_filters_out_existing_project_members_from_search_results_t
 
   let rendered =
     members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   let has_no_results =
     string.contains(html, "Sin resultados")

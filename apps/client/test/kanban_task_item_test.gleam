@@ -7,7 +7,6 @@ import domain/task/state as task_state
 import domain/task_type.{TaskType}
 import gleam/list
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -150,7 +149,7 @@ pub fn kanban_task_item_renders_claimed_by_and_icon_test() {
   let html =
     base_config([claimed_task()])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "kanban-task-item")
   render_assertions.contains(html, "task-claimed-by")
@@ -162,7 +161,7 @@ pub fn kanban_task_item_renders_claim_button_for_available_test() {
   let html =
     base_config([available_task()])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-claim-mini")
 }
@@ -177,7 +176,7 @@ pub fn kanban_card_shows_notes_indicator_test() {
   let html =
     kanban_board.KanbanConfig(..config, cards: [card])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-notes-indicator")
 }
@@ -192,7 +191,7 @@ pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
   let html =
     kanban_board.KanbanConfig(..config, cards: [card], is_pm_or_admin: True)
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"kanban-card-delete-action\"")
   render_assertions.contains(html, "btn-delete-blocked")
@@ -209,7 +208,7 @@ pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
       my_capability_ids: [1],
     )
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "Review copy")
   render_assertions.contains(
@@ -232,7 +231,7 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
       blocked_task(),
     ])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "kanban-surface-header")
   render_assertions.contains(html, "Card flow by state")
@@ -270,7 +269,7 @@ pub fn kanban_columns_are_inferred_from_descendant_task_state_test() {
       ..base_config([]).cards
     ])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "en-curso")
   render_assertions.contains(html, "Sprint")
@@ -286,7 +285,7 @@ pub fn kanban_level_scope_hides_closed_cards_by_default_test() {
   let html =
     kanban_board.KanbanConfig(..base_config([]), cards: [closed_card])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "Closed card")
   render_assertions.not_contains(html, "cerrada")
@@ -306,7 +305,7 @@ pub fn kanban_card_scope_with_direct_tasks_shows_closed_by_default_test() {
       selected_card_id: Some(closed_card.id),
     )
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Closed")
   render_assertions.contains(html, "Sprint")
@@ -324,7 +323,7 @@ pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
       closed_done_task(),
     ])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "kanban-card-task-metric-chip")
   render_assertions.contains(html, "title=\"Available: 2\"")
@@ -339,7 +338,7 @@ pub fn kanban_closed_only_card_still_shows_task_context_test() {
   let html =
     base_config([closed_done_task()])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Closed task")
   render_assertions.not_contains(html, "No tasks yet")
@@ -349,7 +348,7 @@ pub fn kanban_shows_empty_draft_cards_for_decomposition_test() {
   let html =
     base_config([])
     |> kanban_board.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Sprint")
   render_assertions.contains(html, "No tasks yet")

@@ -5,7 +5,6 @@
 import support/assertions.{assert_equal}
 
 import lustre/effect
-import lustre/element
 import support/render_assertions
 
 import api/cards/contracts as card_contracts
@@ -301,7 +300,7 @@ pub fn create_activation_failure_closes_with_created_draft_test() {
 pub fn create_dialog_renders_shared_card_fields_test() {
   let html =
     view_create_dialog_for_test(En)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-create-form")
   render_assertions.contains(html, "Create Card")
@@ -320,7 +319,7 @@ pub fn create_dialog_renders_shared_card_fields_test() {
 pub fn edit_dialog_renders_shared_card_fields_test() {
   let html =
     view_edit_dialog_for_test(En, make_test_card())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "card-edit-form")
   render_assertions.contains(html, "Edit Card")

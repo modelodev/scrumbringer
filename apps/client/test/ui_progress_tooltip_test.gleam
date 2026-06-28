@@ -1,6 +1,5 @@
 //// Tests for progress tooltip (AC18).
 
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/tooltips/progress_tooltip
@@ -23,7 +22,7 @@ pub fn shows_breakdown_test() {
       ),
     )
 
-  let html = progress_tooltip.view(config) |> element.to_document_string
+  let html = progress_tooltip.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "3")
   render_assertions.contains(html, "cerradas")
@@ -49,7 +48,7 @@ pub fn calculates_percentage_display_test() {
       ),
     )
 
-  let html = progress_tooltip.view(config) |> element.to_document_string
+  let html = progress_tooltip.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "Progreso:")
   render_assertions.contains(html, "60%")
@@ -72,7 +71,7 @@ pub fn handles_zero_tasks_test() {
       ),
     )
 
-  let html = progress_tooltip.view(config) |> element.to_document_string
+  let html = progress_tooltip.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "0")
   render_assertions.contains(html, "cerradas")

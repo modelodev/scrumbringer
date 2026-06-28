@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import lustre/element/html
 import support/render_assertions
 
@@ -105,7 +104,7 @@ pub fn detail_tabs_panel_sets_accessible_tab_contract_test() {
 
   let html =
     detail_tabs.panel(show_tabs.TaskActivityTab, tabs, html.div([], []))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "detail-tabpanel")
   render_assertions.contains(html, "role=\"tabpanel\"")

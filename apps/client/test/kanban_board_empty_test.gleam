@@ -1,5 +1,4 @@
 import gleam/option.{None}
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/capability_scope
@@ -52,7 +51,7 @@ pub fn kanban_board_renders_empty_column_texts_test() {
       on_search_change: fn(_value) { 0 },
     )
 
-  let html = kanban_board.view(config) |> element.to_document_string
+  let html = kanban_board.view(config) |> render_assertions.html
 
   render_assertions.contains(html, "kanban-empty-column")
   render_assertions.contains(html, "No cards are waiting for work")

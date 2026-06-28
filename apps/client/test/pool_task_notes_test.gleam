@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option.{None, Some}
-import lustre/element
 import support/render_assertions
 
 import domain/note/entity.{type Note, Note}
@@ -27,7 +26,7 @@ pub fn task_notes_renders_loaded_notes_test() {
       note_content: "",
       note_in_flight: False,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-notes-section")
   render_assertions.contains(html, "Notes")
@@ -47,7 +46,7 @@ pub fn task_notes_renders_empty_state_test() {
       note_content: "",
       note_in_flight: False,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No notes yet")
   render_assertions.contains(html, "Add note")
@@ -63,7 +62,7 @@ pub fn task_notes_renders_create_dialog_test() {
       note_content: "Draft note",
       note_in_flight: False,
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "note-dialog-overlay")
   render_assertions.contains(html, "Draft note")

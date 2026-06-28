@@ -1,5 +1,4 @@
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -58,7 +57,7 @@ pub fn task_types_table_renders_capability_name_test() {
 
   let html =
     admin_view.view_task_types(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Backend")
   render_assertions.not_contains(html, ">1<")
@@ -89,7 +88,7 @@ pub fn task_types_table_renders_none_when_no_capability_test() {
 
   let html =
     admin_view.view_task_types(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, ">None<")
 }
@@ -97,7 +96,7 @@ pub fn task_types_table_renders_none_when_no_capability_test() {
 pub fn icon_picker_trigger_hides_slug_test() {
   let html =
     task_type_crud_dialog.view_create_dialog_for_test(En)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "clipboard-document-list")
 }
@@ -119,7 +118,7 @@ pub fn task_types_table_does_not_render_ids_test() {
 
   let html =
     admin_view.view_task_types(model, opt.Some(sample_project()))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, ">1234<")
 }
@@ -127,7 +126,7 @@ pub fn task_types_table_does_not_render_ids_test() {
 pub fn task_type_create_dialog_shows_create_copy_and_optional_label_test() {
   let html =
     task_type_crud_dialog.view_create_dialog_for_test(Es)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Crear tipo")
   render_assertions.contains(html, "form-group-optional")
@@ -144,7 +143,7 @@ pub fn task_type_edit_dialog_uses_shared_optional_fields_test() {
       En,
       domain_fixtures.task_type(8, "Bug"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Edit Task Type")
   render_assertions.contains(html, "edit-name")

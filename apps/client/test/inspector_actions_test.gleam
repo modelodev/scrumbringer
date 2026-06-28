@@ -1,5 +1,4 @@
 import gleam/option.{None, Some}
-import lustre/element
 import lustre/element/html
 import support/render_assertions
 
@@ -22,7 +21,7 @@ pub fn inspector_actions_renders_shared_open_and_more_menus_test() {
       ],
       extra_class: "card-inspector-actions",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "inspector-action-bar")
   render_assertions.contains(html, "card-inspector-actions")
@@ -48,7 +47,7 @@ pub fn inspector_actions_omits_empty_menus_test() {
       more_items: [],
       extra_class: "task-inspector-actions",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.not_contains(html, "inspector-action-bar")
   render_assertions.not_contains(html, "inspector-open-in-trigger")

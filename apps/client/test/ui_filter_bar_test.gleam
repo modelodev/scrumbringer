@@ -1,4 +1,3 @@
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/filter_bar
@@ -17,7 +16,7 @@ pub fn filter_bar_search_preserves_value_placeholder_and_testid_test() {
     |> filter_bar.with_class("task-filters")
     |> filter_bar.with_testid("task-filter-bar")
     |> filter_bar.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "filter-bar task-filters")
   render_assertions.contains(html, "data-testid=\"task-filter-bar\"")
@@ -42,7 +41,7 @@ pub fn filter_bar_select_renders_options_and_selected_value_test() {
       ),
     ])
     |> filter_bar.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"filter-type\"")
   render_assertions.contains(html, "value=\"2\"")

@@ -1,4 +1,3 @@
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -28,7 +27,7 @@ fn config(cards, pending_count) -> list_view.Config(String) {
 pub fn cards_list_view_renders_cards_without_root_model_test() {
   let html =
     list_view.view(config([sample_card()], 0))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "fichas-list")
   render_assertions.contains(html, "Customer Portal")
@@ -40,7 +39,7 @@ pub fn cards_list_view_renders_cards_without_root_model_test() {
 pub fn cards_list_view_renders_empty_state_without_root_model_test() {
   let html =
     list_view.view(config([], 0))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No cards")
   render_assertions.contains(html, "Cards group related tasks")
@@ -49,7 +48,7 @@ pub fn cards_list_view_renders_empty_state_without_root_model_test() {
 pub fn cards_list_view_renders_loading_when_pending_without_root_model_test() {
   let html =
     list_view.view(config([], 2))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Loading")
   render_assertions.not_contains(html, "No cards")

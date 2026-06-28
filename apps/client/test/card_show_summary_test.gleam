@@ -2,7 +2,6 @@ import gleam/option
 import support/domain_fixtures
 import support/render_assertions
 
-import lustre/element
 import lustre/element/html.{span, text}
 
 import domain/card.{type Card, Active, Card}
@@ -31,7 +30,7 @@ fn render(blocked_count: Int) -> String {
     ],
     on_open_notes: Nil,
   ))
-  |> element.to_document_string
+  |> render_assertions.html
 }
 
 pub fn summary_renders_compact_metrics_and_structure_test() {

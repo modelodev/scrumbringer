@@ -1,6 +1,5 @@
 import gleam/option.{Some}
 import gleam/string
-import lustre/element
 import lustre/element/html.{button, div, text}
 import support/render_assertions
 
@@ -30,7 +29,7 @@ pub fn work_surface_header_renders_contract_test() {
       testid: Some("surface-header"),
     )
     |> work_surface.header
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "work-surface-header pool-header")
   render_assertions.contains(html, "data-testid=\"surface-header\"")
@@ -59,7 +58,7 @@ pub fn work_surface_header_renders_task_summary_chip_test() {
       testid: Some("surface-header"),
     )
     |> work_surface.header
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "task-metric-chip is-compact available")
   render_assertions.contains(html, "task-metric-chip is-compact blocked")
@@ -92,7 +91,7 @@ pub fn work_surface_surface_renders_optional_slots_in_order_test() {
     |> work_surface.surface_with_class("pool-surface")
     |> work_surface.surface_with_testid("pool-surface")
     |> work_surface.surface
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "work-surface pool-surface")
   render_assertions.contains(html, "data-testid=\"pool-surface\"")
@@ -118,7 +117,7 @@ pub fn work_surface_surface_omits_missing_slots_test() {
   let html =
     work_surface.new_surface(header)
     |> work_surface.surface
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "work-surface-header")
   render_assertions.not_contains(html, "work-surface-filters")

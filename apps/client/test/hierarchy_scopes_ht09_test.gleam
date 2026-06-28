@@ -2,7 +2,6 @@ import domain/card.{type Card, Active, Card, Closed, Draft}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import gleam/option.{None, Some}
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -59,7 +58,7 @@ fn config(scope: scope_view.Scope) -> scope_view.Config(String) {
 pub fn depth_scope_hides_closed_cards_by_default_test() {
   let html =
     scope_view.view(config(scope_view.DepthScope(2)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Stories")
   render_assertions.contains(html, "Checkout Story")
@@ -75,7 +74,7 @@ pub fn depth_scope_hides_closed_cards_by_default_test() {
 pub fn card_scope_shows_direct_subcards_or_tasks_test() {
   let html =
     scope_view.view(config(scope_view.CardScope(2)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Nested Task Group")
   render_assertions.contains(html, "Direct tasks")
@@ -91,7 +90,7 @@ pub fn include_closed_filter_reveals_closed_cards_test() {
         include_closed: True,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Closed Story")
   render_assertions.contains(html, "Incluir cerradas")
@@ -100,7 +99,7 @@ pub fn include_closed_filter_reveals_closed_cards_test() {
 pub fn depth_scope_empty_state_is_actionable_test() {
   let html =
     scope_view.view(config(scope_view.DepthScope(4)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No cards at this level")
   render_assertions.contains(html, "Create a card at this level")
@@ -111,7 +110,7 @@ pub fn scope_copy_uses_spanish_locale_test() {
     scope_view.view(
       scope_view.Config(..config(scope_view.CardScope(2)), locale: locale.Es),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Alcance de tarjeta")
   render_assertions.contains(html, "Tareas directas")
@@ -134,7 +133,7 @@ pub fn many_cards_in_depth_remain_scannable_test() {
     scope_view.view(
       scope_view.Config(..config(scope_view.DepthScope(1)), cards: cards),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -146,7 +145,7 @@ pub fn many_cards_in_depth_remain_scannable_test() {
 pub fn mobile_sidebar_navigation_preserves_current_scope_test() {
   let html =
     scope_view.view(config(scope_view.CardScope(2)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-scope=\"card:2\"")
   render_assertions.contains(html, "hierarchy-scope-scope-shell")

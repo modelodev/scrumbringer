@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -75,7 +74,7 @@ fn config() -> engine_list.Config(String) {
 pub fn automation_engine_list_renders_operational_rows_test() {
   let html =
     engine_list.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Engines - Roadmap")
   render_assertions.contains(html, "filter-bar automation-engines-filters")
@@ -110,7 +109,7 @@ pub fn automation_engine_list_filters_by_status_test() {
         status_filter: "paused",
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Paused intake")
   render_assertions.contains(html, "Paused")
@@ -122,7 +121,7 @@ pub fn automation_engine_list_marks_selected_engine_test() {
     engine_list.view(
       engine_list.Config(..config(), selected_engine_id: opt.Some(3)),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-engine-row\"")
   render_assertions.contains(html, "data-selected=\"true\"")
@@ -139,7 +138,7 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
         form_description: "Creates follow-up work",
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "automation-engine-panel")
   render_assertions.contains(html, "inert")
@@ -187,7 +186,7 @@ pub fn automation_engine_list_localizes_panel_actions_test() {
         form_submitting: True,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Editar motor")
   render_assertions.contains(html, "aria-label=\"Cerrar\"")
@@ -212,7 +211,7 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "automation-engine-panel")
   render_assertions.contains(html, "inert")

@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option
-import lustre/element
 import support/render_assertions
 
 import domain/automation
@@ -187,7 +186,7 @@ fn config() -> execution_history.Config(String) {
 pub fn automation_execution_history_renders_from_config_without_root_model_test() {
   let html =
     execution_history.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Review automation executions")
   render_assertions.contains(html, "filter-bar automation-executions-filters")
@@ -232,7 +231,7 @@ pub fn automation_execution_history_keeps_ignored_events_out_of_main_table_test(
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -271,7 +270,7 @@ pub fn automation_execution_history_renders_empty_state_without_root_model_test(
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -296,7 +295,7 @@ pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Escalate blocked work")
   render_assertions.contains(html, "aria-expanded=\"true\"")
@@ -319,7 +318,7 @@ pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "2 / 3")
   render_assertions.contains(html, "btn-close")
@@ -350,7 +349,7 @@ pub fn automation_execution_history_localizes_drilldown_table_columns_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Origen")
   render_assertions.contains(html, "Resultado")
@@ -374,7 +373,7 @@ pub fn automation_execution_history_marks_selected_execution_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-execution-row\"")
   render_assertions.contains(html, "data-selected=\"true\"")
