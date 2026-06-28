@@ -1,7 +1,6 @@
 import fixtures
 import gleam/dynamic/decode
 import gleam/http
-import gleam/http/request
 import gleam/json
 import gleam/list
 import gleam/option
@@ -106,8 +105,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
       http.Post,
       "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(
       json.object([
         #("name", json.string("Bug")),
@@ -581,8 +579,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim_res = handler(claim_req)
@@ -594,8 +591,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_session_cookies(other_session, other_csrf)
-    |> request.set_header("X-CSRF", other_csrf)
+    |> fixtures.with_auth(fixture_session(other_session, other_csrf))
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim2_res = handler(claim2_req)
@@ -606,8 +602,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -627,8 +622,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let release_bad_res = handler(release_bad_req)
@@ -642,8 +636,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(2))]))
 
   let release_ok_res = handler(release_ok_req)
@@ -655,8 +648,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(3))]))
 
   let close_bad_res = handler(close_bad_req)
@@ -826,8 +818,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -937,8 +928,7 @@ pub fn release_all_tasks_for_member_success_test() {
         <> int_to_string(member_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1009,8 +999,7 @@ pub fn release_all_tasks_for_member_forbidden_test() {
         <> int_to_string(admin_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1044,8 +1033,7 @@ pub fn release_all_tasks_for_member_self_release_test() {
         <> int_to_string(admin_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
 
   let res = handler(req)
   expect.expect_status(res, 400)
@@ -1064,8 +1052,7 @@ pub fn release_all_tasks_for_member_not_found_test() {
       http.Post,
       "/api/v1/projects/99999/members/99999/release-all-tasks",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
 
   let res = handler(req)
   expect.expect_status(res, 404)
@@ -1101,8 +1088,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_a) <> "/dependencies",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_b))]),
     )
@@ -1115,8 +1101,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_b) <> "/dependencies",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_a))]),
     )
@@ -1187,8 +1172,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_one) <> "/dependencies",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_two))]),
     )
@@ -1267,8 +1251,7 @@ pub fn task_dependencies_reject_closed_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_blocked) <> "/dependencies",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_closed))]),
     )
@@ -2416,8 +2399,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let patch_ok_res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(
         json.object([
           #("version", json.int(2)),
@@ -2436,8 +2418,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let patch_other_res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
-      |> fixtures.with_session_cookies(other_session, other_csrf)
-      |> request.set_header("X-CSRF", other_csrf)
+      |> fixtures.with_auth(fixture_session(other_session, other_csrf))
       |> simulate.json_body(
         json.object([
           #("version", json.int(version)),
@@ -2454,8 +2435,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
       )
-      |> fixtures.with_session_cookies(other_session, other_csrf)
-      |> request.set_header("X-CSRF", other_csrf)
+      |> fixtures.with_auth(fixture_session(other_session, other_csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2467,8 +2447,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
       )
-      |> fixtures.with_session_cookies(other_session, other_csrf)
-      |> request.set_header("X-CSRF", other_csrf)
+      |> fixtures.with_auth(fixture_session(other_session, other_csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2502,8 +2481,7 @@ pub fn patch_rejects_blank_title_test() {
   let res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(
         json.object([
           #("version", json.int(2)),
@@ -2757,8 +2735,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
       )
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2800,8 +2777,7 @@ fn start_work_session(
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/start")
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
@@ -2814,8 +2790,7 @@ fn pause_work_session(
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
@@ -2828,8 +2803,7 @@ fn heartbeat_work_session(
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
@@ -2952,8 +2926,7 @@ fn delete_task_response(
 ) -> wisp.Response {
   handler(
     simulate.request(http.Delete, "/api/v1/tasks/" <> int_to_string(task_id))
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf),
+    |> fixtures.with_auth(fixture_session(session, csrf)),
   )
 }
 
@@ -2970,8 +2943,7 @@ fn create_task_note(
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("content", json.string(content))])),
     )
 
@@ -3001,8 +2973,7 @@ fn claim_task_response(
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(json.object([#("version", json.int(version))])),
   )
 }
@@ -3020,8 +2991,7 @@ fn create_dependency(
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/dependencies",
       )
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(
         json.object([#("depends_on_task_id", json.int(depends_on_task_id))]),
       ),
@@ -3046,8 +3016,7 @@ fn delete_dependency(
           <> "/dependencies/"
           <> int_to_string(depends_on_task_id),
       )
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(fixture_session(session, csrf)),
     )
 
   res.status
@@ -3066,8 +3035,7 @@ fn release_task(
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
       )
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -3098,8 +3066,7 @@ fn close_task_response(
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
       )
-      |> fixtures.with_session_cookies(session, csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 

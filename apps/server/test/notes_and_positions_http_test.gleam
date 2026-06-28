@@ -109,8 +109,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(member2_session, member2_csrf)
-    |> request.set_header("X-CSRF", member2_csrf)
+    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
     |> simulate.json_body(
       json.object([
         #("content", json.string("Investigating")),
@@ -135,8 +134,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
         <> int_to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(member1_session, member1_csrf)
-    |> request.set_header("X-CSRF", member1_csrf)
+    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
 
   expect.expect_status(handler(pin_by_non_author), 403)
 
@@ -149,8 +147,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
         <> int_to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(member2_session, member2_csrf)
-    |> request.set_header("X-CSRF", member2_csrf)
+    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
 
   let pin_res = handler(pin_by_author)
   expect.expect_status(pin_res, 200)
@@ -165,8 +162,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
         <> int_to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(member2_session, member2_csrf)
-    |> request.set_header("X-CSRF", member2_csrf)
+    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
 
   let unpin_res = handler(unpin_by_author)
   expect.expect_status(unpin_res, 200)
@@ -174,8 +170,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
-    |> fixtures.with_session_cookies(member2_session, member2_csrf)
-    |> request.set_header("X-CSRF", member2_csrf)
+    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -252,8 +247,7 @@ pub fn task_notes_list_requires_task_membership_test() {
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(json.object([#("content", json.string("One"))])),
     )
 
@@ -353,8 +347,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Patch,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf),
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
     )
 
   expect.expect_status(patch_collection_res, 405)
@@ -365,8 +358,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(
         json.object([#("content", json.string("Remove me"))]),
       ),
@@ -383,8 +375,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
           <> "/notes/"
           <> int_to_string(note_id),
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf),
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
     )
 
   expect.expect_status(delete_item_res, 204)
@@ -408,8 +399,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Patch,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes/1",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf),
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
     )
 
   expect.expect_status(patch_item_res, 405)
@@ -518,8 +508,7 @@ pub fn card_notes_list_requires_card_membership_test() {
         http.Post,
         "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(json.object([#("content", json.string("One"))])),
     )
 
@@ -641,8 +630,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
       http.Post,
       "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(member1_session, member1_csrf)
-    |> request.set_header("X-CSRF", member1_csrf)
+    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
     |> simulate.json_body(
       json.object([
         #("content", json.string("Note")),
@@ -665,8 +653,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int_to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(member2_session, member2_csrf)
-    |> request.set_header("X-CSRF", member2_csrf)
+    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
 
   expect.expect_status(handler(pin_forbidden), 403)
 
@@ -679,8 +666,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int_to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(member1_session, member1_csrf)
-    |> request.set_header("X-CSRF", member1_csrf)
+    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
 
   let pin_res = handler(pin_by_author)
   expect.expect_status(pin_res, 200)
@@ -695,8 +681,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int_to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(member1_session, member1_csrf)
-    |> request.set_header("X-CSRF", member1_csrf)
+    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
 
   let unpin_res = handler(unpin_by_author)
   expect.expect_status(unpin_res, 200)
@@ -710,8 +695,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> "/notes/"
         <> int_to_string(note_id),
     )
-    |> fixtures.with_session_cookies(member2_session, member2_csrf)
-    |> request.set_header("X-CSRF", member2_csrf)
+    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
 
   expect.expect_status(handler(delete_forbidden), 403)
 
@@ -723,8 +707,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> "/notes/"
         <> int_to_string(note_id),
     )
-    |> fixtures.with_session_cookies(member1_session, member1_csrf)
-    |> request.set_header("X-CSRF", member1_csrf)
+    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
 
   expect.expect_status(handler(delete_author), 204)
 
@@ -741,8 +724,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int_to_string(note_id_2)
         <> "/pin",
     )
-    |> fixtures.with_session_cookies(admin_session, admin_csrf)
-    |> request.set_header("X-CSRF", admin_csrf)
+    |> fixtures.with_auth(fixture_session(admin_session, admin_csrf))
 
   let admin_pin_res = handler(pin_by_admin)
   expect.expect_status(admin_pin_res, 200)
@@ -756,8 +738,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> "/notes/"
         <> int_to_string(note_id_2),
     )
-    |> fixtures.with_session_cookies(admin_session, admin_csrf)
-    |> request.set_header("X-CSRF", admin_csrf)
+    |> fixtures.with_auth(fixture_session(admin_session, admin_csrf))
 
   expect.expect_status(handler(delete_admin), 204)
 }
@@ -835,8 +816,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
       http.Post,
       "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
 
   expect.expect_status(handler(note_req), 200)
@@ -855,8 +835,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
 
   let view_req =
     simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
 
   expect.expect_status(handler(view_req), 204)
 
@@ -923,8 +902,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
       http.Post,
       "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
 
   expect.expect_status(handler(note_req), 200)
@@ -943,8 +921,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
 
   let view_req =
     simulate.request(http.Put, "/api/v1/views/tasks/" <> int_to_string(task_id))
-    |> fixtures.with_session_cookies(member_session, member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
 
   expect.expect_status(handler(view_req), 204)
 
@@ -977,15 +954,13 @@ pub fn resource_views_reject_invalid_ids_test() {
 
   let card_req =
     simulate.request(http.Put, "/api/v1/views/cards/not-a-card-id")
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
 
   expect.expect_status(handler(card_req), 404)
 
   let task_req =
     simulate.request(http.Put, "/api/v1/views/tasks/not-a-task-id")
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
 
   expect.expect_status(handler(task_req), 404)
 }
@@ -999,15 +974,13 @@ pub fn resource_views_hide_resources_from_non_project_members_test() {
 
   let card_req =
     simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
-    |> request.set_header("X-CSRF", outsider_csrf)
+    |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
 
   expect.expect_status(handler(card_req), 404)
 
   let task_req =
     simulate.request(http.Put, "/api/v1/views/tasks/" <> int_to_string(task_id))
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
-    |> request.set_header("X-CSRF", outsider_csrf)
+    |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
 
   expect.expect_status(handler(task_req), 404)
 }
@@ -1276,8 +1249,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
       http.Put,
       "/api/v1/me/task-positions/" <> int_to_string(task_id),
     )
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
-    |> request.set_header("X-CSRF", outsider_csrf)
+    |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
     |> simulate.json_body(
       json.object([#("x", json.int(1)), #("y", json.int(2))]),
     )
@@ -1585,8 +1557,7 @@ fn upsert_position(
       http.Put,
       "/api/v1/me/task-positions/" <> int_to_string(task_id),
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([#("x", json.int(x)), #("y", json.int(y))]),
     )
@@ -1686,8 +1657,7 @@ fn create_card(
       http.Post,
       "/api/v1/projects/" <> int_to_string(project_id) <> "/cards",
     )
-    |> fixtures.with_session_cookies(session, csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([
         #("title", json.string(title)),

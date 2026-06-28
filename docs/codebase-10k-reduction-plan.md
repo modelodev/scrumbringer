@@ -942,11 +942,12 @@ Estado de ejecucion:
 - Migrados `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam` para
   delegar esos helpers y sustituir el patron repetido `login_as` +
   extraccion de cookies por `login_session`, y los pares repetidos
-  `sb_session`/`sb_csrf` por `with_session_cookies`, manteniendo intactos los
-  escenarios y los casos sin CSRF.
-- Delta parcial WP-12: `-397` lineas netas mantenidas (`-44` del primer pase
+  `sb_session`/`sb_csrf` por `with_session_cookies`; cuando el header
+  `X-CSRF` ya estaba presente se reutiliza `fixtures.with_auth`. Se mantienen
+  intactos los escenarios y los casos sin CSRF.
+- Delta parcial WP-12: `-460` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
-  de cookies de sesion).
+  de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
