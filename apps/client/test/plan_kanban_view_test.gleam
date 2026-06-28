@@ -2,9 +2,9 @@ import domain/card.{Active, Card, Closed, Draft}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
-import domain/task_type.{TaskType, TaskTypeInline}
+import domain/task_type.{TaskType}
 import gleam/option.{None, Some}
+import support/domain_fixtures
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -91,49 +91,20 @@ fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     purpose: kanban_board.ExecutionKanban,
     cards: [
       Card(
-        id: 1,
-        project_id: 1,
-        parent_card_id: None,
-        title: "Release 1.5",
-        description: "",
+        ..domain_fixtures.card(1, 1, "Release 1.5"),
         color: Some(card.Blue),
         state: Active,
         task_count: 1,
-        closed_count: 0,
-        created_by: 1,
-        created_at: "2026-01-01T00:00:00Z",
-        due_date: None,
-        has_new_notes: False,
       ),
       Card(
-        id: 2,
-        project_id: 1,
-        parent_card_id: None,
-        title: "Draft prep",
-        description: "",
+        ..domain_fixtures.card(2, 1, "Draft prep"),
         color: Some(card.Blue),
         state: Draft,
-        task_count: 0,
-        closed_count: 0,
-        created_by: 1,
-        created_at: "2026-01-01T00:00:00Z",
-        due_date: None,
-        has_new_notes: False,
       ),
       Card(
-        id: 3,
-        project_id: 1,
-        parent_card_id: None,
-        title: "Closed outcome",
-        description: "",
+        ..domain_fixtures.card(3, 1, "Closed outcome"),
         color: Some(card.Blue),
         state: Closed,
-        task_count: 0,
-        closed_count: 0,
-        created_by: 1,
-        created_at: "2026-01-01T00:00:00Z",
-        due_date: None,
-        has_new_notes: False,
       ),
     ],
     tasks: tasks,
@@ -188,29 +159,13 @@ fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
 }
 
 fn available_task() -> Task {
-  let state = task_state.Available
-
   Task(
-    id: 2,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Review copy",
+    ..domain_fixtures.task(2, "Review copy", 1),
     description: None,
     priority: 2,
-    state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
     version: 2,
-    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Release 1.5"),
     card_color: Some(card.Blue),
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
