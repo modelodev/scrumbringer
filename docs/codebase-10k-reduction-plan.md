@@ -440,11 +440,11 @@ Estado de ejecucion:
 - Parcialmente ejecutado en rama `refactor-cleanup`.
 - Creado `apps/client/test/support/render_assertions.gleam` con `contains`,
   `not_contains` y `html`.
-- Migrados `plan_kanban_view_test.gleam`, `pool_task_card_test.gleam` y
-  `styles_btn_loading_test.gleam` para validar el patron en tests pequenos.
-- Delta parcial WP-02: `-2` lineas netas mantenidas; el primer paquete crea el
-  soporte compartido y prepara la reduccion posterior en `people_view_test` y
-  otros tests de vista.
+- Migrados `plan_kanban_view_test.gleam`, `pool_task_card_test.gleam`,
+  `styles_btn_loading_test.gleam` y `people_view_test.gleam`.
+- Delta parcial WP-02: `-17` lineas netas mantenidas; estos paquetes crean el
+  soporte compartido y eliminan helpers locales duplicados, pero la reduccion
+  fuerte queda en la consolidacion posterior de builders/fixtures de vista.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam test` (`1912 passed`).

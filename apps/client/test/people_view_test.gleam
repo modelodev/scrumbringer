@@ -4,7 +4,6 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/effect
-import lustre/element
 
 import domain/api_error.{ApiError}
 import domain/card
@@ -32,14 +31,7 @@ import scrumbringer_client/features/people/view as people_view
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
+import support/render_assertions
 
 fn assert_occurrences(text: String, fragment: String, expected: Int) {
   let actual = count_occurrences(text, fragment)
@@ -218,7 +210,7 @@ fn people_config_with_cards(
 }
 
 fn render_people(model: client_state.Model) -> String {
-  people_view.view(people_config(model)) |> element.to_document_string
+  people_view.view(people_config(model)) |> render_assertions.html
 }
 
 fn render_people_with_cards(
@@ -226,7 +218,7 @@ fn render_people_with_cards(
   cards: List(card.Card),
 ) -> String {
   people_view.view(people_config_with_cards(model, cards))
-  |> element.to_document_string
+  |> render_assertions.html
 }
 
 fn with_people_workload(
@@ -500,10 +492,9 @@ fn rename_workload_people(
 
 pub fn people_view_loading_state_test() {
   let model = base_model() |> with_people_workload(remote.Loading)
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "Loading people...")
+  render_assertions.contains(html, "Loading people...")
 }
 
 pub fn people_view_error_state_test() {
@@ -513,19 +504,17 @@ pub fn people_view_error_state_test() {
       remote.Failed(ApiError(status: 500, code: "E_PEOPLE", message: "boom")),
     )
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "Could not load people")
-  assert_contains(html, "people-error")
+  render_assertions.contains(html, "Could not load people")
+  render_assertions.contains(html, "people-error")
 }
 
 pub fn people_view_empty_roster_state_test() {
   let model = base_model() |> with_people_workload(remote.Loaded([]))
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "No members in this project")
+  render_assertions.contains(html, "No members in this project")
 }
 
 pub fn people_view_no_results_state_test() {
@@ -548,9 +537,8 @@ pub fn people_view_no_results_state_test() {
       )
     })
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
-  assert_contains(html, "No people match your search")
+  let html = people_view.view(people_config(model)) |> render_assertions.html
+  render_assertions.contains(html, "No people match your search")
 }
 
 pub fn people_view_availability_rules_test() {
@@ -575,20 +563,19 @@ pub fn people_view_availability_rules_test() {
     ])
     |> with_workload_tasks(tasks)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "Working now")
-  assert_contains(html, "Claimed")
-  assert_contains(html, "Available")
-  assert_contains(html, "Person")
-  assert_contains(html, "Work")
-  assert_contains(html, "Load")
-  assert_not_contains(html, "people-roster-state")
-  assert_not_contains(html, "people-roster-focus")
-  assert_not_contains(html, "people-roster-scope")
-  assert_not_contains(html, ">Action<")
-  assert_not_contains(html, "0 ongoing")
+  render_assertions.contains(html, "Working now")
+  render_assertions.contains(html, "Claimed")
+  render_assertions.contains(html, "Available")
+  render_assertions.contains(html, "Person")
+  render_assertions.contains(html, "Work")
+  render_assertions.contains(html, "Load")
+  render_assertions.not_contains(html, "people-roster-state")
+  render_assertions.not_contains(html, "people-roster-focus")
+  render_assertions.not_contains(html, "people-roster-scope")
+  render_assertions.not_contains(html, ">Action<")
+  render_assertions.not_contains(html, "0 ongoing")
 }
 
 pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
@@ -606,12 +593,11 @@ pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
     ])
     |> with_workload_tasks(tasks)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "Working now")
-  assert_contains(html, "people-roster-row-working")
-  assert_not_contains(html, "people-roster-row-reserved")
+  render_assertions.contains(html, "Working now")
+  render_assertions.contains(html, "people-roster-row-working")
+  render_assertions.not_contains(html, "people-roster-row-reserved")
 }
 
 pub fn people_view_surface_summary_and_collapsed_balance_test() {
@@ -646,35 +632,34 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
     ])
     |> with_workload_tasks(tasks)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(
+  render_assertions.contains(
     html,
     "Operational team state by owned work, blockers, and availability.",
   )
-  assert_not_contains(html, "work-surface-guidance")
-  assert_not_contains(html, "main operating situation")
-  assert_not_contains(html, "task explaining the row")
-  assert_not_contains(html, "dominant card or capability")
-  assert_not_contains(html, "total work volume")
-  assert_contains(html, "work-surface-chip success")
-  assert_contains(html, ">Available<")
-  assert_contains(html, "work-surface-chip claimed")
-  assert_contains(html, ">With work<")
-  assert_contains(html, "work-surface-chip ongoing")
-  assert_contains(html, ">Working now<")
-  assert_contains(html, "work-surface-chip blocked")
-  assert_contains(html, ">Attention<")
-  assert_contains(html, "Next: Review logs")
-  assert_contains(html, "Checkout")
-  assert_contains(html, "Observability")
-  assert_contains(html, "1 ongoing · 1 claimed · 2 cards")
-  assert_contains(html, "4 claimed")
-  assert_contains(html, "High load")
-  assert_not_contains(html, "people-roster-action")
-  assert_not_contains(html, "people-roster-open")
-  assert_not_contains(html, "0 ongoing")
+  render_assertions.not_contains(html, "work-surface-guidance")
+  render_assertions.not_contains(html, "main operating situation")
+  render_assertions.not_contains(html, "task explaining the row")
+  render_assertions.not_contains(html, "dominant card or capability")
+  render_assertions.not_contains(html, "total work volume")
+  render_assertions.contains(html, "work-surface-chip success")
+  render_assertions.contains(html, ">Available<")
+  render_assertions.contains(html, "work-surface-chip claimed")
+  render_assertions.contains(html, ">With work<")
+  render_assertions.contains(html, "work-surface-chip ongoing")
+  render_assertions.contains(html, ">Working now<")
+  render_assertions.contains(html, "work-surface-chip blocked")
+  render_assertions.contains(html, ">Attention<")
+  render_assertions.contains(html, "Next: Review logs")
+  render_assertions.contains(html, "Checkout")
+  render_assertions.contains(html, "Observability")
+  render_assertions.contains(html, "1 ongoing · 1 claimed · 2 cards")
+  render_assertions.contains(html, "4 claimed")
+  render_assertions.contains(html, "High load")
+  render_assertions.not_contains(html, "people-roster-action")
+  render_assertions.not_contains(html, "people-roster-open")
+  render_assertions.not_contains(html, "0 ongoing")
 }
 
 pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
@@ -700,21 +685,20 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "Checkout")
-  assert_contains(html, "Onboarding")
-  assert_contains(html, "Billing")
-  assert_contains(html, "Work for ana@example.com")
-  assert_contains(html, "1 ongoing · 2 claimed · 2 cards")
-  assert_contains(html, "Working now · 2 claimed")
-  assert_contains(html, "Now")
-  assert_contains(html, "Claimed, not started")
-  assert_contains(html, "In progress · Checkout")
-  assert_contains(html, "people-task-group")
+  render_assertions.contains(html, "Checkout")
+  render_assertions.contains(html, "Onboarding")
+  render_assertions.contains(html, "Billing")
+  render_assertions.contains(html, "Work for ana@example.com")
+  render_assertions.contains(html, "1 ongoing · 2 claimed · 2 cards")
+  render_assertions.contains(html, "Working now · 2 claimed")
+  render_assertions.contains(html, "Now")
+  render_assertions.contains(html, "Claimed, not started")
+  render_assertions.contains(html, "In progress · Checkout")
+  render_assertions.contains(html, "people-task-group")
   assert_occurrences(html, "Open card", 2)
-  assert_not_contains(html, "people-task-card-meta")
+  render_assertions.not_contains(html, "people-task-card-meta")
 }
 
 pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
@@ -732,10 +716,10 @@ pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "people-task-groups")
-  assert_contains(html, "people-task-group")
-  assert_contains(html, "Observability")
-  assert_contains(html, "1 task")
+  render_assertions.contains(html, "people-task-groups")
+  render_assertions.contains(html, "people-task-group")
+  render_assertions.contains(html, "Observability")
+  render_assertions.contains(html, "1 task")
   assert_occurrences(html, "Open card", 1)
   assert_occurrences(html, "Open task", 1)
 }
@@ -752,8 +736,8 @@ pub fn people_view_single_reserved_task_without_card_has_no_card_cta_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "people-task-groups")
-  assert_contains(html, "No card")
+  render_assertions.contains(html, "people-task-groups")
+  render_assertions.contains(html, "No card")
   assert_occurrences(html, "Open card", 0)
   assert_occurrences(html, "Open task", 1)
 }
@@ -777,15 +761,18 @@ pub fn people_view_groups_many_reserved_tasks_by_card_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "people-task-groups")
-  assert_contains(html, "people-task-group")
-  assert_contains(html, "Observability")
-  assert_contains(html, "2 tasks")
-  assert_contains(html, "Release")
-  assert_contains(html, "1 task")
+  render_assertions.contains(html, "people-task-groups")
+  render_assertions.contains(html, "people-task-group")
+  render_assertions.contains(html, "Observability")
+  render_assertions.contains(html, "2 tasks")
+  render_assertions.contains(html, "Release")
+  render_assertions.contains(html, "1 task")
   assert_occurrences(html, "Open card", 2)
   assert_occurrences(html, "Open task", 3)
-  assert_not_contains(html, "class=\"task-item-content\" type=\"button\"")
+  render_assertions.not_contains(
+    html,
+    "class=\"task-item-content\" type=\"button\"",
+  )
 }
 
 pub fn people_view_grouped_reserved_cta_matrix_test() {
@@ -806,9 +793,9 @@ pub fn people_view_grouped_reserved_cta_matrix_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "No card")
-  assert_contains(html, "Observability")
-  assert_contains(html, "Release")
+  render_assertions.contains(html, "No card")
+  render_assertions.contains(html, "Observability")
+  render_assertions.contains(html, "Release")
   assert_occurrences(html, "Open task", 3)
   assert_occurrences(html, "Open card", 2)
 }
@@ -845,10 +832,10 @@ pub fn people_view_grouped_reserved_tasks_use_card_header_without_legacy_scope_b
 
   let html = render_people(model)
 
-  assert_contains(html, "Release")
-  assert_not_contains(html, "outside active work")
-  assert_contains(html, "Claimed · Security")
-  assert_contains(html, "Open card")
+  render_assertions.contains(html, "Release")
+  render_assertions.not_contains(html, "outside active work")
+  render_assertions.contains(html, "Claimed · Security")
+  render_assertions.contains(html, "Open card")
 }
 
 pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
@@ -865,12 +852,11 @@ pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
     |> with_workload_tasks([])
     |> with_people_expanded(10)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "No active focus")
-  assert_contains(html, "No claimed work")
-  assert_contains(html, "Available")
+  render_assertions.contains(html, "No active focus")
+  render_assertions.contains(html, "No claimed work")
+  render_assertions.contains(html, "Available")
 }
 
 pub fn people_view_reflects_work_session_started_when_task_is_loaded_test() {
@@ -893,10 +879,10 @@ pub fn people_view_reflects_work_session_started_when_task_is_loaded_test() {
 
   let html = render_people(next)
 
-  assert_contains(html, "Working now")
-  assert_contains(html, "Facilitate rollout sync")
-  assert_not_contains(html, "No active focus")
-  assert_not_contains(html, "0 ongoing")
+  render_assertions.contains(html, "Working now")
+  render_assertions.contains(html, "Facilitate rollout sync")
+  render_assertions.not_contains(html, "No active focus")
+  render_assertions.not_contains(html, "0 ongoing")
 }
 
 pub fn people_view_expanded_row_accessibility_and_sections_test() {
@@ -913,15 +899,14 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
     |> with_workload_tasks([make_task(1, "Active task", 10, task_state.Ongoing)])
     |> with_people_expanded(10)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "aria-controls=\"person-details-10\"")
-  assert_contains(html, "Collapse status for ana@example.com")
-  assert_contains(html, "Now")
-  assert_contains(html, "Claimed, not started")
-  assert_contains(html, "task-item-content")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "aria-controls=\"person-details-10\"")
+  render_assertions.contains(html, "Collapse status for ana@example.com")
+  render_assertions.contains(html, "Now")
+  render_assertions.contains(html, "Claimed, not started")
+  render_assertions.contains(html, "task-item-content")
 }
 
 pub fn people_view_uses_list_semantics_test() {
@@ -934,11 +919,10 @@ pub fn people_view_uses_list_semantics_test() {
     )
     |> with_workload_tasks([])
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "<ul")
-  assert_contains(html, "<li")
+  render_assertions.contains(html, "<ul")
+  render_assertions.contains(html, "<li")
 }
 
 pub fn people_view_toggle_is_keyboard_accessible_button_test() {
@@ -954,13 +938,15 @@ pub fn people_view_toggle_is_keyboard_accessible_button_test() {
     ])
     |> with_workload_tasks([])
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "<button")
-  assert_contains(html, "people-row-toggle")
-  assert_contains(html, "aria-expanded=\"false\"")
-  assert_contains(html, "aria-label=\"Expand status for ana@example.com\"")
+  render_assertions.contains(html, "<button")
+  render_assertions.contains(html, "people-row-toggle")
+  render_assertions.contains(html, "aria-expanded=\"false\"")
+  render_assertions.contains(
+    html,
+    "aria-label=\"Expand status for ana@example.com\"",
+  )
 }
 
 pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
@@ -983,15 +969,14 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
-  let html =
-    people_view.view(people_config(model)) |> element.to_document_string
+  let html = people_view.view(people_config(model)) |> render_assertions.html
 
-  assert_contains(html, "Now")
-  assert_contains(html, "Claimed, not started")
+  render_assertions.contains(html, "Now")
+  render_assertions.contains(html, "Claimed, not started")
 
-  assert_contains(html, "Ongoing one")
-  assert_contains(html, "Ongoing via canonical state")
-  assert_contains(html, "Reserved parked")
+  render_assertions.contains(html, "Ongoing one")
+  render_assertions.contains(html, "Ongoing via canonical state")
+  render_assertions.contains(html, "Reserved parked")
 }
 
 pub fn people_view_renders_header_scope_controls_and_body_test() {
@@ -1003,13 +988,13 @@ pub fn people_view_renders_header_scope_controls_and_body_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "data-testid=\"people-surface-header\"")
-  assert_contains(html, "data-testid=\"plan-scope-bar\"")
-  assert_contains(html, "data-testid=\"people-search\"")
-  assert_contains(html, "data-testid=\"people-filter\"")
-  assert_contains(html, "data-testid=\"people-sort\"")
-  assert_contains(html, "data-testid=\"people-view\"")
-  assert_not_contains(html, "data-testid=\"plan-closed-toggle\"")
+  render_assertions.contains(html, "data-testid=\"people-surface-header\"")
+  render_assertions.contains(html, "data-testid=\"plan-scope-bar\"")
+  render_assertions.contains(html, "data-testid=\"people-search\"")
+  render_assertions.contains(html, "data-testid=\"people-filter\"")
+  render_assertions.contains(html, "data-testid=\"people-sort\"")
+  render_assertions.contains(html, "data-testid=\"people-view\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-closed-toggle\"")
 }
 
 pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
@@ -1040,28 +1025,28 @@ pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
     base
     |> with_scope(member_pool.PlanScopeProject, None, None)
     |> render_people_with_cards(cards)
-  assert_contains(project_html, "Root task")
-  assert_contains(project_html, "Child task")
-  assert_contains(project_html, "Grand task")
-  assert_contains(project_html, "Other task")
+  render_assertions.contains(project_html, "Root task")
+  render_assertions.contains(project_html, "Child task")
+  render_assertions.contains(project_html, "Grand task")
+  render_assertions.contains(project_html, "Other task")
 
   let level_html =
     base
     |> with_scope(member_pool.PlanScopeLevel, Some(2), None)
     |> render_people_with_cards(cards)
-  assert_not_contains(level_html, "Root task")
-  assert_contains(level_html, "Child task")
-  assert_contains(level_html, "Grand task")
-  assert_not_contains(level_html, "Other task")
+  render_assertions.not_contains(level_html, "Root task")
+  render_assertions.contains(level_html, "Child task")
+  render_assertions.contains(level_html, "Grand task")
+  render_assertions.not_contains(level_html, "Other task")
 
   let card_html =
     base
     |> with_scope(member_pool.PlanScopeCard, None, Some(1))
     |> render_people_with_cards(cards)
-  assert_contains(card_html, "Root task")
-  assert_contains(card_html, "Child task")
-  assert_contains(card_html, "Grand task")
-  assert_not_contains(card_html, "Other task")
+  render_assertions.contains(card_html, "Root task")
+  render_assertions.contains(card_html, "Child task")
+  render_assertions.contains(card_html, "Grand task")
+  render_assertions.not_contains(card_html, "Other task")
 }
 
 pub fn people_view_search_matches_person_task_card_and_capability_test() {
@@ -1091,19 +1076,19 @@ pub fn people_view_search_matches_person_task_card_and_capability_test() {
     |> with_people_workload(remote.Loaded([person]))
     |> with_people_expanded(10)
 
-  assert_contains(
+  render_assertions.contains(
     base |> with_people_search("ana") |> render_people_with_cards(cards),
     "ana@example.com",
   )
-  assert_contains(
+  render_assertions.contains(
     base |> with_people_search("retry") |> render_people_with_cards(cards),
     "Retry queue",
   )
-  assert_contains(
+  render_assertions.contains(
     base |> with_people_search("payments") |> render_people_with_cards(cards),
     "Payments",
   )
-  assert_contains(
+  render_assertions.contains(
     base |> with_people_search("backend") |> render_people_with_cards(cards),
     "Retry queue",
   )
@@ -1134,26 +1119,26 @@ pub fn people_view_visibility_filters_work_attention_and_free_test() {
     base
     |> with_people_filter(people_state.ShowWithWork)
     |> render_people
-  assert_contains(work_html, "ana@example.com")
-  assert_contains(work_html, "bob@example.com")
-  assert_not_contains(work_html, "cora@example.com")
+  render_assertions.contains(work_html, "ana@example.com")
+  render_assertions.contains(work_html, "bob@example.com")
+  render_assertions.not_contains(work_html, "cora@example.com")
 
   let attention_html =
     base
     |> with_people_filter(people_state.ShowAttention)
     |> render_people
-  assert_not_contains(attention_html, "ana@example.com")
-  assert_contains(attention_html, "bob@example.com")
-  assert_not_contains(attention_html, "cora@example.com")
-  assert_contains(attention_html, "Blocked")
+  render_assertions.not_contains(attention_html, "ana@example.com")
+  render_assertions.contains(attention_html, "bob@example.com")
+  render_assertions.not_contains(attention_html, "cora@example.com")
+  render_assertions.contains(attention_html, "Blocked")
 
   let free_html =
     base
     |> with_people_filter(people_state.ShowFree)
     |> render_people
-  assert_not_contains(free_html, "ana@example.com")
-  assert_not_contains(free_html, "bob@example.com")
-  assert_contains(free_html, "cora@example.com")
+  render_assertions.not_contains(free_html, "ana@example.com")
+  render_assertions.not_contains(free_html, "bob@example.com")
+  render_assertions.contains(free_html, "cora@example.com")
 }
 
 pub fn people_sort_orders_by_attention_name_and_reserved_test() {
@@ -1200,14 +1185,14 @@ pub fn people_view_only_renders_open_action_for_other_people_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "Open task")
-  assert_not_contains(html, "people-task-action-primary")
-  assert_not_contains(html, "people-task-action-secondary")
-  assert_not_contains(html, "btn-claim-mini")
-  assert_not_contains(html, "btn-close")
-  assert_not_contains(html, "task-actions")
-  assert_not_contains(html, "kanban-card-delete-action")
-  assert_not_contains(html, "plan-move")
+  render_assertions.contains(html, "Open task")
+  render_assertions.not_contains(html, "people-task-action-primary")
+  render_assertions.not_contains(html, "people-task-action-secondary")
+  render_assertions.not_contains(html, "btn-claim-mini")
+  render_assertions.not_contains(html, "btn-close")
+  render_assertions.not_contains(html, "task-actions")
+  render_assertions.not_contains(html, "kanban-card-delete-action")
+  render_assertions.not_contains(html, "plan-move")
 }
 
 pub fn people_view_renders_contextual_actions_for_current_user_test() {
@@ -1224,13 +1209,13 @@ pub fn people_view_renders_contextual_actions_for_current_user_test() {
 
   let html = render_people(model)
 
-  assert_contains(html, "Open task")
-  assert_contains(html, ">Pause<")
-  assert_contains(html, ">Close<")
-  assert_contains(html, ">Start<")
-  assert_contains(html, ">Release<")
-  assert_contains(html, "people-task-action-primary")
-  assert_contains(html, "people-task-action-secondary")
+  render_assertions.contains(html, "Open task")
+  render_assertions.contains(html, ">Pause<")
+  render_assertions.contains(html, ">Close<")
+  render_assertions.contains(html, ">Start<")
+  render_assertions.contains(html, ">Release<")
+  render_assertions.contains(html, "people-task-action-primary")
+  render_assertions.contains(html, "people-task-action-secondary")
 }
 
 pub fn people_view_card_scope_without_work_uses_empty_state_test() {
@@ -1244,7 +1229,7 @@ pub fn people_view_card_scope_without_work_uses_empty_state_test() {
 
   let html = render_people_with_cards(model, cards)
 
-  assert_contains(html, "No claimed work in this card scope")
-  assert_contains(html, "people-card-scope-no-work")
-  assert_not_contains(html, "data-testid=\"people-view\"")
+  render_assertions.contains(html, "No claimed work in this card scope")
+  render_assertions.contains(html, "people-card-scope-no-work")
+  render_assertions.not_contains(html, "data-testid=\"people-view\"")
 }
