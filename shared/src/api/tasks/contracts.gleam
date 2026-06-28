@@ -2,12 +2,10 @@
 
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
-import gleam/json.{type Json}
 
 import domain/task/id as task_id
 import domain/task/state.{
-  type TaskClosedReason, type TaskExecutionState, Available, Claimed, Closed,
-  ClosedByAncestor, ClosedByClaimant, ManuallyClosed, Ongoing, Taken,
+  type TaskClosedReason, ClosedByAncestor, ClosedByClaimant, ManuallyClosed,
 }
 
 pub type CloseTaskRequest {
@@ -16,13 +14,6 @@ pub type CloseTaskRequest {
 
 pub type CreateDependencyRequest {
   CreateDependencyRequest(depends_on_task_id: task_id.TaskId)
-}
-
-pub type CloseTaskResponse {
-  CloseTaskResponse(
-    task_id: task_id.TaskId,
-    execution_state: TaskExecutionState,
-  )
 }
 
 pub type DecodeError {
@@ -56,14 +47,6 @@ pub fn decode_create_dependency(
   |> result_from_decode
 }
 
-pub fn close_task_response_to_json(response: CloseTaskResponse) -> Json {
-  json.object([
-    #("task_id", json.int(task_id.to_int(response.task_id))),
-    #("execution_state", execution_state_to_json(response.execution_state)),
-    #("closed_reason", closed_reason_for_response(response.execution_state)),
-  ])
-}
-
 fn close_task_raw_codec() -> decode.Decoder(#(Int, String)) {
   use version <- decode.field("version", decode.int)
   use reason <- decode.optional_field(
@@ -87,29 +70,5 @@ fn parse_closed_reason(reason: String) -> Result(TaskClosedReason, DecodeError) 
     "manually_closed" -> Ok(ManuallyClosed)
     "closed_by_ancestor" -> Ok(ClosedByAncestor)
     _ -> Error(InvalidClosedReason)
-  }
-}
-
-fn execution_state_to_json(state: TaskExecutionState) -> Json {
-  case state {
-    Available -> json.string("available")
-    Claimed(_, _, Taken) -> json.string("claimed")
-    Claimed(_, _, Ongoing) -> json.string("claimed")
-    Closed(_, _, _) -> json.string("closed")
-  }
-}
-
-fn closed_reason_for_response(state: TaskExecutionState) -> Json {
-  case state {
-    Closed(reason, _, _) -> closed_reason_to_json(reason)
-    _ -> json.null()
-  }
-}
-
-fn closed_reason_to_json(reason: TaskClosedReason) -> Json {
-  case reason {
-    ClosedByClaimant -> json.string("done")
-    ManuallyClosed -> json.string("manually_closed")
-    ClosedByAncestor -> json.string("closed_by_ancestor")
   }
 }

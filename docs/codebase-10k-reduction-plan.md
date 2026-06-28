@@ -1405,6 +1405,14 @@ Estado de ejecucion:
     cobertura artificial;
   - delta adicional WP-10: `-70` lineas mantenidas y tres funciones publicas
     menos.
+- Micro-pase adicional de serializers compartidos test-only:
+  - retirados `api/tasks/contracts.CloseTaskResponse`,
+    `close_task_response_to_json` y `automation_codec.rule_draft_to_json`,
+    sin consumidores de produccion;
+  - los tests de entrada mantienen JSON literal para validar decoders publicos,
+    evitando conservar encoders solo para construir fixtures;
+  - delta adicional WP-10: `-84` lineas mantenidas, dos funciones publicas y un
+    tipo publico menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`

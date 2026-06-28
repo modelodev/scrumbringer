@@ -88,18 +88,11 @@ pub fn rule_status_decoder_rejects_migration_repair_reason_test() {
 }
 
 pub fn rule_draft_codec_roundtrips_builder_state_test() {
-  let draft =
-    automation.RuleDraft(
-      engine_id: Some(10),
-      trigger: Some(automation.TaskClosed(Some(7))),
-      template_id: Some(20),
-    )
+  let body =
+    "{\"engine_id\":10,\"trigger\":{\"type\":\"task_closed\",\"task_type_id\":7},\"template_id\":20}"
 
   let assert Ok(decoded) =
-    draft
-    |> automation_codec.rule_draft_to_json
-    |> json.to_string
-    |> json.parse(automation_codec.rule_draft_decoder())
+    json.parse(body, automation_codec.rule_draft_decoder())
   let assert Ok(valid) = automation.validate_rule_draft(decoded)
   let assert 10 = automation.valid_rule_draft_engine_id(valid)
   let assert automation.TaskClosed(Some(7)) =

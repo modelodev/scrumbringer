@@ -220,11 +220,3 @@ pub fn rule_draft_decoder() -> decode.Decoder(automation.RuleDraft) {
     template_id: template_id,
   ))
 }
-
-pub fn rule_draft_to_json(draft: automation.RuleDraft) -> Json {
-  json.object([
-    #("engine_id", json_helpers.option_int_json(draft.engine_id)),
-    #("trigger", json_helpers.option_to_json(draft.trigger, trigger_to_json)),
-    #("template_id", json_helpers.option_int_json(draft.template_id)),
-  ])
-}
