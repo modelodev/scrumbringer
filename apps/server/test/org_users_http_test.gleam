@@ -1,7 +1,6 @@
+import fixtures
 import gleam/dynamic/decode
-import gleam/erlang/charlist
 import gleam/http
-import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
@@ -12,45 +11,35 @@ import support/assertions as expect
 import wisp
 import wisp/simulate
 
-const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
 pub fn org_users_requires_admin_or_project_admin_test() {
-  let app = bootstrap_app()
+  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
 
   let member_email = "member@example.com"
   create_user_via_invite(handler, db, member_email, "il_member", 1)
 
-  let member_login_res = login_as(handler, member_email, "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_session =
+    fixtures.login(handler, member_email, "passwordpassword")
+    |> expect.ok
 
   let member_req =
     simulate.request(http.Get, "/api/v1/org/users")
-    |> request.set_cookie("sb_session", member_session)
+    |> fixtures.with_auth(member_session)
 
   let member_res = handler(member_req)
   expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/users")
-    |> request.set_cookie("sb_session", admin_session)
+    |> fixtures.with_auth(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
 }
 
 pub fn org_users_sorted_search_and_empty_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
 
   create_user_via_invite(handler, db, "z@example.com", "il_z", 1)
   create_user_via_invite(handler, db, "aaa@example.com", "il_a", 1)
@@ -58,7 +47,7 @@ pub fn org_users_sorted_search_and_empty_test() {
   let res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users")
-      |> request.set_cookie("sb_session", session),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(res, 200)
@@ -68,7 +57,7 @@ pub fn org_users_sorted_search_and_empty_test() {
   let search_res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users?q=z@")
-      |> request.set_cookie("sb_session", session),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(search_res, 200)
@@ -78,7 +67,7 @@ pub fn org_users_sorted_search_and_empty_test() {
   let empty_res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users?q=nomatch")
-      |> request.set_cookie("sb_session", session),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(empty_res, 200)
@@ -87,7 +76,7 @@ pub fn org_users_sorted_search_and_empty_test() {
   let empty_q_res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users?q=")
-      |> request.set_cookie("sb_session", session),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(empty_q_res, 200)
@@ -96,9 +85,8 @@ pub fn org_users_sorted_search_and_empty_test() {
 }
 
 pub fn org_users_allows_project_admin_and_scopes_org_test() {
-  let app = bootstrap_app()
+  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
   let org2_id = insert_org(db, "Org2")
 
@@ -106,32 +94,30 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
   create_user_via_invite(handler, db, "a@org2.com", "il_a2", org2_id)
 
   let user2_id =
-    single_int(db, "select id from users where email = 'b@org2.com'", [])
+    fixtures.user_id_by_email(db, "b@org2.com")
+    |> expect.ok
 
   let project2_id = insert_project(db, org2_id, "P2")
   insert_project_member(db, project2_id, user2_id, "manager")
 
-  let user2_login_res = login_as(handler, "b@org2.com", "passwordpassword")
-  let user2_session = find_cookie_value(user2_login_res.headers, "sb_session")
+  let user2_session =
+    fixtures.login(handler, "b@org2.com", "passwordpassword")
+    |> expect.ok
 
   let user2_res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users")
-      |> request.set_cookie("sb_session", user2_session),
+      |> fixtures.with_auth(user2_session),
     )
 
   expect.expect_status(user2_res, 200)
   decode_user_emails(simulate.read_body(user2_res))
   |> expect.equal(["a@org2.com", "b@org2.com"])
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-
   let admin_res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users")
-      |> request.set_cookie("sb_session", admin_session),
+      |> fixtures.with_auth(admin_session),
     )
 
   expect.expect_status(admin_res, 200)
@@ -140,36 +126,26 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
 }
 
 pub fn patch_org_user_role_requires_org_admin_test() {
-  let app = bootstrap_app()
+  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
   let member_email = "member@example.com"
   create_user_via_invite(handler, db, member_email, "il_member", 1)
 
-  let member_login_res = login_as(handler, member_email, "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let member_session =
+    fixtures.login(handler, member_email, "passwordpassword")
+    |> expect.ok
 
   let member_id =
-    single_int(db, "select id from users where email = $1", [
-      pog.text(member_email),
-    ])
+    fixtures.user_id_by_email(db, member_email)
+    |> expect.ok
 
   let member_req =
     simulate.request(
       http.Patch,
       "/api/v1/org/users/" <> int.to_string(member_id),
     )
-    |> request.set_cookie("sb_session", member_session)
-    |> request.set_cookie("sb_csrf", member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("org_role", json.string("admin"))]))
 
   let member_res = handler(member_req)
@@ -180,9 +156,7 @@ pub fn patch_org_user_role_requires_org_admin_test() {
       http.Patch,
       "/api/v1/org/users/" <> int.to_string(member_id),
     )
-    |> request.set_cookie("sb_session", admin_session)
-    |> request.set_cookie("sb_csrf", admin_csrf)
-    |> request.set_header("X-CSRF", admin_csrf)
+    |> fixtures.with_auth(admin_session)
     |> simulate.json_body(json.object([#("org_role", json.string("admin"))]))
 
   let admin_res = handler(admin_req)
@@ -190,18 +164,11 @@ pub fn patch_org_user_role_requires_org_admin_test() {
 }
 
 pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
-
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
 
   let req =
     simulate.request(http.Patch, "/api/v1/org/users/1")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("org_role", json.string("member"))]))
 
   let res = handler(req)
@@ -211,34 +178,25 @@ pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
 }
 
 pub fn delete_org_user_requires_admin_test() {
-  let app = bootstrap_app()
+  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
   let member_email = "member_delete@example.com"
   create_user_via_invite(handler, db, member_email, "il_member_delete", 1)
   let member_id =
-    single_int(db, "select id from users where email = $1", [
-      pog.text(member_email),
-    ])
+    fixtures.user_id_by_email(db, member_email)
+    |> expect.ok
 
-  let member_login_res = login_as(handler, member_email, "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let member_session =
+    fixtures.login(handler, member_email, "passwordpassword")
+    |> expect.ok
 
   let member_req =
     simulate.request(
       http.Delete,
       "/api/v1/org/users/" <> int.to_string(member_id),
     )
-    |> request.set_cookie("sb_session", member_session)
-    |> request.set_cookie("sb_csrf", member_csrf)
-    |> request.set_header("X-CSRF", member_csrf)
+    |> fixtures.with_auth(member_session)
 
   let member_res = handler(member_req)
   expect.expect_status(member_res, 403)
@@ -248,38 +206,28 @@ pub fn delete_org_user_requires_admin_test() {
       http.Delete,
       "/api/v1/org/users/" <> int.to_string(member_id),
     )
-    |> request.set_cookie("sb_session", admin_session)
-    |> request.set_cookie("sb_csrf", admin_csrf)
-    |> request.set_header("X-CSRF", admin_csrf)
+    |> fixtures.with_auth(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 204)
 }
 
 pub fn delete_org_user_removes_from_listing_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   let member_email = "member_delete_list@example.com"
   create_user_via_invite(handler, db, member_email, "il_member_delete_list", 1)
   let member_id =
-    single_int(db, "select id from users where email = $1", [
-      pog.text(member_email),
-    ])
+    fixtures.user_id_by_email(db, member_email)
+    |> expect.ok
 
   let delete_req =
     simulate.request(
       http.Delete,
       "/api/v1/org/users/" <> int.to_string(member_id),
     )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
 
   let delete_res = handler(delete_req)
   expect.expect_status(delete_res, 204)
@@ -287,7 +235,7 @@ pub fn delete_org_user_removes_from_listing_test() {
   let list_res =
     handler(
       simulate.request(http.Get, "/api/v1/org/users")
-      |> request.set_cookie("sb_session", session),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(list_res, 200)
@@ -297,18 +245,11 @@ pub fn delete_org_user_removes_from_listing_test() {
 }
 
 pub fn delete_org_user_rejects_self_delete_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
-
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
 
   let req =
     simulate.request(http.Delete, "/api/v1/org/users/1")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 409)
@@ -322,23 +263,14 @@ pub fn delete_org_user_rejects_self_delete_test() {
 
 /// AC13: POST accepts optional role parameter
 pub fn add_user_to_project_with_role_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  // Login as admin
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   // Create a member user
   create_user_via_invite(handler, db, "member@example.com", "il_member", 1)
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    fixtures.user_id_by_email(db, "member@example.com")
+    |> expect.ok
 
   // Create a project
   let project_id = insert_project(db, 1, "Test Project")
@@ -351,9 +283,7 @@ pub fn add_user_to_project_with_role_test() {
       http.Post,
       "/api/v1/org/users/" <> int.to_string(member_id) <> "/projects",
     )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([
         #("project_id", json.int(project_id)),
@@ -371,23 +301,14 @@ pub fn add_user_to_project_with_role_test() {
 
 /// AC13: POST defaults to member if role not provided
 pub fn add_user_to_project_defaults_to_member_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  // Login as admin
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   // Create a member user
   create_user_via_invite(handler, db, "member2@example.com", "il_member2", 1)
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member2@example.com'",
-      [],
-    )
+    fixtures.user_id_by_email(db, "member2@example.com")
+    |> expect.ok
 
   // Create a project
   let project_id = insert_project(db, 1, "Test Project 2")
@@ -400,9 +321,7 @@ pub fn add_user_to_project_defaults_to_member_test() {
       http.Post,
       "/api/v1/org/users/" <> int.to_string(member_id) <> "/projects",
     )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([
         #("project_id", json.int(project_id)),
@@ -419,23 +338,14 @@ pub fn add_user_to_project_defaults_to_member_test() {
 
 /// AC14: PATCH changes user's role in a project
 pub fn update_user_project_role_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  // Login as admin
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   // Create a member user
   create_user_via_invite(handler, db, "pmember@example.com", "il_pmember", 1)
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'pmember@example.com'",
-      [],
-    )
+    fixtures.user_id_by_email(db, "pmember@example.com")
+    |> expect.ok
 
   // Create a project with admin as manager and member user as member
   let project_id = insert_project(db, 1, "Test Project 3")
@@ -452,9 +362,7 @@ pub fn update_user_project_role_test() {
         <> "/projects/"
         <> int.to_string(project_id),
     )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
@@ -468,14 +376,8 @@ pub fn update_user_project_role_test() {
 
 /// AC15: PATCH returns 422 when trying to demote last manager
 pub fn update_user_project_role_last_manager_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  // Login as admin
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   // Create a project with admin as the only manager
   let project_id = insert_project(db, 1, "Test Project 4")
@@ -488,9 +390,7 @@ pub fn update_user_project_role_last_manager_test() {
       http.Patch,
       "/api/v1/org/users/1/projects/" <> int.to_string(project_id),
     )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
   let res = handler(req)
@@ -503,14 +403,8 @@ pub fn update_user_project_role_last_manager_test() {
 
 /// AC14: PATCH returns 404 when user is not a member
 pub fn update_user_project_role_not_member_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  // Login as admin
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   // Create a member user (NOT in the project)
   create_user_via_invite(
@@ -521,11 +415,8 @@ pub fn update_user_project_role_not_member_test() {
     1,
   )
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'notmember@example.com'",
-      [],
-    )
+    fixtures.user_id_by_email(db, "notmember@example.com")
+    |> expect.ok
 
   // Create a project
   let project_id = insert_project(db, 1, "Test Project 5")
@@ -541,9 +432,7 @@ pub fn update_user_project_role_not_member_test() {
         <> "/projects/"
         <> int.to_string(project_id),
     )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
   let res = handler(req)
@@ -617,36 +506,21 @@ fn insert_invite_link_active(
 }
 
 fn insert_org(db: pog.Connection, name: String) -> Int {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(id)
-  }
-
-  let assert Ok(pog.Returned(rows: [id, ..], ..)) =
-    pog.query("insert into organizations (name) values ($1) returning id")
-    |> pog.parameter(pog.text(name))
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  id
+  fixtures.query_int(
+    db,
+    "insert into organizations (name) values ($1) returning id",
+    [pog.text(name)],
+  )
+  |> expect.ok
 }
 
 fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Int {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(id)
-  }
-
-  let assert Ok(pog.Returned(rows: [id, ..], ..)) =
-    pog.query(
-      "insert into projects (org_id, name) values ($1, $2) returning id",
-    )
-    |> pog.parameter(pog.int(org_id))
-    |> pog.parameter(pog.text(name))
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  id
+  fixtures.query_int(
+    db,
+    "insert into projects (org_id, name) values ($1, $2) returning id",
+    [pog.int(org_id), pog.text(name)],
+  )
+  |> expect.ok
 }
 
 fn insert_project_member(
@@ -666,126 +540,3 @@ fn insert_project_member(
 
   Nil
 }
-
-fn login_as(
-  handler: fn(wisp.Request) -> wisp.Response,
-  email: String,
-  password: String,
-) -> wisp.Response {
-  handler(
-    simulate.request(http.Post, "/api/v1/auth/login")
-    |> simulate.json_body(
-      json.object([
-        #("email", json.string(email)),
-        #("password", json.string(password)),
-      ]),
-    ),
-  )
-}
-
-fn bootstrap_app() -> scrumbringer_server.App {
-  let app = new_test_app()
-  let handler = scrumbringer_server.handler(app)
-  let scrumbringer_server.App(db: db, ..) = app
-
-  reset_db(db)
-
-  let res =
-    handler(
-      simulate.request(http.Post, "/api/v1/auth/register")
-      |> simulate.json_body(
-        json.object([
-          #("email", json.string("admin@example.com")),
-          #("password", json.string("passwordpassword")),
-          #("org_name", json.string("Acme")),
-        ]),
-      ),
-    )
-
-  expect.expect_status(res, 200)
-
-  app
-}
-
-fn new_test_app() -> scrumbringer_server.App {
-  let database_url = require_database_url()
-  let assert Ok(app) = scrumbringer_server.new_app(secret, database_url)
-  app
-}
-
-fn reset_db(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
-  headers
-  |> list.filter_map(fn(h) {
-    case h.0 {
-      "set-cookie" -> Ok(h.1)
-      _ -> Error(Nil)
-    }
-  })
-}
-
-fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
-  let target = name <> "="
-
-  let assert Ok(header) =
-    set_cookie_headers(headers)
-    |> list.find(fn(h) { string.starts_with(h, target) })
-
-  let assert Ok(#(value, _)) =
-    header
-    |> string.drop_start(string.length(target))
-    |> string.split_once(";")
-
-  value
-}
-
-fn require_database_url() -> String {
-  case getenv("DATABASE_URL", "") {
-    "" -> {
-      expect.fail()
-      ""
-    }
-
-    url -> url
-  }
-}
-
-fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
-  let decoder = {
-    use value <- decode.field(0, decode.int)
-    decode.success(value)
-  }
-
-  let query =
-    params
-    |> list.fold(pog.query(sql), fn(query, param) {
-      pog.parameter(query, param)
-    })
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    query
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
-}
-
-fn getenv(key: String, default: String) -> String {
-  getenv_charlist(charlist.from_string(key), charlist.from_string(default))
-  |> charlist.to_string
-}
-
-@external(erlang, "os", "getenv")
-fn getenv_charlist(
-  key: charlist.Charlist,
-  default: charlist.Charlist,
-) -> charlist.Charlist
