@@ -8,11 +8,16 @@ import support/render_assertions
 // Builder tests
 // =============================================================================
 
+fn default_html() -> String {
+  layout.view(element.none(), element.none(), element.none())
+  |> render_assertions.html
+}
+
 pub fn config_creates_empty_config_test() {
   let config = layout.config()
   // Config should exist and be usable
   let rendered = layout.render(config)
-  rendered |> element.to_document_string |> assert_not_equal("")
+  rendered |> render_assertions.html |> assert_not_equal("")
 }
 
 pub fn with_left_panel_sets_content_test() {
@@ -22,7 +27,7 @@ pub fn with_left_panel_sets_content_test() {
     |> layout.with_left_panel(content)
 
   let rendered = layout.render(config)
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Left")
 }
@@ -34,7 +39,7 @@ pub fn with_center_panel_sets_content_test() {
     |> layout.with_center_panel(content)
 
   let rendered = layout.render(config)
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Center")
 }
@@ -46,7 +51,7 @@ pub fn with_right_panel_sets_content_test() {
     |> layout.with_right_panel(content)
 
   let rendered = layout.render(config)
-  let html = element.to_document_string(rendered)
+  let html = render_assertions.html(rendered)
 
   render_assertions.contains(html, "Right")
 }
@@ -56,27 +61,15 @@ pub fn with_right_panel_sets_content_test() {
 // =============================================================================
 
 pub fn render_includes_nav_element_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "<nav")
+  default_html() |> render_assertions.contains("<nav")
 }
 
 pub fn render_includes_main_element_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "<main")
+  default_html() |> render_assertions.contains("<main")
 }
 
 pub fn render_includes_aside_element_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "<aside")
+  default_html() |> render_assertions.contains("<aside")
 }
 
 // =============================================================================
@@ -84,27 +77,15 @@ pub fn render_includes_aside_element_test() {
 // =============================================================================
 
 pub fn render_includes_left_panel_testid_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "data-testid=\"left-panel\"")
+  default_html() |> render_assertions.contains("data-testid=\"left-panel\"")
 }
 
 pub fn render_includes_center_panel_testid_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "data-testid=\"center-panel\"")
+  default_html() |> render_assertions.contains("data-testid=\"center-panel\"")
 }
 
 pub fn render_includes_right_panel_testid_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "data-testid=\"right-panel\"")
+  default_html() |> render_assertions.contains("data-testid=\"right-panel\"")
 }
 
 // =============================================================================
@@ -112,20 +93,12 @@ pub fn render_includes_right_panel_testid_test() {
 // =============================================================================
 
 pub fn render_includes_main_content_id_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "id=\"main-content\"")
+  default_html() |> render_assertions.contains("id=\"main-content\"")
 }
 
 pub fn render_includes_aria_labels_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
   // Should have aria-label on nav and aside
-  render_assertions.contains(html, "aria-label=")
+  default_html() |> render_assertions.contains("aria-label=")
 }
 
 pub fn render_with_labels_uses_custom_labels_test() {
@@ -137,7 +110,7 @@ pub fn render_with_labels_uses_custom_labels_test() {
       "Navegacion principal",
       "Mi actividad",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Navegacion principal")
 }
@@ -147,17 +120,11 @@ pub fn render_with_labels_uses_custom_labels_test() {
 // =============================================================================
 
 pub fn render_includes_layout_class_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
-
-  render_assertions.contains(html, "three-panel-layout")
+  default_html() |> render_assertions.contains("three-panel-layout")
 }
 
 pub fn render_includes_panel_classes_test() {
-  let html =
-    layout.view(element.none(), element.none(), element.none())
-    |> element.to_document_string
+  let html = default_html()
 
   render_assertions.contains(html, "panel-left")
   render_assertions.contains(html, "panel-center")

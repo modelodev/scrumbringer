@@ -1,14 +1,12 @@
-import gleam/string
-import lustre/element
-
 import scrumbringer_client/ui/badge
+import support/render_assertions
 
 pub fn new_truncated_truncates_valid_text_test() {
   let assert Ok(result) = badge.new_truncated("Long status", badge.Neutral, 4)
-  let html = result |> badge.view |> element.to_document_string
+  let html = result |> badge.view |> render_assertions.html
 
-  let assert True = string.contains(html, "Long…")
-  let assert True = string.contains(html, "badge-neutral")
+  render_assertions.contains(html, "Long…")
+  render_assertions.contains(html, "badge-neutral")
 }
 
 pub fn new_truncated_rejects_empty_text_test() {
@@ -17,13 +15,9 @@ pub fn new_truncated_rejects_empty_text_test() {
 }
 
 pub fn status_maps_closed_to_success_test() {
-  let html = badge.status("Closed") |> element.to_document_string
-
-  let assert True = string.contains(html, "badge-success")
+  badge.status("Closed") |> render_assertions.view_contains("badge-success")
 }
 
 pub fn status_does_not_treat_completed_as_closed_test() {
-  let html = badge.status("Completed") |> element.to_document_string
-
-  let assert True = string.contains(html, "badge-neutral")
+  badge.status("Completed") |> render_assertions.view_contains("badge-neutral")
 }
