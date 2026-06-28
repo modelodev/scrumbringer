@@ -1,49 +1,22 @@
+import fixtures
 import gleam/dynamic/decode
-import gleam/erlang/charlist
 import gleam/http
-import gleam/http/request
 import gleam/int
 import gleam/json
-import gleam/list
-import gleam/string
 import pog
 import scrumbringer_server
 import support/assertions as expect
-import wisp
 import wisp/simulate
 
-const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
 pub fn workflows_project_crud_and_active_cascade_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let project_id = get_default_project_id(db)
+  let project_id = fixtures.default_project_id(db) |> expect.ok
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  let create_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Project Workflow")),
-          #("description", json.string("Project desc")),
-        ]),
-      ),
-    )
-
-  expect.expect_status(create_res, 200)
-  let workflow_id = decode_workflow_id(simulate.read_body(create_res))
+  let workflow_id =
+    fixtures.create_workflow(handler, session, project_id, "Project Workflow")
+    |> expect.ok
 
   insert_rule(db, workflow_id)
 
@@ -53,9 +26,7 @@ pub fn workflows_project_crud_and_active_cascade_test() {
         http.Patch,
         "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("active", json.bool(False)),
@@ -72,8 +43,7 @@ pub fn workflows_project_crud_and_active_cascade_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(list_res, 200)
@@ -86,44 +56,21 @@ pub fn workflows_project_crud_and_active_cascade_test() {
         http.Delete,
         "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(delete_res, 204)
 }
 
 pub fn workflow_delete_with_execution_pauses_and_preserves_history_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let project_id = get_default_project_id(db)
+  let project_id = fixtures.default_project_id(db) |> expect.ok
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  let create_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Workflow History")),
-          #("description", json.string("Historical executions")),
-        ]),
-      ),
-    )
-
-  expect.expect_status(create_res, 200)
-  let workflow_id = decode_workflow_id(simulate.read_body(create_res))
+  let workflow_id =
+    fixtures.create_workflow(handler, session, project_id, "Workflow History")
+    |> expect.ok
   let rule_id = insert_rule(db, workflow_id)
   let type_id = insert_task_type(db, project_id)
   let task_id = insert_origin_task(db, project_id, type_id)
@@ -135,56 +82,35 @@ pub fn workflow_delete_with_execution_pauses_and_preserves_history_test() {
         http.Delete,
         "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(delete_res, 204)
-  single_int(db, "select count(*)::int from workflows where id = $1", [
+  fixtures.query_int(db, "select count(*)::int from workflows where id = $1", [
     pog.int(workflow_id),
   ])
+  |> expect.ok
   |> expect.equal(1)
   workflow_active(db, workflow_id) |> expect.equal(False)
   rule_active(db, workflow_id) |> expect.equal(False)
-  single_int(
+  fixtures.query_int(
     db,
     "select count(*)::int from rule_executions where rule_id = $1",
     [pog.int(rule_id)],
   )
+  |> expect.ok
   |> expect.equal(1)
 }
 
 pub fn workflow_delete_with_created_task_pauses_and_preserves_origin_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let project_id = get_default_project_id(db)
+  let project_id = fixtures.default_project_id(db) |> expect.ok
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  let create_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Workflow Origin")),
-          #("description", json.string("Generated task origin")),
-        ]),
-      ),
-    )
-
-  expect.expect_status(create_res, 200)
-  let workflow_id = decode_workflow_id(simulate.read_body(create_res))
+  let workflow_id =
+    fixtures.create_workflow(handler, session, project_id, "Workflow Origin")
+    |> expect.ok
   let rule_id = insert_rule(db, workflow_id)
   let type_id = insert_task_type(db, project_id)
   let created_task_id =
@@ -196,61 +122,44 @@ pub fn workflow_delete_with_created_task_pauses_and_preserves_origin_test() {
         http.Delete,
         "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(delete_res, 204)
-  single_int(db, "select count(*)::int from workflows where id = $1", [
+  fixtures.query_int(db, "select count(*)::int from workflows where id = $1", [
     pog.int(workflow_id),
   ])
+  |> expect.ok
   |> expect.equal(1)
   workflow_active(db, workflow_id) |> expect.equal(False)
   rule_active(db, workflow_id) |> expect.equal(False)
-  single_int(
+  fixtures.query_int(
     db,
     "select count(*)::int from tasks where id = $1 and created_from_rule_id = $2",
     [pog.int(created_task_id), pog.int(rule_id)],
   )
+  |> expect.ok
   |> expect.equal(1)
 }
 
 pub fn workflows_project_scope_requires_project_manager_test() {
-  let app = bootstrap_app()
+  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
   let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+    fixtures.create_project(handler, admin_session, "Core")
+    |> expect.ok
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+    fixtures.create_member_user(handler, db, "member@example.com", "inv_member")
+    |> expect.ok
 
-  add_member(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    member_id,
-    "member",
-  )
+  fixtures.add_member(handler, admin_session, project_id, member_id, "member")
+  |> expect.ok
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let member_session =
+    fixtures.login(handler, "member@example.com", "passwordpassword")
+    |> expect.ok
 
   let list_res =
     handler(
@@ -258,8 +167,7 @@ pub fn workflows_project_scope_requires_project_manager_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
-      |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf),
+      |> fixtures.with_auth(member_session),
     )
 
   expect.expect_status(list_res, 403)
@@ -270,9 +178,7 @@ pub fn workflows_project_scope_requires_project_manager_test() {
         http.Post,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
-      |> request.set_cookie("sb_session", member_session)
-      |> request.set_cookie("sb_csrf", member_csrf)
-      |> request.set_header("X-CSRF", member_csrf)
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(
         json.object([
           #("name", json.string("Proj Workflow")),
@@ -285,55 +191,27 @@ pub fn workflows_project_scope_requires_project_manager_test() {
 }
 
 pub fn workflows_project_list_filters_scope_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let default_project_id = fixtures.default_project_id(db) |> expect.ok
 
-  let default_project_id = get_default_project_id(db)
-
-  create_project(handler, session, csrf, "Core")
   let core_project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+    fixtures.create_project(handler, session, "Core")
+    |> expect.ok
 
   // Create workflow in default project
-  let _default_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(default_project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Default Workflow")),
-          #("description", json.string("Default desc")),
-        ]),
-      ),
-    )
+  fixtures.create_workflow(
+    handler,
+    session,
+    default_project_id,
+    "Default Workflow",
+  )
+  |> expect.ok
 
   // Create workflow in Core project
-  let _core_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(core_project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Core Workflow")),
-          #("description", json.string("Core desc")),
-        ]),
-      ),
-    )
+  fixtures.create_workflow(handler, session, core_project_id, "Core Workflow")
+  |> expect.ok
 
   // List Core project workflows - should only show Core Workflow
   let list_core_res =
@@ -342,8 +220,7 @@ pub fn workflows_project_list_filters_scope_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(core_project_id) <> "/workflows",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf),
+      |> fixtures.with_auth(session),
     )
 
   expect.expect_status(list_core_res, 200)
@@ -352,32 +229,13 @@ pub fn workflows_project_list_filters_scope_test() {
 }
 
 pub fn workflows_duplicate_name_in_same_project_is_rejected_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let project_id = get_default_project_id(db)
+  let project_id = fixtures.default_project_id(db) |> expect.ok
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
-
-  let _first_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
-      )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Dup Workflow")),
-          #("description", json.string("First")),
-        ]),
-      ),
-    )
+  fixtures.create_workflow(handler, session, project_id, "Dup Workflow")
+  |> expect.ok
 
   let dup_res =
     handler(
@@ -385,9 +243,7 @@ pub fn workflows_duplicate_name_in_same_project_is_rejected_test() {
         http.Post,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("name", json.string("Dup Workflow")),
@@ -400,15 +256,10 @@ pub fn workflows_duplicate_name_in_same_project_is_rejected_test() {
 }
 
 pub fn workflows_invalid_payload_returns_400_test() {
-  let app = bootstrap_app()
+  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
-  let project_id = get_default_project_id(db)
-
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let project_id = fixtures.default_project_id(db) |> expect.ok
 
   let bad_res =
     handler(
@@ -416,35 +267,11 @@ pub fn workflows_invalid_payload_returns_400_test() {
         http.Post,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
+      |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("name", json.int(1))])),
     )
 
   expect.expect_status(bad_res, 400)
-}
-
-fn decode_workflow_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let workflow_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use workflow <- decode.field("workflow", workflow_decoder)
-    decode.success(workflow)
-  }
-
-  let response_decoder = {
-    use workflow_id <- decode.field("data", data_decoder)
-    decode.success(workflow_id)
-  }
-
-  let assert Ok(workflow_id) = decode.run(dynamic, response_decoder)
-  workflow_id
 }
 
 fn decode_workflow_names(body: String) -> List(String) {
@@ -470,20 +297,12 @@ fn decode_workflow_names(body: String) -> List(String) {
 }
 
 fn insert_rule(db: pog.Connection, workflow_id: Int) -> Int {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(id)
-  }
-
-  let assert Ok(pog.Returned(rows: [rule_id, ..], ..)) =
-    pog.query(
-      "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_closed', null, 'closed', true) returning id",
-    )
-    |> pog.parameter(pog.int(workflow_id))
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  rule_id
+  fixtures.query_int(
+    db,
+    "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_closed', null, 'closed', true) returning id",
+    [pog.int(workflow_id)],
+  )
+  |> expect.ok
 }
 
 fn rule_active(db: pog.Connection, workflow_id: Int) -> Bool {
@@ -517,20 +336,22 @@ fn workflow_active(db: pog.Connection, workflow_id: Int) -> Bool {
 }
 
 fn insert_task_type(db: pog.Connection, project_id: Int) -> Int {
-  single_int(
+  fixtures.query_int(
     db,
     "insert into task_types (project_id, name, icon) values ($1, 'Workflow QA', 'bug-ant') returning id",
     [pog.int(project_id)],
   )
+  |> expect.ok
 }
 
 fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
   let card_id = insert_active_card(db, project_id, "Automation origin card")
-  single_int(
+  fixtures.query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, $3, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id)],
   )
+  |> expect.ok
 }
 
 fn insert_created_task_from_rule(
@@ -540,19 +361,21 @@ fn insert_created_task_from_rule(
   rule_id: Int,
 ) -> Int {
   let card_id = insert_active_card(db, project_id, "Generated task card")
-  single_int(
+  fixtures.query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, $4, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id), pog.int(rule_id)],
   )
+  |> expect.ok
 }
 
 fn insert_active_card(db: pog.Connection, project_id: Int, title: String) -> Int {
-  single_int(
+  fixtures.query_int(
     db,
     "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, 'active') returning id",
     [pog.int(project_id), pog.text(title)],
   )
+  |> expect.ok
 }
 
 fn insert_rule_execution(
@@ -574,252 +397,3 @@ fn insert_rule_execution(
 
   Nil
 }
-
-fn create_project(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  name: String,
-) {
-  let req =
-    simulate.request(http.Post, "/api/v1/projects")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(project_create_json(name))
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn project_create_json(name: String) -> json.Json {
-  json.object([
-    #("name", json.string(name)),
-    #("healthy_pool_limit", json.int(20)),
-    #(
-      "card_depth_names",
-      json.array(
-        [
-          project_depth_name_json(1, "Initiative", "Initiatives"),
-          project_depth_name_json(2, "Feature", "Features"),
-          project_depth_name_json(3, "Task group", "Task groups"),
-        ],
-        of: fn(value) { value },
-      ),
-    ),
-  ])
-}
-
-fn project_depth_name_json(
-  depth: Int,
-  singular_name: String,
-  plural_name: String,
-) -> json.Json {
-  json.object([
-    #("depth", json.int(depth)),
-    #("singular_name", json.string(singular_name)),
-    #("plural_name", json.string(plural_name)),
-  ])
-}
-
-fn add_member(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
-  project_id: Int,
-  user_id: Int,
-  role: String,
-) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(
-      json.object([
-        #("user_id", json.int(user_id)),
-        #("role", json.string(role)),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn create_member_user(
-  handler: fn(wisp.Request) -> wisp.Response,
-  db: pog.Connection,
-  email: String,
-  invite_code: String,
-) {
-  insert_invite_link_active(db, invite_code, email)
-
-  let req =
-    simulate.request(http.Post, "/api/v1/auth/register")
-    |> simulate.json_body(
-      json.object([
-        #("password", json.string("passwordpassword")),
-        #("invite_token", json.string(invite_code)),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-}
-
-fn login_as(
-  handler: fn(wisp.Request) -> wisp.Response,
-  email: String,
-  password: String,
-) -> wisp.Response {
-  let req =
-    simulate.request(http.Post, "/api/v1/auth/login")
-    |> simulate.json_body(
-      json.object([
-        #("email", json.string(email)),
-        #("password", json.string(password)),
-      ]),
-    )
-
-  handler(req)
-}
-
-fn new_test_app() -> scrumbringer_server.App {
-  let database_url = require_database_url()
-  let assert Ok(app) = scrumbringer_server.new_app(secret, database_url)
-  app
-}
-
-fn bootstrap_app() -> scrumbringer_server.App {
-  let app = new_test_app()
-  let handler = scrumbringer_server.handler(app)
-  let scrumbringer_server.App(db: db, ..) = app
-
-  reset_db(db)
-  reset_workflow_tables(db)
-
-  let res =
-    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  expect.expect_status(res, 200)
-
-  app
-}
-
-fn bootstrap_request(email: String, password: String, org_name: String) {
-  simulate.request(http.Post, "/api/v1/auth/register")
-  |> simulate.json_body(
-    json.object([
-      #("email", json.string(email)),
-      #("password", json.string(password)),
-      #("org_name", json.string(org_name)),
-    ]),
-  )
-}
-
-fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
-  headers
-  |> list.filter_map(fn(h) {
-    case h.0 {
-      "set-cookie" -> Ok(h.1)
-      _ -> Error(Nil)
-    }
-  })
-}
-
-fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
-  let target = name <> "="
-
-  let assert Ok(header) =
-    set_cookie_headers(headers)
-    |> list.find(fn(h) { string.starts_with(h, target) })
-
-  let assert Ok(#(value, _)) =
-    header
-    |> string.drop_start(string.length(target))
-    |> string.split_once(";")
-
-  value
-}
-
-fn require_database_url() -> String {
-  case getenv("DATABASE_URL", "") {
-    "" -> {
-      expect.fail()
-      ""
-    }
-
-    url -> url
-  }
-}
-
-fn reset_db(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn reset_workflow_tables(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
-  let assert Ok(_) =
-    pog.query(
-      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
-    )
-    |> pog.parameter(pog.text(email))
-    |> pog.parameter(pog.text(token))
-    |> pog.execute(db)
-
-  Nil
-}
-
-fn get_default_project_id(db: pog.Connection) -> Int {
-  single_int(db, "select id from projects where org_id = 1 limit 1", [])
-}
-
-fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
-  let decoder = {
-    use value <- decode.field(0, decode.int)
-    decode.success(value)
-  }
-
-  let query =
-    params
-    |> list.fold(pog.query(sql), fn(query, param) {
-      pog.parameter(query, param)
-    })
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    query
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
-}
-
-fn getenv(key: String, default: String) -> String {
-  let key_charlist = charlist.from_string(key)
-  let default_charlist = charlist.from_string(default)
-  getenv_charlist(key_charlist, default_charlist)
-  |> charlist.to_string
-}
-
-@external(erlang, "os", "getenv")
-fn getenv_charlist(
-  key: charlist.Charlist,
-  default: charlist.Charlist,
-) -> charlist.Charlist
