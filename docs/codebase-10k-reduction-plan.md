@@ -1410,7 +1410,11 @@ Estado de ejecucion:
   `capability_board_view`. Se retiran constructores completos de card y task
   manteniendo tipo/icono, estado, card, color y descripcion visibles en el
   agrupado por capacidad.
-- Delta parcial WP-12: `-3.073` lineas netas mantenidas (`-44` del primer pase
+- Decimoquinto pase de fixtures de dominio aplicado a `kanban_task_item`. Se
+  reemplazan builders manuales de card y task por fixtures compartidas sin
+  ocultar los campos de contrato del kanban: estado, prioridad, version,
+  pertenencia a card, color y conteo de tareas.
+- Delta parcial WP-12: `-3.117` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1444,7 +1448,8 @@ Estado de ejecucion:
   `-53` del duodecimo pase de fixtures de dominio compartidas en tests de
   cliente, `-14` del decimotercer pase de fixtures de dominio compartidas en
   tests de cliente, `-21` del decimocuarto pase de fixtures de dominio
-  compartidas en tests de cliente).
+  compartidas en tests de cliente, `-44` del decimoquinto pase de fixtures de
+  dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

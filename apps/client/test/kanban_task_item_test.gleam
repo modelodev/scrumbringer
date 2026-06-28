@@ -4,10 +4,11 @@ import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskType, TaskTypeInline}
+import domain/task_type.{TaskType}
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/capability_scope
@@ -20,19 +21,10 @@ import scrumbringer_client/theme
 fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
   let card =
     Card(
-      id: 1,
-      project_id: 1,
-      parent_card_id: None,
-      title: "Sprint",
-      description: "",
+      ..domain_fixtures.card(1, 1, "Sprint"),
       color: Some(card.Blue),
       state: Active,
       task_count: list.length(tasks),
-      closed_count: 0,
-      created_by: 1,
-      created_at: "2026-01-01T00:00:00Z",
-      due_date: None,
-      has_new_notes: False,
     )
 
   kanban_board.KanbanConfig(
@@ -102,27 +94,12 @@ fn claimed_task() -> Task {
     )
 
   Task(
-    id: 1,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Fix login",
+    ..domain_fixtures.task(1, "Fix login", 1),
     description: None,
-    priority: 3,
     state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
 
@@ -130,27 +107,14 @@ fn available_task() -> Task {
   let state = task_state.Available
 
   Task(
-    id: 2,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Review copy",
+    ..domain_fixtures.task(2, "Review copy", 1),
     description: None,
     priority: 2,
     state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
     version: 2,
-    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
 
@@ -298,19 +262,11 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
 pub fn kanban_columns_are_inferred_from_descendant_task_state_test() {
   let child_card =
     Card(
-      id: 2,
-      project_id: 1,
+      ..domain_fixtures.card(2, 1, "Child"),
       parent_card_id: Some(1),
-      title: "Child",
-      description: "",
       color: Some(card.Green),
       state: Active,
       task_count: 1,
-      closed_count: 0,
-      created_by: 1,
-      created_at: "2026-01-01T00:00:00Z",
-      due_date: None,
-      has_new_notes: False,
     )
   let child_task = Task(..claimed_task(), id: 7, card_id: Some(2))
 
