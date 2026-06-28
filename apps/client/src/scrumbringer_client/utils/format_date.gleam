@@ -1,21 +1,19 @@
 //// Date formatting utilities for Scrumbringer UI.
 ////
 //// Provides functions for formatting dates in user-friendly formats:
-//// - Relative dates ("hace 2 horas", "ayer", "hace 3 días")
+//// - Relative dates from millisecond timestamps
 //// - Short dates ("21 ene 2026")
 //// - Full dates for tooltips ("21 de enero de 2026, 21:01")
 ////
 //// ## Usage
 ////
 //// ```gleam
-//// let formatted = relative_date("2026-01-20T10:30:00Z")
+//// let formatted = relative_date_from_ms(timestamp_ms, now_ms)
 //// // "hace 2 días"
 //// ```
 
 import gleam/int
 import gleam/string
-
-import scrumbringer_client/client_ffi
 
 // =============================================================================
 // Constants
@@ -32,32 +30,6 @@ const ms_per_week = 604_800_000
 // =============================================================================
 // Public API
 // =============================================================================
-
-/// Format a timestamp as a relative date string.
-///
-/// For timestamps < 7 days old, returns relative format:
-/// - "ahora" (< 1 minute)
-/// - "hace X min" (1-59 minutes)
-/// - "hace Xh" (1-23 hours)
-/// - "ayer" (24-47 hours)
-/// - "hace X días" (2-6 days)
-///
-/// For timestamps >= 7 days old, returns short date format.
-///
-/// ## Example
-///
-/// ```gleam
-/// relative_date("2026-01-22T10:30:00Z")  // "hace 2 horas"
-/// ```
-pub fn relative_date(iso_timestamp: String) -> String {
-  let now = client_ffi.now_ms()
-  let timestamp = client_ffi.parse_iso_ms(iso_timestamp)
-
-  case timestamp {
-    0 -> iso_timestamp
-    _ -> relative_date_from_ms(timestamp, now)
-  }
-}
 
 /// Format a timestamp as a relative date, using provided "now" for testing.
 pub fn relative_date_from_ms(timestamp_ms: Int, now_ms: Int) -> String {

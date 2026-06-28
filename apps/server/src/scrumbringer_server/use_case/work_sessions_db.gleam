@@ -24,7 +24,6 @@
 import domain/task/state as task_state
 import gleam/dynamic/decode
 import gleam/int
-import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import pog
@@ -216,79 +215,6 @@ pub fn close_stale_sessions(db: pog.Connection) -> Result(Int, pog.QueryError) {
   )
 
   persisted_field.query_row(returned.rows)
-}
-
-/// Get time tracking data for a task (total and by user).
-///
-/// Example:
-///   get_task_time_tracking(db, task_id)
-pub fn get_task_time_tracking(
-  db: pog.Connection,
-  task_id: Int,
-) -> Result(TaskTimeTracking, pog.QueryError) {
-  let query =
-    "
-    SELECT
-      uwt.user_id,
-      u.email,
-      uwt.accumulated_s,
-      ws.started_at,
-      EXTRACT(EPOCH FROM (NOW() - ws.started_at))::INT as session_elapsed
-    FROM user_task_work_total uwt
-    JOIN users u ON u.id = uwt.user_id
-    LEFT JOIN user_task_work_session ws
-      ON ws.user_id = uwt.user_id
-      AND ws.task_id = uwt.task_id
-      AND ws.ended_at IS NULL
-    WHERE uwt.task_id = $1
-    ORDER BY uwt.accumulated_s DESC
-  "
-
-  use returned <- result.try(
-    pog.query(query)
-    |> pog.parameter(pog.int(task_id))
-    |> pog.returning(contributor_time_decoder())
-    |> pog.execute(db),
-  )
-
-  let contributors = returned.rows
-
-  let total_accumulated =
-    list.fold(contributors, 0, fn(acc, c) { acc + c.accumulated_s })
-
-  let ongoing_session =
-    list.find(contributors, fn(c) { option.is_some(c.ongoing_started_at) })
-    |> option.from_result
-
-  Ok(TaskTimeTracking(
-    total_s: total_accumulated,
-    contributors: contributors,
-    ongoing_session: ongoing_session,
-  ))
-}
-
-// =============================================================================
-// Supporting Types
-// =============================================================================
-
-/// Aggregated time tracking data for a task.
-pub type TaskTimeTracking {
-  TaskTimeTracking(
-    total_s: Int,
-    contributors: List(ContributorTime),
-    ongoing_session: Option(ContributorTime),
-  )
-}
-
-/// Per-user contribution data for a task.
-pub type ContributorTime {
-  ContributorTime(
-    user_id: Int,
-    email: String,
-    accumulated_s: Int,
-    ongoing_started_at: Option(String),
-    ongoing_elapsed_s: Option(Int),
-  )
 }
 
 // =============================================================================
@@ -507,21 +433,6 @@ fn get_server_time(db: pog.Connection) -> Result(String, pog.QueryError) {
   )
 
   persisted_field.query_row(returned.rows)
-}
-
-fn contributor_time_decoder() -> decode.Decoder(ContributorTime) {
-  use user_id <- decode.field(0, decode.int)
-  use email <- decode.field(1, decode.string)
-  use accumulated_s <- decode.field(2, decode.int)
-  use started_at <- decode.field(3, decode.optional(decode.string))
-  use session_elapsed <- decode.field(4, decode.optional(decode.int))
-  decode.success(ContributorTime(
-    user_id: user_id,
-    email: email,
-    accumulated_s: accumulated_s,
-    ongoing_started_at: started_at,
-    ongoing_elapsed_s: session_elapsed,
-  ))
 }
 
 fn task_claim_row_decoder() -> decode.Decoder(TaskClaimRow) {

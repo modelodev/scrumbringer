@@ -2276,6 +2276,23 @@ Estado de ejecucion:
     de codigo;
   - verificacion: `cd apps/client && gleam format src test && gleam test`
     (`1819 passed`).
+- Quinto pase de limpieza de API desconectada:
+  - eliminado `utils/format_date.relative_date`, wrapper sin consumidores que
+    era el unico acoplamiento del modulo a `client_ffi`; se mantiene
+    `relative_date_from_ms`, que concentra la logica testeada y determinista;
+  - eliminado `work_sessions_db.get_task_time_tracking` junto con
+    `TaskTimeTracking`, `ContributorTime`, `contributor_time_decoder` y el
+    import `gleam/list`; no existia handler, endpoint, ruta ni test consumidor;
+  - se conserva `task_status.from_work_state` como inversa de dominio
+    intencional de `to_work_state`, aunque el inventario actual no tenga
+    consumidor;
+  - delta adicional: `-117` lineas mantenidas;
+  - verificacion:
+    - `cd apps/client && gleam format src test && gleam test`
+      (`1819 passed`);
+    - `cd apps/server && gleam format src test && gleam build &&
+      DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`559 passed`).
 
 ## Orden recomendado de ejecucion
 
