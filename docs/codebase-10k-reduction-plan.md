@@ -1031,13 +1031,19 @@ Estado de ejecucion:
     API interna del modulo huerfano y no un contrato de producto o flujo
     visible;
   - delta adicional: `-487` lineas mantenidas.
+- Micro-pase adicional de builder URL sin consumidores:
+  - retirado `url_state.without_project`, sin llamadas en produccion ni tests
+    de contrato;
+  - retirado su test unitario directo en `url_state_test.gleam`;
+  - delta adicional: `-14` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
-    (`1912 passed`; `1888 passed` tras retirar `workspace_state_test.gleam`);
+    (`1912 passed`; `1888 passed` tras retirar `workspace_state_test.gleam`;
+    `1887 passed` tras retirar `url_state.without_project`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.339` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.353` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

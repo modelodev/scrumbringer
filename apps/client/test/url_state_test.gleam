@@ -322,15 +322,6 @@ pub fn with_project_test() {
   state |> url_state.project |> assert_equal(Some(8))
 }
 
-pub fn without_project_test() {
-  let state =
-    url_state.empty()
-    |> url_state.with_project(8)
-    |> url_state.without_project
-
-  state |> url_state.project |> assert_none
-}
-
 pub fn with_view_test() {
   let state =
     url_state.empty()

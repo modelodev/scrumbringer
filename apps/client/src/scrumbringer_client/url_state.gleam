@@ -168,11 +168,6 @@ pub fn with_project(state: UrlState, project_id: Int) -> UrlState {
   UrlState(..state, project: option.Some(project_id))
 }
 
-/// Builder: limpia el proyecto seleccionado.
-pub fn without_project(state: UrlState) -> UrlState {
-  UrlState(..state, project: option.None)
-}
-
 /// Builder: actualiza el modo de vista de miembro.
 pub fn with_view(state: UrlState, mode: view_mode.ViewMode) -> UrlState {
   case mode {
