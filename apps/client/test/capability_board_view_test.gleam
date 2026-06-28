@@ -1,13 +1,12 @@
 import domain/api_error.{ApiError}
-import domain/capability.{Capability}
 import domain/card.{type Card, Active, Card}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/remote
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskType, TaskTypeInline}
-import gleam/option.{None, Some}
+import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/element
 import support/assertions.{assert_true}
@@ -28,39 +27,19 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
     theme: theme.Default,
     tasks: tasks,
     task_types: remote.Loaded([
-      TaskType(
-        id: 1,
-        name: "Bug",
-        icon: "bug-ant",
-        capability_id: Some(2),
-        tasks_count: 1,
-      ),
-      TaskType(
-        id: 2,
-        name: "Feature",
-        icon: "sparkles",
-        capability_id: Some(1),
-        tasks_count: 1,
-      ),
-      TaskType(
-        id: 3,
-        name: "Docs",
-        icon: "document-text",
-        capability_id: None,
-        tasks_count: 1,
-      ),
+      board_task_type(1, "Bug", "bug-ant", Some(2)),
+      board_task_type(2, "Feature", "sparkles", Some(1)),
+      board_task_type(3, "Docs", "document-text", None),
     ]),
     capabilities: remote.Loaded([
-      Capability(id: 1, name: "Backend"),
-      Capability(id: 2, name: "Frontend"),
+      domain_fixtures.capability(1, "Backend"),
+      domain_fixtures.capability(2, "Frontend"),
     ]),
     cards: base_cards(),
     org_users: [
       OrgUser(
-        id: 1,
-        email: "admin@example.com",
+        ..domain_fixtures.org_user(1, "admin@example.com"),
         org_role: Admin,
-        created_at: "2026-01-01T00:00:00Z",
       ),
     ],
     capability_scope: capability_scope.AllCapabilities,
@@ -92,6 +71,20 @@ fn base_config(tasks: remote.Remote(List(Task))) -> capability_board.Config(Int)
     on_closed_toggled: fn(_) { 0 },
     on_capability_mode_change: fn(_) { 0 },
     on_task_preview_toggle: fn(_) { 0 },
+  )
+}
+
+fn board_task_type(
+  id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> TaskType {
+  TaskType(
+    ..domain_fixtures.task_type(id, name),
+    icon: icon,
+    capability_id: capability_id,
+    tasks_count: 1,
   )
 }
 
