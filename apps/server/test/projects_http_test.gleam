@@ -14,10 +14,9 @@ fn create_user_via_invite(
   db: pog.Connection,
   email: String,
   invite_token: String,
-) {
+) -> Int {
   fixtures.create_member_user(handler, db, email, invite_token)
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn promote_user_to_org_admin(db: pog.Connection, email: String) {
@@ -288,13 +287,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
     fixtures.create_project(handler, admin_session, "Alpha")
     |> expect.ok
 
-  create_member_user(handler, db)
-  let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+  let member_id = create_member_user(handler, db)
 
   fixtures.add_member(
     handler,
@@ -358,13 +351,7 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
     fixtures.create_project(handler, admin_session, "Core")
     |> expect.ok
 
-  create_member_user(handler, db)
-  let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+  let member_id = create_member_user(handler, db)
 
   fixtures.add_member(handler, admin_session, project_id, member_id, "member")
   |> expect.ok
@@ -447,12 +434,12 @@ pub fn org_admin_non_project_manager_can_add_member_test() {
   create_user_via_invite(handler, db, "orgadmin3@example.com", "il_orgadmin3")
   promote_user_to_org_admin(db, "orgadmin3@example.com")
 
-  create_user_via_invite(handler, db, "candidate1@example.com", "il_candidate1")
   let candidate_id =
-    single_int(
+    create_user_via_invite(
+      handler,
       db,
-      "select id from users where email = 'candidate1@example.com'",
-      [],
+      "candidate1@example.com",
+      "il_candidate1",
     )
 
   let org_admin_session =
@@ -495,12 +482,12 @@ pub fn org_admin_non_project_manager_can_remove_member_test() {
   create_user_via_invite(handler, db, "orgadmin4@example.com", "il_orgadmin4")
   promote_user_to_org_admin(db, "orgadmin4@example.com")
 
-  create_user_via_invite(handler, db, "candidate2@example.com", "il_candidate2")
   let candidate_id =
-    single_int(
+    create_user_via_invite(
+      handler,
       db,
-      "select id from users where email = 'candidate2@example.com'",
-      [],
+      "candidate2@example.com",
+      "il_candidate2",
     )
 
   fixtures.add_member(
@@ -549,12 +536,12 @@ pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
   create_user_via_invite(handler, db, "orgadmin5@example.com", "il_orgadmin5")
   promote_user_to_org_admin(db, "orgadmin5@example.com")
 
-  create_user_via_invite(handler, db, "candidate3@example.com", "il_candidate3")
   let candidate_id =
-    single_int(
+    create_user_via_invite(
+      handler,
       db,
-      "select id from users where email = 'candidate3@example.com'",
-      [],
+      "candidate3@example.com",
+      "il_candidate3",
     )
 
   fixtures.add_member(
@@ -595,19 +582,17 @@ pub fn project_manager_can_still_add_member_test() {
     fixtures.create_project(handler, admin_session, "CorePM")
     |> expect.ok
 
-  create_user_via_invite(handler, db, "pm@example.com", "il_pm")
-  let pm_id =
-    single_int(db, "select id from users where email = 'pm@example.com'", [])
+  let pm_id = create_user_via_invite(handler, db, "pm@example.com", "il_pm")
 
   fixtures.add_member(handler, admin_session, project_id, pm_id, "manager")
   |> expect.ok
 
-  create_user_via_invite(handler, db, "candidate4@example.com", "il_candidate4")
   let candidate_id =
-    single_int(
+    create_user_via_invite(
+      handler,
       db,
-      "select id from users where email = 'candidate4@example.com'",
-      [],
+      "candidate4@example.com",
+      "il_candidate4",
     )
 
   let pm_session =
@@ -705,13 +690,7 @@ pub fn org_admin_can_change_member_to_manager_test() {
     fixtures.create_project(handler, admin_session, "RoleTest")
     |> expect.ok
 
-  create_member_user(handler, db)
-  let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+  let member_id = create_member_user(handler, db)
 
   fixtures.add_member(handler, admin_session, project_id, member_id, "member")
   |> expect.ok
@@ -753,13 +732,7 @@ pub fn org_admin_can_change_manager_to_member_test() {
     fixtures.create_project(handler, admin_session, "DemoteTest")
     |> expect.ok
 
-  create_member_user(handler, db)
-  let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+  let member_id = create_member_user(handler, db)
 
   // Add as manager first (so we have 2 managers)
   fixtures.add_member(handler, admin_session, project_id, member_id, "manager")
@@ -827,13 +800,7 @@ pub fn project_manager_cannot_change_roles_test() {
     fixtures.create_project(handler, admin_session, "PermTest")
     |> expect.ok
 
-  create_member_user(handler, db)
-  let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+  let member_id = create_member_user(handler, db)
 
   // Add as project manager (not org admin)
   fixtures.add_member(handler, admin_session, project_id, member_id, "manager")
@@ -864,13 +831,7 @@ pub fn change_role_user_not_member_returns_404_test() {
     fixtures.create_project(handler, admin_session, "NotMemberTest")
     |> expect.ok
 
-  create_member_user(handler, db)
-  let member_id =
-    single_int(
-      db,
-      "select id from users where email = 'member@example.com'",
-      [],
-    )
+  let member_id = create_member_user(handler, db)
 
   // Try to change role for user who is not a member
   let req =
@@ -1005,10 +966,9 @@ fn insert_other_org_user(db: pog.Connection, org_id: Int, user_id: Int) {
   Nil
 }
 
-fn create_member_user(handler: fixtures.Handler, db: pog.Connection) {
+fn create_member_user(handler: fixtures.Handler, db: pog.Connection) -> Int {
   fixtures.create_member_user(handler, db, "member@example.com", "il_member")
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
