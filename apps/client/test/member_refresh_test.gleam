@@ -1,10 +1,10 @@
 import gleam/dict
 import gleam/option as opt
+import support/domain_fixtures
 
 import domain/capability.{Capability}
 import domain/org_role
 import domain/project.{type Project, Project}
-import domain/project_role
 import domain/remote.{Loaded, Loading}
 import domain/user.{type User, User}
 
@@ -143,23 +143,9 @@ fn with_loaded_project_scoped_capability_resources(
 }
 
 fn user() -> User {
-  User(
-    id: 1,
-    email: "admin@example.com",
-    org_id: 1,
-    org_role: org_role.Admin,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  User(..domain_fixtures.user(1, "admin@example.com"), org_role: org_role.Admin)
 }
 
 fn project(id: Int) -> Project {
-  Project(
-    id: id,
-    name: "Project",
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 1,
-    card_depth_names: [],
-    healthy_pool_limit: 5,
-  )
+  Project(..domain_fixtures.project(id, "Project"), healthy_pool_limit: 5)
 }

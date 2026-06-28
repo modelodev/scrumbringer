@@ -5,6 +5,7 @@ import gleam/option.{None, Some}
 import lustre/effect
 import scrumbringer_client/client_state
 import scrumbringer_client/features/route_support
+import support/domain_fixtures
 
 pub fn apply_auth_check_before_401_skips_local_update_test() {
   let model = authed_admin_model()
@@ -105,13 +106,12 @@ fn authed_admin_model() -> client_state.Model {
       ..core,
       page: client_state.Admin,
       auth_checked: False,
-      user: Some(User(
-        id: 1,
-        email: "admin@example.com",
-        org_id: 1,
-        org_role: org_role.Admin,
-        created_at: "2026-01-01T00:00:00Z",
-      )),
+      user: Some(
+        User(
+          ..domain_fixtures.user(1, "admin@example.com"),
+          org_role: org_role.Admin,
+        ),
+      ),
     )
   })
 }

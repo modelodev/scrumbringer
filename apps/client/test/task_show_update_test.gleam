@@ -9,14 +9,12 @@ import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/id as activity_id
 import domain/activity/kind
 import domain/activity/subject.{ActivityTask}
-import domain/org_role
 import domain/project/id as project_id
 import domain/remote
 import domain/task
 import domain/task/id as task_id
 import domain/task/state as task_state
 import domain/task_type.{TaskType}
-import domain/user.{User}
 import domain/user/id as user_id
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
@@ -141,13 +139,7 @@ fn model_with_task() -> client_state.Model {
   |> client_state.update_core(fn(core) {
     client_state.CoreModel(
       ..core,
-      user: opt.Some(User(
-        id: 7,
-        email: "owner@example.com",
-        org_id: 1,
-        org_role: org_role.Member,
-        created_at: "2026-03-20T14:00:00Z",
-      )),
+      user: opt.Some(domain_fixtures.user(7, "owner@example.com")),
     )
   })
   |> client_state.update_member(fn(member) {

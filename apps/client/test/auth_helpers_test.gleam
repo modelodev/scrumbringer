@@ -7,6 +7,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/auth/helpers
+import support/domain_fixtures
 
 pub fn reset_to_login_clears_user_and_drag_state_test() {
   let model =
@@ -15,13 +16,12 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
       client_state.CoreModel(
         ..core,
         page: client_state.Admin,
-        user: Some(User(
-          id: 1,
-          email: "admin@example.com",
-          org_id: 1,
-          org_role: org_role.Admin,
-          created_at: "2026-01-01T00:00:00Z",
-        )),
+        user: Some(
+          User(
+            ..domain_fixtures.user(1, "admin@example.com"),
+            org_role: org_role.Admin,
+          ),
+        ),
       )
     })
     |> client_state.update_member(fn(member) {
@@ -64,13 +64,12 @@ pub fn handle_401_or_resets_to_login_test() {
       client_state.CoreModel(
         ..core,
         page: client_state.Admin,
-        user: Some(User(
-          id: 1,
-          email: "admin@example.com",
-          org_id: 1,
-          org_role: org_role.Admin,
-          created_at: "2026-01-01T00:00:00Z",
-        )),
+        user: Some(
+          User(
+            ..domain_fixtures.user(1, "admin@example.com"),
+            org_role: org_role.Admin,
+          ),
+        ),
       )
     })
   let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")

@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option as opt
 import gleam/string
 import lustre/element
+import support/domain_fixtures
 
 import domain/card
 import domain/org_role
@@ -48,13 +49,7 @@ pub fn admin_section_without_permission_shows_not_permitted_test() {
         ..core,
         page: Admin,
         active_section: permissions.Invites,
-        user: opt.Some(User(
-          id: 1,
-          email: "member@example.com",
-          org_id: 1,
-          org_role: org_role.Member,
-          created_at: "2026-01-01T00:00:00Z",
-        )),
+        user: opt.Some(domain_fixtures.user(1, "member@example.com")),
       )
     })
 
@@ -127,13 +122,12 @@ pub fn mobile_admin_team_uses_team_title_test() {
         ..core,
         page: Admin,
         active_section: permissions.Team,
-        user: opt.Some(User(
-          id: 1,
-          email: "admin@example.com",
-          org_id: 1,
-          org_role: org_role.Admin,
-          created_at: "2026-01-01T00:00:00Z",
-        )),
+        user: opt.Some(
+          User(
+            ..domain_fixtures.user(1, "admin@example.com"),
+            org_role: org_role.Admin,
+          ),
+        ),
       )
     })
     |> update_ui(fn(ui) { ui_state.UiModel(..ui, is_mobile: True) })
@@ -164,13 +158,12 @@ pub fn member_people_view_renders_task_and_card_ctas_from_client_config_test() {
       CoreModel(
         ..core,
         page: client_state.Member,
-        user: opt.Some(User(
-          id: 1,
-          email: "admin@example.com",
-          org_id: 1,
-          org_role: org_role.Admin,
-          created_at: "2026-01-01T00:00:00Z",
-        )),
+        user: opt.Some(
+          User(
+            ..domain_fixtures.user(1, "admin@example.com"),
+            org_role: org_role.Admin,
+          ),
+        ),
         selected_project_id: opt.Some(1),
       )
     })
@@ -201,13 +194,12 @@ pub fn member_plan_structure_ignores_inherited_work_search_test() {
       CoreModel(
         ..core,
         page: client_state.Member,
-        user: opt.Some(User(
-          id: 1,
-          email: "admin@example.com",
-          org_id: 1,
-          org_role: org_role.Admin,
-          created_at: "2026-01-01T00:00:00Z",
-        )),
+        user: opt.Some(
+          User(
+            ..domain_fixtures.user(1, "admin@example.com"),
+            org_role: org_role.Admin,
+          ),
+        ),
         selected_project_id: opt.Some(1),
       )
     })
@@ -237,13 +229,12 @@ fn admin_mobile_model(section: permissions.AdminSection) -> Model {
       ..core,
       page: Admin,
       active_section: section,
-      user: opt.Some(User(
-        id: 1,
-        email: "admin@example.com",
-        org_id: 1,
-        org_role: org_role.Admin,
-        created_at: "2026-01-01T00:00:00Z",
-      )),
+      user: opt.Some(
+        User(
+          ..domain_fixtures.user(1, "admin@example.com"),
+          org_role: org_role.Admin,
+        ),
+      ),
     )
   })
   |> update_ui(fn(ui) { ui_state.UiModel(..ui, is_mobile: True) })

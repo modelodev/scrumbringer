@@ -2,6 +2,7 @@
 
 import gleam/option as opt
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/org.{type OrgUser, OrgUser}
@@ -13,22 +14,11 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/org_settings
 
 fn make_user(id: Int, role: org_role.OrgRole) -> User {
-  User(
-    id: id,
-    email: "user@example.com",
-    org_id: 1,
-    org_role: role,
-    created_at: "2024-01-01T00:00:00Z",
-  )
+  User(..domain_fixtures.user(id, "user@example.com"), org_role: role)
 }
 
 fn make_org_user(id: Int, role: org_role.OrgRole) -> OrgUser {
-  OrgUser(
-    id: id,
-    email: "user@example.com",
-    org_role: role,
-    created_at: "2024-01-01T00:00:00Z",
-  )
+  OrgUser(..domain_fixtures.org_user(id, "user@example.com"), org_role: role)
 }
 
 fn context() -> org_settings.Context(String) {

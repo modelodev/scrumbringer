@@ -146,11 +146,11 @@ pub fn right_panel_preferences_popup_is_accessible_dialog_test() {
 pub fn right_panel_profile_actions_have_labels_and_expanded_state_test() {
   let user =
     User(
-      id: 1,
-      email: "very.long.user.email.address@example-enterprise.test",
-      org_id: 1,
+      ..domain_fixtures.user(
+        1,
+        "very.long.user.email.address@example-enterprise.test",
+      ),
       org_role: org_role.Admin,
-      created_at: "2026-01-01T00:00:00Z",
     )
 
   let html =

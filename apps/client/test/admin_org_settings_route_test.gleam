@@ -46,13 +46,7 @@ pub fn try_update_routes_cache_fetch_and_starts_assignments_fetch_test() {
 
 pub fn try_update_updates_current_user_after_saved_test() {
   let current =
-    User(
-      id: 7,
-      email: "ana@example.com",
-      org_id: 1,
-      org_role: org_role.Admin,
-      created_at: "2026-01-01T00:00:00Z",
-    )
+    User(..domain_fixtures.user(7, "ana@example.com"), org_role: org_role.Admin)
   let updated = org_user(7, org_role.Member)
   let model =
     base_model()

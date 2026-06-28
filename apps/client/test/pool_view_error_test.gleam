@@ -2,13 +2,11 @@ import gleam/list
 import gleam/option as opt
 import gleam/string
 import lustre/element
+import support/domain_fixtures
 
 import domain/api_error as domain_api_error
-import domain/org_role
-import domain/project.{Project}
-import domain/project_role
 import domain/remote.{Failed, Loaded}
-import domain/user.{type User, User}
+import domain/user.{type User}
 
 import scrumbringer_client/client_state.{
   type Model, CoreModel, default_model, update_core, update_member,
@@ -76,13 +74,7 @@ fn has_active_projects(model: Model) -> Bool {
 }
 
 fn test_user() -> User {
-  User(
-    id: 1,
-    email: "member@example.com",
-    org_id: 1,
-    org_role: org_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  domain_fixtures.user(1, "member@example.com")
 }
 
 pub fn view_pool_main_shows_no_projects_empty_state_test() {
@@ -94,16 +86,7 @@ pub fn view_pool_main_shows_no_projects_empty_state_test() {
 }
 
 pub fn view_pool_main_shows_tasks_error_test() {
-  let project =
-    Project(
-      id: 1,
-      name: "Core",
-      my_role: project_role.Manager,
-      created_at: "2026-01-01T00:00:00Z",
-      members_count: 1,
-      card_depth_names: [],
-      healthy_pool_limit: 20,
-    )
+  let project = domain_fixtures.project(1, "Core")
 
   let model =
     base_model()

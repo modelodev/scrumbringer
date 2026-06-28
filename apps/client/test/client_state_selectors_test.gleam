@@ -1,35 +1,20 @@
-import domain/org_role
 import domain/project.{type Project, Project}
-import domain/project_role
 import domain/remote.{Loaded}
-import domain/user.{type User, User}
+import domain/user.{type User}
 import gleam/option as opt
 import scrumbringer_client/client_state.{
   type Model, CoreModel, Model, default_model, update_core,
 }
 import scrumbringer_client/client_state/selectors
 import scrumbringer_client/permissions
+import support/domain_fixtures
 
 fn current_user() -> User {
-  User(
-    id: 1,
-    email: "lead@example.com",
-    org_id: 1,
-    org_role: org_role.Member,
-    created_at: "2026-01-01T00:00:00Z",
-  )
+  domain_fixtures.user(1, "lead@example.com")
 }
 
 fn managed_project() -> Project {
-  Project(
-    id: 7,
-    name: "Roadmap",
-    my_role: project_role.Manager,
-    created_at: "2026-01-01T00:00:00Z",
-    members_count: 3,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  Project(..domain_fixtures.project(7, "Roadmap"), members_count: 3)
 }
 
 fn admin_model(section: permissions.AdminSection) -> Model {

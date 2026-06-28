@@ -125,13 +125,12 @@ fn with_current_user(
   client_state.update_core(model, fn(core) {
     client_state.CoreModel(
       ..core,
-      user: Some(User(
-        id: user_id,
-        email: "admin@example.com",
-        org_id: 1,
-        org_role: org_role.Admin,
-        created_at: "",
-      )),
+      user: Some(
+        User(
+          ..domain_fixtures.user(user_id, "admin@example.com"),
+          org_role: org_role.Admin,
+        ),
+      ),
     )
   })
 }

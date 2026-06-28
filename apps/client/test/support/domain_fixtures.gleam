@@ -9,6 +9,7 @@ import domain/project_role
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
 import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import domain/user.{type User, User}
 
 pub fn card(id: Int, project_id: Int, title: String) -> Card {
   Card(
@@ -95,6 +96,16 @@ pub fn org_user(id: Int, email: String) -> OrgUser {
   OrgUser(
     id: id,
     email: email,
+    org_role: org_role.Member,
+    created_at: "2026-01-01T00:00:00Z",
+  )
+}
+
+pub fn user(id: Int, email: String) -> User {
+  User(
+    id: id,
+    email: email,
+    org_id: 1,
     org_role: org_role.Member,
     created_at: "2026-01-01T00:00:00Z",
   )
