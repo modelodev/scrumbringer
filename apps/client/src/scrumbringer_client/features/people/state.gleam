@@ -8,7 +8,6 @@ import gleam/list
 import gleam/option
 import gleam/order
 import gleam/string
-import scrumbringer_client/ui/badge
 
 const load_warning_reserved_threshold = 4
 
@@ -256,15 +255,6 @@ fn int_desc(a: Int, b: Int) -> order.Order {
         True -> order.Gt
         False -> order.Eq
       }
-  }
-}
-
-pub fn badge_variant(state) -> badge.BadgeVariant {
-  case state {
-    WorkloadWorkingNow -> badge.Primary
-    WorkloadReserved -> badge.Warning
-    WorkloadAttention -> badge.Danger
-    WorkloadAvailable -> badge.Success
   }
 }
 

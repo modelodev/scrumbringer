@@ -1018,13 +1018,18 @@ Estado de ejecucion:
     wrappers publicos sin consumidores externos y con un unico consumidor
     interno;
   - delta adicional: `-46` lineas mantenidas.
+- Micro-pase adicional de API publica compartida/cliente:
+  - eliminado `people/state.badge_variant`, helper publico sin consumidores;
+  - `people_workload_codec.person_to_json` pasa a ser privado porque solo es
+    callback interno de `people_to_json`;
+  - delta adicional: `-10` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
     (`1912 passed`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-842` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-852` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

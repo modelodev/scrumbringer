@@ -104,7 +104,7 @@ pub fn people_to_json(people: List(PersonWorkload)) -> json.Json {
   json.object([#("people", json.array(people, person_to_json))])
 }
 
-pub fn person_to_json(person: PersonWorkload) -> json.Json {
+fn person_to_json(person: PersonWorkload) -> json.Json {
   let PersonWorkload(
     user_id: user_id,
     email: email,
