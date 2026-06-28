@@ -50,10 +50,6 @@ pub type SeedConfig {
     // Cards
     cards_per_project: Int,
     empty_card_count: Int,
-    // Workflows
-    workflows_per_project: Int,
-    inactive_workflow_count: Int,
-    empty_workflow_count: Int,
     // Time
     date_range_days: Int,
   )
@@ -129,16 +125,8 @@ pub fn realistic_config() -> SeedConfig {
     ),
     cards_per_project: 6,
     empty_card_count: 2,
-    workflows_per_project: 2,
-    inactive_workflow_count: 1,
-    empty_workflow_count: 1,
     date_range_days: 30,
   )
-}
-
-/// Visual QA configuration with explicit empty states.
-pub fn visual_qa_config() -> SeedConfig {
-  realistic_config()
 }
 
 // =============================================================================

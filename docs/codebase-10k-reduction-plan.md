@@ -832,8 +832,12 @@ Estado de ejecucion:
   `reset_workflow_tables`) junto con sus option records. Se mantienen las
   operaciones usadas por escenarios vivos y fixtures (`insert_task`,
   `insert_card`, `insert_work_session`, `insert_audit_event_simple`, etc.).
-- Delta parcial WP-09: `-784` lineas netas mantenidas (`-27` del primer pase,
-  `-757` del pase de operaciones seed sin consumidores).
+- Retirados `visual_qa_config`, `automation_engine_names` y los campos de
+  workflow de `SeedConfig`; no tenian consumidor ni efecto desde que el builder
+  dejo de generar workflows.
+- Delta parcial WP-09: `-808` lineas netas mantenidas (`-27` del primer pase,
+  `-757` del pase de operaciones seed sin consumidores, `-24` del pase de
+  configuracion seed sin efecto).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

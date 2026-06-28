@@ -33,15 +33,6 @@ pub fn user_emails() -> List(String) {
   ]
 }
 
-/// Pool of automation engine names.
-pub fn automation_engine_names() -> List(String) {
-  [
-    "Bug Resolution", "Feature Development", "Card Automation",
-    "Simple Bug Flow", "Code Review", "QA Process", "Release Pipeline",
-    "Hotfix Flow",
-  ]
-}
-
 /// Pool of capability names.
 pub fn capability_names() -> List(String) {
   [

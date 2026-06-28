@@ -160,9 +160,6 @@ fn compact_seed_config() -> seed_builder.SeedConfig {
     ),
     cards_per_project: 5,
     empty_card_count: 2,
-    workflows_per_project: 0,
-    inactive_workflow_count: 0,
-    empty_workflow_count: 0,
     date_range_days: 10,
   )
 }
