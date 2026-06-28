@@ -5,16 +5,59 @@
 
 import domain/automation
 import domain/card as domain_card
+import domain/task/state as task_state
 import fixtures
 import gleam/dynamic/decode
 import gleam/int
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server
 import scrumbringer_server/use_case/rules_engine.{RuleResult}
 import support/assertions as expect
+
+fn task_event(
+  db: pog.Connection,
+  task_id: Int,
+  project_id: Int,
+  task_type_id: Int,
+  from_state: Option(task_state.TaskExecutionState),
+  to_state: task_state.TaskExecutionState,
+) {
+  let assert Ok(org_id) = fixtures.get_org_id(db)
+  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  fixtures.task_trigger_state(
+    task_id,
+    project_id,
+    org_id,
+    user_id,
+    from_state,
+    to_state,
+    task_type_id,
+  )
+}
+
+fn card_event(
+  db: pog.Connection,
+  card_id: Int,
+  project_id: Int,
+  from_state: Option(domain_card.CardPhase),
+  to_state: domain_card.CardPhase,
+) {
+  let assert Ok(org_id) = fixtures.get_org_id(db)
+  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
+
+  fixtures.card_trigger_state(
+    card_id,
+    project_id,
+    org_id,
+    user_id,
+    from_state,
+    to_state,
+  )
+}
 
 // =============================================================================
 // Core Engine Tests
@@ -60,10 +103,6 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       template_id,
     )
 
-  // Get org_id and user_id for the event
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   // Create a task to close
   let assert Ok(task_id) =
     fixtures.create_task(
@@ -76,14 +115,13 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
 
   // Fire the event
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      bug_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -134,18 +172,14 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Build Feature")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   // First evaluation
@@ -231,15 +265,11 @@ pub fn evaluate_rules_card_resource_type_test() {
     fixtures.create_card(handler, session, project_id, "Test Card")
   set_card_active(db, card_id)
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Active,
     )
@@ -283,26 +313,21 @@ pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
       "Child Card",
     )
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let root_event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       root_card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Active,
     )
   let assert Ok([]) = rules_engine.evaluate_rules(db, root_event)
 
   let child_event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       child_card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Active,
     )
@@ -344,26 +369,21 @@ pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
       "Child Card",
     )
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let root_event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       root_card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Closed,
     )
   let assert Ok([]) = rules_engine.evaluate_rules(db, root_event)
 
   let child_event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       child_card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Closed,
     )
@@ -426,18 +446,14 @@ pub fn variable_origin_task_resolves_to_link_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Login Bug")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      bug_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -504,15 +520,11 @@ pub fn variable_origin_card_resolves_to_link_test() {
     fixtures.create_card(handler, session, project_id, "Card to Activate")
   set_card_active(db, card_id)
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Active,
     )
@@ -574,18 +586,14 @@ pub fn variable_trigger_resolves_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Original Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -638,19 +646,15 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "New Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   // Task creation event (None -> available)
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       None,
       fixtures.task_available(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -706,18 +710,14 @@ pub fn variable_project_resolves_to_name_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Trigger Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -765,18 +765,14 @@ pub fn variable_user_resolves_to_email_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "User Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -837,10 +833,6 @@ pub fn task_trigger_variables_combined_test() {
       template_id,
     )
 
-  // Get org_id and user_id for the event
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   // Create a task to close
   let assert Ok(task_id) =
     fixtures.create_task(
@@ -853,14 +845,13 @@ pub fn task_trigger_variables_combined_test() {
 
   // Fire the event
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      bug_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -991,18 +982,14 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      bug_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1058,22 +1045,18 @@ pub fn rule_without_task_type_matches_all_types_test() {
       template_id,
     )
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   // Create and trigger Bug task
   let assert Ok(bug_task_id) =
     fixtures.create_task(handler, session, project_id, bug_type_id, "Bug Task")
 
   let bug_event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       bug_task_id,
       project_id,
-      org_id,
-      user_id,
+      bug_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      bug_type_id,
     )
 
   let bug_result = rules_engine.evaluate_rules(db, bug_event)
@@ -1091,14 +1074,13 @@ pub fn rule_without_task_type_matches_all_types_test() {
     )
 
   let feature_event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       feature_task_id,
       project_id,
-      org_id,
-      user_id,
+      feature_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      feature_type_id,
     )
 
   let feature_result = rules_engine.evaluate_rules(db, feature_event)
@@ -1139,18 +1121,14 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1191,18 +1169,14 @@ pub fn inactive_rule_does_not_fire_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1252,18 +1226,14 @@ pub fn wrong_task_type_does_not_match_test() {
       "Feature Task",
     )
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      feature_type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      feature_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1298,19 +1268,15 @@ pub fn wrong_to_state_does_not_match_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   // Event with 'claimed' state (not closed)
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_available()),
       fixtures.task_claimed(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1337,7 +1303,6 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
   let assert Ok(Nil) = select_template(db, created_rule_id, template_id)
   let assert Ok(Nil) = select_template(db, released_rule_id, template_id)
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
   let assert Ok(card_id) =
     fixtures.insert_card_db(db, project_id, "Source Card", None, user_id)
@@ -1353,14 +1318,13 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
     )
 
   let created_event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       None,
       fixtures.task_available(),
-      type_id,
     )
   let assert Ok([
     RuleResult(rule_id: created_matched, outcome: automation.Executed(_)),
@@ -1368,14 +1332,13 @@ pub fn task_created_and_released_rules_do_not_collide_test() {
   created_matched |> expect.equal(created_rule_id)
 
   let released_event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_available(),
-      type_id,
     )
   let assert Ok([
     RuleResult(rule_id: released_matched, outcome: automation.Executed(_)),
@@ -1430,18 +1393,14 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       "Project Two Task",
     )
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project2_id,
-      org_id,
-      user_id,
+      type2_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type2_id,
     )
 
   // Rule from Project One should not match task in Project Two
@@ -1478,19 +1437,15 @@ pub fn task_rule_does_not_fire_for_card_trigger_test() {
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card Not Task")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let assert Ok(initial_count) =
     fixtures.query_int(db, "select count(*)::int from tasks", [])
 
   // CARD event (not task)
   let event =
-    fixtures.card_trigger_state(
+    card_event(
+      db,
       card_id,
       project_id,
-      org_id,
-      user_id,
       Some(domain_card.Draft),
       domain_card.Closed,
     )
@@ -1584,21 +1539,17 @@ pub fn rule_execution_applied_is_persisted_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Test Feature")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let assert Ok(initial_count) =
     fixtures.query_int(db, "select count(*)::int from rule_executions", [])
 
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1659,18 +1610,14 @@ pub fn rule_execution_idempotency_enforced_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Bug Fix")
 
-  let assert Ok(org_id) = fixtures.get_org_id(db)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
   let event =
-    fixtures.task_trigger_state(
+    task_event(
+      db,
       task_id,
       project_id,
-      org_id,
-      user_id,
+      type_id,
       Some(fixtures.task_claimed()),
       fixtures.task_closed_done(),
-      type_id,
     )
 
   // First fire (applied)

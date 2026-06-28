@@ -1937,7 +1937,14 @@ Estado de ejecucion:
   repetidos salvo cuando el propio caso valida auth, CSRF, payload invalido o
   un contrato distinto. Guardarrail: `tasks_http_test` baja de 49 a 25
   `simulate.request`.
-- Delta parcial WP-12: `-4.018` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimoseptimo pase aplicado a `rules_engine_test`: se extraen helpers
+  locales tipados `task_event` y `card_event` para construir eventos de reglas
+  con org/user del fixture base. No se crea builder generico de reglas ni se
+  toca el caso `task_trigger_state_full`; cada test conserva visibles task/card,
+  proyecto, tipo y estados. Guardarrail: el barrido
+  `rg "fixtures\\.task_trigger_state\\(|fixtures\\.card_trigger_state\\(" apps/server/test/rules_engine_test.gleam`
+  queda limitado a los helpers locales.
+- Delta parcial WP-12: `-4.071` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -2008,7 +2015,8 @@ Estado de ejecucion:
   cliente, `-35` del cuadragesimotercer pase de fixtures de dominio
   compartidas en tests de cliente, `-5` del cuadragesimocuarto pase de
   fixtures HTTP compartidas en tests de servidor, `-7` del cuadragesimosexto
-  pase de fixtures HTTP de task/work-session en tests de servidor).
+  pase de fixtures HTTP de task/work-session en tests de servidor, `-53` del
+  pase de eventos locales tipados en `rules_engine_test`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
