@@ -104,16 +104,12 @@ pub fn heroicon_typed_url(icon: HeroIcon) -> String {
 // =============================================================================
 
 /// Build the URL for a heroicon outline SVG.
-pub fn heroicon_outline_url(name: String) -> String {
+fn heroicon_outline_url(name: String) -> String {
   "https://cdn.jsdelivr.net/npm/heroicons@2.2.0/24/outline/" <> name <> ".svg"
 }
 
 /// Render a heroicon outline as an inline img element.
-pub fn view_heroicon_inline(
-  name: String,
-  size: Int,
-  _theme: Theme,
-) -> Element(msg) {
+fn view_heroicon_inline(name: String, size: Int, _theme: Theme) -> Element(msg) {
   let url = heroicon_outline_url(name)
   let size_px = int.to_string(size) <> "px"
 
@@ -257,7 +253,7 @@ pub type IconSize {
 }
 
 /// Get pixel size for an IconSize variant.
-pub fn icon_size_px(size: IconSize) -> Int {
+fn icon_size_px(size: IconSize) -> Int {
   case size {
     XSmall -> 12
     Small -> 16

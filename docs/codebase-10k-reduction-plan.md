@@ -1274,6 +1274,13 @@ Estado de ejecucion:
     disponibilidad, incluyendo disabled, blocked, tooltip, clase bloqueada y
     `data-testid`;
   - delta adicional WP-10: `-31` lineas mantenidas y dos exports menos.
+- Micro-pase adicional de helpers internos de tabs/iconos:
+  - `detail_tabs.tab_id`, `detail_tabs.tabpanel_id`,
+    `icons.heroicon_outline_url`, `icons.view_heroicon_inline` e
+    `icons.icon_size_px` pasan a privados porque solo se consumen dentro de su
+    modulo;
+  - no cambia el contrato renderizado ni se retira cobertura funcional;
+  - delta adicional WP-10: `-4` lineas mantenidas y cinco exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1306,10 +1313,11 @@ Estado de ejecucion:
     `1859 passed` tras retirar busqueda legacy del icon catalog;
     `1859 passed` tras conectar el picker a `icon_catalog.catalog`;
     `1859 passed` tras retirar API preventiva de `signal_chip`;
-    `1857 passed` tras privatizar wrappers internos de `action_buttons`);
+    `1857 passed` tras privatizar wrappers internos de `action_buttons`;
+    `1857 passed` tras privatizar helpers internos de tabs/iconos);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.971` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.975` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

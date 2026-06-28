@@ -53,11 +53,11 @@ pub fn panel(
   )
 }
 
-pub fn tab_id(index: Int) -> String {
+fn tab_id(index: Int) -> String {
   "modal-tab-" <> int.to_string(index)
 }
 
-pub fn tabpanel_id(index: Int) -> String {
+fn tabpanel_id(index: Int) -> String {
   "modal-tabpanel-" <> int.to_string(index)
 }
 
