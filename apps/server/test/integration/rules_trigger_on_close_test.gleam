@@ -15,7 +15,6 @@ import gleam/option.{None, Some}
 import gleam/string
 import gleeunit
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
@@ -32,12 +31,8 @@ pub fn main() {
 /// This is the critical end-to-end test that validates the task close flow.
 pub fn close_task_via_api_triggers_rules_and_creates_tasks_test() {
   // Given: A project with a rule that creates tasks when Bug is closed.
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  // Create project and task types
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Rules Trigger Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Rules Trigger Test")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -154,11 +149,8 @@ pub fn close_task_via_api_triggers_rules_and_creates_tasks_test() {
 
 /// Verifies TaskCreated rules do not cascade from automation-created tasks.
 pub fn task_created_rule_does_not_cascade_from_automation_created_task_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Task Created No Cascade")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Task Created No Cascade")
   let assert Ok(task_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -240,11 +232,8 @@ pub fn task_created_rule_does_not_cascade_from_automation_created_task_test() {
 
 /// Verifies claim and release task triggers fire from the HTTP lifecycle.
 pub fn claim_and_release_via_api_trigger_matching_rules_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Claim Release Triggers")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Claim Release Triggers")
   let assert Ok(source_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Source", "check")
   let assert Ok(other_type_id) =
@@ -406,11 +395,8 @@ pub fn claim_and_release_via_api_trigger_matching_rules_test() {
 
 /// Verifies that selecting another template replaces the rule template.
 pub fn close_task_uses_latest_selected_template_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Multi Template Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Multi Template Test")
   let assert Ok(feature_type_id) =
     fixtures.create_task_type(
       handler,
@@ -543,11 +529,8 @@ pub fn close_task_uses_latest_selected_template_test() {
 // Justification: large function kept intact to preserve cohesive logic.
 /// Verifies idempotency: closing the same task twice doesn't create duplicate tasks.
 pub fn closing_same_task_twice_is_idempotent_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Idempotent Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Idempotent Test")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -644,11 +627,8 @@ pub fn closing_same_task_twice_is_idempotent_test() {
 
 /// Verifies that inactive rules don't create tasks when a task is closed via API.
 pub fn inactive_rule_does_not_trigger_on_api_close_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Inactive Rule API Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Inactive Rule API Test")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(review_type_id) =
@@ -731,11 +711,8 @@ pub fn inactive_rule_does_not_trigger_on_api_close_test() {
 
 /// Verifies card activation and closure rules fire from the HTTP lifecycle.
 pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Card Trigger API")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Card Trigger API")
   let assert Ok(followup_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Followup", "check")
   let assert Ok(activation_template_id) =
@@ -852,12 +829,8 @@ pub fn card_activate_and_close_via_api_trigger_matching_rules_test() {
 // Justification: large function kept intact to preserve cohesive logic.
 /// Verifies that closing a task with a card creates child tasks with the same card.
 pub fn close_task_with_card_creates_child_tasks_with_same_card_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  // Create project, task types, and a card
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Card Inheritance Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Card Inheritance Test")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -968,12 +941,8 @@ pub fn close_task_with_card_creates_child_tasks_with_same_card_test() {
 
 /// Verifies that closing a task without a card creates child tasks without a card.
 pub fn close_task_with_card_creates_child_tasks_in_same_card_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  // Create project and task types.
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "No Card Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("No Card Test")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =

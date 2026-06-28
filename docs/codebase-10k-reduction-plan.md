@@ -2557,6 +2557,24 @@ Estado de ejecucion:
   - total Gleam actual: `198.430` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.584` lineas;
   - deficit restante para `-20k`: `4.416` lineas.
+- Decimocuarto pase de fixtures de integracion de reglas:
+  - migrados los tests de `integration/rules_trigger_on_close_test.gleam` a
+    `require_project_context`, eliminando el setup repetido de app, DB, sesion
+    y proyecto en escenarios con un unico proyecto;
+  - retirado el import `scrumbringer_server`, ya innecesario al no destructurar
+    `App` localmente;
+  - mantenidos explicitos los tipos, workflows, templates, reglas y llamadas
+    HTTP que definen cada contrato de integracion;
+  - delta adicional: `-31` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `integration@rules_trigger_on_close_test` via EUnit
+      secuencial (`9 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimocuarto pase:
+  - total Gleam actual: `198.399` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.615` lineas;
+  - deficit restante para `-20k`: `4.385` lineas.
 
 ## Orden recomendado de ejecucion
 
