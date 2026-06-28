@@ -2758,6 +2758,26 @@ Estado de ejecucion:
   - total Gleam actual: `197.859` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.155` lineas;
   - deficit restante para `-20k`: `3.845` lineas.
+- Vigesimocuarto pase de tests de componente CRUD:
+  - retirados 22 tests de `card_crud_dialog_test.gleam` que solo verificaban
+    constructores de `Model`, `Msg`, `DialogMode` y variantes de color que el
+    propio test acababa de construir;
+  - se conserva la cobertura de comportamiento real del componente: errores de
+    creacion, submit create-and-activate, cierre tras activacion correcta o
+    fallida y render de los dialogos create/edit con campos compartidos;
+  - retirado el import de `support/assertions.assert_equal` y variantes de
+    color usadas solo por esos tests de implementacion;
+  - delta adicional: `-192` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce cobertura
+    artificial que no detectaba regresiones de producto y mantiene los tests
+    sobre entradas publicas utiles del componente;
+  - verificacion:
+    - `cd apps/client && gleam format test/card_crud_dialog_test.gleam && gleam test`
+      (`1794 passed`).
+- Auditoria de contabilidad tras el vigesimocuarto pase:
+  - total Gleam actual: `197.667` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.347` lineas;
+  - deficit restante para `-20k`: `3.653` lineas.
 
 ## Orden recomendado de ejecucion
 
