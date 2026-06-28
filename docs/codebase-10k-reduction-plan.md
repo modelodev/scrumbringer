@@ -768,12 +768,22 @@ Estado de ejecucion:
     `sql.gleam`, que sustituye los `/// name:` divergentes por referencias al
     fichero `.sql` real y elimina los comentarios `-- name:` embebidos en las
     cadenas SQL.
+- Tercer pase:
+  - detectada `project_member_capabilities_delete.sql` como query fuente sin
+    consumidor real por nombre de funcion generada;
+  - se conserva `project_member_capabilities_delete_all.sql`, que es la query
+    usada por el flujo actual de reemplazo completo de capacidades de miembro;
+  - SQL fuente mantenido: `-3` lineas;
+  - generado derivado: `-39` lineas tras `make squirrel`.
 - Verificacion:
   - `DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable make squirrel`;
   - `cd apps/server && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`);
   - `rg "sql\\.(cards_task_count|ping|tasks_list_by_card|task_templates_list_for_org)\\b" apps/server/src apps/server/test`.
   - `rg "^-- name:" apps/server/src/scrumbringer_server/sql` sin resultados.
+  - Barrido de todos los ficheros `.sql` por basename frente a consumidores
+    `sql.<basename>` en `apps/server/src` y `apps/server/test`, excluyendo
+    `sql.gleam` y `sql/*.sql`, sin resultados pendientes.
 
 ### WP-09. Seeds y escenarios QA
 

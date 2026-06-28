@@ -2659,45 +2659,6 @@ returning id;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `project_member_capabilities_delete` query
-/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type ProjectMemberCapabilitiesDeleteRow {
-  ProjectMemberCapabilitiesDeleteRow(project_id: Int)
-}
-
-/// Runs the `project_member_capabilities_delete` query
-/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete.sql`.
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn project_member_capabilities_delete(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-  arg_3: Int,
-) -> Result(pog.Returned(ProjectMemberCapabilitiesDeleteRow), pog.QueryError) {
-  let decoder = {
-    use project_id <- decode.field(0, decode.int)
-    decode.success(ProjectMemberCapabilitiesDeleteRow(project_id:))
-  }
-
-  "delete from project_member_capabilities
-where project_id = $1 and user_id = $2 and capability_id = $3
-returning project_id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.parameter(pog.int(arg_3))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
 /// A row you get from running the `project_member_capabilities_delete_all` query
 /// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete_all.sql`.
 ///
