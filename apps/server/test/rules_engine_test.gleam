@@ -64,12 +64,10 @@ fn card_event(
 // =============================================================================
 
 pub fn evaluate_rules_creates_tasks_from_templates_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Engineering")
 
-  // Create project and task types
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Engineering")
+  // Create task types
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -148,11 +146,8 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
 }
 
 pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Idempotent")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Idempotent")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
   let assert Ok(template_id) =
@@ -195,11 +190,8 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
 }
 
 pub fn evaluate_rules_skips_non_user_triggered_events_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "NonUser")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("NonUser")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(template_id) =
@@ -241,11 +233,8 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
 }
 
 pub fn evaluate_rules_card_resource_type_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Card Test")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Card Test")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Followup", "check")
   let assert Ok(template_id) =
@@ -281,11 +270,8 @@ pub fn evaluate_rules_card_resource_type_test() {
 }
 
 pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Card Activated Depth")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Card Activated Depth")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Followup", "check")
   let assert Ok(template_id) =
@@ -337,11 +323,8 @@ pub fn card_activated_rule_at_depth_only_matches_that_depth_test() {
 }
 
 pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Card Closed Depth")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Card Closed Depth")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Followup", "check")
   let assert Ok(template_id) =
@@ -407,11 +390,8 @@ pub fn card_closed_rule_at_depth_only_matches_that_depth_test() {
 // =============================================================================
 
 pub fn variable_origin_task_resolves_to_link_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "OriginTask")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("OriginTask")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -489,11 +469,8 @@ pub fn variable_origin_task_resolves_to_link_test() {
 }
 
 pub fn variable_origin_card_resolves_to_link_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "CardVarTest")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("CardVarTest")
   let assert Ok(task_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -555,11 +532,8 @@ pub fn variable_origin_card_resolves_to_link_test() {
 }
 
 pub fn variable_trigger_resolves_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "TriggerVariable")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("TriggerVariable")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -610,11 +584,8 @@ pub fn variable_trigger_resolves_test() {
 }
 
 pub fn variable_trigger_on_created_task_uses_available_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "CreatedTrigger")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("CreatedTrigger")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -680,11 +651,8 @@ pub fn variable_trigger_on_created_task_uses_available_test() {
 }
 
 pub fn variable_project_resolves_to_name_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "My Project Name")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("My Project Name")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -735,11 +703,8 @@ pub fn variable_project_resolves_to_name_test() {
 
 /// {{user}} resolves to the user's email address.
 pub fn variable_user_resolves_to_email_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "UserVar")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("UserVar")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -792,12 +757,10 @@ pub fn variable_user_resolves_to_email_test() {
 // Justification: large function kept intact to preserve cohesive logic.
 /// Tests task trigger variables in one template.
 pub fn task_trigger_variables_combined_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("CombinedVars")
 
-  // Create project and task types
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "CombinedVars")
+  // Create task types
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -898,11 +861,8 @@ pub fn task_trigger_variables_combined_test() {
 // =============================================================================
 
 pub fn selecting_template_replaces_previous_rule_template_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "MultiTemplate")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("MultiTemplate")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(review_type_id) =
@@ -1013,11 +973,8 @@ pub fn selecting_template_replaces_previous_rule_template_test() {
 }
 
 pub fn rule_without_task_type_matches_all_types_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "NoTypeFilter")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("NoTypeFilter")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(feature_type_id) =
@@ -1093,11 +1050,8 @@ pub fn rule_without_task_type_matches_all_types_test() {
 // =============================================================================
 
 pub fn inactive_workflow_does_not_fire_rules_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "InactiveWF")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("InactiveWF")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(template_id) =
@@ -1136,11 +1090,8 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
 }
 
 pub fn inactive_rule_does_not_fire_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "InactiveRule")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("InactiveRule")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -1184,11 +1135,8 @@ pub fn inactive_rule_does_not_fire_test() {
 }
 
 pub fn wrong_task_type_does_not_match_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "WrongType")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("WrongType")
   let assert Ok(bug_type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(feature_type_id) =
@@ -1241,11 +1189,8 @@ pub fn wrong_task_type_does_not_match_test() {
 }
 
 pub fn wrong_to_state_does_not_match_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "WrongState")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("WrongState")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(template_id) =
@@ -1284,11 +1229,8 @@ pub fn wrong_to_state_does_not_match_test() {
 }
 
 pub fn task_created_and_released_rules_do_not_collide_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "AvailableTriggers")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("AvailableTriggers")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(template_id) =
@@ -1409,11 +1351,8 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
 }
 
 pub fn task_rule_does_not_fire_for_card_trigger_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "TaskOnlyRule")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("TaskOnlyRule")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Task", "check")
   let assert Ok(workflow_id) =
@@ -1515,11 +1454,8 @@ fn select_template(
 /// Verify that applied rule executions are persisted to rule_executions table
 /// with outcome='applied' and no suppression_reason.
 pub fn rule_execution_applied_is_persisted_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "PersistApplied")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("PersistApplied")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Feature", "star")
   let assert Ok(template_id) =
@@ -1581,11 +1517,8 @@ pub fn rule_execution_applied_is_persisted_test() {
 
 /// Verify that idempotency is enforced via rule_executions table.
 pub fn rule_execution_idempotency_enforced_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "IdempotencyTest")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("IdempotencyTest")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(workflow_id) =

@@ -2540,6 +2540,23 @@ Estado de ejecucion:
   - total Gleam actual: `198.497` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.517` lineas;
   - deficit restante para `-20k`: `4.483` lineas.
+- Decimotercer pase de fixtures de reglas:
+  - migrados los tests simples de `rules_engine_test.gleam` a
+    `require_project_context`, eliminando el setup repetido
+    `bootstrap -> App(db) -> create_project`;
+  - conservado explicito el caso multiproyecto porque la presencia de dos
+    proyectos forma parte del contrato probado;
+  - no se ha creado DSL nuevo de reglas: cada test mantiene visibles sus tipos,
+    templates, reglas, eventos y asserts especificos;
+  - delta adicional: `-67` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `rules_engine_test` via EUnit secuencial (`24 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimotercer pase:
+  - total Gleam actual: `198.430` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.584` lineas;
+  - deficit restante para `-20k`: `4.416` lineas.
 
 ## Orden recomendado de ejecucion
 
