@@ -214,17 +214,7 @@ pub fn create_card_note(
   content: String,
   to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
-  create_card_note_with_url(card_id, content, option.None, to_msg)
-}
-
-/// Create a note for a card with an optional explicit URL.
-pub fn create_card_note_with_url(
-  card_id: Int,
-  content: String,
-  url: option.Option(String),
-  to_msg: fn(ApiResult(Note)) -> msg,
-) -> Effect(msg) {
-  note_api.create(card_notes_path(card_id), content, url, to_msg)
+  note_api.create(card_notes_path(card_id), content, option.None, to_msg)
 }
 
 /// Pin or unpin a card note.

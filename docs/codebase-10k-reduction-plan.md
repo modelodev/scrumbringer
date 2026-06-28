@@ -1064,6 +1064,15 @@ Estado de ejecucion:
     `action_buttons.delete_button_with_size` pasan a ser privados porque solo
     tienen consumidores dentro del propio modulo;
   - delta adicional: `-13` lineas mantenidas y cuatro exports menos.
+- Micro-pase adicional de wrappers API cliente sin consumidores:
+  - retirados `cards.create_card_note_with_url` y
+    `tasks/notes.add_task_note_with_url`, wrappers publicos sin consumidores
+    externos;
+  - `api_tokens.integration_users_payload_decoder`,
+    `api_tokens.tokens_payload_decoder`, `api_tokens.token_payload_decoder` y
+    `api_tokens.created_token_payload_decoder` pasan a privados porque solo son
+    callbacks internos del modulo;
+  - delta adicional: `-22` lineas mantenidas y cuatro exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1075,10 +1084,12 @@ Estado de ejecucion:
     `1887 passed` tras retirar
     `task_type_crud_dialog.view_icon_picker_trigger_for_test`;
     `1887 passed` tras retirar `decode_optional_int_attribute` y privatizar
-    helpers cliente sin consumidores externos);
+    helpers cliente sin consumidores externos;
+    `1887 passed` tras retirar wrappers de notas con URL y privatizar decoders
+    de `api_tokens`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.420` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.442` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

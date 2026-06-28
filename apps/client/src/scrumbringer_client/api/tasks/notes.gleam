@@ -41,17 +41,7 @@ pub fn add_task_note(
   content: String,
   to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
-  add_task_note_with_url(task_id, content, option.None, to_msg)
-}
-
-/// Add a note to a task with an optional explicit URL.
-pub fn add_task_note_with_url(
-  task_id: Int,
-  content: String,
-  url: option.Option(String),
-  to_msg: fn(ApiResult(Note)) -> msg,
-) -> Effect(msg) {
-  note_api.create(task_notes_path(task_id), content, url, to_msg)
+  note_api.create(task_notes_path(task_id), content, option.None, to_msg)
 }
 
 /// Pin or unpin a task note.

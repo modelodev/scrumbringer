@@ -87,7 +87,7 @@ pub fn deactivate_integration_user(
   )
 }
 
-pub fn integration_users_payload_decoder() -> decode.Decoder(
+fn integration_users_payload_decoder() -> decode.Decoder(
   List(api_token.IntegrationUser),
 ) {
   decode.field(
@@ -97,17 +97,15 @@ pub fn integration_users_payload_decoder() -> decode.Decoder(
   )
 }
 
-pub fn tokens_payload_decoder() -> decode.Decoder(List(api_token.ApiToken)) {
+fn tokens_payload_decoder() -> decode.Decoder(List(api_token.ApiToken)) {
   decode.field("api_tokens", decode.list(token_decoder()), decode.success)
 }
 
-pub fn token_payload_decoder() -> decode.Decoder(api_token.ApiToken) {
+fn token_payload_decoder() -> decode.Decoder(api_token.ApiToken) {
   decode.field("api_token", token_decoder(), decode.success)
 }
 
-pub fn created_token_payload_decoder() -> decode.Decoder(
-  api_token.CreatedApiToken,
-) {
+fn created_token_payload_decoder() -> decode.Decoder(api_token.CreatedApiToken) {
   use api_token_value <- decode.field("api_token", token_decoder())
   use token <- decode.field("token", decode.string)
   decode.success(api_token.CreatedApiToken(
