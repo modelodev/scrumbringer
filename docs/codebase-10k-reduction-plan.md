@@ -1266,6 +1266,14 @@ Estado de ejecucion:
   - `ui_signal_chip_test` conserva la cobertura de las capacidades usadas por
     producto y deja de proteger una API preventiva;
   - delta adicional WP-10: `-24` lineas mantenidas y dos exports menos.
+- Micro-pase adicional de wrappers internos de `action_buttons`:
+  - `delete_button_with_disabled_and_testid` y
+    `delete_button_blocked_with_testid` pasan a privados porque solo son ramas
+    internas de `delete_button_with_availability_and_testid`;
+  - `ui_action_buttons_test` concentra la cobertura en el wrapper publico de
+    disponibilidad, incluyendo disabled, blocked, tooltip, clase bloqueada y
+    `data-testid`;
+  - delta adicional WP-10: `-31` lineas mantenidas y dos exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1297,10 +1305,11 @@ Estado de ejecucion:
     `1859 passed` tras retirar categoria legacy del icon catalog;
     `1859 passed` tras retirar busqueda legacy del icon catalog;
     `1859 passed` tras conectar el picker a `icon_catalog.catalog`;
-    `1859 passed` tras retirar API preventiva de `signal_chip`);
+    `1859 passed` tras retirar API preventiva de `signal_chip`;
+    `1857 passed` tras privatizar wrappers internos de `action_buttons`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.940` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.971` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

@@ -268,7 +268,7 @@ pub fn delete_button_with_testid(
 }
 
 /// Creates a delete button with disabled state and a data-testid attribute.
-pub fn delete_button_with_disabled_and_testid(
+fn delete_button_with_disabled_and_testid(
   title: String,
   on_click: msg,
   disabled: Bool,
@@ -304,7 +304,7 @@ pub fn delete_button_with_availability_and_testid(
 }
 
 /// Creates a delete button for blocked destructive actions.
-pub fn delete_button_blocked_with_testid(
+fn delete_button_blocked_with_testid(
   reason: String,
   on_click: msg,
   testid: String,
