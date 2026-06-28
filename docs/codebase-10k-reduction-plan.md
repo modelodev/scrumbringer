@@ -2293,6 +2293,15 @@ Estado de ejecucion:
     - `cd apps/server && gleam format src test && gleam build &&
       DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
       (`559 passed`).
+- Sexto pase de componentizacion UI local:
+  - extraido `features/assignments/components/metric_chip.task_metric` para
+    compartir el render de chips de metricas entre `project_card` y `user_card`;
+  - retirados dos wrappers locales `assignment_task_metric` que duplicaban el
+    mismo contrato visual y se apoyaban en el componente testeado
+    `ui/task_metric_chip`;
+  - delta adicional: `-26` lineas mantenidas netas;
+  - verificacion: `cd apps/client && gleam format src test && gleam test`
+    (`1819 passed`).
 
 ## Orden recomendado de ejecucion
 

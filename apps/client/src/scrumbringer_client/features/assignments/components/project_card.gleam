@@ -25,6 +25,7 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/admin/member_role as project_member_role
+import scrumbringer_client/features/assignments/components/metric_chip
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -38,7 +39,6 @@ import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/task_metric
-import scrumbringer_client/ui/task_metric_chip
 
 pub type Config(msg) {
   Config(
@@ -225,10 +225,10 @@ fn project_metrics_view(
   ) = metrics
 
   div([attribute.class("assignments-metrics")], [
-    assignment_task_metric(locale, task_metric.Available, available_count),
-    assignment_task_metric(locale, task_metric.Claimed, claimed_count),
-    assignment_task_metric(locale, task_metric.Ongoing, ongoing_count),
-    assignment_task_metric(locale, task_metric.Closed, closed_count),
+    metric_chip.task_metric(locale, task_metric.Available, available_count),
+    metric_chip.task_metric(locale, task_metric.Claimed, claimed_count),
+    metric_chip.task_metric(locale, task_metric.Ongoing, ongoing_count),
+    metric_chip.task_metric(locale, task_metric.Closed, closed_count),
     div([attribute.class("assignments-metrics-item")], [
       text(
         t(i18n_text.ReleasePercent)
@@ -237,19 +237,6 @@ fn project_metrics_view(
       ),
     ]),
   ])
-}
-
-fn assignment_task_metric(
-  locale: Locale,
-  kind: task_metric.TaskMetricKind,
-  value: Int,
-) -> element.Element(msg) {
-  task_metric_chip.view(task_metric_chip.Config(
-    locale: locale,
-    metric: task_metric.metric(kind, value),
-    extra_class: opt.Some("assignments-task-metric"),
-    testid: opt.None,
-  ))
 }
 
 fn option_percent_label(value: opt.Option(Int)) -> String {
