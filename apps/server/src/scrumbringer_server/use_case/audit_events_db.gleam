@@ -34,11 +34,7 @@ pub type EventType {
   DueDateChanged
 }
 
-/// Converts an audit event type to its DB string value.
-///
-/// Example:
-///   event_type_to_string(TaskClaimed)
-pub fn event_type_to_string(event_type: EventType) -> String {
+fn event_type_to_string(event_type: EventType) -> String {
   case event_type {
     TaskCreated -> "task_created"
     TaskClaimed -> "task_claimed"

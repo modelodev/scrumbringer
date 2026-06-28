@@ -388,8 +388,7 @@ pub fn position_decoder() -> decode.Decoder(TaskPosition) {
 // Work Sessions Decoders (Multi-Session Model)
 // =============================================================================
 
-/// Decoder for WorkSession.
-pub fn work_session_decoder() -> decode.Decoder(WorkSession) {
+fn work_session_decoder() -> decode.Decoder(WorkSession) {
   use task_id <- decode.field("task_id", decode.int)
   use started_at <- decode.field("started_at", decode.string)
   use accumulated <- decode.optional_field(

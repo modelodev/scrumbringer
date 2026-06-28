@@ -60,7 +60,7 @@ pub fn card_depth_names_for_count(
   }
 }
 
-pub fn default_card_depth_name(depth: Int) -> ProjectDepthName {
+fn default_card_depth_name(depth: Int) -> ProjectDepthName {
   case
     default_card_depth_names()
     |> list.find(fn(depth_name) {

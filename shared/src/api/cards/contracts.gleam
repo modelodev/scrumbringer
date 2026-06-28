@@ -102,7 +102,7 @@ fn raw_to_create_request(
   }
 }
 
-pub fn card_move_request_codec() -> decode.Decoder(CardMoveRequest) {
+fn card_move_request_codec() -> decode.Decoder(CardMoveRequest) {
   use parent_card_id <- decode.field(
     "parent_card_id",
     decode.optional(decode.int),
@@ -145,7 +145,7 @@ pub fn action_response_to_json(response: CardActionResponse) -> Json {
   ])
 }
 
-pub fn pool_health_to_string(health: PoolHealth) -> String {
+fn pool_health_to_string(health: PoolHealth) -> String {
   case health {
     PoolWithinHealthyLimit -> "within_healthy_limit"
     PoolExceedsHealthyLimit -> "exceeds_healthy_limit"

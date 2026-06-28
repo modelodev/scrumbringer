@@ -30,9 +30,7 @@ pub type DecodeError {
   InvalidClosedReason
 }
 
-pub fn create_dependency_request_codec() -> decode.Decoder(
-  CreateDependencyRequest,
-) {
+fn create_dependency_request_codec() -> decode.Decoder(CreateDependencyRequest) {
   use depends_on_task_id <- decode.field("depends_on_task_id", decode.int)
   decode.success(
     CreateDependencyRequest(depends_on_task_id: task_id.new(depends_on_task_id)),

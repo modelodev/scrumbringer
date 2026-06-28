@@ -323,14 +323,14 @@ fn scope_from_depth(
   }
 }
 
-pub fn trigger_resource_type(trigger: AutomationTrigger) -> String {
+fn trigger_resource_type(trigger: AutomationTrigger) -> String {
   case trigger {
     TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskClosed(_) -> "task"
     CardActivated(_) | CardClosed(_) -> "card"
   }
 }
 
-pub fn trigger_to_state_string(trigger: AutomationTrigger) -> String {
+fn trigger_to_state_string(trigger: AutomationTrigger) -> String {
   case trigger {
     TaskCreated(_) | TaskReleased(_) -> "available"
     TaskClaimed(_) -> "claimed"
@@ -350,7 +350,7 @@ pub fn trigger_task_type_id(trigger: AutomationTrigger) -> Option(Int) {
   }
 }
 
-pub fn trigger_card_depth(trigger: AutomationTrigger) -> Option(Int) {
+fn trigger_card_depth(trigger: AutomationTrigger) -> Option(Int) {
   let scope = case trigger {
     CardActivated(scope) | CardClosed(scope) -> Some(scope)
     TaskCreated(_) | TaskClaimed(_) | TaskReleased(_) | TaskClosed(_) -> None

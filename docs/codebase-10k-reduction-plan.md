@@ -2232,6 +2232,35 @@ Estado de ejecucion:
   - verificacion: `cd apps/server && gleam format src test && gleam build &&
     DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
     (`559 passed`).
+- Tercer pase de encapsulacion dominio/backend/shared:
+  - privatizados helpers internos de persistencia y auth:
+    `automation_config_audit_db.entity_type_to_string`,
+    `automation_config_audit_db.change_type_to_string`,
+    `audit_events_db.event_type_to_string`, `store_state.parse_user_kind`,
+    `rules_db.list_rule_templates` y `auth.require_principal`;
+  - privatizados helpers internos de dominio compartido:
+    `automation.trigger_resource_type`, `automation.trigger_to_state_string`,
+    `automation.trigger_card_depth`, `api_token_scope.resource_to_string`,
+    `api_token_scope.access_to_string` y
+    `project/settings.default_card_depth_name`;
+  - privatizados codecs internos que solo componen decoders/responses publicos:
+    `api/tasks/contracts.create_dependency_request_codec`,
+    `api/cards/contracts.card_move_request_codec`,
+    `api/cards/contracts.pool_health_to_string`,
+    `task_codec.work_session_decoder`,
+    `people_workload_codec.person_decoder` y
+    `workflow_codec.rule_template_decoder`;
+  - eliminado codigo muerto `task_templates_db.constraint_to_error` y su import
+    `gleam/string`, sin consumidor interno ni externo;
+  - delta adicional: `-29` lineas mantenidas, dieciocho funciones publicas menos
+    y una funcion muerta eliminada;
+  - verificacion:
+    - `cd shared && gleam format src test && gleam test` (`277 passed`);
+    - `cd apps/server && gleam format src test && gleam build &&
+      DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`559 passed`);
+    - `cd apps/client && gleam format src test && gleam test`
+      (`1819 passed`).
 
 ## Orden recomendado de ejecucion
 

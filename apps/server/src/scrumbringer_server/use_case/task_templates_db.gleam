@@ -21,7 +21,6 @@
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
-import gleam/string
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
@@ -314,21 +313,5 @@ fn delete_result_to_service(
     True, False, id, _ if id > 0 -> Ok(PhysicallyDeleted)
     True, False, _, id if id > 0 -> Ok(Archived)
     True, False, _, _ -> Error(NotFound)
-  }
-}
-
-/// Maps constraint violations into domain errors.
-///
-/// Example:
-///   constraint_to_error(error)
-pub fn constraint_to_error(error: pog.QueryError) -> Result(Nil, ServiceError) {
-  case error {
-    pog.ConstraintViolated(constraint: constraint, ..) ->
-      case string.contains(constraint, "task_templates") {
-        True -> Error(InvalidReference("type_id"))
-        False -> Error(DbError(error))
-      }
-
-    _ -> Error(DbError(error))
   }
 }

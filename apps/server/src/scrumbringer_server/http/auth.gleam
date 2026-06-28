@@ -267,7 +267,7 @@ pub fn require_current_user(
   |> result.replace_error(Nil)
 }
 
-pub fn require_principal(
+fn require_principal(
   req: wisp.Request,
   ctx: Ctx,
 ) -> Result(Principal, wisp.Response) {

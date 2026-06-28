@@ -595,11 +595,7 @@ pub fn delete_rule_with_disposition(
   }
 }
 
-/// Lists templates selected for a rule.
-///
-/// Example:
-///   list_rule_templates(db, rule_id)
-pub fn list_rule_templates(
+fn list_rule_templates(
   db: pog.Connection,
   rule_id: Int,
 ) -> Result(List(workflow.RuleTemplate), ServiceError) {

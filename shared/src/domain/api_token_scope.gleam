@@ -110,7 +110,7 @@ pub fn access(scope: Scope) -> Access {
   }
 }
 
-pub fn resource_to_string(resource: Resource) -> String {
+fn resource_to_string(resource: Resource) -> String {
   case resource {
     Projects -> "projects"
     Tasks -> "tasks"
@@ -119,7 +119,7 @@ pub fn resource_to_string(resource: Resource) -> String {
   }
 }
 
-pub fn access_to_string(access: Access) -> String {
+fn access_to_string(access: Access) -> String {
   case access {
     Read -> "read"
     Write -> "write"

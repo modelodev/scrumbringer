@@ -17,7 +17,7 @@ pub fn people_decoder() -> decode.Decoder(List(PersonWorkload)) {
   decode.field("people", decode.list(person_decoder()), decode.success)
 }
 
-pub fn person_decoder() -> decode.Decoder(PersonWorkload) {
+fn person_decoder() -> decode.Decoder(PersonWorkload) {
   use user_id <- decode.field("user_id", decode.int)
   use email <- decode.field("email", decode.string)
   use role <- decode.field("role", project_role_codec.project_role_decoder())

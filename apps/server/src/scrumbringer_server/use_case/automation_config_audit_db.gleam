@@ -48,7 +48,7 @@ pub fn insert(
   |> result.map_error(DbError)
 }
 
-pub fn entity_type_to_string(entity_type: EntityType) -> String {
+fn entity_type_to_string(entity_type: EntityType) -> String {
   case entity_type {
     Engine -> "engine"
     Rule -> "rule"
@@ -56,7 +56,7 @@ pub fn entity_type_to_string(entity_type: EntityType) -> String {
   }
 }
 
-pub fn change_type_to_string(change_type: ChangeType) -> String {
+fn change_type_to_string(change_type: ChangeType) -> String {
   case change_type {
     Created -> "created"
     Updated -> "updated"

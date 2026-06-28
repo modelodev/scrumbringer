@@ -118,8 +118,7 @@ pub fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
   ))
 }
 
-/// Decoder for RuleTemplate.
-pub fn rule_template_decoder() -> decode.Decoder(RuleTemplate) {
+fn rule_template_decoder() -> decode.Decoder(RuleTemplate) {
   use id <- decode.field("id", decode.int)
   use org_id <- decode.field("org_id", decode.int)
   use project_id <- decode.field("project_id", decode.optional(decode.int))
