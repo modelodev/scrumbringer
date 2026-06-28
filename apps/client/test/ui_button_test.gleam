@@ -72,16 +72,6 @@ pub fn disabled_button_and_id_are_preserved_test() {
   render_assertions.contains(html, "data-testid=\"activate-testid\"")
 }
 
-pub fn autofocus_button_renders_native_attribute_test() {
-  let html =
-    button.text("Cancel", "msg", button.Secondary, button.EntityAction)
-    |> button.with_autofocus(True)
-    |> button.view
-    |> element.to_document_string
-
-  render_assertions.contains(html, "autofocus")
-}
-
 pub fn submit_button_can_target_external_form_test() {
   let html =
     button.submit("Save", button.Primary, button.EntityAction)
@@ -164,25 +154,6 @@ pub fn tooltip_is_rendered_when_provided_test() {
 
   render_assertions.contains(html, "data-tooltip=\"Claim\"")
   render_assertions.contains(html, "aria-label=\"Claim task\"")
-}
-
-pub fn stop_propagation_button_preserves_semantic_contract_test() {
-  let html =
-    button.icon_text(
-      "Attach template",
-      "msg",
-      icons.Plus,
-      button.Primary,
-      button.EntityAction,
-    )
-    |> button.with_stop_propagation
-    |> button.view
-    |> element.to_document_string
-
-  render_assertions.contains(html, "btn-primary")
-  render_assertions.contains(html, "btn-entity-action")
-  render_assertions.contains(html, "btn-icon-text")
-  render_assertions.contains(html, "aria-label=\"Attach template\"")
 }
 
 pub fn button_can_carry_specific_accessibility_attributes_test() {

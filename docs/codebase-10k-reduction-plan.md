@@ -1116,6 +1116,15 @@ Estado de ejecucion:
   - `ui_badge_test` valida ahora el resultado renderizado de
     `new_truncated`, reforzando el contrato visual publico;
   - delta adicional WP-10: `-15` lineas mantenidas.
+- Micro-pase adicional de API preventiva de button:
+  - retirados `ui/button.with_autofocus` y `ui/button.with_stop_propagation`,
+    sin consumidores de produccion;
+  - retirados los campos internos `autofocus` y `stop_propagation` del
+    `Config` del boton; el autofocus vivo continua en
+    `crud_dialog_base.with_autofocus_when` para campos de formulario, y otros
+    usos de `stop_propagation` siguen como atributos Lustre locales;
+  - retirados tests directos de API preventiva en `ui_button_test`;
+  - delta adicional WP-10: `-64` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1137,10 +1146,11 @@ Estado de ejecucion:
     `1887 passed` tras retirar `pool/chrome.tasks_onboarding`;
     `1887 passed` tras retirar helpers muertos de `api/activity`;
     `1886 passed` tras retirar `helpers/options.empty_to_opt`;
-    `1886 passed` tras retirar accessors de `ui/badge`);
+    `1886 passed` tras retirar accessors de `ui/badge`;
+    `1884 passed` tras retirar API preventiva de `ui/button`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-1.516` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.580` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

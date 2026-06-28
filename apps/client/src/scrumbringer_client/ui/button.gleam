@@ -60,7 +60,6 @@ pub opaque type Config(msg) {
     size: Size,
     button_type: ButtonType,
     disabled: Bool,
-    autofocus: Bool,
     extra_class: Option(String),
     form_id: Option(String),
     accessible_label: Option(String),
@@ -68,7 +67,6 @@ pub opaque type Config(msg) {
     testid: Option(String),
     tooltip: Option(String),
     aria_disabled: Bool,
-    stop_propagation: Bool,
     extra_attrs: List(Attribute(msg)),
   )
 }
@@ -89,7 +87,6 @@ pub fn text(
     size: Small,
     button_type: ClickButton,
     disabled: False,
-    autofocus: False,
     extra_class: None,
     form_id: None,
     accessible_label: None,
@@ -97,7 +94,6 @@ pub fn text(
     testid: None,
     tooltip: None,
     aria_disabled: False,
-    stop_propagation: False,
     extra_attrs: [],
   )
 }
@@ -113,7 +109,6 @@ pub fn submit(label: String, intent: Intent, scope: Scope) -> Config(msg) {
     size: Small,
     button_type: SubmitButton,
     disabled: False,
-    autofocus: False,
     extra_class: None,
     form_id: None,
     accessible_label: None,
@@ -121,7 +116,6 @@ pub fn submit(label: String, intent: Intent, scope: Scope) -> Config(msg) {
     testid: None,
     tooltip: None,
     aria_disabled: False,
-    stop_propagation: False,
     extra_attrs: [],
   )
 }
@@ -142,7 +136,6 @@ pub fn submit_icon_text(
     size: Small,
     button_type: SubmitButton,
     disabled: False,
-    autofocus: False,
     extra_class: None,
     form_id: None,
     accessible_label: None,
@@ -150,7 +143,6 @@ pub fn submit_icon_text(
     testid: None,
     tooltip: None,
     aria_disabled: False,
-    stop_propagation: False,
     extra_attrs: [],
   )
 }
@@ -172,7 +164,6 @@ pub fn icon(
     size: ExtraSmall,
     button_type: ClickButton,
     disabled: False,
-    autofocus: False,
     extra_class: None,
     form_id: None,
     accessible_label: None,
@@ -180,7 +171,6 @@ pub fn icon(
     testid: None,
     tooltip: None,
     aria_disabled: False,
-    stop_propagation: False,
     extra_attrs: [],
   )
 }
@@ -202,7 +192,6 @@ pub fn icon_text(
     size: Small,
     button_type: ClickButton,
     disabled: False,
-    autofocus: False,
     extra_class: None,
     form_id: None,
     accessible_label: None,
@@ -210,7 +199,6 @@ pub fn icon_text(
     testid: None,
     tooltip: None,
     aria_disabled: False,
-    stop_propagation: False,
     extra_attrs: [],
   )
 }
@@ -223,11 +211,6 @@ pub fn with_size(config: Config(msg), size: Size) -> Config(msg) {
 /// Sets the disabled state.
 pub fn with_disabled(config: Config(msg), disabled: Bool) -> Config(msg) {
   Config(..config, disabled:)
-}
-
-/// Sets native autofocus for dialogs where initial focus should land on an action.
-pub fn with_autofocus(config: Config(msg), autofocus: Bool) -> Config(msg) {
-  Config(..config, autofocus:)
 }
 
 /// Adds an extra CSS class owned by the consuming feature.
@@ -282,11 +265,6 @@ pub fn with_blocked_reason(config: Config(msg), reason: String) -> Config(msg) {
   )
 }
 
-/// Prevents the click event from bubbling to parent interactive containers.
-pub fn with_stop_propagation(config: Config(msg)) -> Config(msg) {
-  Config(..config, stop_propagation: True)
-}
-
 /// Adds a specific HTML attribute that is not part of the common button contract.
 pub fn with_attribute(config: Config(msg), attr: Attribute(msg)) -> Config(msg) {
   Config(..config, extra_attrs: [attr, ..config.extra_attrs])
@@ -303,14 +281,12 @@ fn attrs(config: Config(msg)) {
     on_click:,
     button_type:,
     disabled:,
-    autofocus:,
     form_id:,
     accessible_label:,
     id:,
     testid:,
     tooltip:,
     aria_disabled:,
-    stop_propagation:,
     extra_attrs:,
     ..,
   ) = config
@@ -329,7 +305,6 @@ fn attrs(config: Config(msg)) {
           accessible_label_value(label, accessible_label),
         ),
         attribute.disabled(disabled),
-        attribute.autofocus(autofocus),
       ],
       extra_attrs,
     )
@@ -340,8 +315,7 @@ fn attrs(config: Config(msg)) {
   }
 
   let with_click = case on_click {
-    Some(msg) ->
-      list.append(with_aria_disabled, [click_attr(msg, stop_propagation)])
+    Some(msg) -> list.append(with_aria_disabled, [event.on_click(msg)])
     None -> with_aria_disabled
   }
 
@@ -365,15 +339,6 @@ fn attrs(config: Config(msg)) {
     Some(value) ->
       list.append(with_testid, [attribute.attribute("data-tooltip", value)])
     None -> with_testid
-  }
-}
-
-fn click_attr(msg: msg, stop_propagation: Bool) {
-  let attr = event.on_click(msg)
-
-  case stop_propagation {
-    True -> event.stop_propagation(attr)
-    False -> attr
   }
 }
 
