@@ -1451,7 +1451,11 @@ Estado de ejecucion:
 - Vigesimosexto pase de fixtures de dominio aplicado a `pool_view_composition`
   y `helpers_dicts`. Se retiran defaults completos de task manteniendo icono,
   prioridad, owner, fecha y card cuando el render los usa.
-- Delta parcial WP-12: `-3.423` lineas netas mantenidas (`-44` del primer pase
+- Vigesimoseptimo pase de fixtures de dominio aplicado a helpers de estado de
+  task (`tasks_claimability`, `tasks_show_actions`, `tasks_task_list` y
+  `work_sessions_state`). Se conservan solo id/titulo, estado, bloqueo y
+  version cuando el contrato los observa.
+- Delta parcial WP-12: `-3.442` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1499,7 +1503,8 @@ Estado de ejecucion:
   fixtures de dominio compartidas en tests de cliente, `-55` del
   vigesimoquinto pase de fixtures de dominio compartidas en tests de cliente,
   `-37` del vigesimosexto pase de fixtures de dominio compartidas en tests de
-  cliente).
+  cliente, `-19` del vigesimoseptimo pase de fixtures de dominio compartidas
+  en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

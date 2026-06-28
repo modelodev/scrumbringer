@@ -36,10 +36,7 @@ pub fn closed_task_cannot_be_claimed_test() {
 fn sample_task(state: task_state.TaskExecutionState, blocked_count: Int) -> Task {
   Task(
     ..domain_fixtures.task(42, "Prepare release", 1),
-    priority: 2,
     state: state,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
     blocked_count: blocked_count,
   )
 }

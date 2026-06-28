@@ -9,8 +9,6 @@ import scrumbringer_client/features/tasks/work_sessions_state
 fn task(id: Int, user_id: Int, mode: task_state.TaskClaimMode) -> Task {
   Task(
     ..domain_fixtures.task(id, "Task", 1),
-    description: opt.None,
-    priority: 1,
     state: task_state.Claimed(
       claimed_by: user_id,
       claimed_at: "2026-01-01T00:00:00Z",

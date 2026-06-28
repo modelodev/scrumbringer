@@ -3,7 +3,6 @@ import support/domain_fixtures
 
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/show/actions as task_show_actions
 
 pub fn primary_action_claims_available_unblocked_task_test() {
@@ -46,16 +45,7 @@ pub fn can_release_only_when_claimed_by_current_user_test() {
 }
 
 fn available_task() -> Task {
-  Task(
-    ..domain_fixtures.task(42, "Prepare release", 1),
-    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    priority: 2,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
-    version: 3,
-    card_id: Some(10),
-    card_title: Some("Release card"),
-  )
+  Task(..domain_fixtures.task(42, "Prepare release", 1), version: 3)
 }
 
 fn claimed_task(claimed_by: Int) -> Task {

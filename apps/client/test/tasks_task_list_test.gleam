@@ -44,9 +44,5 @@ pub fn set_state_updates_matching_task_test() {
 }
 
 fn sample_task(id: Int) -> Task {
-  Task(
-    ..domain_fixtures.task(id, "Task " <> int.to_string(id), 1),
-    description: None,
-    priority: 1,
-  )
+  domain_fixtures.task(id, "Task " <> int.to_string(id), 1)
 }
