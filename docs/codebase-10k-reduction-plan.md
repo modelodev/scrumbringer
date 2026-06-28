@@ -1392,7 +1392,12 @@ Estado de ejecucion:
   `grouped_list_task_item`, `right_panel_tasks` y `work_sessions_state`). Se
   conservan como overrides los datos que gobiernan el comportamiento visible:
   estado reclamado/ongoing, prioridad, version, card asociada y color.
-- Delta parcial WP-12: `-2.889` lineas netas mantenidas (`-44` del primer pase
+- Undecimo pase de fixtures de dominio aplicado a tests de lookup, mutaciones,
+  drag y creacion de tasks (`update_helpers`, `tasks_mutation_state`,
+  `pool_drag_update` y `tasks_create_update`). Se retiran constructores
+  completos y se mantienen visibles estado, dependencia, descripcion,
+  prioridad, fecha, version, autor y estado de card cuando son parte del caso.
+- Delta parcial WP-12: `-2.985` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1421,7 +1426,8 @@ Estado de ejecucion:
   septimo pase de fixtures de dominio compartidas en tests de cliente, `-63`
   del octavo pase de fixtures de dominio compartidas en tests de cliente, `-50`
   del noveno pase de fixtures de dominio compartidas en tests de cliente, `-75`
-  del decimo pase de fixtures de dominio compartidas en tests de cliente).
+  del decimo pase de fixtures de dominio compartidas en tests de cliente, `-96`
+  del undecimo pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

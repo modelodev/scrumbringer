@@ -3,11 +3,11 @@ import domain/org_role.{Admin}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/option.{None, Some}
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/helpers/options as helpers_options
+import support/domain_fixtures
 
 pub fn empty_to_opt_trims_whitespace_test() {
   let assert None = helpers_options.empty_to_opt("   ")
@@ -44,29 +44,7 @@ pub fn find_task_by_id_in_cache_falls_back_to_project_cache_test() {
 }
 
 fn task_with_state(id: Int, state: task_state.TaskExecutionState) -> Task {
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug"),
-    ongoing_by: None,
-    title: "T",
-    description: None,
-    priority: 3,
-    state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, "T", 1), description: None, state: state)
 }
 
 pub fn resolve_org_user_returns_none_when_not_loaded_test() {

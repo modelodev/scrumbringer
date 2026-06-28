@@ -1,12 +1,12 @@
 import gleam/option.{None, Some}
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/card.{type Card, Active, Card}
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
-import domain/task_type.{type TaskType, TaskType, TaskTypeInline}
+import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -31,48 +31,16 @@ fn local_context(selected_project_id) -> create_update.Context(Nil) {
 }
 
 fn sample_task() -> Task {
-  let state = task_state.Available
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Ship task",
+    ..domain_fixtures.task(42, "Ship task", 1),
     description: Some("Useful detail"),
-    priority: 3,
-    state: state,
     created_by: 7,
     created_at: "2026-03-20T14:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
 
 fn sample_card() -> Card {
-  Card(
-    id: 7,
-    project_id: 1,
-    parent_card_id: None,
-    title: "Checkout",
-    description: "",
-    color: None,
-    state: Active,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    has_new_notes: False,
-  )
+  Card(..domain_fixtures.card(7, 1, "Checkout"), state: Active)
 }
 
 fn sample_type() -> TaskType {
