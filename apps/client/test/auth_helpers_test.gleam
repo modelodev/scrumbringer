@@ -57,30 +57,6 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
   let assert member_pool.PoolDragIdle = member_pool_drag
 }
 
-pub fn handle_auth_error_returns_login_for_401_test() {
-  let model = client_state.default_model()
-  let err = ApiError(status: 401, code: "AUTH_REQUIRED", message: "Auth")
-
-  let assert Some(#(next_model, _)) = helpers.handle_auth_error(model, err)
-  let client_state.Model(core: core, ..) = next_model
-  let client_state.CoreModel(page: page, ..) = core
-  let assert client_state.Login = page
-}
-
-pub fn handle_auth_error_returns_toast_for_403_test() {
-  let model = client_state.default_model()
-  let err = ApiError(status: 403, code: "FORBIDDEN", message: "No")
-
-  let assert Some(_) = helpers.handle_auth_error(model, err)
-}
-
-pub fn handle_auth_error_ignores_non_auth_errors_test() {
-  let model = client_state.default_model()
-  let err = ApiError(status: 500, code: "SERVER", message: "Oops")
-
-  let assert None = helpers.handle_auth_error(model, err)
-}
-
 pub fn handle_401_or_resets_to_login_test() {
   let model =
     client_state.default_model()

@@ -45,6 +45,7 @@ import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/features/cards/show/headline as card_headline
 import scrumbringer_client/features/cards/show/hierarchy as show_hierarchy
 import scrumbringer_client/features/cards/show/notes as show_notes
+import scrumbringer_client/features/cards/show/summary as show_summary
 import scrumbringer_client/features/tasks/blocking_status
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
@@ -546,37 +547,30 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
   }
   let tabs = card_tab_items(model, notes_count, card.has_new_notes)
 
-  inspector_shell.view(
+  inspector_shell.detail(
     inspector_shell.Config(
       root_class: "card-show",
       panel_class: "card-show-panel card-show-surface " <> border_class,
       title_id: "card-show-title",
       testid: "card-show",
     ),
+    "card-show-header-block",
+    "card-show-body",
+    view_card_header(model, card),
+    detail_tabs.view(detail_tabs.Config(
+      active_tab: model.active_tab,
+      tabs: tabs,
+      container_class: "card-show-tabs detail-tabs",
+      tab_class: "card-tab card-show-tab detail-tab",
+      on_tab_click: TabClicked,
+    )),
+    detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
+      show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
+      show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
+      show_tabs.CardNotesTab -> view_card_notes_section(model)
+      show_tabs.CardActivityTab -> view_card_activity_section(model)
+    }),
     [
-      div(
-        [
-          attribute.class("card-show-header-block detail-header-block"),
-        ],
-        [
-          view_card_header(model, card),
-          detail_tabs.view(detail_tabs.Config(
-            active_tab: model.active_tab,
-            tabs: tabs,
-            container_class: "card-show-tabs detail-tabs",
-            tab_class: "card-tab card-show-tab detail-tab",
-            on_tab_click: TabClicked,
-          )),
-        ],
-      ),
-      div([attribute.class("card-show-body")], [
-        detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
-          show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
-          show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
-          show_tabs.CardNotesTab -> view_card_notes_section(model)
-          show_tabs.CardActivityTab -> view_card_activity_section(model)
-        }),
-      ]),
       case model.note_dialog_open {
         True -> view_note_dialog(model)
         False -> element.none()
@@ -1093,127 +1087,14 @@ fn card_work_count(model: Model) -> Int {
 }
 
 fn view_card_summary_section(model: Model, card: Card) -> Element(Msg) {
-  div([attribute.class("card-summary-section detail-section")], [
-    view_card_summary_signal(model, card),
-    view_card_summary_metrics(model, card),
-    case card.description {
-      "" ->
-        view_card_summary_description(
-          model,
-          t(model.locale, i18n_text.CardSummaryNoDescription),
-          True,
-        )
-      description -> view_card_summary_description(model, description, False)
-    },
-    div([attribute.class("card-summary-block card-summary-structure")], [
-      span([attribute.class("detail-section-kicker")], [
-        text(t(model.locale, i18n_text.PlanModeStructure)),
-      ]),
-      summary_element_item(t(model.locale, i18n_text.HierarchyScopeCardTitle), [
-        view_card_path(model, card),
-      ]),
-      summary_item(
-        t(model.locale, i18n_text.CardTasks),
-        card_work_progress_copy(model, card),
-      ),
-    ]),
-    pinned_context.view(pinned_context.Config(
-      title: t(model.locale, i18n_text.PinnedContext),
-      notes: card_pinned_notes(model),
-      open_notes_label: t(model.locale, i18n_text.OpenNotes),
-      more_label: fn(count) {
-        t(model.locale, i18n_text.MorePinnedNotes(count))
-      },
-      on_open_notes: TabClicked(show_tabs.CardNotesTab),
-    )),
-  ])
-}
-
-fn view_card_summary_signal(model: Model, card: Card) -> Element(Msg) {
-  let blockers = blocked_count(model)
-  let #(title, body, icon, tone_class) = case card.task_count, blockers {
-    0, _ -> #(
-      t(model.locale, i18n_text.CardSummaryNoWorkTitle),
-      t(model.locale, i18n_text.CardSummaryNoWorkBody),
-      icons.EmptyMailbox,
-      "is-empty",
-    )
-    _, blocked if blocked > 0 -> #(
-      t(model.locale, i18n_text.CardSummaryBlockedTitle(blocked)),
-      t(model.locale, i18n_text.CardSummaryBlockedBody),
-      icons.Warning,
-      "is-blocked",
-    )
-    total, _ if card.closed_count == total -> #(
-      t(model.locale, i18n_text.CardSummaryCompleteTitle),
-      t(model.locale, i18n_text.CardSummaryCompleteBody),
-      icons.CheckCircle,
-      "is-complete",
-    )
-    _, _ -> #(
-      t(model.locale, i18n_text.CardSummaryFlowTitle),
-      t(model.locale, i18n_text.CardSummaryFlowBody),
-      icons.ChartUp,
-      "is-flowing",
-    )
-  }
-
-  div([attribute.class("card-summary-signal " <> tone_class)], [
-    span([attribute.class("card-summary-signal-icon")], [
-      icons.nav_icon(icon, icons.Small),
-    ]),
-    div([attribute.class("card-summary-signal-copy")], [
-      span([attribute.class("card-summary-signal-title")], [text(title)]),
-      span([attribute.class("card-summary-signal-body")], [text(body)]),
-    ]),
-  ])
-}
-
-fn view_card_summary_metrics(model: Model, card: Card) -> Element(Msg) {
-  div([attribute.class("card-summary-metrics")], [
-    task_metric_chip.view(task_metric_chip.Config(
-      locale: model.locale,
-      metric: task_metric.metric(task_metric.Total, card.task_count),
-      variant: task_metric_chip.Full,
-      extra_class: option.Some("card-summary-metric"),
-      testid: option.Some("card-summary-metric-total"),
-    )),
-    task_metric_chip.view(task_metric_chip.Config(
-      locale: model.locale,
-      metric: task_metric.metric(task_metric.Closed, card.closed_count),
-      variant: task_metric_chip.Full,
-      extra_class: option.Some("card-summary-metric"),
-      testid: option.Some("card-summary-metric-closed"),
-    )),
-    task_metric_chip.view(task_metric_chip.Config(
-      locale: model.locale,
-      metric: task_metric.metric(task_metric.Blocked, blocked_count(model)),
-      variant: task_metric_chip.Full,
-      extra_class: option.Some("card-summary-metric"),
-      testid: option.Some("card-summary-metric-blocked"),
-    )),
-  ])
-}
-
-fn view_card_summary_description(
-  model: Model,
-  description: String,
-  muted: Bool,
-) -> Element(Msg) {
-  div([attribute.class("card-summary-block card-summary-description")], [
-    span([attribute.class("detail-section-kicker")], [
-      text(t(model.locale, i18n_text.Description)),
-    ]),
-    div(
-      [
-        attribute.class(case muted {
-          True -> "card-summary-description-text muted"
-          False -> "card-summary-description-text"
-        }),
-      ],
-      [text(description)],
-    ),
-  ])
+  show_summary.view(show_summary.Config(
+    locale: model.locale,
+    card: card,
+    blocked_count: blocked_count(model),
+    path: view_card_path(model, card),
+    pinned_notes: card_pinned_notes(model),
+    on_open_notes: TabClicked(show_tabs.CardNotesTab),
+  ))
 }
 
 fn view_empty_card_work_decision(
@@ -1253,34 +1134,6 @@ fn card_pinned_notes(model: Model) -> List(pinned_context.PinnedNote) {
         )
       })
     _ -> []
-  }
-}
-
-fn summary_item(label: String, value: String) -> Element(Msg) {
-  summary_element_item(label, [text(value)])
-}
-
-fn summary_element_item(
-  label: String,
-  value: List(Element(Msg)),
-) -> Element(Msg) {
-  div([attribute.class("detail-summary-item")], [
-    span([attribute.class("detail-summary-label")], [text(label)]),
-    span([attribute.class("detail-summary-value")], value),
-  ])
-}
-
-fn card_work_progress_copy(model: Model, card: Card) -> String {
-  case card.task_count {
-    0 -> t(model.locale, i18n_text.CardTasksEmpty)
-    total ->
-      int.to_string(card.closed_count)
-      <> " "
-      <> t(model.locale, i18n_text.CardTasksClosed)
-      <> " - "
-      <> int.to_string(total)
-      <> " "
-      <> t(model.locale, i18n_text.CardTasks)
   }
 }
 

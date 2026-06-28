@@ -17,16 +17,13 @@
 //// - **features/*/update.gleam**: All update modules use these for auth errors
 //// - **client_state.gleam**: Uses Model, Msg, Login page
 
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None}
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state as client_state_module
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/i18n/i18n
-import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/toast
 
 // =============================================================================
 // Drag State Management
@@ -63,30 +60,6 @@ pub fn reset_to_login(
       )
     })
   #(clear_drag_state(model), effect.none())
-}
-
-/// Handle common API auth errors (401/403).
-///
-/// Returns Some with result for 401 (redirect to login) or 403 (toast).
-/// Returns None for other errors that need custom handling.
-pub fn handle_auth_error(
-  model: client_state_module.Model,
-  err: ApiError,
-) -> Option(#(client_state_module.Model, Effect(client_state_module.Msg))) {
-  case err.status {
-    401 -> Some(reset_to_login(model))
-    403 ->
-      Some(#(
-        model,
-        effect.from(fn(dispatch) {
-          dispatch(client_state_module.ToastShow(
-            i18n.t(model.ui.locale, i18n_text.NotPermitted),
-            toast.Warning,
-          ))
-        }),
-      ))
-    _ -> None
-  }
 }
 
 /// Handle 401 errors with redirect to login, or run fallback for other errors.

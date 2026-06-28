@@ -155,27 +155,19 @@ pub type TaskActionsConfig(msg) {
 }
 
 pub fn view_task_show(config: TaskShowConfig(msg)) -> Element(msg) {
-  inspector_shell.view(
+  inspector_shell.detail(
     inspector_shell.Config(
       root_class: "task-show task-show-panel",
       panel_class: "task-show-content",
       title_id: "task-show-title",
       testid: "task-show",
     ),
-    [
-      div(
-        [
-          attribute.class("task-show-header-block detail-header-block"),
-        ],
-        [
-          view_task_header(config),
-          view_task_show_tabs(config),
-        ],
-      ),
-      div([attribute.class("task-show-body")], [
-        view_task_tab_content(config),
-      ]),
-    ],
+    "task-show-header-block",
+    "task-show-body",
+    view_task_header(config),
+    view_task_show_tabs(config),
+    view_task_tab_content(config),
+    [],
   )
 }
 

@@ -15,6 +15,17 @@ import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
+type ResourceViewFixture {
+  ResourceViewFixture(
+    handler: fn(wisp.Request) -> wisp.Response,
+    db: pog.Connection,
+    session: String,
+    csrf: String,
+    card_id: Int,
+    task_id: Int,
+  )
+}
+
 pub fn main() {
   gleeunit.main()
 }
@@ -1028,6 +1039,70 @@ pub fn task_notes_indicator_updates_after_view_test() {
   |> expect.equal(False)
 }
 
+pub fn resource_views_reject_unsupported_methods_test() {
+  let ResourceViewFixture(handler:, session:, csrf:, card_id:, task_id:, ..) =
+    resource_view_fixture()
+
+  let card_req =
+    simulate.request(http.Get, "/api/v1/views/cards/" <> int_to_string(card_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  expect.expect_status(handler(card_req), 405)
+
+  let task_req =
+    simulate.request(http.Get, "/api/v1/views/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  expect.expect_status(handler(task_req), 405)
+}
+
+pub fn resource_views_reject_invalid_ids_test() {
+  let ResourceViewFixture(handler:, session:, csrf:, ..) =
+    resource_view_fixture()
+
+  let card_req =
+    simulate.request(http.Put, "/api/v1/views/cards/not-a-card-id")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  expect.expect_status(handler(card_req), 404)
+
+  let task_req =
+    simulate.request(http.Put, "/api/v1/views/tasks/not-a-task-id")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  expect.expect_status(handler(task_req), 404)
+}
+
+pub fn resource_views_hide_resources_from_non_project_members_test() {
+  let ResourceViewFixture(handler:, db:, card_id:, task_id:, ..) =
+    resource_view_fixture()
+
+  let #(outsider_session, outsider_csrf) =
+    create_logged_in_user(handler, db, "outsider@example.com", "inv_outsider")
+
+  let card_req =
+    simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
+    |> request.set_cookie("sb_session", outsider_session)
+    |> request.set_cookie("sb_csrf", outsider_csrf)
+    |> request.set_header("X-CSRF", outsider_csrf)
+
+  expect.expect_status(handler(card_req), 404)
+
+  let task_req =
+    simulate.request(http.Put, "/api/v1/views/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", outsider_session)
+    |> request.set_cookie("sb_csrf", outsider_csrf)
+    |> request.set_header("X-CSRF", outsider_csrf)
+
+  expect.expect_status(handler(task_req), 404)
+}
+
 pub fn task_positions_upsert_requires_csrf_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1855,6 +1930,75 @@ fn add_member(
     )
 
   expect.expect_status(handler(req), 200)
+}
+
+fn resource_view_fixture() -> ResourceViewFixture {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    "Bug",
+    "bug-ant",
+  )
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let card_id =
+    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+
+  let task_id =
+    create_task(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Task",
+      "",
+      3,
+      type_id,
+    )
+
+  ResourceViewFixture(
+    handler: handler,
+    db: db,
+    session: admin_session,
+    csrf: admin_csrf,
+    card_id: card_id,
+    task_id: task_id,
+  )
+}
+
+fn create_logged_in_user(
+  handler: fn(wisp.Request) -> wisp.Response,
+  db: pog.Connection,
+  email: String,
+  invite_code: String,
+) -> #(String, String) {
+  create_member_user(handler, db, email, invite_code)
+
+  let login_res = login_as(handler, email, "passwordpassword")
+  #(
+    find_cookie_value(login_res.headers, "sb_session"),
+    find_cookie_value(login_res.headers, "sb_csrf"),
+  )
 }
 
 fn create_member_user(

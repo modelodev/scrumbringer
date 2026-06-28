@@ -1,5 +1,7 @@
 //// Shared inspector shell for Card Show and Task Show.
 
+import gleam/list
+
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div}
@@ -30,5 +32,29 @@ pub fn view(config: Config(msg), children: List(Element(msg))) -> Element(msg) {
         children,
       ),
     ],
+  )
+}
+
+pub fn detail(
+  config: Config(msg),
+  header_block_class: String,
+  body_class: String,
+  header: Element(msg),
+  tabs: Element(msg),
+  body: Element(msg),
+  overlays: List(Element(msg)),
+) -> Element(msg) {
+  view(
+    config,
+    list.append(
+      [
+        div([attribute.class(header_block_class <> " detail-header-block")], [
+          header,
+          tabs,
+        ]),
+        div([attribute.class(body_class)], [body]),
+      ],
+      overlays,
+    ),
   )
 }
