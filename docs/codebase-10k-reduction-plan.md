@@ -1483,7 +1483,12 @@ Estado de ejecucion:
   `pool_task_row` y `pool_task_hover`). Se sustituyen constructores completos
   por fixtures de dominio y se conservan solo task type, card color, prioridad
   o `blocked_count` cuando gobiernan iconos, orden visual o accionabilidad.
-- Delta parcial WP-12: `-3.578` lineas netas mantenidas (`-44` del primer pase
+- Trigesimocuarto pase de fixtures de dominio aplicado a vistas de jerarquia y
+  card show (`hierarchy_scopes_ht09`, `card_scoped_navigation`,
+  `card_show_headline` y `card_show_summary`). Se eliminan constructores
+  completos de card/task conservando solo jerarquia, estado, contadores y due
+  date cuando el render o la URL los observan.
+- Delta parcial WP-12: `-3.624` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1539,7 +1544,8 @@ Estado de ejecucion:
   trigesimoprimer pase de fixtures de dominio compartidas en tests de cliente,
   `-13` del trigesimosegundo pase de fixtures de dominio compartidas en tests
   de cliente, `-35` del trigesimotercer pase de fixtures de dominio
-  compartidas en tests de cliente).
+  compartidas en tests de cliente, `-46` del trigesimocuarto pase de fixtures
+  de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

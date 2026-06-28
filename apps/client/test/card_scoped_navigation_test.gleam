@@ -1,16 +1,10 @@
 import support/domain_fixtures
 
-import domain/card.{type Card, Active, Card}
+import domain/card.{type Card}
 import scrumbringer_client/features/cards/scoped_navigation
 
 fn sample_card() -> Card {
-  Card(
-    ..domain_fixtures.card(42, 6, "API Cleanup"),
-    state: Active,
-    task_count: 4,
-    closed_count: 2,
-    created_at: "2026-06-22T09:00:00Z",
-  )
+  domain_fixtures.card(42, 6, "API Cleanup")
 }
 
 pub fn plan_url_uses_card_work_scope_test() {

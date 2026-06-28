@@ -1,9 +1,9 @@
 import domain/card.{type Card, Active, Card, Closed, Draft}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/features/hierarchy/scope_view
@@ -11,46 +11,14 @@ import scrumbringer_client/i18n/locale
 
 fn base_card(id: Int, title: String, parent_id, state) -> Card {
   Card(
-    id: id,
-    project_id: 1,
+    ..domain_fixtures.card(id, 1, title),
     parent_card_id: parent_id,
-    title: title,
-    description: "",
-    color: None,
     state: state,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    has_new_notes: False,
   )
 }
 
 fn task(id: Int, title: String, type_id: Int, card_id) -> Task {
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: type_id,
-    task_type: TaskTypeInline(id: type_id, name: "Work", icon: "bolt"),
-    ongoing_by: None,
-    title: title,
-    description: Some(""),
-    priority: 3,
-    state: task_state.Available,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: card_id,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, title, type_id), card_id: card_id)
 }
 
 fn claimed_task(id: Int, title: String, type_id: Int, card_id) -> Task {
