@@ -2521,6 +2521,25 @@ Estado de ejecucion:
   - total Gleam actual: `198.522` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.492` lineas;
   - deficit restante para `-20k`: `4.508` lineas.
+- Duodecimo pase de fixtures de conflictos de tasks:
+  - migrados seis casos de `unit/http/task_conflict_handlers_test.gleam` a
+    `require_task_project`, eliminando setup local repetido de app, proyecto y
+    tipo de task;
+  - conservado el primer caso con `bootstrap` directo porque solo valida una
+    task inexistente contra `handle_claim_conflict` y no necesita proyecto;
+  - mantenidos explicitos los datos propios de cada contrato: dependencias
+    abiertas, claim previo, cierre de task, miembro alternativo y codigos HTTP;
+  - delta adicional: `-25` lineas Gleam mantenidas netas;
+  - verificacion enfocada:
+    `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 erl -noshell -pa build/dev/erlang/*/ebin -eval '...'`
+    sobre `unit@http@task_conflict_handlers_test` (`7 passed`);
+  - verificacion global pendiente: `gleam test` fallo repetidamente por
+    timeouts de PostgreSQL en modulos no modificados (`cards_http_test` y
+    `tasks_http_test`) tras haber compilado correctamente.
+- Auditoria de contabilidad tras el duodecimo pase:
+  - total Gleam actual: `198.497` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.517` lineas;
+  - deficit restante para `-20k`: `4.483` lineas.
 
 ## Orden recomendado de ejecucion
 

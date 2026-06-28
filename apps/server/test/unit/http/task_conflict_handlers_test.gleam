@@ -18,13 +18,9 @@ pub fn handle_claim_conflict_returns_not_found_test() {
 }
 
 pub fn handle_claim_conflict_returns_conflict_for_available_task_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Available")
 
@@ -34,14 +30,9 @@ pub fn handle_claim_conflict_returns_conflict_for_available_task_test() {
 }
 
 pub fn handle_claim_conflict_returns_open_dependency_message_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Blocked")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Blocked")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Blocked")
   let assert Ok(blocker_id) =
@@ -63,13 +54,9 @@ pub fn handle_claim_conflict_returns_open_dependency_message_test() {
 }
 
 pub fn handle_claim_conflict_returns_claimed_conflict_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Claimed")
 
@@ -82,13 +69,9 @@ pub fn handle_claim_conflict_returns_claimed_conflict_test() {
 }
 
 pub fn handle_claim_conflict_returns_validation_for_closed_task_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Closed")
 
@@ -103,12 +86,8 @@ pub fn handle_claim_conflict_returns_validation_for_closed_task_test() {
 }
 
 pub fn handle_version_or_claim_conflict_forbidden_when_claimed_by_other_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Claimed")
 
@@ -132,13 +111,9 @@ pub fn handle_version_or_claim_conflict_forbidden_when_claimed_by_other_test() {
 }
 
 pub fn handle_version_or_claim_conflict_returns_validation_for_available_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Available")
 
