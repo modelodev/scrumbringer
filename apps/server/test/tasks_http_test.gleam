@@ -33,25 +33,8 @@ pub fn task_types_list_sorted_by_name_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let task_type_decoder = {
-    use name <- decode.field("name", decode.string)
-    decode.success(name)
-  }
-
-  let data_decoder = {
-    use task_types <- decode.field("task_types", decode.list(task_type_decoder))
-    decode.success(task_types)
-  }
-
-  let response_decoder = {
-    use task_types <- decode.field("data", data_decoder)
-    decode.success(task_types)
-  }
-
-  let assert Ok(task_types) = decode.run(dynamic, response_decoder)
-  task_types |> expect.equal(["Alpha", "General", "Zulu"])
+  fx.require_data_string_list_field(body, "task_types", "name")
+  |> expect.equal(["Alpha", "General", "Zulu"])
 }
 
 pub fn task_types_create_requires_project_admin_and_csrf_test() {
@@ -233,8 +216,6 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let task_type_decoder = {
     use id <- decode.field("id", decode.int)
     use name <- decode.field("name", decode.string)
@@ -255,15 +236,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
     use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
     decode.success(#(status, work_state, task_type, ongoing_by))
   }
-
-  let data_decoder = {
-    use tasks <- decode.field("tasks", decode.list(task_decoder))
-    decode.success(tasks)
-  }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
+  let tasks = fx.require_data_list(body, "tasks", task_decoder)
 
   case tasks {
     [
@@ -703,23 +676,13 @@ pub fn release_all_tasks_for_member_success_test() {
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
   let list_body = simulate.read_body(list_res)
-  let assert Ok(list_dynamic) = json.parse(list_body, decode.dynamic)
   let member_decoder = {
     use user_id <- decode.field("user_id", decode.int)
     use claimed_count <- decode.field("claimed_count", decode.int)
     decode.success(#(user_id, claimed_count))
   }
-  let members_decoder = {
-    use members <- decode.field("members", decode.list(member_decoder))
-    decode.success(members)
-  }
-  let list_response_decoder = {
-    use members <- decode.field("data", members_decoder)
-    decode.success(members)
-  }
-
-  let assert Ok(members_payload) =
-    decode.run(list_dynamic, list_response_decoder)
+  let members_payload =
+    fx.require_data_list(list_body, "members", member_decoder)
   let member_claimed =
     members_payload
     |> list.filter(fn(row) { row.0 == member_id })
@@ -1498,8 +1461,6 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let task_decoder = {
     use id <- decode.field("id", decode.int)
 
@@ -1534,15 +1495,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
       first_claim_at,
     ))
   }
-
-  let data_decoder = {
-    use tasks <- decode.field("tasks", decode.list(task_decoder))
-    decode.success(tasks)
-  }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
+  let tasks = fx.require_data_list(body, "tasks", task_decoder)
 
   case tasks {
     [
@@ -1598,8 +1551,6 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
   expect.expect_status(admin_res, 200)
 
   let body = simulate.read_body(admin_res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let user_decoder: decode.Decoder(#(Int, String, Int, Int, Int, Int)) = {
     use user_id <- decode.field("user_id", decode.int)
     use email <- decode.field("email", decode.string)
@@ -1621,14 +1572,7 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
     ))
   }
 
-  let data_decoder = {
-    use users <- decode.field("users", decode.list(user_decoder))
-    decode.success(users)
-  }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(users) = decode.run(dynamic, response_decoder)
+  let users = fx.require_data_list(body, "users", user_decoder)
 
   case users {
     [#(_user_id, email, _claimed, _released, _closed, _ongoing), ..] -> {
@@ -2497,25 +2441,7 @@ fn close_task_response(
 }
 
 fn decode_task_titles(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let task_decoder = {
-    use title <- decode.field("title", decode.string)
-    decode.success(title)
-  }
-
-  let data_decoder = {
-    use tasks <- decode.field("tasks", decode.list(task_decoder))
-    decode.success(tasks)
-  }
-
-  let response_decoder = {
-    use tasks <- decode.field("data", data_decoder)
-    decode.success(tasks)
-  }
-
-  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
-  tasks
+  fx.require_data_string_list_field(body, "tasks", "title")
 }
 
 fn list_project_tasks(

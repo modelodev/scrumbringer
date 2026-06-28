@@ -1278,7 +1278,7 @@ pub fn require_data_int_list(body: String, field: String) -> List(Int) {
   values
 }
 
-fn require_data_list(
+pub fn require_data_list(
   body: String,
   collection_field: String,
   item_decoder: decode.Decoder(a),
