@@ -1,6 +1,5 @@
 //// Shared compact chip for numeric and textual UI signals.
 
-import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
@@ -37,27 +36,6 @@ pub fn text(label: String, tone_value: tone.Tone) -> SignalChip {
 /// Create a signal chip with a metric value and label.
 pub fn metric(label: String, value: String, tone_value: tone.Tone) -> SignalChip {
   SignalChip(..text(label, tone_value), value: Some(value))
-}
-
-/// Create a signal chip with an integer metric value.
-pub fn metric_int(
-  label: String,
-  value: Int,
-  tone_value: tone.Tone,
-) -> SignalChip {
-  metric(label, int.to_string(value), tone_value)
-}
-
-/// Create a metric chip only when the value is greater than zero.
-pub fn metric_if_positive(
-  label: String,
-  value: Int,
-  tone_value: tone.Tone,
-) -> Option(SignalChip) {
-  case value > 0 {
-    True -> Some(metric_int(label, value, tone_value))
-    False -> None
-  }
 }
 
 /// Override the root CSS class while preserving the semantic tone class.

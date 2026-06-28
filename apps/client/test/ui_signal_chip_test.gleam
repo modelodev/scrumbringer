@@ -1,4 +1,3 @@
-import gleam/option.{None, Some}
 import support/render_assertions
 
 import scrumbringer_client/ui/signal_chip
@@ -31,23 +30,9 @@ pub fn text_chip_renders_label_without_metric_parts_test() {
   render_assertions.not_contains(html, "signal-chip-value")
 }
 
-pub fn metric_if_positive_hides_zero_test() {
-  let assert None = signal_chip.metric_if_positive("Blocked", 0, tone.Blocked)
-
-  let assert Some(chip) =
-    signal_chip.metric_if_positive("Blocked", 2, tone.Blocked)
-
-  let html =
-    chip
-    |> signal_chip.view
-    |> render_assertions.html
-
-  render_assertions.contains(html, ">2<")
-}
-
 pub fn custom_class_preserves_view_contract_test() {
   let html =
-    signal_chip.metric_int("Blocked", 1, tone.Blocked)
+    signal_chip.metric("Blocked", "1", tone.Blocked)
     |> signal_chip.with_class("custom-health-chip")
     |> signal_chip.with_parts("custom-health-value", "custom-health-label")
     |> signal_chip.with_testid("custom-health-chip")

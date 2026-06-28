@@ -1345,6 +1345,13 @@ Estado de ejecucion:
     ausencia de label textual visible;
   - delta adicional WP-10: `-55` lineas mantenidas y dos constructores
     publicos menos.
+- Micro-pase adicional de API preventiva en `signal_chip`:
+  - retirados `signal_chip.metric_int` y `signal_chip.metric_if_positive`,
+    helpers publicos sin consumidores de producto;
+  - el test de clase/partes personalizadas usa ahora `signal_chip.metric`, que
+    es la entrada real consumida por `work_surface`;
+  - delta adicional WP-10: `-37` lineas mantenidas y dos funciones publicas
+    menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1385,10 +1392,11 @@ Estado de ejecucion:
     `1821 passed` tras retirar API preventiva de headers/chips UI;
     `1821 passed` tras retirar API textual preventiva de `action_menu`;
     `1821 passed` tras encapsular `toast`;
-    `1820 passed` tras retirar la variante textual de `task_metric_chip`);
+    `1820 passed` tras retirar la variante textual de `task_metric_chip`;
+    `1819 passed` tras retirar helpers preventivos de `signal_chip`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.074` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.111` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
