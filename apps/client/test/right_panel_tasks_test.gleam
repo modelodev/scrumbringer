@@ -5,20 +5,12 @@ import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import domain/user.{User}
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
 
 fn base_config(
   my_tasks: List(Task),
@@ -92,12 +84,12 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  assert_contains(html, "active-task-card card-border-blue")
-  assert_contains(html, "task-type-icon")
-  assert_contains(html, "task-timer")
-  assert_contains(html, "title=\"Fix login\"")
-  assert_contains(html, "Close task")
-  assert_not_contains(html, "aria-label=\"Complete\"")
+  render_assertions.contains(html, "active-task-card card-border-blue")
+  render_assertions.contains(html, "task-type-icon")
+  render_assertions.contains(html, "task-timer")
+  render_assertions.contains(html, "title=\"Fix login\"")
+  render_assertions.contains(html, "Close task")
+  render_assertions.not_contains(html, "aria-label=\"Complete\"")
 }
 
 pub fn right_panel_my_task_renders_border_and_actions_test() {
@@ -113,14 +105,14 @@ pub fn right_panel_my_task_renders_border_and_actions_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  assert_contains(html, "task-item card-border-blue")
-  assert_contains(html, "task-card-identity-swatch")
-  assert_contains(html, "my-task-start-btn")
-  assert_contains(html, "my-task-release-btn")
-  assert_contains(html, "task-type-icon")
-  assert_contains(html, "type=\"button\"")
-  assert_contains(html, "aria-label=\"Open task: Fix login\"")
-  assert_contains(html, "title=\"Fix login\"")
+  render_assertions.contains(html, "task-item card-border-blue")
+  render_assertions.contains(html, "task-card-identity-swatch")
+  render_assertions.contains(html, "my-task-start-btn")
+  render_assertions.contains(html, "my-task-release-btn")
+  render_assertions.contains(html, "task-type-icon")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.contains(html, "aria-label=\"Open task: Fix login\"")
+  render_assertions.contains(html, "title=\"Fix login\"")
 }
 
 pub fn right_panel_my_cards_renders_border_and_progress_test() {
@@ -138,11 +130,11 @@ pub fn right_panel_my_cards_renders_border_and_progress_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  assert_contains(html, "my-card-item card-border-blue")
-  assert_contains(html, "1 of 3 tasks closed")
-  assert_contains(html, "type=\"button\"")
-  assert_contains(html, "aria-label=\"Context: Sprint\"")
-  assert_contains(html, "title=\"Sprint\"")
+  render_assertions.contains(html, "my-card-item card-border-blue")
+  render_assertions.contains(html, "1 of 3 tasks closed")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.contains(html, "aria-label=\"Context: Sprint\"")
+  render_assertions.contains(html, "title=\"Sprint\"")
 }
 
 pub fn right_panel_preferences_popup_is_accessible_dialog_test() {
@@ -154,15 +146,18 @@ pub fn right_panel_preferences_popup_is_accessible_dialog_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"preferences-popup-title\"")
-  assert_contains(html, "id=\"preferences-popup-title\"")
-  assert_contains(html, "aria-label=\"Close\"")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-icon")
-  assert_contains(html, "Theme")
-  assert_contains(html, "Language")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"preferences-popup-title\"",
+  )
+  render_assertions.contains(html, "id=\"preferences-popup-title\"")
+  render_assertions.contains(html, "aria-label=\"Close\"")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.contains(html, "Theme")
+  render_assertions.contains(html, "Language")
 }
 
 pub fn right_panel_profile_actions_have_labels_and_expanded_state_test() {
@@ -184,19 +179,19 @@ pub fn right_panel_profile_actions_have_labels_and_expanded_state_test() {
     |> right_panel.view
     |> element.to_document_string
 
-  assert_contains(html, "aria-live=\"polite\"")
-  assert_contains(
+  render_assertions.contains(html, "aria-live=\"polite\"")
+  render_assertions.contains(
     html,
     "title=\"very.long.user.email.address@example-enterprise.test\"",
   )
-  assert_contains(html, "aria-label=\"Preferences\"")
-  assert_contains(html, "aria-haspopup=\"dialog\"")
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "aria-label=\"Logout\"")
-  assert_contains(html, "data-testid=\"preferences-btn\"")
-  assert_contains(html, "data-testid=\"logout-btn\"")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-icon")
-  assert_not_contains(html, "class=\"btn-icon-only\"")
-  assert_not_contains(html, "class=\"btn-icon-only btn-logout\"")
+  render_assertions.contains(html, "aria-label=\"Preferences\"")
+  render_assertions.contains(html, "aria-haspopup=\"dialog\"")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "aria-label=\"Logout\"")
+  render_assertions.contains(html, "data-testid=\"preferences-btn\"")
+  render_assertions.contains(html, "data-testid=\"logout-btn\"")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.not_contains(html, "class=\"btn-icon-only\"")
+  render_assertions.not_contains(html, "class=\"btn-icon-only btn-logout\"")
 }

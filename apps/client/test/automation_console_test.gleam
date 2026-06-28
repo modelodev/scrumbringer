@@ -1,20 +1,12 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/attribute
 import lustre/element
 import lustre/element/html.{button, div, text}
+import support/render_assertions
 
 import scrumbringer_client/automation_deep_link
 import scrumbringer_client/features/automations/console as automations_console
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn render(mode: automations_console.Mode) -> String {
   render_with_locale(mode, locale.En)
@@ -45,52 +37,55 @@ fn render_with_locale(
 pub fn automations_console_uses_work_surface_contract_test() {
   let html = render(automations_console.Engines)
 
-  assert_contains(html, "data-testid=\"automations-surface\"")
-  assert_contains(html, "work-surface automations-console")
-  assert_contains(html, "data-testid=\"automations-surface-header\"")
-  assert_contains(html, "Automations")
-  assert_contains(
+  render_assertions.contains(html, "data-testid=\"automations-surface\"")
+  render_assertions.contains(html, "work-surface automations-console")
+  render_assertions.contains(html, "data-testid=\"automations-surface-header\"")
+  render_assertions.contains(html, "Automations")
+  render_assertions.contains(
     html,
     "Create work automatically in the Pool without assigning it to anyone.",
   )
-  assert_contains(html, "active engines")
-  assert_contains(html, "rules")
-  assert_contains(html, "templates")
-  assert_contains(html, "created tasks")
-  assert_contains(html, ">2<")
-  assert_contains(html, ">4<")
-  assert_contains(html, ">3<")
-  assert_contains(html, ">12<")
-  assert_contains(html, "data-testid=\"automation-create-engine\"")
-  assert_contains(html, "Create engine")
-  assert_contains(html, "engines body")
+  render_assertions.contains(html, "active engines")
+  render_assertions.contains(html, "rules")
+  render_assertions.contains(html, "templates")
+  render_assertions.contains(html, "created tasks")
+  render_assertions.contains(html, ">2<")
+  render_assertions.contains(html, ">4<")
+  render_assertions.contains(html, ">3<")
+  render_assertions.contains(html, ">12<")
+  render_assertions.contains(html, "data-testid=\"automation-create-engine\"")
+  render_assertions.contains(html, "Create engine")
+  render_assertions.contains(html, "engines body")
 }
 
 pub fn automations_console_renders_internal_modes_as_tabs_test() {
   let html = render(automations_console.Executions)
 
-  assert_contains(html, "role=\"tablist\"")
-  assert_contains(html, "data-testid=\"automations-mode-engines\"")
-  assert_contains(html, "data-testid=\"automations-mode-templates\"")
-  assert_contains(html, "data-testid=\"automations-mode-executions\"")
-  assert_contains(html, "href=\"/config/workflows?project=7\"")
-  assert_contains(
+  render_assertions.contains(html, "role=\"tablist\"")
+  render_assertions.contains(html, "data-testid=\"automations-mode-engines\"")
+  render_assertions.contains(html, "data-testid=\"automations-mode-templates\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automations-mode-executions\"",
+  )
+  render_assertions.contains(html, "href=\"/config/workflows?project=7\"")
+  render_assertions.contains(
     html,
     "href=\"/config/workflows?project=7&amp;mode=templates\"",
   )
-  assert_contains(
+  render_assertions.contains(
     html,
     "href=\"/config/workflows?project=7&amp;mode=executions\"",
   )
-  assert_contains(html, ">Engines<")
-  assert_contains(html, ">Templates<")
-  assert_contains(html, ">Executions<")
-  assert_contains(html, "aria-selected=\"true\"")
-  assert_contains(html, "executions body")
-  assert_not_contains(html, "engines body")
-  assert_not_contains(html, "templates body")
-  assert_not_contains(html, "href=\"/config/templates")
-  assert_not_contains(html, "href=\"/config/rule-metrics")
+  render_assertions.contains(html, ">Engines<")
+  render_assertions.contains(html, ">Templates<")
+  render_assertions.contains(html, ">Executions<")
+  render_assertions.contains(html, "aria-selected=\"true\"")
+  render_assertions.contains(html, "executions body")
+  render_assertions.not_contains(html, "engines body")
+  render_assertions.not_contains(html, "templates body")
+  render_assertions.not_contains(html, "href=\"/config/templates")
+  render_assertions.not_contains(html, "href=\"/config/rule-metrics")
 }
 
 pub fn automations_console_renders_selected_entity_context_test() {
@@ -112,9 +107,9 @@ pub fn automations_console_renders_selected_entity_context_test() {
     |> automations_console.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-selected-entity\"")
-  assert_contains(html, "Template #12 selected")
-  assert_not_contains(html, "Plantilla #12 seleccionada")
+  render_assertions.contains(html, "data-testid=\"automation-selected-entity\"")
+  render_assertions.contains(html, "Template #12 selected")
+  render_assertions.not_contains(html, "Plantilla #12 seleccionada")
 }
 
 pub fn automations_console_localizes_selected_entity_context_to_spanish_test() {
@@ -136,13 +131,13 @@ pub fn automations_console_localizes_selected_entity_context_to_spanish_test() {
     |> automations_console.view
     |> element.to_document_string
 
-  assert_contains(html, "Automatizaciones")
-  assert_contains(html, "Crea trabajo automático en el Pool")
-  assert_contains(html, "Regla #8 seleccionada en motor #3")
-  assert_contains(html, ">Motores<")
-  assert_contains(html, ">Plantillas<")
-  assert_contains(html, ">Ejecuciones<")
-  assert_not_contains(html, "Rule #8 selected")
+  render_assertions.contains(html, "Automatizaciones")
+  render_assertions.contains(html, "Crea trabajo automático en el Pool")
+  render_assertions.contains(html, "Regla #8 seleccionada en motor #3")
+  render_assertions.contains(html, ">Motores<")
+  render_assertions.contains(html, ">Plantillas<")
+  render_assertions.contains(html, ">Ejecuciones<")
+  render_assertions.not_contains(html, "Rule #8 selected")
 }
 
 fn primary_action() -> element.Element(msg) {

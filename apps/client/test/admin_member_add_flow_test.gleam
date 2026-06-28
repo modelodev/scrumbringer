@@ -9,6 +9,7 @@ import gleam/option as opt
 import gleam/string
 import lustre/effect
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -20,14 +21,6 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/search
 import scrumbringer_client/features/admin/views/members
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn sample_user(id: Int, email: String) -> OrgUser {
   OrgUser(
@@ -258,12 +251,12 @@ pub fn members_dialog_shows_selected_user_feedback_test() {
     members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "member-add-selected-user")
-  assert_contains(html, "qa@example.com")
-  assert_contains(html, "Add member")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_not_contains(html, "class=\"btn-primary\"")
+  render_assertions.contains(html, "member-add-selected-user")
+  render_assertions.contains(html, "qa@example.com")
+  render_assertions.contains(html, "Add member")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.not_contains(html, "class=\"btn-primary\"")
 }
 
 pub fn members_dialog_search_result_uses_semantic_select_button_test() {
@@ -285,12 +278,12 @@ pub fn members_dialog_search_result_uses_semantic_select_button_test() {
     members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "qa@example.com")
-  assert_contains(html, "Select")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-xs")
-  assert_not_contains(html, "class=\"btn btn-secondary btn-xs\"")
+  render_assertions.contains(html, "qa@example.com")
+  render_assertions.contains(html, "Select")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-xs")
+  render_assertions.not_contains(html, "class=\"btn btn-secondary btn-xs\"")
 }
 
 pub fn members_dialog_add_submit_uses_semantic_loading_button_test() {
@@ -309,11 +302,11 @@ pub fn members_dialog_add_submit_uses_semantic_loading_button_test() {
     members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "Working")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-loading")
-  assert_not_contains(html, "class=\"btn-loading\"")
+  render_assertions.contains(html, "Working")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.not_contains(html, "class=\"btn-loading\"")
 }
 
 pub fn members_remove_dialog_uses_typed_danger_confirm_button_test() {
@@ -331,11 +324,11 @@ pub fn members_remove_dialog_uses_typed_danger_confirm_button_test() {
     members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "Remove")
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-loading")
-  assert_not_contains(html, "class=\"btn-danger btn-loading\"")
+  render_assertions.contains(html, "Remove")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.not_contains(html, "class=\"btn-danger btn-loading\"")
 }
 
 pub fn members_release_all_dialog_uses_typed_primary_confirm_button_test() {
@@ -356,11 +349,11 @@ pub fn members_release_all_dialog_uses_typed_primary_confirm_button_test() {
     members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "Release")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-loading")
-  assert_not_contains(html, "class=\"btn-primary btn-loading\"")
+  render_assertions.contains(html, "Release")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.not_contains(html, "class=\"btn-primary btn-loading\"")
 }
 
 pub fn members_capabilities_save_uses_semantic_loading_button_test() {
@@ -385,11 +378,11 @@ pub fn members_capabilities_save_uses_semantic_loading_button_test() {
     members.view_members(members_config(model, opt.Some(sample_project())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "Saving")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-loading")
-  assert_not_contains(html, "class=\"btn-primary btn-loading\"")
+  render_assertions.contains(html, "Saving")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.not_contains(html, "class=\"btn-primary btn-loading\"")
 }
 
 pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
@@ -445,5 +438,5 @@ pub fn members_dialog_filters_out_existing_project_members_from_search_results_t
     || string.contains(html, "No results")
 
   let assert True = has_no_results
-  assert_not_contains(html, "Seleccionar")
+  render_assertions.not_contains(html, "Seleccionar")
 }

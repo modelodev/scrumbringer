@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/org.{OrgUser}
 import domain/org_role
@@ -9,10 +9,6 @@ import domain/remote.{Loaded}
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/features/admin/org_settings_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 fn user(id: Int, email: String, role: org_role.OrgRole) {
   OrgUser(
@@ -50,16 +46,19 @@ pub fn org_settings_view_renders_table_from_config_without_root_model_test() {
     org_settings_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "Users")
-  assert_contains(html, "Manage org roles")
-  assert_contains(html, "admin@example.com")
-  assert_contains(html, "member@example.com")
-  assert_contains(html, "data-testid=\"org-user-delete-btn\"")
-  assert_contains(html, "btn-danger-icon")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-delete-blocked")
-  assert_contains(html, "data-tooltip=\"Cannot delete your own user\"")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "Users")
+  render_assertions.contains(html, "Manage org roles")
+  render_assertions.contains(html, "admin@example.com")
+  render_assertions.contains(html, "member@example.com")
+  render_assertions.contains(html, "data-testid=\"org-user-delete-btn\"")
+  render_assertions.contains(html, "btn-danger-icon")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-delete-blocked")
+  render_assertions.contains(
+    html,
+    "data-tooltip=\"Cannot delete your own user\"",
+  )
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn org_settings_view_renders_delete_dialog_from_config_without_root_model_test() {
@@ -81,9 +80,9 @@ pub fn org_settings_view_renders_delete_dialog_from_config_without_root_model_te
     org_settings_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "Delete user")
-  assert_contains(html, "member@example.com")
-  assert_contains(html, "Deleting")
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "btn-entity-action")
+  render_assertions.contains(html, "Delete user")
+  render_assertions.contains(html, "member@example.com")
+  render_assertions.contains(html, "Deleting")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-entity-action")
 }

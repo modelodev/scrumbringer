@@ -1,6 +1,6 @@
 import gleam/option.{None}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/capability.{Capability}
 import domain/task_type.{TaskType}
@@ -10,21 +10,17 @@ import scrumbringer_client/features/pool/visibility.{AllOpen}
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/pool_prefs
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
 pub fn pool_control_bar_renders_visibility_selector_test() {
   let html =
     control_bar.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"pool-control-bar\"")
-  assert_contains(html, "data-testid=\"work-filter-visibility\"")
-  assert_contains(html, ">Ver<")
-  assert_contains(html, ">Abiertas<")
-  assert_contains(html, ">Reclamables<")
-  assert_contains(html, ">Bloqueadas<")
+  render_assertions.contains(html, "data-testid=\"pool-control-bar\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-visibility\"")
+  render_assertions.contains(html, ">Ver<")
+  render_assertions.contains(html, ">Abiertas<")
+  render_assertions.contains(html, ">Reclamables<")
+  render_assertions.contains(html, ">Bloqueadas<")
 }
 
 pub fn pool_control_bar_renders_canvas_list_toggle_test() {
@@ -32,11 +28,11 @@ pub fn pool_control_bar_renders_canvas_list_toggle_test() {
     control_bar.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"pool-view-mode-toggle\"")
-  assert_contains(html, "data-testid=\"pool-view-mode-canvas\"")
-  assert_contains(html, "data-testid=\"pool-view-mode-list\"")
-  assert_contains(html, ">Lienzo<")
-  assert_contains(html, ">Lista<")
+  render_assertions.contains(html, "data-testid=\"pool-view-mode-toggle\"")
+  render_assertions.contains(html, "data-testid=\"pool-view-mode-canvas\"")
+  render_assertions.contains(html, "data-testid=\"pool-view-mode-list\"")
+  render_assertions.contains(html, ">Lienzo<")
+  render_assertions.contains(html, ">Lista<")
 }
 
 pub fn pool_control_bar_renders_pool_owned_work_filters_test() {
@@ -44,11 +40,14 @@ pub fn pool_control_bar_renders_pool_owned_work_filters_test() {
     control_bar.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"work-filter-search\"")
-  assert_contains(html, "data-testid=\"work-filter-type\"")
-  assert_contains(html, "data-testid=\"work-filter-capability\"")
-  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
-  assert_contains(html, "id=\"pool-work-filter-q\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-search\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-type\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-capability\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"work-filter-capability-scope\"",
+  )
+  render_assertions.contains(html, "id=\"pool-work-filter-q\"")
 }
 
 fn config() -> control_bar.Config(String) {

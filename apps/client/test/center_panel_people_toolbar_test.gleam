@@ -1,19 +1,11 @@
-import gleam/string
 import lustre/element
 import lustre/element/html
+import support/render_assertions
 
 import scrumbringer_client/features/layout/center_panel
 import scrumbringer_client/i18n/locale
 
 import domain/view_mode
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
 
 fn base_config(
   mode: view_mode.ViewMode,
@@ -35,11 +27,11 @@ pub fn people_toolbar_is_owned_by_people_view_test() {
     center_panel.view(base_config(view_mode.People))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"people-view\"")
-  assert_not_contains(html, "data-testid=\"people-toolbar\"")
-  assert_not_contains(html, "data-testid=\"filter-search-people\"")
-  assert_not_contains(html, "data-testid=\"filter-type\"")
-  assert_not_contains(html, "data-testid=\"filter-capability\"")
+  render_assertions.contains(html, "data-testid=\"people-view\"")
+  render_assertions.not_contains(html, "data-testid=\"people-toolbar\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-search-people\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-type\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-capability\"")
 }
 
 pub fn pool_toolbar_is_owned_by_pool_view_test() {
@@ -47,10 +39,13 @@ pub fn pool_toolbar_is_owned_by_pool_view_test() {
     center_panel.view(base_config(view_mode.Pool))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"pool-canvas\"")
-  assert_not_contains(html, "data-testid=\"filter-type\"")
-  assert_not_contains(html, "data-testid=\"filter-capability\"")
-  assert_not_contains(html, "data-testid=\"filter-capability-scope\"")
+  render_assertions.contains(html, "data-testid=\"pool-canvas\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-type\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-capability\"")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"filter-capability-scope\"",
+  )
 }
 
 pub fn plan_toolbar_does_not_render_pool_filters_test() {
@@ -58,10 +53,13 @@ pub fn plan_toolbar_does_not_render_pool_filters_test() {
     center_panel.view(base_config(view_mode.Cards))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"plan-view\"")
-  assert_not_contains(html, "data-testid=\"filter-type\"")
-  assert_not_contains(html, "data-testid=\"filter-capability\"")
-  assert_not_contains(html, "data-testid=\"filter-capability-scope\"")
+  render_assertions.contains(html, "data-testid=\"plan-view\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-type\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-capability\"")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"filter-capability-scope\"",
+  )
 }
 
 pub fn capabilities_toolbar_does_not_render_global_pool_filters_test() {
@@ -69,10 +67,16 @@ pub fn capabilities_toolbar_does_not_render_global_pool_filters_test() {
     center_panel.view(base_config(view_mode.Capabilities))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"capabilities-view\"")
-  assert_not_contains(html, "data-testid=\"capabilities-toolbar\"")
-  assert_not_contains(html, "data-testid=\"filter-type\"")
-  assert_not_contains(html, "data-testid=\"filter-search-capabilities\"")
-  assert_not_contains(html, "data-testid=\"filter-capability-scope\"")
-  assert_not_contains(html, "data-testid=\"filter-capability\"")
+  render_assertions.contains(html, "data-testid=\"capabilities-view\"")
+  render_assertions.not_contains(html, "data-testid=\"capabilities-toolbar\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-type\"")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"filter-search-capabilities\"",
+  )
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"filter-capability-scope\"",
+  )
+  render_assertions.not_contains(html, "data-testid=\"filter-capability\"")
 }

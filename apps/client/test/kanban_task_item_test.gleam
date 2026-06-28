@@ -7,8 +7,8 @@ import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -16,14 +16,6 @@ import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
   let card =
@@ -202,10 +194,10 @@ pub fn kanban_task_item_renders_claimed_by_and_icon_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "kanban-task-item")
-  assert_contains(html, "task-claimed-by")
-  assert_contains(html, "task-type-icon")
-  assert_contains(html, "admin")
+  render_assertions.contains(html, "kanban-task-item")
+  render_assertions.contains(html, "task-claimed-by")
+  render_assertions.contains(html, "task-type-icon")
+  render_assertions.contains(html, "admin")
 }
 
 pub fn kanban_task_item_renders_claim_button_for_available_test() {
@@ -214,7 +206,7 @@ pub fn kanban_task_item_renders_claim_button_for_available_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "btn-claim-mini")
+  render_assertions.contains(html, "btn-claim-mini")
 }
 
 pub fn kanban_card_shows_notes_indicator_test() {
@@ -229,7 +221,7 @@ pub fn kanban_card_shows_notes_indicator_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "card-notes-indicator")
+  render_assertions.contains(html, "card-notes-indicator")
 }
 
 pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
@@ -244,11 +236,11 @@ pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"kanban-card-delete-action\"")
-  assert_contains(html, "btn-delete-blocked")
-  assert_contains(html, "title=\"Cannot delete: has tasks\"")
-  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "data-testid=\"kanban-card-delete-action\"")
+  render_assertions.contains(html, "btn-delete-blocked")
+  render_assertions.contains(html, "title=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
@@ -261,10 +253,16 @@ pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_not_contains(html, "Review copy")
-  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
-  assert_contains(html, "data-testid=\"work-filter-capability-scope-mine\"")
-  assert_contains(html, "aria-pressed=\"true\"")
+  render_assertions.not_contains(html, "Review copy")
+  render_assertions.contains(
+    html,
+    "data-testid=\"work-filter-capability-scope\"",
+  )
+  render_assertions.contains(
+    html,
+    "data-testid=\"work-filter-capability-scope-mine\"",
+  )
+  render_assertions.contains(html, "aria-pressed=\"true\"")
 }
 
 pub fn kanban_surface_header_summarizes_operational_health_test() {
@@ -278,20 +276,23 @@ pub fn kanban_surface_header_summarizes_operational_health_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "kanban-surface-header")
-  assert_contains(html, "Card flow by state")
-  assert_contains(html, "data-testid=\"plan-scope-bar\"")
-  assert_contains(html, "data-testid=\"plan-scope-kind\"")
-  assert_contains(html, "data-testid=\"plan-scope-depth\"")
-  assert_contains(html, "data-testid=\"plan-closed-toggle\"")
-  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
-  assert_not_contains(html, ">Lens<")
-  assert_contains(html, "work-surface-chip")
-  assert_contains(html, "Cards")
-  assert_contains(html, "Available")
-  assert_contains(html, "Claimed")
-  assert_contains(html, "Ongoing")
-  assert_contains(html, "Blocked")
+  render_assertions.contains(html, "kanban-surface-header")
+  render_assertions.contains(html, "Card flow by state")
+  render_assertions.contains(html, "data-testid=\"plan-scope-bar\"")
+  render_assertions.contains(html, "data-testid=\"plan-scope-kind\"")
+  render_assertions.contains(html, "data-testid=\"plan-scope-depth\"")
+  render_assertions.contains(html, "data-testid=\"plan-closed-toggle\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"work-filter-capability-scope\"",
+  )
+  render_assertions.not_contains(html, ">Lens<")
+  render_assertions.contains(html, "work-surface-chip")
+  render_assertions.contains(html, "Cards")
+  render_assertions.contains(html, "Available")
+  render_assertions.contains(html, "Claimed")
+  render_assertions.contains(html, "Ongoing")
+  render_assertions.contains(html, "Blocked")
 }
 
 pub fn kanban_columns_are_inferred_from_descendant_task_state_test() {
@@ -321,9 +322,9 @@ pub fn kanban_columns_are_inferred_from_descendant_task_state_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "en-curso")
-  assert_contains(html, "Sprint")
-  assert_contains(html, "Child")
+  render_assertions.contains(html, "en-curso")
+  render_assertions.contains(html, "Sprint")
+  render_assertions.contains(html, "Child")
 }
 
 pub fn kanban_level_scope_hides_closed_cards_by_default_test() {
@@ -337,8 +338,8 @@ pub fn kanban_level_scope_hides_closed_cards_by_default_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_not_contains(html, "Closed card")
-  assert_not_contains(html, "cerrada")
+  render_assertions.not_contains(html, "Closed card")
+  render_assertions.not_contains(html, "cerrada")
 }
 
 pub fn kanban_card_scope_with_direct_tasks_shows_closed_by_default_test() {
@@ -357,10 +358,10 @@ pub fn kanban_card_scope_with_direct_tasks_shows_closed_by_default_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Closed")
-  assert_contains(html, "Sprint")
-  assert_contains(html, "data-testid=\"plan-scope-card-search\"")
-  assert_not_contains(html, "data-testid=\"plan-scope-card\"")
+  render_assertions.contains(html, "Closed")
+  render_assertions.contains(html, "Sprint")
+  render_assertions.contains(html, "data-testid=\"plan-scope-card-search\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-scope-card\"")
 }
 
 pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
@@ -375,13 +376,13 @@ pub fn kanban_card_health_and_preview_prioritize_active_work_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "kanban-card-task-metric-chip")
-  assert_contains(html, "title=\"Available: 2\"")
-  assert_contains(html, "title=\"Claimed: 1\"")
-  assert_contains(html, "title=\"Ongoing: 1\"")
-  assert_contains(html, "title=\"Blocked: 1\"")
-  assert_contains(html, "Blocked dependency")
-  assert_not_contains(html, "Closed task")
+  render_assertions.contains(html, "kanban-card-task-metric-chip")
+  render_assertions.contains(html, "title=\"Available: 2\"")
+  render_assertions.contains(html, "title=\"Claimed: 1\"")
+  render_assertions.contains(html, "title=\"Ongoing: 1\"")
+  render_assertions.contains(html, "title=\"Blocked: 1\"")
+  render_assertions.contains(html, "Blocked dependency")
+  render_assertions.not_contains(html, "Closed task")
 }
 
 pub fn kanban_closed_only_card_still_shows_task_context_test() {
@@ -390,8 +391,8 @@ pub fn kanban_closed_only_card_still_shows_task_context_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Closed task")
-  assert_not_contains(html, "No tasks yet")
+  render_assertions.contains(html, "Closed task")
+  render_assertions.not_contains(html, "No tasks yet")
 }
 
 pub fn kanban_shows_empty_draft_cards_for_decomposition_test() {
@@ -400,6 +401,6 @@ pub fn kanban_shows_empty_draft_cards_for_decomposition_test() {
     |> kanban_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Sprint")
-  assert_contains(html, "No tasks yet")
+  render_assertions.contains(html, "Sprint")
+  render_assertions.contains(html, "No tasks yet")
 }

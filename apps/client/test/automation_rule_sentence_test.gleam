@@ -1,15 +1,11 @@
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/automation
 import domain/workflow.{type Rule, type RuleTemplate, Rule, RuleTemplate}
 import scrumbringer_client/features/automations/rule_sentence
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 fn template(name: String, id: Int) -> RuleTemplate {
   RuleTemplate(
@@ -78,8 +74,8 @@ pub fn rule_sentence_renders_task_closed_cause_and_effect_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When a Bug task is closed")
-  assert_contains(html, "-&gt; Create Bug triage in the Pool")
+  render_assertions.contains(html, "When a Bug task is closed")
+  render_assertions.contains(html, "-&gt; Create Bug triage in the Pool")
 }
 
 pub fn rule_sentence_renders_spanish_task_closed_cause_test() {
@@ -93,8 +89,8 @@ pub fn rule_sentence_renders_spanish_task_closed_cause_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Cuando una tarea Bug sea cerrada")
-  assert_contains(html, "-&gt; Crear Seguimiento en el Pool")
+  render_assertions.contains(html, "Cuando una tarea Bug sea cerrada")
+  render_assertions.contains(html, "-&gt; Crear Seguimiento en el Pool")
 }
 
 pub fn rule_sentence_renders_task_created_without_available_ambiguity_test() {
@@ -108,7 +104,7 @@ pub fn rule_sentence_renders_task_created_without_available_ambiguity_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When any task is created")
+  render_assertions.contains(html, "When any task is created")
 }
 
 pub fn rule_sentence_renders_task_claimed_cause_test() {
@@ -122,8 +118,8 @@ pub fn rule_sentence_renders_task_claimed_cause_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When a Bug task is claimed")
-  assert_contains(html, "-&gt; Create Follow-up in the Pool")
+  render_assertions.contains(html, "When a Bug task is claimed")
+  render_assertions.contains(html, "-&gt; Create Follow-up in the Pool")
 }
 
 pub fn rule_sentence_renders_task_released_cause_test() {
@@ -137,8 +133,8 @@ pub fn rule_sentence_renders_task_released_cause_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When any task is released")
-  assert_contains(html, "-&gt; Create Pool review in the Pool")
+  render_assertions.contains(html, "When any task is released")
+  render_assertions.contains(html, "-&gt; Create Pool review in the Pool")
 }
 
 pub fn rule_sentence_marks_missing_template_for_review_test() {
@@ -162,8 +158,8 @@ pub fn rule_sentence_renders_card_activation_scope_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When any card is activated")
-  assert_contains(html, "-&gt; Create Activation review in the Pool")
+  render_assertions.contains(html, "When any card is activated")
+  render_assertions.contains(html, "-&gt; Create Activation review in the Pool")
 }
 
 pub fn rule_sentence_renders_card_depth_scope_test() {
@@ -179,8 +175,8 @@ pub fn rule_sentence_renders_card_depth_scope_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "When a card at level 2 is closed")
-  assert_contains(html, "-&gt; Create Delivery review in the Pool")
+  render_assertions.contains(html, "When a card at level 2 is closed")
+  render_assertions.contains(html, "-&gt; Create Delivery review in the Pool")
 }
 
 pub fn rule_sentence_renders_spanish_card_closed_scope_test() {
@@ -196,6 +192,6 @@ pub fn rule_sentence_renders_spanish_card_closed_scope_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Cuando una tarjeta de nivel 2 se cierre")
-  assert_contains(html, "-&gt; Crear Revisión de entrega en el Pool")
+  render_assertions.contains(html, "Cuando una tarjeta de nivel 2 se cierre")
+  render_assertions.contains(html, "-&gt; Crear Revisión de entrega en el Pool")
 }

@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/note/entity.{type Note, Note}
 import domain/note/id as note_id
@@ -14,14 +14,6 @@ import domain/user/id as user_id
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_notes
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn task_notes_renders_loaded_notes_test() {
   let html =
@@ -37,13 +29,13 @@ pub fn task_notes_renders_loaded_notes_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "task-notes-section")
-  assert_contains(html, "Notes")
-  assert_contains(html, "You")
-  assert_contains(html, "Current user note")
-  assert_contains(html, "User #9")
-  assert_contains(html, "Other user note")
-  assert_not_contains(html, "note-dialog-overlay")
+  render_assertions.contains(html, "task-notes-section")
+  render_assertions.contains(html, "Notes")
+  render_assertions.contains(html, "You")
+  render_assertions.contains(html, "Current user note")
+  render_assertions.contains(html, "User #9")
+  render_assertions.contains(html, "Other user note")
+  render_assertions.not_contains(html, "note-dialog-overlay")
 }
 
 pub fn task_notes_renders_empty_state_test() {
@@ -57,9 +49,9 @@ pub fn task_notes_renders_empty_state_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "No notes yet")
-  assert_contains(html, "Add note")
-  assert_contains(html, "task-empty-state")
+  render_assertions.contains(html, "No notes yet")
+  render_assertions.contains(html, "Add note")
+  render_assertions.contains(html, "task-empty-state")
 }
 
 pub fn task_notes_renders_create_dialog_test() {
@@ -73,10 +65,10 @@ pub fn task_notes_renders_create_dialog_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "note-dialog-overlay")
-  assert_contains(html, "Draft note")
-  assert_contains(html, "Write a note")
-  assert_contains(html, "Cancel")
+  render_assertions.contains(html, "note-dialog-overlay")
+  render_assertions.contains(html, "Draft note")
+  render_assertions.contains(html, "Write a note")
+  render_assertions.contains(html, "Cancel")
 }
 
 fn config(

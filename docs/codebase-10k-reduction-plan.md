@@ -437,14 +437,18 @@ Criterios de aceptacion:
 
 Estado de ejecucion:
 
-- Parcialmente ejecutado en rama `refactor-cleanup`.
+- Completado para la consolidacion de asserts de render en rama
+  `refactor-cleanup`.
 - Creado `apps/client/test/support/render_assertions.gleam` con `contains`,
   `not_contains` y `html`.
 - Migrados `plan_kanban_view_test.gleam`, `pool_task_card_test.gleam`,
-  `styles_btn_loading_test.gleam` y `people_view_test.gleam`.
-- Delta parcial WP-02: `-17` lineas netas mantenidas; estos paquetes crean el
-  soporte compartido y eliminan helpers locales duplicados, pero la reduccion
-  fuerte queda en la consolidacion posterior de builders/fixtures de vista.
+  `styles_btn_loading_test.gleam`, `people_view_test.gleam` y el resto de tests
+  de vista/render que repetian helpers locales `assert_contains` o
+  `assert_not_contains`.
+- Delta WP-02 hasta este punto: `-329` lineas netas mantenidas (`-17` del pase
+  inicial y `-312` del pase amplio de asserts). La reduccion queda por debajo
+  de la estimacion porque esta iteracion no introdujo builders de dominio
+  agresivos: se priorizo retirar duplicacion exacta sin esconder expectativas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam test` (`1912 passed`).

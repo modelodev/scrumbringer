@@ -1,6 +1,6 @@
 import gleam/int
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/project.{type Project, Project, ProjectDepthName}
 import domain/project_role
@@ -10,14 +10,6 @@ import scrumbringer_client/client_state/admin/projects as projects_state
 import scrumbringer_client/client_state/types.{DialogOpen, InFlight}
 import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn project() -> Project {
   Project(
@@ -84,11 +76,11 @@ pub fn projects_view_loaded_projects_uses_config_data_test() {
     projects_view.view_projects(config(remote.Loaded([project()])))
     |> element.to_document_string
 
-  assert_contains(html, "Projects")
-  assert_contains(html, "Project Alpha")
-  assert_contains(html, "Members")
-  assert_contains(html, "3")
-  assert_contains(html, "manager")
+  render_assertions.contains(html, "Projects")
+  render_assertions.contains(html, "Project Alpha")
+  render_assertions.contains(html, "Members")
+  render_assertions.contains(html, "3")
+  render_assertions.contains(html, "manager")
 }
 
 pub fn projects_view_delete_dialog_uses_shared_danger_button_test() {
@@ -107,11 +99,11 @@ pub fn projects_view_delete_dialog_uses_shared_danger_button_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Delete project")
-  assert_contains(html, "Deleting")
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "btn-entity-action")
-  assert_not_contains(html, "class=\"btn-danger\"")
+  render_assertions.contains(html, "Delete project")
+  render_assertions.contains(html, "Deleting")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.not_contains(html, "class=\"btn-danger\"")
 }
 
 pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
@@ -141,12 +133,12 @@ pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"project-structure-settings\"")
-  assert_contains(html, "Elige cuánta profundidad")
-  assert_contains(html, "Ejemplos: Tarjeta -&gt; Tarea")
-  assert_contains(html, "Este límite nunca bloquea")
-  assert_contains(html, "aria-label=\"Profundidad maxima\"")
-  assert_contains(html, "aria-label=\"Limite blando del Pool\"")
+  render_assertions.contains(html, "data-testid=\"project-structure-settings\"")
+  render_assertions.contains(html, "Elige cuánta profundidad")
+  render_assertions.contains(html, "Ejemplos: Tarjeta -&gt; Tarea")
+  render_assertions.contains(html, "Este límite nunca bloquea")
+  render_assertions.contains(html, "aria-label=\"Profundidad maxima\"")
+  render_assertions.contains(html, "aria-label=\"Limite blando del Pool\"")
 }
 
 pub fn projects_create_dialog_general_step_hides_structure_test() {
@@ -175,11 +167,14 @@ pub fn projects_create_dialog_general_step_hides_structure_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Step 1 of 5")
-  assert_contains(html, "General")
-  assert_contains(html, "Continue")
-  assert_contains(html, "aria-label=\"Name\"")
-  assert_not_contains(html, "data-testid=\"project-structure-settings\"")
+  render_assertions.contains(html, "Step 1 of 5")
+  render_assertions.contains(html, "General")
+  render_assertions.contains(html, "Continue")
+  render_assertions.contains(html, "aria-label=\"Name\"")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"project-structure-settings\"",
+  )
 }
 
 pub fn projects_create_dialog_review_step_summarizes_configuration_test() {
@@ -208,13 +203,13 @@ pub fn projects_create_dialog_review_step_summarizes_configuration_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Step 5 of 5")
-  assert_contains(html, "Review")
-  assert_contains(html, "Project Alpha")
-  assert_contains(html, "Hito / Hitos")
-  assert_contains(html, "Configured after creation")
-  assert_contains(html, "Creating")
-  assert_contains(html, "Back")
+  render_assertions.contains(html, "Step 5 of 5")
+  render_assertions.contains(html, "Review")
+  render_assertions.contains(html, "Project Alpha")
+  render_assertions.contains(html, "Hito / Hitos")
+  render_assertions.contains(html, "Configured after creation")
+  render_assertions.contains(html, "Creating")
+  render_assertions.contains(html, "Back")
 }
 
 pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() {
@@ -243,14 +238,17 @@ pub fn projects_edit_dialog_renders_editable_structure_and_pool_settings_test() 
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"project-structure-settings\"")
-  assert_contains(html, "Pool soft limit")
-  assert_contains(html, "value=\"12\"")
-  assert_contains(html, "value=\"Hito\"")
-  assert_contains(html, "value=\"Entregas\"")
-  assert_contains(html, "aria-label=\"Maximum depth\"")
-  assert_contains(html, "aria-label=\"Pool soft limit\"")
-  assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
+  render_assertions.contains(html, "data-testid=\"project-structure-settings\"")
+  render_assertions.contains(html, "Pool soft limit")
+  render_assertions.contains(html, "value=\"12\"")
+  render_assertions.contains(html, "value=\"Hito\"")
+  render_assertions.contains(html, "value=\"Entregas\"")
+  render_assertions.contains(html, "aria-label=\"Maximum depth\"")
+  render_assertions.contains(html, "aria-label=\"Pool soft limit\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"project-depth-reduction-confirmation\"",
+  )
 }
 
 pub fn projects_edit_dialog_localizes_structure_settings_to_spanish_test() {
@@ -280,14 +278,14 @@ pub fn projects_edit_dialog_localizes_structure_settings_to_spanish_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Estructura y Pool")
-  assert_contains(html, "Profundidad maxima")
-  assert_contains(html, "Limite blando del Pool")
-  assert_contains(html, "Este límite nunca bloquea")
-  assert_contains(html, "Nivel 1")
-  assert_contains(html, "aria-label=\"Nombre singular del nivel 1\"")
-  assert_not_contains(html, "Structure and Pool")
-  assert_not_contains(html, "Pool soft limit")
+  render_assertions.contains(html, "Estructura y Pool")
+  render_assertions.contains(html, "Profundidad maxima")
+  render_assertions.contains(html, "Limite blando del Pool")
+  render_assertions.contains(html, "Este límite nunca bloquea")
+  render_assertions.contains(html, "Nivel 1")
+  render_assertions.contains(html, "aria-label=\"Nombre singular del nivel 1\"")
+  render_assertions.not_contains(html, "Structure and Pool")
+  render_assertions.not_contains(html, "Pool soft limit")
 }
 
 pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
@@ -332,12 +330,15 @@ pub fn projects_depth_reduction_ready_uses_reviewed_confirmation_copy_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"project-depth-reduction-confirmation\"")
-  assert_contains(html, "4 tarjetas y 3 tareas disponibles")
-  assert_contains(html, "Tarjetas afectadas")
-  assert_contains(html, "Historia profunda")
-  assert_contains(html, "Nivel 3")
-  assert_contains(html, "Confirmar reducción de profundidad")
-  assert_contains(html, "btn-danger")
-  assert_not_contains(html, "Confirm depth reduction")
+  render_assertions.contains(
+    html,
+    "data-testid=\"project-depth-reduction-confirmation\"",
+  )
+  render_assertions.contains(html, "4 tarjetas y 3 tareas disponibles")
+  render_assertions.contains(html, "Tarjetas afectadas")
+  render_assertions.contains(html, "Historia profunda")
+  render_assertions.contains(html, "Nivel 3")
+  render_assertions.contains(html, "Confirmar reducción de profundidad")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.not_contains(html, "Confirm depth reduction")
 }

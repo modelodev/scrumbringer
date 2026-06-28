@@ -1,20 +1,12 @@
 import domain/card.{type Card, Active, Card}
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn card(id: Int, title: String) -> Card {
   Card(
@@ -58,15 +50,15 @@ pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {
     |> scope_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"plan-scope-bar\"")
-  assert_contains(html, "data-testid=\"plan-scope-card-search\"")
-  assert_contains(html, "aria-expanded=\"false\"")
-  assert_contains(html, "Checkout")
-  assert_contains(html, "Epic #2")
-  assert_not_contains(html, "Checkout - Checkout")
-  assert_not_contains(html, "data-testid=\"plan-scope-card-option\"")
-  assert_not_contains(html, "data-testid=\"plan-scope-card\"")
-  assert_not_contains(html, "Lens")
+  render_assertions.contains(html, "data-testid=\"plan-scope-bar\"")
+  render_assertions.contains(html, "data-testid=\"plan-scope-card-search\"")
+  render_assertions.contains(html, "aria-expanded=\"false\"")
+  render_assertions.contains(html, "Checkout")
+  render_assertions.contains(html, "Epic #2")
+  render_assertions.not_contains(html, "Checkout - Checkout")
+  render_assertions.not_contains(html, "data-testid=\"plan-scope-card-option\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-scope-card\"")
+  render_assertions.not_contains(html, "Lens")
 }
 
 pub fn scope_bar_can_render_optional_mode_controls_test() {
@@ -101,9 +93,9 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
     |> scope_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"capability-mode-list\"")
-  assert_contains(html, "aria-pressed=\"true\"")
-  assert_contains(html, "data-testid=\"plan-scope-depth\"")
+  render_assertions.contains(html, "data-testid=\"capability-mode-list\"")
+  render_assertions.contains(html, "aria-pressed=\"true\"")
+  render_assertions.contains(html, "data-testid=\"plan-scope-depth\"")
 }
 
 pub fn scope_bar_marks_refinement_controls_as_work_filter_bar_test() {
@@ -130,8 +122,11 @@ pub fn scope_bar_marks_refinement_controls_as_work_filter_bar_test() {
     |> scope_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "class=\"plan-refinement-controls work-filter-bar\"")
-  assert_contains(html, "data-testid=\"work-filter-bar\"")
+  render_assertions.contains(
+    html,
+    "class=\"plan-refinement-controls work-filter-bar\"",
+  )
+  render_assertions.contains(html, "data-testid=\"work-filter-bar\"")
 }
 
 pub fn scope_bar_filters_card_options_by_query_test() {
@@ -158,9 +153,9 @@ pub fn scope_bar_filters_card_options_by_query_test() {
     |> scope_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "value=\"sprint\"")
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "data-testid=\"plan-scope-card-option\"")
-  assert_contains(html, "Sprint")
-  assert_not_contains(html, "Checkout")
+  render_assertions.contains(html, "value=\"sprint\"")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "data-testid=\"plan-scope-card-option\"")
+  render_assertions.contains(html, "Sprint")
+  render_assertions.not_contains(html, "Checkout")
 }

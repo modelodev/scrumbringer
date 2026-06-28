@@ -1,20 +1,12 @@
-import gleam/string
 import lustre/element
 import lustre/element/html
+import support/render_assertions
 
 import domain/remote
 import scrumbringer_client/features/layout/member_mobile_shell
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn now_working_config() -> now_working_mobile.Config(String) {
   now_working_mobile.Config(
@@ -56,15 +48,15 @@ pub fn topbar_drawer_buttons_use_semantic_icon_buttons_test() {
     |> member_mobile_shell.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"mobile-menu-btn\"")
-  assert_contains(html, "data-testid=\"mobile-user-btn\"")
-  assert_contains(html, "aria-label=\"Open navigation menu\"")
-  assert_contains(html, "aria-label=\"Open activity panel\"")
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "aria-expanded=\"false\"")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-icon")
-  assert_not_contains(html, "class=\"mobile-menu-btn\"")
-  assert_not_contains(html, "class=\"mobile-user-btn\"")
-  assert_not_contains(html, "heroicon-inline")
+  render_assertions.contains(html, "data-testid=\"mobile-menu-btn\"")
+  render_assertions.contains(html, "data-testid=\"mobile-user-btn\"")
+  render_assertions.contains(html, "aria-label=\"Open navigation menu\"")
+  render_assertions.contains(html, "aria-label=\"Open activity panel\"")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "aria-expanded=\"false\"")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.not_contains(html, "class=\"mobile-menu-btn\"")
+  render_assertions.not_contains(html, "class=\"mobile-user-btn\"")
+  render_assertions.not_contains(html, "heroicon-inline")
 }

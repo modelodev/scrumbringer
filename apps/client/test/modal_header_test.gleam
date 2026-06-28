@@ -4,6 +4,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
 import lustre/element/html.{span, text}
+import support/render_assertions
 
 import scrumbringer_client/ui/modal_header.{
   type Config, type ExtendedConfig, Config, ExtendedConfig,
@@ -15,14 +16,6 @@ import scrumbringer_client/ui/modal_header.{
 
 fn render_to_string(config: Config(Nil)) -> String {
   modal_header.view(config) |> element.to_string()
-}
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
 }
 
 fn default_config() -> Config(Nil) {
@@ -48,7 +41,7 @@ pub fn renders_title_test() {
   let html = render_to_string(config)
 
   // Then: Title is present
-  assert_contains(html, "My Modal Title")
+  render_assertions.contains(html, "My Modal Title")
 }
 
 pub fn has_modal_header_class_test() {
@@ -59,7 +52,7 @@ pub fn has_modal_header_class_test() {
   let html = render_to_string(config)
 
   // Then: Has modal-header class
-  assert_contains(html, "modal-header")
+  render_assertions.contains(html, "modal-header")
 }
 
 pub fn includes_close_button_test() {
@@ -70,8 +63,8 @@ pub fn includes_close_button_test() {
   let html = render_to_string(config)
 
   // Then: Has close button with ARIA label
-  assert_contains(html, "aria-label=\"Close\"")
-  assert_contains(html, "modal-close")
+  render_assertions.contains(html, "aria-label=\"Close\"")
+  render_assertions.contains(html, "modal-close")
 }
 
 pub fn renders_icon_when_provided_test() {
@@ -83,7 +76,7 @@ pub fn renders_icon_when_provided_test() {
   let html = render_to_string(config)
 
   // Then: Icon is rendered
-  assert_contains(html, "modal-header-icon")
+  render_assertions.contains(html, "modal-header-icon")
 }
 
 pub fn renders_badges_when_provided_test() {
@@ -95,8 +88,8 @@ pub fn renders_badges_when_provided_test() {
   let html = render_to_string(config)
 
   // Then: Badges container is present
-  assert_contains(html, "modal-header-badges")
-  assert_contains(html, "Review")
+  render_assertions.contains(html, "modal-header-badges")
+  render_assertions.contains(html, "Review")
 }
 
 pub fn hides_badges_when_empty_test() {
@@ -107,7 +100,7 @@ pub fn hides_badges_when_empty_test() {
   let html = render_to_string(config)
 
   // Then: No badges container
-  assert_not_contains(html, "modal-header-badges")
+  render_assertions.not_contains(html, "modal-header-badges")
 }
 
 pub fn renders_meta_when_provided_test() {
@@ -119,8 +112,8 @@ pub fn renders_meta_when_provided_test() {
   let html = render_to_string(config)
 
   // Then: Meta is rendered
-  assert_contains(html, "modal-header-meta")
-  assert_contains(html, "2 of 10 items")
+  render_assertions.contains(html, "modal-header-meta")
+  render_assertions.contains(html, "2 of 10 items")
 }
 
 pub fn renders_progress_when_provided_test() {
@@ -132,8 +125,8 @@ pub fn renders_progress_when_provided_test() {
   let html = render_to_string(config)
 
   // Then: Progress is rendered
-  assert_contains(html, "modal-header-progress")
-  assert_contains(html, "50%")
+  render_assertions.contains(html, "modal-header-progress")
+  render_assertions.contains(html, "50%")
 }
 
 pub fn hides_meta_row_when_both_empty_test() {
@@ -144,7 +137,7 @@ pub fn hides_meta_row_when_both_empty_test() {
   let html = render_to_string(config)
 
   // Then: No meta row
-  assert_not_contains(html, "modal-header-meta")
+  render_assertions.not_contains(html, "modal-header-meta")
 }
 
 pub fn view_simple_renders_minimal_header_test() {
@@ -154,10 +147,10 @@ pub fn view_simple_renders_minimal_header_test() {
     |> element.to_string()
 
   // Then: Has title and close button, no extras
-  assert_contains(html, "Simple Title")
-  assert_contains(html, "modal-close")
-  assert_not_contains(html, "modal-header-badges")
-  assert_not_contains(html, "modal-header-meta")
+  render_assertions.contains(html, "Simple Title")
+  render_assertions.contains(html, "modal-close")
+  render_assertions.not_contains(html, "modal-header-badges")
+  render_assertions.not_contains(html, "modal-header-meta")
 }
 
 pub fn has_accessibility_attributes_test() {
@@ -168,8 +161,8 @@ pub fn has_accessibility_attributes_test() {
   let html = render_to_string(config)
 
   // Then: Has ARIA attributes
-  assert_contains(html, "role=\"banner\"")
-  assert_contains(html, "id=\"modal-title\"")
+  render_assertions.contains(html, "role=\"banner\"")
+  render_assertions.contains(html, "id=\"modal-title\"")
 }
 
 // =============================================================================
@@ -204,7 +197,7 @@ pub fn view_extended_can_render_stable_close_target_test() {
 
   let html = modal_header.view_extended(config) |> element.to_string()
 
-  assert_contains(html, "data-testid=\"entity-show-close\"")
+  render_assertions.contains(html, "data-testid=\"entity-show-close\"")
 }
 
 pub fn view_extended_uses_custom_header_class_test() {
@@ -215,7 +208,7 @@ pub fn view_extended_uses_custom_header_class_test() {
   let html = modal_header.view_extended(config) |> element.to_string()
 
   // Then: Uses custom header class
-  assert_contains(html, "custom-header")
+  render_assertions.contains(html, "custom-header")
 }
 
 pub fn view_extended_uses_custom_title_id_test() {
@@ -226,7 +219,7 @@ pub fn view_extended_uses_custom_title_id_test() {
   let html = modal_header.view_extended(config) |> element.to_string()
 
   // Then: Uses custom title ID for aria-labelledby
-  assert_contains(html, "id=\"custom-modal-title\"")
+  render_assertions.contains(html, "id=\"custom-modal-title\"")
 }
 
 pub fn view_extended_uses_custom_close_button_class_test() {
@@ -237,7 +230,7 @@ pub fn view_extended_uses_custom_close_button_class_test() {
   let html = modal_header.view_extended(config) |> element.to_string()
 
   // Then: Close button uses custom class
-  assert_contains(html, "custom-close-btn")
+  render_assertions.contains(html, "custom-close-btn")
 }
 
 pub fn extend_preserves_title_test() {
@@ -277,8 +270,8 @@ pub fn view_dialog_renders_h3_title_test() {
     |> element.to_string()
 
   // Then: Uses h3 instead of h2
-  assert_contains(html, "<h3")
-  assert_contains(html, "Create Task")
+  render_assertions.contains(html, "<h3")
+  render_assertions.contains(html, "Create Task")
 }
 
 pub fn view_dialog_uses_dialog_classes_test() {
@@ -288,8 +281,8 @@ pub fn view_dialog_uses_dialog_classes_test() {
     |> element.to_string()
 
   // Then: Uses dialog- prefixed classes
-  assert_contains(html, "dialog-header")
-  assert_contains(html, "dialog-close")
+  render_assertions.contains(html, "dialog-header")
+  render_assertions.contains(html, "dialog-close")
 }
 
 pub fn view_dialog_close_button_after_title_test() {
@@ -299,8 +292,8 @@ pub fn view_dialog_close_button_after_title_test() {
     |> element.to_string()
 
   // Then: Both elements exist and h3 comes before close button
-  assert_contains(html, "<h3")
-  assert_contains(html, "dialog-close")
+  render_assertions.contains(html, "<h3")
+  render_assertions.contains(html, "dialog-close")
 
   // Verify order: find position of h3 and close button
   let assert Ok(#(before_h3, _)) = string.split_once(html, "<h3")
@@ -320,8 +313,8 @@ pub fn view_dialog_with_icon_test() {
     |> element.to_string()
 
   // Then: Icon is rendered
-  assert_contains(html, "📝")
-  assert_contains(html, "modal-header-icon")
+  render_assertions.contains(html, "📝")
+  render_assertions.contains(html, "modal-header-icon")
 }
 
 pub fn view_dialog_with_icon_accepts_close_label_test() {
@@ -335,7 +328,7 @@ pub fn view_dialog_with_icon_accepts_close_label_test() {
     )
     |> element.to_string()
 
-  assert_contains(html, "aria-label=\"Cerrar\"")
+  render_assertions.contains(html, "aria-label=\"Cerrar\"")
 }
 
 // =============================================================================
@@ -358,8 +351,8 @@ pub fn view_detail_renders_span_title_test() {
   let html = modal_header.view_detail(config) |> element.to_string()
 
   // Then: Uses span for title
-  assert_contains(html, "<span")
-  assert_contains(html, "Task Title")
+  render_assertions.contains(html, "<span")
+  render_assertions.contains(html, "Task Title")
 }
 
 pub fn view_detail_uses_class_prefix_test() {
@@ -378,8 +371,8 @@ pub fn view_detail_uses_class_prefix_test() {
   let html = modal_header.view_detail(config) |> element.to_string()
 
   // Then: Uses prefix for all classes
-  assert_contains(html, "card-show-header")
-  assert_contains(html, "card-show-title")
+  render_assertions.contains(html, "card-show-header")
+  render_assertions.contains(html, "card-show-title")
 }
 
 pub fn view_detail_with_meta_and_progress_test() {
@@ -398,9 +391,9 @@ pub fn view_detail_with_meta_and_progress_test() {
   let html = modal_header.view_detail(config) |> element.to_string()
 
   // Then: Meta and progress are rendered
-  assert_contains(html, "2 of 5 items")
-  assert_contains(html, "40%")
-  assert_contains(html, "modal-header-meta")
+  render_assertions.contains(html, "2 of 5 items")
+  render_assertions.contains(html, "40%")
+  render_assertions.contains(html, "modal-header-meta")
 }
 
 // =============================================================================
@@ -419,7 +412,7 @@ pub fn title_h3_renders_h3_tag_test() {
   let html = modal_header.view_extended(config) |> element.to_string()
 
   // Then: Uses h3 tag
-  assert_contains(html, "<h3")
+  render_assertions.contains(html, "<h3")
 }
 
 pub fn title_span_renders_span_tag_test() {
@@ -434,7 +427,7 @@ pub fn title_span_renders_span_tag_test() {
   let html = modal_header.view_extended(config) |> element.to_string()
 
   // Then: Uses span tag (not h2 or h3)
-  assert_contains(html, "<span")
+  render_assertions.contains(html, "<span")
 }
 
 // =============================================================================
@@ -453,8 +446,8 @@ pub fn close_before_title_order_test() {
   let html = modal_header.view_extended(config) |> element.to_string()
 
   // Then: Both close button and title class exist
-  assert_contains(html, "custom-close-btn")
-  assert_contains(html, "custom-title\"")
+  render_assertions.contains(html, "custom-close-btn")
+  render_assertions.contains(html, "custom-title\"")
 }
 
 // =============================================================================
@@ -468,9 +461,9 @@ pub fn view_dialog_with_icon_renders_dialog_title_wrapper_test() {
     |> element.to_string()
 
   // Then: Has dialog-title wrapper containing icon
-  assert_contains(html, "dialog-title")
-  assert_contains(html, "dialog-icon")
-  assert_contains(html, "📝")
+  render_assertions.contains(html, "dialog-title")
+  render_assertions.contains(html, "dialog-icon")
+  render_assertions.contains(html, "📝")
 }
 
 pub fn view_dialog_with_icon_uses_h3_test() {
@@ -480,8 +473,8 @@ pub fn view_dialog_with_icon_uses_h3_test() {
     |> element.to_string()
 
   // Then: Uses h3 for title
-  assert_contains(html, "<h3")
-  assert_contains(html, "Task Title")
+  render_assertions.contains(html, "<h3")
+  render_assertions.contains(html, "Task Title")
 }
 
 pub fn view_dialog_with_icon_has_close_button_test() {
@@ -491,8 +484,8 @@ pub fn view_dialog_with_icon_has_close_button_test() {
     |> element.to_string()
 
   // Then: Has close button with correct class
-  assert_contains(html, "btn-icon dialog-close")
-  assert_contains(html, "aria-label=\"Close\"")
+  render_assertions.contains(html, "btn-icon dialog-close")
+  render_assertions.contains(html, "aria-label=\"Close\"")
 }
 
 pub fn view_dialog_with_icon_has_aria_role_test() {
@@ -502,5 +495,5 @@ pub fn view_dialog_with_icon_has_aria_role_test() {
     |> element.to_string()
 
   // Then: Has role="banner" for accessibility
-  assert_contains(html, "role=\"banner\"")
+  render_assertions.contains(html, "role=\"banner\"")
 }

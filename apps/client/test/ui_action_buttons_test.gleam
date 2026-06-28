@@ -1,13 +1,9 @@
 import gleam/option
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/icons
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 pub fn task_icon_button_preserves_tooltip_and_testid_test() {
   let html =
@@ -23,12 +19,12 @@ pub fn task_icon_button_preserves_tooltip_and_testid_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "btn-icon")
-  assert_contains(html, "btn-xs")
-  assert_contains(html, "claim-action")
-  assert_contains(html, "data-tooltip=\"Claim\"")
-  assert_contains(html, "data-testid=\"claim-testid\"")
-  assert_contains(html, "aria-label=\"Claim task\"")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.contains(html, "btn-xs")
+  render_assertions.contains(html, "claim-action")
+  render_assertions.contains(html, "data-tooltip=\"Claim\"")
+  render_assertions.contains(html, "data-testid=\"claim-testid\"")
+  render_assertions.contains(html, "aria-label=\"Claim task\"")
 }
 
 pub fn delete_button_uses_danger_icon_contract_test() {
@@ -36,10 +32,10 @@ pub fn delete_button_uses_danger_icon_contract_test() {
     action_buttons.delete_button_with_testid("Delete", "msg", "delete-testid")
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger-icon")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "data-testid=\"delete-testid\"")
-  assert_contains(html, "aria-label=\"Delete\"")
+  render_assertions.contains(html, "btn-danger-icon")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "data-testid=\"delete-testid\"")
+  render_assertions.contains(html, "aria-label=\"Delete\"")
 }
 
 pub fn delete_button_with_disabled_and_testid_preserves_contract_test() {
@@ -52,11 +48,11 @@ pub fn delete_button_with_disabled_and_testid_preserves_contract_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger-icon")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "disabled")
-  assert_contains(html, "data-testid=\"delete-user-testid\"")
-  assert_contains(html, "aria-label=\"Delete user\"")
+  render_assertions.contains(html, "btn-danger-icon")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "disabled")
+  render_assertions.contains(html, "data-testid=\"delete-user-testid\"")
+  render_assertions.contains(html, "aria-label=\"Delete user\"")
 }
 
 pub fn delete_button_blocked_with_testid_explains_blocked_action_test() {
@@ -68,12 +64,12 @@ pub fn delete_button_blocked_with_testid_explains_blocked_action_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger-icon")
-  assert_contains(html, "btn-delete-blocked")
-  assert_contains(html, "aria-disabled=\"true\"")
-  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
-  assert_contains(html, "data-testid=\"delete-blocked-testid\"")
-  assert_contains(html, "aria-label=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "btn-danger-icon")
+  render_assertions.contains(html, "btn-delete-blocked")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "data-testid=\"delete-blocked-testid\"")
+  render_assertions.contains(html, "aria-label=\"Cannot delete: has tasks\"")
 }
 
 pub fn delete_button_availability_distinguishes_busy_and_blocked_test() {
@@ -86,8 +82,8 @@ pub fn delete_button_availability_distinguishes_busy_and_blocked_test() {
     )
     |> element.to_document_string
 
-  assert_contains(busy_html, "disabled")
-  assert_contains(busy_html, "aria-label=\"Delete\"")
+  render_assertions.contains(busy_html, "disabled")
+  render_assertions.contains(busy_html, "aria-label=\"Delete\"")
 
   let blocked_html =
     action_buttons.delete_button_with_availability_and_testid(
@@ -98,7 +94,13 @@ pub fn delete_button_availability_distinguishes_busy_and_blocked_test() {
     )
     |> element.to_document_string
 
-  assert_contains(blocked_html, "aria-disabled=\"true\"")
-  assert_contains(blocked_html, "data-tooltip=\"Cannot delete: has tasks\"")
-  assert_contains(blocked_html, "aria-label=\"Cannot delete: has tasks\"")
+  render_assertions.contains(blocked_html, "aria-disabled=\"true\"")
+  render_assertions.contains(
+    blocked_html,
+    "data-tooltip=\"Cannot delete: has tasks\"",
+  )
+  render_assertions.contains(
+    blocked_html,
+    "aria-label=\"Cannot delete: has tasks\"",
+  )
 }

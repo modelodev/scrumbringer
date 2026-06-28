@@ -1,8 +1,8 @@
 import gleam/dict
 import gleam/option as opt
-import gleam/string
 import lustre/effect
 import lustre/element
+import support/render_assertions
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/id as activity_id
@@ -26,10 +26,6 @@ import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/features/tasks/show/config as task_show_config
 import scrumbringer_client/features/tasks/show/model as task_show_model
 import scrumbringer_client/ui/show_tabs
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
 
 fn test_context() -> pool_update.Context {
   pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
@@ -315,10 +311,10 @@ pub fn task_show_surface_renders_edit_controls_for_owner_test() {
     |> task_show_view(42)
     |> element.to_document_string
 
-  assert_contains(html, "task-show-edit-toggle")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "Edit task")
+  render_assertions.contains(html, "task-show-edit-toggle")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "Edit task")
 }
 
 pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
@@ -343,8 +339,8 @@ pub fn task_activity_tab_renders_load_more_when_more_events_exist_test() {
     |> task_show_view(42)
     |> element.to_document_string
 
-  assert_contains(html, "activity-feed-more")
-  assert_contains(html, "Load more (1)")
+  render_assertions.contains(html, "activity-feed-more")
+  render_assertions.contains(html, "Load more (1)")
 }
 
 pub fn task_show_surface_renders_edit_controls_for_unclaimed_task_test() {
@@ -364,8 +360,8 @@ pub fn task_show_surface_renders_edit_controls_for_unclaimed_task_test() {
     |> task_show_view(42)
     |> element.to_document_string
 
-  assert_contains(html, "task-show-edit-toggle")
-  assert_contains(html, "Edit task")
+  render_assertions.contains(html, "task-show-edit-toggle")
+  render_assertions.contains(html, "Edit task")
 }
 
 pub fn task_show_edit_started_allows_unclaimed_task_test() {

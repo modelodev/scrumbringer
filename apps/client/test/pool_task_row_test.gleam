@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card
 import domain/task.{AutomationOrigin, Task}
@@ -9,14 +9,6 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_row
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 pub fn task_row_renders_claimable_list_item_without_root_model_test() {
   let html =
@@ -32,10 +24,13 @@ pub fn task_row_renders_claimable_list_item_without_root_model_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "task-row card-border-blue")
-  assert_contains(html, "is-highlight-source highlight-info")
-  assert_contains(html, "Prepare release")
-  assert_contains(html, "title=\"Claim this task and move it to My Tasks\"")
+  render_assertions.contains(html, "task-row card-border-blue")
+  render_assertions.contains(html, "is-highlight-source highlight-info")
+  render_assertions.contains(html, "Prepare release")
+  render_assertions.contains(
+    html,
+    "title=\"Claim this task and move it to My Tasks\"",
+  )
 }
 
 pub fn task_row_hides_claim_action_when_blocked_test() {
@@ -52,9 +47,12 @@ pub fn task_row_hides_claim_action_when_blocked_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "task-blocked")
-  assert_contains(html, "task-blocked-count")
-  assert_not_contains(html, "title=\"Claim this task and move it to My Tasks\"")
+  render_assertions.contains(html, "task-blocked")
+  render_assertions.contains(html, "task-blocked-count")
+  render_assertions.not_contains(
+    html,
+    "title=\"Claim this task and move it to My Tasks\"",
+  )
 }
 
 pub fn task_row_localizes_automation_origin_chip_test() {
@@ -83,10 +81,16 @@ pub fn task_row_localizes_automation_origin_chip_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-created-task-origin\"")
-  assert_contains(html, "Automatización #8")
-  assert_contains(html, "title=\"Creada por regla de automatización #8\"")
-  assert_not_contains(html, "Created by automation")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-created-task-origin\"",
+  )
+  render_assertions.contains(html, "Automatización #8")
+  render_assertions.contains(
+    html,
+    "title=\"Creada por regla de automatización #8\"",
+  )
+  render_assertions.not_contains(html, "Created by automation")
 }
 
 fn sample_task() {

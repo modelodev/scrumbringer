@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/capability.{Capability}
 import domain/remote.{Loaded}
@@ -10,10 +10,6 @@ import scrumbringer_client/client_state/admin/task_types as admin_task_types
 import scrumbringer_client/features/admin/task_types_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 fn task_type(id: Int, name: String, capability_id: opt.Option(Int)) -> TaskType {
   TaskType(
@@ -57,17 +53,20 @@ pub fn task_types_view_renders_list_from_config_without_root_model_test() {
     task_types_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "Task Types - Roadmap")
-  assert_contains(html, "Create type")
-  assert_contains(html, "Bug")
-  assert_contains(html, "Spike")
-  assert_contains(html, "Backend")
-  assert_contains(html, ">None<")
-  assert_contains(html, "task-type-edit-btn")
-  assert_contains(html, "task-type-delete-btn")
-  assert_contains(html, "btn-delete-blocked")
-  assert_contains(html, "data-tooltip=\"Cannot delete: has 3 tasks\"")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "Task Types - Roadmap")
+  render_assertions.contains(html, "Create type")
+  render_assertions.contains(html, "Bug")
+  render_assertions.contains(html, "Spike")
+  render_assertions.contains(html, "Backend")
+  render_assertions.contains(html, ">None<")
+  render_assertions.contains(html, "task-type-edit-btn")
+  render_assertions.contains(html, "task-type-delete-btn")
+  render_assertions.contains(html, "btn-delete-blocked")
+  render_assertions.contains(
+    html,
+    "data-tooltip=\"Cannot delete: has 3 tasks\"",
+  )
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn task_types_view_keeps_delete_available_when_type_has_no_tasks_test() {
@@ -83,8 +82,8 @@ pub fn task_types_view_keeps_delete_available_when_type_has_no_tasks_test() {
     task_types_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "task-type-delete-btn")
-  assert_contains(html, "aria-label=\"Delete Task Type\"")
+  render_assertions.contains(html, "task-type-delete-btn")
+  render_assertions.contains(html, "aria-label=\"Delete Task Type\"")
 }
 
 pub fn task_types_view_renders_crud_dialog_from_config_without_root_model_test() {
@@ -98,8 +97,8 @@ pub fn task_types_view_renders_crud_dialog_from_config_without_root_model_test()
     task_types_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "task-type-crud-dialog")
-  assert_contains(html, "locale=\"en\"")
-  assert_contains(html, "project-id=\"7\"")
-  assert_contains(html, "mode=\"create\"")
+  render_assertions.contains(html, "task-type-crud-dialog")
+  render_assertions.contains(html, "locale=\"en\"")
+  render_assertions.contains(html, "project-id=\"7\"")
+  render_assertions.contains(html, "mode=\"create\"")
 }

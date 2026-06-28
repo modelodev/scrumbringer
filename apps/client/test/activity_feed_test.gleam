@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/id as activity_id
@@ -12,14 +13,6 @@ import domain/remote.{Loaded}
 import domain/task/id as task_id
 import domain/user/id as user_id
 import scrumbringer_client/ui/activity_feed
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn count_occurrences(haystack: String, needle: String) -> Int {
   case needle == "" {
@@ -39,8 +32,8 @@ pub fn activity_feed_renders_empty_state_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "No activity yet.")
-  assert_not_contains(html, "activity-feed-item")
+  render_assertions.contains(html, "No activity yet.")
+  render_assertions.not_contains(html, "activity-feed-item")
 }
 
 pub fn activity_feed_renders_event_actor_summary_and_time_test() {
@@ -54,13 +47,13 @@ pub fn activity_feed_renders_event_actor_summary_and_time_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "activity-feed-item")
-  assert_contains(html, "admin@example.com")
-  assert_contains(html, "Task claimed")
-  assert_contains(html, "2026-06-22T10:30:00Z")
-  assert_contains(html, "activity-feed-copy")
-  assert_contains(html, "activity-feed-main")
-  assert_contains(html, "activity-feed-time")
+  render_assertions.contains(html, "activity-feed-item")
+  render_assertions.contains(html, "admin@example.com")
+  render_assertions.contains(html, "Task claimed")
+  render_assertions.contains(html, "2026-06-22T10:30:00Z")
+  render_assertions.contains(html, "activity-feed-copy")
+  render_assertions.contains(html, "activity-feed-main")
+  render_assertions.contains(html, "activity-feed-time")
 }
 
 pub fn activity_feed_groups_loaded_events_by_date_test() {
@@ -78,13 +71,13 @@ pub fn activity_feed_groups_loaded_events_by_date_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "activity-feed-group")
-  assert_contains(html, "activity-feed-date")
-  assert_contains(html, "2026-06-22")
-  assert_contains(html, "2026-06-21")
-  assert_contains(html, "Task claimed")
-  assert_contains(html, "Task started")
-  assert_contains(html, "Task released")
+  render_assertions.contains(html, "activity-feed-group")
+  render_assertions.contains(html, "activity-feed-date")
+  render_assertions.contains(html, "2026-06-22")
+  render_assertions.contains(html, "2026-06-21")
+  render_assertions.contains(html, "Task claimed")
+  render_assertions.contains(html, "Task started")
+  render_assertions.contains(html, "Task released")
   let assert 2 = count_occurrences(html, "activity-feed-date")
 }
 
@@ -103,9 +96,9 @@ pub fn activity_feed_renders_load_more_control_when_available_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "activity-feed-more")
-  assert_contains(html, "Ver mas")
-  assert_not_contains(html, "disabled")
+  render_assertions.contains(html, "activity-feed-more")
+  render_assertions.contains(html, "Ver mas")
+  render_assertions.not_contains(html, "disabled")
 }
 
 fn sample_event() -> ActivityEvent {

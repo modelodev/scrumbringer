@@ -1,18 +1,10 @@
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card.{Card, Draft}
 import scrumbringer_client/features/cards/list_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn sample_card() {
   Card(
@@ -46,11 +38,11 @@ pub fn cards_list_view_renders_cards_without_root_model_test() {
     list_view.view(config([sample_card()], 0))
     |> element.to_document_string
 
-  assert_contains(html, "fichas-list")
-  assert_contains(html, "Customer Portal")
-  assert_contains(html, "Visible to members")
-  assert_contains(html, "role=\"button\"")
-  assert_contains(html, "1 of 4 tasks closed")
+  render_assertions.contains(html, "fichas-list")
+  render_assertions.contains(html, "Customer Portal")
+  render_assertions.contains(html, "Visible to members")
+  render_assertions.contains(html, "role=\"button\"")
+  render_assertions.contains(html, "1 of 4 tasks closed")
 }
 
 pub fn cards_list_view_renders_empty_state_without_root_model_test() {
@@ -58,8 +50,8 @@ pub fn cards_list_view_renders_empty_state_without_root_model_test() {
     list_view.view(config([], 0))
     |> element.to_document_string
 
-  assert_contains(html, "No cards")
-  assert_contains(html, "Cards group related tasks")
+  render_assertions.contains(html, "No cards")
+  render_assertions.contains(html, "Cards group related tasks")
 }
 
 pub fn cards_list_view_renders_loading_when_pending_without_root_model_test() {
@@ -67,6 +59,6 @@ pub fn cards_list_view_renders_loading_when_pending_without_root_model_test() {
     list_view.view(config([], 2))
     |> element.to_document_string
 
-  assert_contains(html, "Loading")
-  assert_not_contains(html, "No cards")
+  render_assertions.contains(html, "Loading")
+  render_assertions.not_contains(html, "No cards")
 }

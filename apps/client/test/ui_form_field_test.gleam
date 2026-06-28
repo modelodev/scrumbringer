@@ -3,37 +3,30 @@ import gleam/string
 import lustre/attribute
 import lustre/element
 import lustre/element/html.{input}
+import support/render_assertions
 
 import scrumbringer_client/ui/form_field
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
 
 pub fn view_required_shows_asterisk_test() {
   let rendered = form_field.view_required("Email", input([]))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "required-indicator")
-  assert_contains(html, "*")
+  render_assertions.contains(html, "required-indicator")
+  render_assertions.contains(html, "*")
 }
 
 pub fn view_required_preserves_label_text_test() {
   let rendered = form_field.view_required("Password", input([]))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "Password")
+  render_assertions.contains(html, "Password")
 }
 
 pub fn view_required_asterisk_has_aria_hidden_test() {
   let rendered = form_field.view_required("Email", input([]))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "aria-hidden")
+  render_assertions.contains(html, "aria-hidden")
 }
 
 pub fn with_error_shows_error_when_some_test() {
@@ -45,8 +38,8 @@ pub fn with_error_shows_error_when_some_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "La contrasena es muy corta")
-  assert_contains(html, "field-error")
+  render_assertions.contains(html, "La contrasena es muy corta")
+  render_assertions.contains(html, "field-error")
 }
 
 pub fn with_error_has_role_alert_test() {
@@ -54,15 +47,15 @@ pub fn with_error_has_role_alert_test() {
     form_field.with_error("Email", input([]), opt.Some("Email invalido"))
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "role=\"alert\"")
+  render_assertions.contains(html, "role=\"alert\"")
 }
 
 pub fn with_error_hides_error_when_none_test() {
   let rendered = form_field.with_error("Email", input([]), opt.None)
   let html = element.to_document_string(rendered)
 
-  assert_not_contains(html, "field-error")
-  assert_not_contains(html, "role=\"alert\"")
+  render_assertions.not_contains(html, "field-error")
+  render_assertions.not_contains(html, "role=\"alert\"")
 }
 
 pub fn with_error_preserves_label_test() {
@@ -70,7 +63,7 @@ pub fn with_error_preserves_label_test() {
     form_field.with_error("Contrasena", input([]), opt.Some("Error"))
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "Contrasena")
+  render_assertions.contains(html, "Contrasena")
 }
 
 pub fn with_error_preserves_control_test() {
@@ -78,7 +71,7 @@ pub fn with_error_preserves_control_test() {
     form_field.with_error("Test", input([attribute.id("my-input")]), opt.None)
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "my-input")
+  render_assertions.contains(html, "my-input")
 }
 
 pub fn with_error_shows_warning_icon_test() {
@@ -100,6 +93,6 @@ pub fn with_error_html_in_error_is_escaped_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "&lt;script&gt;")
-  assert_not_contains(html, "<script>")
+  render_assertions.contains(html, "&lt;script&gt;")
+  render_assertions.not_contains(html, "<script>")
 }

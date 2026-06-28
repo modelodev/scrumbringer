@@ -3,19 +3,11 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn base_card(id: Int, title: String, parent_id, state) -> Card {
   Card(
@@ -101,12 +93,15 @@ pub fn depth_scope_hides_closed_cards_by_default_test() {
     scope_view.view(config(scope_view.DepthScope(2)))
     |> element.to_document_string
 
-  assert_contains(html, "Stories")
-  assert_contains(html, "Checkout Story")
-  assert_contains(html, "Review nested cards and their tasks in this scope.")
-  assert_not_contains(html, "Closed Story")
-  assert_not_contains(html, "Tracking")
-  assert_not_contains(html, "Execution")
+  render_assertions.contains(html, "Stories")
+  render_assertions.contains(html, "Checkout Story")
+  render_assertions.contains(
+    html,
+    "Review nested cards and their tasks in this scope.",
+  )
+  render_assertions.not_contains(html, "Closed Story")
+  render_assertions.not_contains(html, "Tracking")
+  render_assertions.not_contains(html, "Execution")
 }
 
 pub fn card_scope_shows_direct_subcards_or_tasks_test() {
@@ -114,10 +109,10 @@ pub fn card_scope_shows_direct_subcards_or_tasks_test() {
     scope_view.view(config(scope_view.CardScope(2)))
     |> element.to_document_string
 
-  assert_contains(html, "Nested Task Group")
-  assert_contains(html, "Direct tasks")
-  assert_contains(html, "Wire direct task")
-  assert_not_contains(html, "Platform Epic")
+  render_assertions.contains(html, "Nested Task Group")
+  render_assertions.contains(html, "Direct tasks")
+  render_assertions.contains(html, "Wire direct task")
+  render_assertions.not_contains(html, "Platform Epic")
 }
 
 pub fn include_closed_filter_reveals_closed_cards_test() {
@@ -130,8 +125,8 @@ pub fn include_closed_filter_reveals_closed_cards_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Closed Story")
-  assert_contains(html, "Incluir cerradas")
+  render_assertions.contains(html, "Closed Story")
+  render_assertions.contains(html, "Incluir cerradas")
 }
 
 pub fn depth_scope_empty_state_is_actionable_test() {
@@ -139,8 +134,8 @@ pub fn depth_scope_empty_state_is_actionable_test() {
     scope_view.view(config(scope_view.DepthScope(4)))
     |> element.to_document_string
 
-  assert_contains(html, "No cards at this level")
-  assert_contains(html, "Create a card at this level")
+  render_assertions.contains(html, "No cards at this level")
+  render_assertions.contains(html, "Create a card at this level")
 }
 
 pub fn scope_copy_uses_spanish_locale_test() {
@@ -150,9 +145,9 @@ pub fn scope_copy_uses_spanish_locale_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Alcance de tarjeta")
-  assert_contains(html, "Tareas directas")
-  assert_contains(
+  render_assertions.contains(html, "Alcance de tarjeta")
+  render_assertions.contains(html, "Tareas directas")
+  render_assertions.contains(
     html,
     "Revisa tarjetas anidadas y sus tareas dentro de este alcance.",
   )
@@ -173,8 +168,11 @@ pub fn many_cards_in_depth_remain_scannable_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "hierarchy-scope-grid hierarchy-scope-grid-dense")
-  assert_contains(html, "data-testid=\"hierarchy-scope-card\"")
+  render_assertions.contains(
+    html,
+    "hierarchy-scope-grid hierarchy-scope-grid-dense",
+  )
+  render_assertions.contains(html, "data-testid=\"hierarchy-scope-card\"")
 }
 
 pub fn mobile_sidebar_navigation_preserves_current_scope_test() {
@@ -182,6 +180,6 @@ pub fn mobile_sidebar_navigation_preserves_current_scope_test() {
     scope_view.view(config(scope_view.CardScope(2)))
     |> element.to_document_string
 
-  assert_contains(html, "data-scope=\"card:2\"")
-  assert_contains(html, "hierarchy-scope-scope-shell")
+  render_assertions.contains(html, "data-scope=\"card:2\"")
+  render_assertions.contains(html, "hierarchy-scope-scope-shell")
 }

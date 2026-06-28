@@ -8,26 +8,13 @@ import domain/task_type.{TaskTypeInline}
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/cards/move_target
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/plan/structure_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(text: String, fragment: String) {
-  case string.contains(text, fragment) {
-    True -> Nil
-    False -> panic as { "expected HTML to contain: " <> fragment }
-  }
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  case string.contains(text, fragment) {
-    False -> Nil
-    True -> panic as { "expected HTML not to contain: " <> fragment }
-  }
-}
 
 fn assert_before(text: String, first: String, second: String) {
   let assert Ok(#(_, after_first)) = string.split_once(text, first)
@@ -42,43 +29,46 @@ fn render(config: structure_view.Config(Int)) -> String {
 pub fn project_scope_shows_tree_without_internal_mode_selector_test() {
   let html = render(base_config())
 
-  assert_contains(html, "data-testid=\"plan-structure-view\"")
-  assert_contains(html, "data-testid=\"plan-filter-status\"")
-  assert_contains(html, "data-testid=\"plan-filter-sort\"")
-  assert_not_contains(html, "data-testid=\"work-filter-capability-scope\"")
-  assert_contains(html, "Trabajo")
-  assert_not_contains(html, "Al activar")
-  assert_not_contains(html, "Vence")
-  assert_not_contains(html, "ya activo")
-  assert_not_contains(html, "Pool impact")
-  assert_contains(html, "Root Initiative")
-  assert_contains(html, "Portal Feature")
-  assert_contains(html, "API Story")
-  assert_contains(html, "data-testid=\"plan-tree-table\"")
-  assert_contains(html, "data-testid=\"plan-tree-mobile-list\"")
-  assert_contains(html, "data-testid=\"plan-tree-mobile-row\"")
-  assert_contains(html, "data-card-id=\"1\"")
-  assert_not_contains(html, "plan-mode-structure")
-  assert_not_contains(html, "plan-mode-kanban")
-  assert_not_contains(html, "data-testid=\"plan-move-drag-handle\"")
-  assert_not_contains(html, "Lens")
-  assert_not_contains(html, "Lente")
-  assert_contains(html, "plan-tree-cell is-nested")
-  assert_contains(html, "plan-tree-gutter")
-  assert_contains(html, "plan-tree-node")
-  assert_contains(html, "plan-tree-node is-open")
-  assert_contains(html, "plan-tree-rail is-elbow")
-  assert_contains(html, "plan-tree-rail is-end")
-  assert_contains(html, ">▾</button>")
-  assert_contains(html, "plan-tree-toggle-placeholder")
-  assert_contains(html, "plan-tree-terminal-dot")
-  assert_not_contains(html, "plan-tree-chevron")
-  assert_not_contains(html, "plan-tree-toggle-slot")
-  assert_not_contains(html, "plan-tree-marker")
-  assert_not_contains(html, "plan-tree-leaf")
-  assert_not_contains(html, "plan-tree-path")
-  assert_contains(html, "plan-detail-context")
-  assert_contains(html, "Tareas descendientes")
+  render_assertions.contains(html, "data-testid=\"plan-structure-view\"")
+  render_assertions.contains(html, "data-testid=\"plan-filter-status\"")
+  render_assertions.contains(html, "data-testid=\"plan-filter-sort\"")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"work-filter-capability-scope\"",
+  )
+  render_assertions.contains(html, "Trabajo")
+  render_assertions.not_contains(html, "Al activar")
+  render_assertions.not_contains(html, "Vence")
+  render_assertions.not_contains(html, "ya activo")
+  render_assertions.not_contains(html, "Pool impact")
+  render_assertions.contains(html, "Root Initiative")
+  render_assertions.contains(html, "Portal Feature")
+  render_assertions.contains(html, "API Story")
+  render_assertions.contains(html, "data-testid=\"plan-tree-table\"")
+  render_assertions.contains(html, "data-testid=\"plan-tree-mobile-list\"")
+  render_assertions.contains(html, "data-testid=\"plan-tree-mobile-row\"")
+  render_assertions.contains(html, "data-card-id=\"1\"")
+  render_assertions.not_contains(html, "plan-mode-structure")
+  render_assertions.not_contains(html, "plan-mode-kanban")
+  render_assertions.not_contains(html, "data-testid=\"plan-move-drag-handle\"")
+  render_assertions.not_contains(html, "Lens")
+  render_assertions.not_contains(html, "Lente")
+  render_assertions.contains(html, "plan-tree-cell is-nested")
+  render_assertions.contains(html, "plan-tree-gutter")
+  render_assertions.contains(html, "plan-tree-node")
+  render_assertions.contains(html, "plan-tree-node is-open")
+  render_assertions.contains(html, "plan-tree-rail is-elbow")
+  render_assertions.contains(html, "plan-tree-rail is-end")
+  render_assertions.contains(html, ">▾</button>")
+  render_assertions.contains(html, "plan-tree-toggle-placeholder")
+  render_assertions.contains(html, "plan-tree-terminal-dot")
+  render_assertions.not_contains(html, "plan-tree-chevron")
+  render_assertions.not_contains(html, "plan-tree-toggle-slot")
+  render_assertions.not_contains(html, "plan-tree-marker")
+  render_assertions.not_contains(html, "plan-tree-leaf")
+  render_assertions.not_contains(html, "plan-tree-path")
+  render_assertions.contains(html, "plan-detail-context")
+  render_assertions.contains(html, "Tareas descendientes")
 }
 
 pub fn tree_gutter_scales_for_deep_card_nesting_test() {
@@ -91,27 +81,30 @@ pub fn tree_gutter_scales_for_deep_card_nesting_test() {
       ]),
     )
 
-  assert_contains(html, "Deep Delivery Slice")
-  assert_contains(html, "Root Initiative / Portal Feature / Draft Checkout")
-  assert_contains(html, "plan-tree-gutter")
-  assert_contains(html, "plan-tree-rail is-continue")
-  assert_contains(html, "plan-tree-rail is-blank")
-  assert_contains(html, "plan-tree-rail is-end")
-  assert_contains(html, "plan-tree-toggle-placeholder")
-  assert_contains(html, "plan-tree-terminal-dot")
+  render_assertions.contains(html, "Deep Delivery Slice")
+  render_assertions.contains(
+    html,
+    "Root Initiative / Portal Feature / Draft Checkout",
+  )
+  render_assertions.contains(html, "plan-tree-gutter")
+  render_assertions.contains(html, "plan-tree-rail is-continue")
+  render_assertions.contains(html, "plan-tree-rail is-blank")
+  render_assertions.contains(html, "plan-tree-rail is-end")
+  render_assertions.contains(html, "plan-tree-toggle-placeholder")
+  render_assertions.contains(html, "plan-tree-terminal-dot")
 }
 
 pub fn collapsed_card_hides_descendant_rows_and_marks_toggle_test() {
   let html =
     render(structure_view.Config(..base_config(), collapsed_card_ids: [1]))
 
-  assert_contains(html, "aria-expanded=\"false\"")
-  assert_contains(html, ">▸</button>")
-  assert_not_contains(html, "plan-tree-node is-open")
-  assert_contains(html, "Root Initiative")
-  assert_not_contains(html, "Portal Feature")
-  assert_not_contains(html, "API Story")
-  assert_not_contains(html, "Draft Behind Closed")
+  render_assertions.contains(html, "aria-expanded=\"false\"")
+  render_assertions.contains(html, ">▸</button>")
+  render_assertions.not_contains(html, "plan-tree-node is-open")
+  render_assertions.contains(html, "Root Initiative")
+  render_assertions.not_contains(html, "Portal Feature")
+  render_assertions.not_contains(html, "API Story")
+  render_assertions.not_contains(html, "Draft Behind Closed")
 }
 
 pub fn status_filter_limits_visible_rows_test() {
@@ -123,9 +116,9 @@ pub fn status_filter_limits_visible_rows_test() {
       ),
     )
 
-  assert_contains(html, "Draft Checkout")
-  assert_not_contains(html, "plan-tree-title\">Root Initiative")
-  assert_not_contains(html, "plan-tree-title\">Portal Feature")
+  render_assertions.contains(html, "Draft Checkout")
+  render_assertions.not_contains(html, "plan-tree-title\">Root Initiative")
+  render_assertions.not_contains(html, "plan-tree-title\">Portal Feature")
 }
 
 pub fn level_scope_uses_visible_level_name_and_matching_card_rows_test() {
@@ -138,8 +131,8 @@ pub fn level_scope_uses_visible_level_name_and_matching_card_rows_test() {
       ),
     )
 
-  assert_contains(html, "Story")
-  assert_contains(html, "API Story")
+  render_assertions.contains(html, "Story")
+  render_assertions.contains(html, "API Story")
 }
 
 pub fn card_scope_with_subcards_prioritizes_subcards_detail_test() {
@@ -152,10 +145,10 @@ pub fn card_scope_with_subcards_prioritizes_subcards_detail_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-structure-detail\"")
-  assert_contains(html, "Contenido: subtarjetas")
-  assert_contains(html, "Portal Feature")
-  assert_not_contains(html, "Contenido: tareas")
+  render_assertions.contains(html, "data-testid=\"plan-structure-detail\"")
+  render_assertions.contains(html, "Contenido: subtarjetas")
+  render_assertions.contains(html, "Portal Feature")
+  render_assertions.not_contains(html, "Contenido: tareas")
 }
 
 pub fn card_scope_without_selection_shows_empty_state_not_full_tree_test() {
@@ -168,12 +161,12 @@ pub fn card_scope_without_selection_shows_empty_state_not_full_tree_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-structure-empty\"")
-  assert_contains(html, "Select an active card")
-  assert_contains(html, "data-testid=\"plan-scope-card-search\"")
-  assert_not_contains(html, "plan-tree-title\">Root Initiative")
-  assert_not_contains(html, "plan-tree-title\">Portal Feature")
-  assert_not_contains(html, "plan-tree-title\">API Story")
+  render_assertions.contains(html, "data-testid=\"plan-structure-empty\"")
+  render_assertions.contains(html, "Select an active card")
+  render_assertions.contains(html, "data-testid=\"plan-scope-card-search\"")
+  render_assertions.not_contains(html, "plan-tree-title\">Root Initiative")
+  render_assertions.not_contains(html, "plan-tree-title\">Portal Feature")
+  render_assertions.not_contains(html, "plan-tree-title\">API Story")
 }
 
 pub fn card_scope_with_tasks_prioritizes_tasks_detail_test() {
@@ -186,9 +179,9 @@ pub fn card_scope_with_tasks_prioritizes_tasks_detail_test() {
       ),
     )
 
-  assert_contains(html, "Contenido: tareas")
-  assert_contains(html, "Implement API")
-  assert_not_contains(html, "Contenido: subtarjetas")
+  render_assertions.contains(html, "Contenido: tareas")
+  render_assertions.contains(html, "Implement API")
+  render_assertions.not_contains(html, "Contenido: subtarjetas")
 }
 
 pub fn card_scope_selection_shows_only_selected_subtree_test() {
@@ -201,12 +194,12 @@ pub fn card_scope_selection_shows_only_selected_subtree_test() {
       ),
     )
 
-  assert_contains(html, "plan-card-scope-layout")
-  assert_not_contains(html, "plan-structure-split")
-  assert_not_contains(html, "plan-tree-title\">Root Initiative")
-  assert_contains(html, "plan-tree-title\">Portal Feature")
-  assert_contains(html, "plan-tree-title\">API Story")
-  assert_contains(html, "plan-tree-title\">Draft Checkout")
+  render_assertions.contains(html, "plan-card-scope-layout")
+  render_assertions.not_contains(html, "plan-structure-split")
+  render_assertions.not_contains(html, "plan-tree-title\">Root Initiative")
+  render_assertions.contains(html, "plan-tree-title\">Portal Feature")
+  render_assertions.contains(html, "plan-tree-title\">API Story")
+  render_assertions.contains(html, "plan-tree-title\">Draft Checkout")
 }
 
 pub fn closed_cards_are_hidden_until_closed_toggle_applies_test() {
@@ -214,8 +207,8 @@ pub fn closed_cards_are_hidden_until_closed_toggle_applies_test() {
   let shown =
     render(structure_view.Config(..base_config(), show_closed: Some(True)))
 
-  assert_not_contains(hidden, "Closed Outcome")
-  assert_contains(shown, "Closed Outcome")
+  render_assertions.not_contains(hidden, "Closed Outcome")
+  render_assertions.contains(shown, "Closed Outcome")
 }
 
 pub fn closed_status_filter_still_respects_closed_toggle_test() {
@@ -236,11 +229,11 @@ pub fn closed_status_filter_still_respects_closed_toggle_test() {
       ),
     )
 
-  assert_contains(hidden, "data-testid=\"plan-structure-empty\"")
-  assert_not_contains(hidden, "Closed Outcome")
-  assert_contains(shown, "Closed Outcome")
-  assert_not_contains(shown, "plan-tree-title\">Root Initiative")
-  assert_not_contains(shown, "plan-tree-title\">Draft Checkout")
+  render_assertions.contains(hidden, "data-testid=\"plan-structure-empty\"")
+  render_assertions.not_contains(hidden, "Closed Outcome")
+  render_assertions.contains(shown, "Closed Outcome")
+  render_assertions.not_contains(shown, "plan-tree-title\">Root Initiative")
+  render_assertions.not_contains(shown, "plan-tree-title\">Draft Checkout")
 }
 
 pub fn due_date_sort_uses_valid_date_values_before_invalid_or_missing_test() {
@@ -284,16 +277,16 @@ pub fn status_filter_copy_uses_locale_and_closed_chip_translation_test() {
       ),
     )
 
-  assert_contains(english, ">All</option>")
-  assert_contains(english, ">Pending</option>")
-  assert_contains(english, ">Active</option>")
-  assert_contains(english, ">Closed</option>")
-  assert_contains(english, "Includes closed")
-  assert_not_contains(english, ">Todas</option>")
-  assert_not_contains(english, "Incluye closed")
-  assert_contains(spanish, ">Todas</option>")
-  assert_contains(spanish, ">cerrada</option>")
-  assert_contains(spanish, "Incluye cerradas")
+  render_assertions.contains(english, ">All</option>")
+  render_assertions.contains(english, ">Pending</option>")
+  render_assertions.contains(english, ">Active</option>")
+  render_assertions.contains(english, ">Closed</option>")
+  render_assertions.contains(english, "Includes closed")
+  render_assertions.not_contains(english, ">Todas</option>")
+  render_assertions.not_contains(english, "Incluye closed")
+  render_assertions.contains(spanish, ">Todas</option>")
+  render_assertions.contains(spanish, ">cerrada</option>")
+  render_assertions.contains(spanish, "Incluye cerradas")
 }
 
 pub fn unsupported_detail_actions_are_hidden_test() {
@@ -306,24 +299,36 @@ pub fn unsupported_detail_actions_are_hidden_test() {
       ),
     )
 
-  assert_not_contains(html, "data-testid=\"plan-action-create-task\"")
-  assert_not_contains(html, "Esta tarjeta contiene subtarjetas")
-  assert_not_contains(html, "data-testid=\"plan-action-delete-card\"")
-  assert_not_contains(html, "Tiene historial operativo")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"plan-action-create-task\"",
+  )
+  render_assertions.not_contains(html, "Esta tarjeta contiene subtarjetas")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"plan-action-delete-card\"",
+  )
+  render_assertions.not_contains(html, "Tiene historial operativo")
 }
 
 pub fn row_actions_are_title_and_contextual_create_test() {
   let html = render(base_config())
 
-  assert_contains(html, "data-testid=\"card-show-open\"")
-  assert_contains(html, "data-testid=\"plan-action-contextual-create\"")
-  assert_contains(html, "Activar subárbol")
-  assert_not_contains(html, "data-testid=\"plan-action-move-card\"")
-  assert_not_contains(html, "data-testid=\"plan-card-show-action\"")
-  assert_not_contains(html, "data-testid=\"plan-action-menu\"")
-  assert_not_contains(html, "data-testid=\"plan-action-menu-toggle\"")
-  assert_not_contains(html, "aria-haspopup=\"menu\"")
-  assert_not_contains(html, "role=\"menuitem\"")
+  render_assertions.contains(html, "data-testid=\"card-show-open\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"plan-action-contextual-create\"",
+  )
+  render_assertions.contains(html, "Activar subárbol")
+  render_assertions.not_contains(html, "data-testid=\"plan-action-move-card\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-card-show-action\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-action-menu\"")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"plan-action-menu-toggle\"",
+  )
+  render_assertions.not_contains(html, "aria-haspopup=\"menu\"")
+  render_assertions.not_contains(html, "role=\"menuitem\"")
 }
 
 pub fn detail_actions_hide_unavailable_close_and_delete_test() {
@@ -336,17 +341,23 @@ pub fn detail_actions_hide_unavailable_close_and_delete_test() {
       ),
     )
 
-  assert_not_contains(html, "data-testid=\"plan-action-close-card\"")
-  assert_not_contains(html, "Hay tareas reclamadas o en curso debajo")
-  assert_not_contains(html, "data-testid=\"plan-action-delete-card\"")
-  assert_not_contains(html, "Tiene historial operativo")
+  render_assertions.not_contains(html, "data-testid=\"plan-action-close-card\"")
+  render_assertions.not_contains(
+    html,
+    "Hay tareas reclamadas o en curso debajo",
+  )
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"plan-action-delete-card\"",
+  )
+  render_assertions.not_contains(html, "Tiene historial operativo")
 }
 
 pub fn normal_outline_does_not_repeat_move_action_per_row_test() {
   let html = render(base_config())
 
-  assert_not_contains(html, "data-testid=\"plan-action-move-card\"")
-  assert_not_contains(html, "card-move-dialog")
+  render_assertions.not_contains(html, "data-testid=\"plan-action-move-card\"")
+  render_assertions.not_contains(html, "card-move-dialog")
 }
 
 pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
@@ -358,15 +369,15 @@ pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-move-context\"")
-  assert_contains(html, "Moviendo: API Story")
-  assert_contains(html, "data-testid=\"plan-move-source\"")
-  assert_contains(html, "data-testid=\"plan-move-drag-handle\"")
-  assert_contains(html, "draggable=\"true\"")
-  assert_contains(html, "data-testid=\"plan-move-here\"")
-  assert_contains(html, "Mover dentro")
-  assert_contains(html, "data-testid=\"plan-move-root-option\"")
-  assert_contains(html, "Mover a raiz")
+  render_assertions.contains(html, "data-testid=\"plan-move-context\"")
+  render_assertions.contains(html, "Moviendo: API Story")
+  render_assertions.contains(html, "data-testid=\"plan-move-source\"")
+  render_assertions.contains(html, "data-testid=\"plan-move-drag-handle\"")
+  render_assertions.contains(html, "draggable=\"true\"")
+  render_assertions.contains(html, "data-testid=\"plan-move-here\"")
+  render_assertions.contains(html, "Mover dentro")
+  render_assertions.contains(html, "data-testid=\"plan-move-root-option\"")
+  render_assertions.contains(html, "Mover a raiz")
 }
 
 pub fn inline_move_drag_marks_source_as_dragging_test() {
@@ -379,8 +390,8 @@ pub fn inline_move_drag_marks_source_as_dragging_test() {
       ),
     )
 
-  assert_contains(html, "is-dragging-source")
-  assert_contains(html, "Arrastrando")
+  render_assertions.contains(html, "is-dragging-source")
+  render_assertions.contains(html, "Arrastrando")
 }
 
 pub fn inline_move_drag_over_valid_destination_shows_drop_hint_test() {
@@ -396,10 +407,10 @@ pub fn inline_move_drag_over_valid_destination_shows_drop_hint_test() {
       ),
     )
 
-  assert_contains(html, "is-drop-active")
-  assert_contains(html, "data-testid=\"plan-drop-target-hint\"")
-  assert_contains(html, "Soltar dentro de Mobile Feature")
-  assert_contains(html, "data-testid=\"plan-move-here\"")
+  render_assertions.contains(html, "is-drop-active")
+  render_assertions.contains(html, "data-testid=\"plan-drop-target-hint\"")
+  render_assertions.contains(html, "Soltar dentro de Mobile Feature")
+  render_assertions.contains(html, "data-testid=\"plan-move-here\"")
 }
 
 pub fn inline_move_mode_shows_invalid_reason_test() {
@@ -411,8 +422,8 @@ pub fn inline_move_mode_shows_invalid_reason_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-move-invalid\"")
-  assert_contains(html, "Ya está dentro de esta tarjeta.")
+  render_assertions.contains(html, "data-testid=\"plan-move-invalid\"")
+  render_assertions.contains(html, "Ya está dentro de esta tarjeta.")
 }
 
 pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() {
@@ -428,9 +439,9 @@ pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() 
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-move-invalid\"")
-  assert_contains(html, "Ya está dentro de esta tarjeta.")
-  assert_not_contains(html, "Soltar dentro de Portal Feature")
+  render_assertions.contains(html, "data-testid=\"plan-move-invalid\"")
+  render_assertions.contains(html, "Ya está dentro de esta tarjeta.")
+  render_assertions.not_contains(html, "Soltar dentro de Portal Feature")
 }
 
 pub fn click_to_move_fallback_still_renders_after_drag_support_test() {
@@ -442,9 +453,12 @@ pub fn click_to_move_fallback_still_renders_after_drag_support_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-move-here\"")
-  assert_contains(html, "Mover dentro")
-  assert_contains(html, "data-testid=\"plan-move-destination-search\"")
+  render_assertions.contains(html, "data-testid=\"plan-move-here\"")
+  render_assertions.contains(html, "Mover dentro")
+  render_assertions.contains(
+    html,
+    "data-testid=\"plan-move-destination-search\"",
+  )
 }
 
 pub fn mobile_move_mode_keeps_click_fallback_without_mobile_drag_handle_test() {
@@ -456,10 +470,10 @@ pub fn mobile_move_mode_keeps_click_fallback_without_mobile_drag_handle_test() {
       ),
     )
 
-  assert_contains(html, "data-testid=\"plan-tree-mobile-list\"")
-  assert_contains(html, "data-testid=\"plan-tree-mobile-row\"")
-  assert_contains(html, "data-testid=\"plan-move-here\"")
-  assert_contains(html, "Mover dentro")
+  render_assertions.contains(html, "data-testid=\"plan-tree-mobile-list\"")
+  render_assertions.contains(html, "data-testid=\"plan-tree-mobile-row\"")
+  render_assertions.contains(html, "data-testid=\"plan-move-here\"")
+  render_assertions.contains(html, "Mover dentro")
 }
 
 pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
@@ -485,10 +499,13 @@ pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
       ),
     )
 
-  assert_contains(by_title, "data-testid=\"plan-move-destination-search\"")
-  assert_contains(by_title, "Mobile Feature")
-  assert_contains(by_path, "Portal Feature")
-  assert_contains(by_id, "Mobile Feature")
+  render_assertions.contains(
+    by_title,
+    "data-testid=\"plan-move-destination-search\"",
+  )
+  render_assertions.contains(by_title, "Mobile Feature")
+  render_assertions.contains(by_path, "Portal Feature")
+  render_assertions.contains(by_id, "Mobile Feature")
 }
 
 pub fn root_cards_can_enter_move_mode_when_card_destinations_exist_test() {
@@ -501,9 +518,12 @@ pub fn root_cards_can_enter_move_mode_when_card_destinations_exist_test() {
       ),
     )
 
-  assert_not_contains(html, "Las cards raiz no tienen un padre alternativo.")
-  assert_not_contains(html, "data-testid=\"plan-move-root-option\"")
-  assert_contains(html, "data-testid=\"plan-move-here\"")
+  render_assertions.not_contains(
+    html,
+    "Las cards raiz no tienen un padre alternativo.",
+  )
+  render_assertions.not_contains(html, "data-testid=\"plan-move-root-option\"")
+  render_assertions.contains(html, "data-testid=\"plan-move-here\"")
 }
 
 fn base_config() -> structure_view.Config(Int) {

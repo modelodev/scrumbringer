@@ -1,19 +1,11 @@
 //// Tests for notes preview tooltip (AC16).
 
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/tooltips/notes_preview_tooltip
 import scrumbringer_client/ui/tooltips/types.{NotesPreviewData}
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
 
 pub fn renders_count_and_time_test() {
   let config =
@@ -33,10 +25,10 @@ pub fn renders_count_and_time_test() {
 
   let html = notes_preview_tooltip.view(config) |> element.to_document_string
 
-  assert_contains(html, "2")
-  assert_contains(html, "notas nuevas")
-  assert_contains(html, "desde hace")
-  assert_contains(html, "3 horas")
+  render_assertions.contains(html, "2")
+  render_assertions.contains(html, "notas nuevas")
+  render_assertions.contains(html, "desde hace")
+  render_assertions.contains(html, "3 horas")
 }
 
 pub fn shows_last_note_when_present_test() {
@@ -57,9 +49,9 @@ pub fn shows_last_note_when_present_test() {
 
   let html = notes_preview_tooltip.view(config) |> element.to_document_string
 
-  assert_contains(html, "Última:")
-  assert_contains(html, "Revisé los mockups...")
-  assert_contains(html, "María G.")
+  render_assertions.contains(html, "Última:")
+  render_assertions.contains(html, "Revisé los mockups...")
+  render_assertions.contains(html, "María G.")
 }
 
 pub fn hides_last_note_when_none_test() {
@@ -80,5 +72,5 @@ pub fn hides_last_note_when_none_test() {
 
   let html = notes_preview_tooltip.view(config) |> element.to_document_string
 
-  assert_not_contains(html, "Última:")
+  render_assertions.not_contains(html, "Última:")
 }

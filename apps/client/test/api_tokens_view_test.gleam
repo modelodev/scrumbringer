@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/api_token.{
   type ApiToken, type IntegrationUser, ApiToken, IntegrationUser,
@@ -15,20 +15,6 @@ import scrumbringer_client/client_state/admin/api_tokens as api_tokens_state
 import scrumbringer_client/client_state/types.{DialogOpen, Idle}
 import scrumbringer_client/features/admin/api_tokens_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  case string.contains(html, fragment) {
-    True -> Nil
-    False -> panic as { "expected HTML to contain: " <> fragment }
-  }
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  case string.contains(html, fragment) {
-    False -> Nil
-    True -> panic as { "expected HTML not to contain: " <> fragment }
-  }
-}
 
 fn project() -> Project {
   Project(
@@ -120,20 +106,20 @@ pub fn api_tokens_view_has_single_primary_creation_flow_test() {
     api_tokens_view.view(config(model()))
     |> element.to_document_string
 
-  assert_contains(html, "section admin-surface")
-  assert_contains(html, "admin-surface-content")
-  assert_not_contains(html, "admin-card api-token-list-card")
-  assert_contains(html, "Create API token")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-icon-text")
-  assert_not_contains(html, "class=\"btn btn-primary\"")
-  assert_not_contains(html, "Create integration user")
-  assert_contains(html, "n8n production")
-  assert_contains(html, "n8n")
-  assert_contains(html, "Integrations")
-  assert_contains(html, "Active tokens")
-  assert_contains(html, "Rename API token")
+  render_assertions.contains(html, "section admin-surface")
+  render_assertions.contains(html, "admin-surface-content")
+  render_assertions.not_contains(html, "admin-card api-token-list-card")
+  render_assertions.contains(html, "Create API token")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-icon-text")
+  render_assertions.not_contains(html, "class=\"btn btn-primary\"")
+  render_assertions.not_contains(html, "Create integration user")
+  render_assertions.contains(html, "n8n production")
+  render_assertions.contains(html, "n8n")
+  render_assertions.contains(html, "Integrations")
+  render_assertions.contains(html, "Active tokens")
+  render_assertions.contains(html, "Rename API token")
 }
 
 pub fn api_tokens_create_dialog_renders_permission_matrix_without_project_write_test() {
@@ -155,13 +141,13 @@ pub fn api_tokens_create_dialog_renders_permission_matrix_without_project_write_
     api_tokens_view.view(config(open_model))
     |> element.to_document_string
 
-  assert_contains(html, "Integration")
-  assert_contains(html, "Permissions")
-  assert_contains(html, "Projects")
-  assert_contains(html, "Read")
-  assert_contains(html, "Write")
-  assert_contains(html, "value=\"projects:read\"")
-  assert_not_contains(html, "projects:write")
+  render_assertions.contains(html, "Integration")
+  render_assertions.contains(html, "Permissions")
+  render_assertions.contains(html, "Projects")
+  render_assertions.contains(html, "Read")
+  render_assertions.contains(html, "Write")
+  render_assertions.contains(html, "value=\"projects:read\"")
+  render_assertions.not_contains(html, "projects:write")
 }
 
 pub fn api_tokens_view_renders_secret_copy_control_test() {
@@ -176,13 +162,13 @@ pub fn api_tokens_view_renders_secret_copy_control_test() {
     api_tokens_view.view(config(with_secret))
     |> element.to_document_string
 
-  assert_contains(html, "sbt_public_secret")
-  assert_contains(html, "Copy")
-  assert_contains(html, "Copied")
-  assert_contains(html, "Dismiss")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_not_contains(html, "class=\"btn-secondary\"")
+  render_assertions.contains(html, "sbt_public_secret")
+  render_assertions.contains(html, "Copy")
+  render_assertions.contains(html, "Copied")
+  render_assertions.contains(html, "Dismiss")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.not_contains(html, "class=\"btn-secondary\"")
 }
 
 pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
@@ -203,8 +189,8 @@ pub fn api_tokens_view_shows_deactivate_only_for_idle_integrations_test() {
     api_tokens_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "zapier")
-  assert_contains(html, "Deactivate integration")
+  render_assertions.contains(html, "zapier")
+  render_assertions.contains(html, "Deactivate integration")
 }
 
 pub fn api_tokens_view_hides_revoke_action_for_revoked_tokens_test() {
@@ -220,7 +206,7 @@ pub fn api_tokens_view_hides_revoke_action_for_revoked_tokens_test() {
     api_tokens_view.view(config(model))
     |> element.to_document_string
 
-  assert_contains(html, "Revoked")
-  assert_contains(html, "Rename API token")
-  assert_not_contains(html, "Revoke API token")
+  render_assertions.contains(html, "Revoked")
+  render_assertions.contains(html, "Rename API token")
+  render_assertions.not_contains(html, "Revoke API token")
 }

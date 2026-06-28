@@ -1,14 +1,10 @@
 //// Tests for progress tooltip (AC18).
 
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/tooltips/progress_tooltip
 import scrumbringer_client/ui/tooltips/types.{ProgressBreakdown}
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
 
 pub fn shows_breakdown_test() {
   let config =
@@ -29,11 +25,11 @@ pub fn shows_breakdown_test() {
 
   let html = progress_tooltip.view(config) |> element.to_document_string
 
-  assert_contains(html, "3")
-  assert_contains(html, "cerradas")
-  assert_contains(html, "1")
-  assert_contains(html, "en curso")
-  assert_contains(html, "pendientes")
+  render_assertions.contains(html, "3")
+  render_assertions.contains(html, "cerradas")
+  render_assertions.contains(html, "1")
+  render_assertions.contains(html, "en curso")
+  render_assertions.contains(html, "pendientes")
 }
 
 pub fn calculates_percentage_display_test() {
@@ -55,8 +51,8 @@ pub fn calculates_percentage_display_test() {
 
   let html = progress_tooltip.view(config) |> element.to_document_string
 
-  assert_contains(html, "Progreso:")
-  assert_contains(html, "60%")
+  render_assertions.contains(html, "Progreso:")
+  render_assertions.contains(html, "60%")
 }
 
 pub fn handles_zero_tasks_test() {
@@ -78,6 +74,6 @@ pub fn handles_zero_tasks_test() {
 
   let html = progress_tooltip.view(config) |> element.to_document_string
 
-  assert_contains(html, "0")
-  assert_contains(html, "cerradas")
+  render_assertions.contains(html, "0")
+  render_assertions.contains(html, "cerradas")
 }

@@ -1,8 +1,8 @@
 import gleam/dict
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/capability.{type Capability, Capability}
 import domain/org.{type OrgUser, OrgUser}
@@ -15,14 +15,6 @@ import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/admin/capabilities_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn capability(id: Int, name: String) -> Capability {
   Capability(id: id, name: name)
@@ -89,12 +81,12 @@ pub fn capabilities_view_renders_list_from_config_without_root_model_test() {
     capabilities_view.view(config(capabilities, admin_members.default_model()))
     |> element.to_document_string
 
-  assert_contains(html, "Capabilities")
-  assert_contains(html, "Create Capability")
-  assert_contains(html, "Backend")
-  assert_contains(html, "capability-members-btn")
-  assert_contains(html, "capability-delete-btn")
-  assert_contains(html, ">2<")
+  render_assertions.contains(html, "Capabilities")
+  render_assertions.contains(html, "Create Capability")
+  render_assertions.contains(html, "Backend")
+  render_assertions.contains(html, "capability-members-btn")
+  render_assertions.contains(html, "capability-delete-btn")
+  render_assertions.contains(html, ">2<")
 }
 
 pub fn capabilities_view_renders_members_dialog_from_config_without_root_model_test() {
@@ -120,13 +112,13 @@ pub fn capabilities_view_renders_members_dialog_from_config_without_root_model_t
     capabilities_view.view(config(capabilities, members))
     |> element.to_document_string
 
-  assert_contains(html, "Members with Backend in Roadmap")
-  assert_contains(html, "data-testid=\"members-checklist\"")
-  assert_contains(html, "alice@example.com")
-  assert_contains(html, "bob@example.com")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_not_contains(html, "class=\"btn-primary\"")
+  render_assertions.contains(html, "Members with Backend in Roadmap")
+  render_assertions.contains(html, "data-testid=\"members-checklist\"")
+  render_assertions.contains(html, "alice@example.com")
+  render_assertions.contains(html, "bob@example.com")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.not_contains(html, "class=\"btn-primary\"")
 }
 
 pub fn capabilities_view_delete_dialog_uses_shared_danger_button_test() {
@@ -142,10 +134,10 @@ pub fn capabilities_view_delete_dialog_uses_shared_danger_button_test() {
     capabilities_view.view(config(capabilities, admin_members.default_model()))
     |> element.to_document_string
 
-  assert_contains(html, "Delete Capability")
-  assert_contains(html, "Deleting")
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "btn-entity-action")
+  render_assertions.contains(html, "Delete Capability")
+  render_assertions.contains(html, "Deleting")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-entity-action")
 }
 
 pub fn capabilities_view_renders_create_dialog_from_config_without_root_model_test() {
@@ -161,7 +153,7 @@ pub fn capabilities_view_renders_create_dialog_from_config_without_root_model_te
     capabilities_view.view(config(capabilities, admin_members.default_model()))
     |> element.to_document_string
 
-  assert_contains(html, "capability-create-form")
-  assert_contains(html, "Frontend")
-  assert_contains(html, "Creating")
+  render_assertions.contains(html, "capability-create-form")
+  render_assertions.contains(html, "Frontend")
+  render_assertions.contains(html, "Creating")
 }

@@ -1,13 +1,9 @@
 import gleam/option as opt
-import gleam/string
 import lustre/element
 import lustre/element/html
+import support/render_assertions
 
 import scrumbringer_client/ui/task_item
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 pub fn clickable_task_item_preserves_accessible_button_metadata_test() {
   let html =
@@ -34,9 +30,9 @@ pub fn clickable_task_item_preserves_accessible_button_metadata_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"shared-task-item\"")
-  assert_contains(html, "data-testid=\"shared-task-item-open\"")
-  assert_contains(html, "title=\"Fix login\"")
-  assert_contains(html, "aria-label=\"Open task: Fix login\"")
-  assert_contains(html, "type=\"button\"")
+  render_assertions.contains(html, "data-testid=\"shared-task-item\"")
+  render_assertions.contains(html, "data-testid=\"shared-task-item-open\"")
+  render_assertions.contains(html, "title=\"Fix login\"")
+  render_assertions.contains(html, "aria-label=\"Open task: Fix login\"")
+  render_assertions.contains(html, "type=\"button\"")
 }

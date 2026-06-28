@@ -1,5 +1,5 @@
 import gleam/option
-import gleam/string
+import support/render_assertions
 
 import lustre/element
 
@@ -18,31 +18,23 @@ fn render(variant: task_metric_chip.Variant) -> String {
   |> element.to_document_string
 }
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
-
 pub fn compact_metric_keeps_icon_number_and_accessible_label_test() {
   let html = render(task_metric_chip.Compact)
 
-  assert_contains(html, "is-compact")
-  assert_contains(html, "metric-under-test")
-  assert_contains(html, "task-metric-chip-icon")
-  assert_contains(html, "task-metric-chip-value")
-  assert_contains(html, ">3<")
-  assert_contains(html, "title=\"Closed: 3\"")
-  assert_contains(html, "aria-label=\"Closed: 3\"")
-  assert_not_contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, "is-compact")
+  render_assertions.contains(html, "metric-under-test")
+  render_assertions.contains(html, "task-metric-chip-icon")
+  render_assertions.contains(html, "task-metric-chip-value")
+  render_assertions.contains(html, ">3<")
+  render_assertions.contains(html, "title=\"Closed: 3\"")
+  render_assertions.contains(html, "aria-label=\"Closed: 3\"")
+  render_assertions.not_contains(html, "task-metric-chip-label")
 }
 
 pub fn full_metric_keeps_visible_label_for_explicit_explanatory_use_test() {
   let html = render(task_metric_chip.Full)
 
-  assert_contains(html, "is-full")
-  assert_contains(html, "task-metric-chip-label")
-  assert_contains(html, ">Closed<")
+  render_assertions.contains(html, "is-full")
+  render_assertions.contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, ">Closed<")
 }

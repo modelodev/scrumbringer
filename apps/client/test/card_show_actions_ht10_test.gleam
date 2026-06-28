@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
 import domain/remote.{Loaded}
@@ -12,10 +12,6 @@ import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/pool/create_dialog
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 fn card(id: Int, parent_id: opt.Option(Int), state: CardPhase) -> Card {
   Card(
@@ -140,8 +136,8 @@ pub fn create_task_without_card_requires_active_card_test() {
     create_dialog.view(create_config(opt.None, []))
     |> element.to_document_string
 
-  assert_contains(html, "Choose an active card to create the task")
-  assert_contains(html, "disabled")
+  render_assertions.contains(html, "Choose an active card to create the task")
+  render_assertions.contains(html, "disabled")
 }
 
 pub fn draft_card_create_task_is_blocked_test() {
@@ -149,8 +145,8 @@ pub fn draft_card_create_task_is_blocked_test() {
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Draft)]))
     |> element.to_document_string
 
-  assert_contains(html, "Only active cards can receive new tasks")
-  assert_contains(html, "disabled")
+  render_assertions.contains(html, "Only active cards can receive new tasks")
+  render_assertions.contains(html, "disabled")
 }
 
 pub fn active_card_create_task_adds_task_to_pool_test() {
@@ -158,7 +154,7 @@ pub fn active_card_create_task_adds_task_to_pool_test() {
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
     |> element.to_document_string
 
-  assert_contains(html, "Card 1")
+  render_assertions.contains(html, "Card 1")
 }
 
 pub fn active_card_create_task_explains_pool_entry_test() {
@@ -166,7 +162,7 @@ pub fn active_card_create_task_explains_pool_entry_test() {
     create_dialog.view(create_config(opt.Some(1), [card(1, opt.None, Active)]))
     |> element.to_document_string
 
-  assert_contains(html, "Active card")
+  render_assertions.contains(html, "Active card")
 }
 
 pub fn move_card_dialog_lists_valid_destinations_across_depths_test() {
@@ -225,7 +221,7 @@ pub fn move_card_dialog_explains_invalid_destinations_test() {
       task_group,
     ])
 
-  assert_contains(explanation, "Contiene tareas directas")
+  render_assertions.contains(explanation, "Contiene tareas directas")
 }
 
 pub fn move_policy_marks_valid_and_invalid_destinations_with_reasons_test() {
@@ -280,7 +276,7 @@ pub fn moving_card_to_root_is_blocked_only_when_already_root_test() {
   let reason = card_policy.move_to_root_blocked_reason(card(1, opt.None, Draft))
 
   let assert opt.Some(card_policy.AlreadyAtProjectRoot) = reason
-  assert_contains(
+  render_assertions.contains(
     card_policy.move_blocked_reason_label(card_policy.AlreadyAtProjectRoot),
     "raíz",
   )

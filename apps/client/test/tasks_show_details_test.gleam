@@ -1,6 +1,6 @@
 import gleam/option.{type Option, None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/remote.{NotAsked}
 import domain/task.{type Task, Task}
@@ -11,25 +11,17 @@ import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/pinned_context
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
-
 pub fn task_show_details_renders_loaded_task_without_root_model_test() {
   let html =
     task_show_details.view(config(Some(claimed_task()), Some(7)))
     |> element.to_document_string
 
-  assert_contains(html, "Details")
-  assert_contains(html, "Edit task")
-  assert_contains(html, "Release card")
-  assert_not_contains(html, "Open card")
-  assert_not_contains(html, "View in Plan")
-  assert_contains(html, "Review release checklist.")
+  render_assertions.contains(html, "Details")
+  render_assertions.contains(html, "Edit task")
+  render_assertions.contains(html, "Release card")
+  render_assertions.not_contains(html, "Open card")
+  render_assertions.not_contains(html, "View in Plan")
+  render_assertions.contains(html, "Review release checklist.")
 }
 
 pub fn task_show_details_renders_loading_state_test() {
@@ -37,9 +29,9 @@ pub fn task_show_details_renders_loading_state_test() {
     task_show_details.view(config(None, None))
     |> element.to_document_string
 
-  assert_contains(html, "Loading")
-  assert_contains(html, "task-details-section")
-  assert_not_contains(html, "Edit task")
+  render_assertions.contains(html, "Loading")
+  render_assertions.contains(html, "task-details-section")
+  render_assertions.not_contains(html, "Edit task")
 }
 
 pub fn task_show_details_renders_pinned_context_test() {
@@ -54,12 +46,12 @@ pub fn task_show_details_renders_pinned_context_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Pinned context")
-  assert_contains(html, "Spec")
-  assert_contains(html, "Decision")
-  assert_contains(html, "PR")
-  assert_not_contains(html, "Extra")
-  assert_contains(html, "+1 in notes")
+  render_assertions.contains(html, "Pinned context")
+  render_assertions.contains(html, "Spec")
+  render_assertions.contains(html, "Decision")
+  render_assertions.contains(html, "PR")
+  render_assertions.not_contains(html, "Extra")
+  render_assertions.contains(html, "+1 in notes")
 }
 
 fn config_with_pins(

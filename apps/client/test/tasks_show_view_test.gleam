@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card.{type Card, Active, Card}
 import domain/remote
@@ -13,14 +14,6 @@ import scrumbringer_client/features/tasks/show/view as task_show
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/show_tabs
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
-
 fn forbidden_fragment(parts: List(String)) -> String {
   string.join(parts, "")
 }
@@ -30,20 +23,26 @@ pub fn task_show_renders_as_panel_not_modal_test() {
     task_show.view_task_show(config())
     |> element.to_document_string
 
-  assert_contains(html, "task-show-panel")
-  assert_contains(html, "task-show-content")
-  assert_contains(html, "inspector-shell")
-  assert_contains(html, "data-testid=\"task-show\"")
-  assert_contains(html, "data-testid=\"entity-tabs\"")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "task-inspector-actions")
-  assert_contains(html, "data-testid=\"task-inspector-primary-claim\"")
+  render_assertions.contains(html, "task-show-panel")
+  render_assertions.contains(html, "task-show-content")
+  render_assertions.contains(html, "inspector-shell")
+  render_assertions.contains(html, "data-testid=\"task-show\"")
+  render_assertions.contains(html, "data-testid=\"entity-tabs\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(html, "task-inspector-actions")
+  render_assertions.contains(
+    html,
+    "data-testid=\"task-inspector-primary-claim\"",
+  )
   assert_fragment_order(html, "task-inspector-header", "task-inspector-actions")
   assert_fragment_order(html, "task-inspector-actions", "task-show-tabs")
-  assert_not_contains(html, "role=\"complementary\"")
-  assert_not_contains(html, forbidden_fragment(["task", "-action-bar"]))
-  assert_not_contains(html, "modal-backdrop")
+  render_assertions.not_contains(html, "role=\"complementary\"")
+  render_assertions.not_contains(
+    html,
+    forbidden_fragment(["task", "-action-bar"]),
+  )
+  render_assertions.not_contains(html, "modal-backdrop")
 }
 
 pub fn task_show_header_uses_operational_headline_without_legacy_meta_test() {
@@ -51,18 +50,21 @@ pub fn task_show_header_uses_operational_headline_without_legacy_meta_test() {
     task_show.view_task_show(config_with_parent_card())
     |> element.to_document_string
 
-  assert_contains(html, "Ready to claim · Release card")
-  assert_contains(html, "Operational summary")
-  assert_contains(html, "Feature")
-  assert_contains(html, "P2")
-  assert_not_contains(html, "task-meta-chip")
-  assert_not_contains(html, "task-meta-type")
-  assert_not_contains(html, "task-meta-priority")
-  assert_not_contains(html, "task-meta-status")
-  assert_not_contains(html, "task-meta-assignee")
-  assert_not_contains(html, "task-meta-due")
-  assert_not_contains(html, "task-meta-blocking")
-  assert_not_contains(html, "data-testid=\"task-show-status-indicator\"")
+  render_assertions.contains(html, "Ready to claim · Release card")
+  render_assertions.contains(html, "Operational summary")
+  render_assertions.contains(html, "Feature")
+  render_assertions.contains(html, "P2")
+  render_assertions.not_contains(html, "task-meta-chip")
+  render_assertions.not_contains(html, "task-meta-type")
+  render_assertions.not_contains(html, "task-meta-priority")
+  render_assertions.not_contains(html, "task-meta-status")
+  render_assertions.not_contains(html, "task-meta-assignee")
+  render_assertions.not_contains(html, "task-meta-due")
+  render_assertions.not_contains(html, "task-meta-blocking")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"task-show-status-indicator\"",
+  )
 }
 
 pub fn task_show_contains_parent_navigation_in_open_in_menu_test() {
@@ -70,16 +72,19 @@ pub fn task_show_contains_parent_navigation_in_open_in_menu_test() {
     task_show.view_task_show(config_with_parent_card())
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"inspector-open-in-trigger\"")
-  assert_contains(html, "inspector-open-in-menu")
-  assert_contains(html, "Open card")
-  assert_contains(html, "View in Plan")
-  assert_contains(
+  render_assertions.contains(html, "data-testid=\"inspector-open-in-trigger\"")
+  render_assertions.contains(html, "inspector-open-in-menu")
+  render_assertions.contains(html, "Open card")
+  render_assertions.contains(html, "View in Plan")
+  render_assertions.contains(
     html,
     "/app?project=1&amp;view=cards&amp;work_scope=card&amp;card=10",
   )
-  assert_not_contains(html, forbidden_fragment(["task", "-context-navigation"]))
-  assert_not_contains(html, "task-open-in-menu")
+  render_assertions.not_contains(
+    html,
+    forbidden_fragment(["task", "-context-navigation"]),
+  )
+  render_assertions.not_contains(html, "task-open-in-menu")
 }
 
 pub fn task_show_editing_uses_footer_edit_actions_only_test() {
@@ -96,14 +101,17 @@ pub fn task_show_editing_uses_footer_edit_actions_only_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "task-show-edit-form")
-  assert_contains(html, "task-inspector-edit-actions")
-  assert_contains(html, ">Cancel<")
+  render_assertions.contains(html, "task-show-edit-form")
+  render_assertions.contains(html, "task-inspector-edit-actions")
+  render_assertions.contains(html, ">Cancel<")
   let assert 1 = occurrences(html, ">Save<")
-  assert_not_contains(html, "Release back to Pool")
-  assert_not_contains(html, "Start working")
-  assert_not_contains(html, "Claim task")
-  assert_not_contains(html, "data-testid=\"task-inspector-primary-close\"")
+  render_assertions.not_contains(html, "Release back to Pool")
+  render_assertions.not_contains(html, "Start working")
+  render_assertions.not_contains(html, "Claim task")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"task-inspector-primary-close\"",
+  )
 }
 
 fn occurrences(source: String, fragment: String) -> Int {
@@ -112,7 +120,7 @@ fn occurrences(source: String, fragment: String) -> Int {
 
 fn assert_fragment_order(source: String, before: String, after: String) {
   let assert [_, rest, ..] = string.split(source, before)
-  assert_contains(rest, after)
+  render_assertions.contains(rest, after)
 }
 
 fn config() -> task_show.TaskShowConfig(String) {

@@ -1,14 +1,10 @@
 import gleam/dict
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
 
 pub fn grouped_list_renders_empty_state_test() {
   let config =
@@ -28,5 +24,5 @@ pub fn grouped_list_renders_empty_state_test() {
 
   let html = grouped_list.view(config) |> element.to_document_string
 
-  assert_contains(html, "No available tasks right now")
+  render_assertions.contains(html, "No available tasks right now")
 }

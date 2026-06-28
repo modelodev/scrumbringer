@@ -1,18 +1,10 @@
 import gleam/option.{Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/task_metric
 import scrumbringer_client/ui/task_metric_chip
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn full_task_metric_chip_renders_icon_value_label_and_accessibility_test() {
   let html =
@@ -26,17 +18,17 @@ pub fn full_task_metric_chip_renders_icon_value_label_and_accessibility_test() {
     |> task_metric_chip.view
     |> element.to_document_string
 
-  assert_contains(html, "task-metric-chip is-full available")
-  assert_contains(html, "work-surface-chip")
-  assert_contains(html, "data-testid=\"surface-available\"")
-  assert_contains(html, "title=\"Available: 4\"")
-  assert_contains(html, "aria-label=\"Available: 4\"")
-  assert_contains(html, "task-metric-chip-icon")
-  assert_contains(html, "nav-icon")
-  assert_contains(html, "task-metric-chip-value")
-  assert_contains(html, ">4<")
-  assert_contains(html, "task-metric-chip-label")
-  assert_contains(html, ">Available<")
+  render_assertions.contains(html, "task-metric-chip is-full available")
+  render_assertions.contains(html, "work-surface-chip")
+  render_assertions.contains(html, "data-testid=\"surface-available\"")
+  render_assertions.contains(html, "title=\"Available: 4\"")
+  render_assertions.contains(html, "aria-label=\"Available: 4\"")
+  render_assertions.contains(html, "task-metric-chip-icon")
+  render_assertions.contains(html, "nav-icon")
+  render_assertions.contains(html, "task-metric-chip-value")
+  render_assertions.contains(html, ">4<")
+  render_assertions.contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, ">Available<")
 }
 
 pub fn compact_task_metric_chip_hides_visible_label_but_keeps_meaning_test() {
@@ -47,12 +39,12 @@ pub fn compact_task_metric_chip_hides_visible_label_but_keeps_meaning_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "task-metric-chip is-compact blocked")
-  assert_contains(html, "data-testid=\"task-metric-blocked\"")
-  assert_contains(html, "title=\"Blocked: 1\"")
-  assert_contains(html, "aria-label=\"Blocked: 1\"")
-  assert_contains(html, "task-metric-chip-icon")
-  assert_contains(html, ">1<")
-  assert_not_contains(html, "task-metric-chip-label")
-  assert_not_contains(html, ">Blocked<")
+  render_assertions.contains(html, "task-metric-chip is-compact blocked")
+  render_assertions.contains(html, "data-testid=\"task-metric-blocked\"")
+  render_assertions.contains(html, "title=\"Blocked: 1\"")
+  render_assertions.contains(html, "aria-label=\"Blocked: 1\"")
+  render_assertions.contains(html, "task-metric-chip-icon")
+  render_assertions.contains(html, ">1<")
+  render_assertions.not_contains(html, "task-metric-chip-label")
+  render_assertions.not_contains(html, ">Blocked<")
 }

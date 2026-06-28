@@ -1,6 +1,5 @@
 import domain/remote.{NotAsked}
 import gleam/option as opt
-import gleam/string
 import lustre/element
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
@@ -10,10 +9,7 @@ import scrumbringer_client/features/cards/view_config as cards_view_config
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/state/normalized_store
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
+import support/render_assertions
 
 fn cards_config(model: client_state.Model) {
   cards_view_config.from_state(
@@ -53,5 +49,5 @@ pub fn cards_view_shows_empty_state_for_member_cards_test() {
     |> element.to_document_string
 
   let expected = i18n.t(model.ui.locale, i18n_text.MemberCardsEmpty)
-  assert_contains(html, expected)
+  render_assertions.contains(html, expected)
 }

@@ -1,13 +1,9 @@
-import gleam/string
+import support/render_assertions
 
 import lustre/element
 import lustre/element/html.{span, text}
 
 import scrumbringer_client/ui/inspector_shell
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 pub fn detail_renders_shared_header_body_and_overlays_test() {
   let html =
@@ -27,14 +23,14 @@ pub fn detail_renders_shared_header_body_and_overlays_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "example-root inspector-shell")
-  assert_contains(html, "example-panel inspector-panel")
-  assert_contains(html, "data-testid=\"example-inspector\"")
-  assert_contains(html, "aria-labelledby=\"example-title\"")
-  assert_contains(html, "example-header detail-header-block")
-  assert_contains(html, "example-body")
-  assert_contains(html, "Header")
-  assert_contains(html, "Tabs")
-  assert_contains(html, "Body")
-  assert_contains(html, "Overlay")
+  render_assertions.contains(html, "example-root inspector-shell")
+  render_assertions.contains(html, "example-panel inspector-panel")
+  render_assertions.contains(html, "data-testid=\"example-inspector\"")
+  render_assertions.contains(html, "aria-labelledby=\"example-title\"")
+  render_assertions.contains(html, "example-header detail-header-block")
+  render_assertions.contains(html, "example-body")
+  render_assertions.contains(html, "Header")
+  render_assertions.contains(html, "Tabs")
+  render_assertions.contains(html, "Body")
+  render_assertions.contains(html, "Overlay")
 }

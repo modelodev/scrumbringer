@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/note/entity.{Note}
 import domain/note/id as note_id
@@ -14,14 +14,6 @@ import domain/task_type.{TaskTypeInline}
 import domain/user/id as user_id
 import scrumbringer_client/features/pool/task_hover
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 pub fn task_hover_renders_pool_specific_metadata_test() {
   let html =
@@ -40,25 +32,25 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "task-card-preview")
-  assert_contains(html, "Card")
-  assert_contains(html, "Release card")
-  assert_contains(html, "Age")
-  assert_contains(html, "2 days ago")
-  assert_contains(html, "Description")
-  assert_contains(html, "Task description")
-  assert_contains(html, "Blocked by 2 tasks")
-  assert_contains(html, "OAuth setup")
-  assert_contains(html, "API review")
-  assert_not_contains(html, "Closed blocker")
-  assert_contains(html, "3 blockers out of view due to filters")
-  assert_contains(html, "Recent notes")
-  assert_contains(html, "You")
-  assert_contains(html, "User #9")
-  assert_contains(html, "I checked the deployment checklist.")
-  assert_contains(html, "OAuth setup still blocks this.")
-  assert_contains(html, "Open task")
-  assert_not_contains(html, "Claim to My Tasks")
+  render_assertions.contains(html, "task-card-preview")
+  render_assertions.contains(html, "Card")
+  render_assertions.contains(html, "Release card")
+  render_assertions.contains(html, "Age")
+  render_assertions.contains(html, "2 days ago")
+  render_assertions.contains(html, "Description")
+  render_assertions.contains(html, "Task description")
+  render_assertions.contains(html, "Blocked by 2 tasks")
+  render_assertions.contains(html, "OAuth setup")
+  render_assertions.contains(html, "API review")
+  render_assertions.not_contains(html, "Closed blocker")
+  render_assertions.contains(html, "3 blockers out of view due to filters")
+  render_assertions.contains(html, "Recent notes")
+  render_assertions.contains(html, "You")
+  render_assertions.contains(html, "User #9")
+  render_assertions.contains(html, "I checked the deployment checklist.")
+  render_assertions.contains(html, "OAuth setup still blocks this.")
+  render_assertions.contains(html, "Open task")
+  render_assertions.not_contains(html, "Claim to My Tasks")
 }
 
 pub fn task_hover_hides_empty_optional_sections_test() {
@@ -81,14 +73,14 @@ pub fn task_hover_hides_empty_optional_sections_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Age")
-  assert_contains(html, "today")
-  assert_contains(html, "Open task")
-  assert_not_contains(html, "Card")
-  assert_not_contains(html, "Description")
-  assert_not_contains(html, "Blocked by")
-  assert_not_contains(html, "blockers out of view")
-  assert_not_contains(html, "Recent notes")
+  render_assertions.contains(html, "Age")
+  render_assertions.contains(html, "today")
+  render_assertions.contains(html, "Open task")
+  render_assertions.not_contains(html, "Card")
+  render_assertions.not_contains(html, "Description")
+  render_assertions.not_contains(html, "Blocked by")
+  render_assertions.not_contains(html, "blockers out of view")
+  render_assertions.not_contains(html, "Recent notes")
 }
 
 fn sample_task() {

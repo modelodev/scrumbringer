@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card
 import domain/task.{type Task, Task}
@@ -11,14 +11,6 @@ import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/pool/my_tasks_dropzone
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn my_tasks_dropzone_renders_drag_empty_state_without_root_model_test() {
   let html =
@@ -31,10 +23,10 @@ pub fn my_tasks_dropzone_renders_drag_empty_state_without_root_model_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "My tasks")
-  assert_contains(html, "pool-my-tasks-dropzone drag-active")
-  assert_contains(html, "Claim: My tasks")
-  assert_contains(html, "No tasks in My Tasks yet")
+  render_assertions.contains(html, "My tasks")
+  render_assertions.contains(html, "pool-my-tasks-dropzone drag-active")
+  render_assertions.contains(html, "Claim: My tasks")
+  render_assertions.contains(html, "No tasks in My Tasks yet")
 }
 
 pub fn my_tasks_dropzone_renders_claimed_tasks_without_root_model_test() {
@@ -48,11 +40,11 @@ pub fn my_tasks_dropzone_renders_claimed_tasks_without_root_model_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "pool-my-tasks-dropzone drop-over")
-  assert_contains(html, "Prepare release")
-  assert_contains(html, "Release card")
-  assert_contains(html, "Start")
-  assert_not_contains(html, "No tasks in My Tasks yet")
+  render_assertions.contains(html, "pool-my-tasks-dropzone drop-over")
+  render_assertions.contains(html, "Prepare release")
+  render_assertions.contains(html, "Release card")
+  render_assertions.contains(html, "Start")
+  render_assertions.not_contains(html, "No tasks in My Tasks yet")
 }
 
 fn row_config() -> my_bar_view.TaskRowConfig(String) {

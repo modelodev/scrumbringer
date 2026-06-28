@@ -1,17 +1,9 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/signal_chip
 import scrumbringer_client/ui/tone
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn metric_chip_renders_value_label_and_tone_test() {
   let html =
@@ -20,13 +12,13 @@ pub fn metric_chip_renders_value_label_and_tone_test() {
     |> signal_chip.view
     |> element.to_document_string
 
-  assert_contains(html, "signal-chip available")
-  assert_contains(html, "data-testid=\"metric-chip\"")
-  assert_contains(html, "signal-chip-value")
-  assert_contains(html, "signal-chip-label")
-  assert_contains(html, ">4<")
-  assert_contains(html, "</span> <span")
-  assert_contains(html, ">Available<")
+  render_assertions.contains(html, "signal-chip available")
+  render_assertions.contains(html, "data-testid=\"metric-chip\"")
+  render_assertions.contains(html, "signal-chip-value")
+  render_assertions.contains(html, "signal-chip-label")
+  render_assertions.contains(html, ">4<")
+  render_assertions.contains(html, "</span> <span")
+  render_assertions.contains(html, ">Available<")
 }
 
 pub fn text_chip_renders_label_without_metric_parts_test() {
@@ -35,9 +27,9 @@ pub fn text_chip_renders_label_without_metric_parts_test() {
     |> signal_chip.view
     |> element.to_document_string
 
-  assert_contains(html, "signal-chip blocked")
-  assert_contains(html, ">2 blocked<")
-  assert_not_contains(html, "signal-chip-value")
+  render_assertions.contains(html, "signal-chip blocked")
+  render_assertions.contains(html, ">2 blocked<")
+  render_assertions.not_contains(html, "signal-chip-value")
 }
 
 pub fn metric_if_positive_hides_zero_test() {
@@ -51,7 +43,7 @@ pub fn metric_if_positive_hides_zero_test() {
     |> signal_chip.view
     |> element.to_document_string
 
-  assert_contains(html, ">2<")
+  render_assertions.contains(html, ">2<")
 }
 
 pub fn custom_class_preserves_view_contract_test() {
@@ -64,9 +56,9 @@ pub fn custom_class_preserves_view_contract_test() {
     |> signal_chip.view
     |> element.to_document_string
 
-  assert_contains(html, "custom-health-chip blocked")
-  assert_contains(html, "custom-health-value")
-  assert_contains(html, "custom-health-label")
-  assert_contains(html, "data-testid=\"custom-health-chip\"")
-  assert_contains(html, "title=\"Blocked: 1\"")
+  render_assertions.contains(html, "custom-health-chip blocked")
+  render_assertions.contains(html, "custom-health-value")
+  render_assertions.contains(html, "custom-health-label")
+  render_assertions.contains(html, "data-testid=\"custom-health-chip\"")
+  render_assertions.contains(html, "title=\"Blocked: 1\"")
 }

@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/automation
 import domain/remote.{Loaded}
@@ -9,14 +9,6 @@ import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/automations/execution_history
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn engine_summary() -> api_rule_metrics.OrgWorkflowMetricsSummary {
   api_rule_metrics.OrgWorkflowMetricsSummary(
@@ -197,23 +189,26 @@ pub fn automation_execution_history_renders_from_config_without_root_model_test(
     execution_history.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "Review automation executions")
-  assert_contains(html, "filter-bar automation-executions-filters")
-  assert_contains(html, "data-testid=\"automation-executions-filter-bar\"")
-  assert_contains(html, "Escalation workflow")
-  assert_contains(html, "Escalate blocked work")
-  assert_contains(html, "Escalation template v3")
-  assert_contains(html, "task #42 Blocked backend task")
-  assert_contains(html, "task #43 Follow up task")
-  assert_contains(html, "Created")
-  assert_contains(html, "9")
-  assert_contains(html, "6")
-  assert_contains(html, "3")
-  assert_contains(html, "btn-chip-active")
-  assert_contains(html, "aria-expanded=\"false\"")
-  assert_not_contains(html, "Suppressed")
-  assert_not_contains(html, "admin-card")
-  assert_not_contains(html, "section-header")
+  render_assertions.contains(html, "Review automation executions")
+  render_assertions.contains(html, "filter-bar automation-executions-filters")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-executions-filter-bar\"",
+  )
+  render_assertions.contains(html, "Escalation workflow")
+  render_assertions.contains(html, "Escalate blocked work")
+  render_assertions.contains(html, "Escalation template v3")
+  render_assertions.contains(html, "task #42 Blocked backend task")
+  render_assertions.contains(html, "task #43 Follow up task")
+  render_assertions.contains(html, "Created")
+  render_assertions.contains(html, "9")
+  render_assertions.contains(html, "6")
+  render_assertions.contains(html, "3")
+  render_assertions.contains(html, "btn-chip-active")
+  render_assertions.contains(html, "aria-expanded=\"false\"")
+  render_assertions.not_contains(html, "Suppressed")
+  render_assertions.not_contains(html, "admin-card")
+  render_assertions.not_contains(html, "section-header")
 }
 
 pub fn automation_execution_history_keeps_ignored_events_out_of_main_table_test() {
@@ -239,13 +234,19 @@ pub fn automation_execution_history_keeps_ignored_events_out_of_main_table_test(
     )
     |> element.to_document_string
 
-  assert_contains(html, "No automation executions found in the selected range.")
-  assert_contains(html, "Diagnostics by engine")
-  assert_contains(html, "Escalation workflow")
-  assert_contains(html, "3")
-  assert_not_contains(html, "Ignored (idempotent)")
-  assert_not_contains(html, "task #42 Blocked backend task")
-  assert_not_contains(html, "data-testid=\"automation-execution-row\"")
+  render_assertions.contains(
+    html,
+    "No automation executions found in the selected range.",
+  )
+  render_assertions.contains(html, "Diagnostics by engine")
+  render_assertions.contains(html, "Escalation workflow")
+  render_assertions.contains(html, "3")
+  render_assertions.not_contains(html, "Ignored (idempotent)")
+  render_assertions.not_contains(html, "task #42 Blocked backend task")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"automation-execution-row\"",
+  )
 }
 
 pub fn automation_execution_history_renders_empty_state_without_root_model_test() {
@@ -272,9 +273,15 @@ pub fn automation_execution_history_renders_empty_state_without_root_model_test(
     )
     |> element.to_document_string
 
-  assert_contains(html, "No automation executions found in the selected range.")
-  assert_contains(html, "No execution diagnostics for the selected range")
-  assert_not_contains(html, "metrics data")
+  render_assertions.contains(
+    html,
+    "No automation executions found in the selected range.",
+  )
+  render_assertions.contains(
+    html,
+    "No execution diagnostics for the selected range",
+  )
+  render_assertions.not_contains(html, "metrics data")
 }
 
 pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
@@ -291,12 +298,12 @@ pub fn automation_execution_history_detail_action_uses_semantic_button_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Escalate blocked work")
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-xs")
-  assert_contains(html, "aria-label=\"View Details\"")
+  render_assertions.contains(html, "Escalate blocked work")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-xs")
+  render_assertions.contains(html, "aria-label=\"View Details\"")
 }
 
 pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_test() {
@@ -314,19 +321,19 @@ pub fn automation_execution_history_pagination_uses_semantic_accessible_buttons_
     )
     |> element.to_document_string
 
-  assert_contains(html, "2 / 3")
-  assert_contains(html, "btn-close")
-  assert_contains(html, "aria-label=\"Close\"")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "aria-label=\"First page\"")
-  assert_contains(html, "aria-label=\"Previous page\"")
-  assert_contains(html, "aria-label=\"Next page\"")
-  assert_contains(html, "aria-label=\"Last page\"")
-  assert_contains(html, "data-testid=\"automation-execution-row\"")
-  assert_contains(html, "Created")
-  assert_not_contains(html, "Ignored (idempotent)")
-  assert_not_contains(html, "Suppressed")
+  render_assertions.contains(html, "2 / 3")
+  render_assertions.contains(html, "btn-close")
+  render_assertions.contains(html, "aria-label=\"Close\"")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "aria-label=\"First page\"")
+  render_assertions.contains(html, "aria-label=\"Previous page\"")
+  render_assertions.contains(html, "aria-label=\"Next page\"")
+  render_assertions.contains(html, "aria-label=\"Last page\"")
+  render_assertions.contains(html, "data-testid=\"automation-execution-row\"")
+  render_assertions.contains(html, "Created")
+  render_assertions.not_contains(html, "Ignored (idempotent)")
+  render_assertions.not_contains(html, "Suppressed")
 }
 
 pub fn automation_execution_history_localizes_drilldown_table_columns_test() {
@@ -345,12 +352,12 @@ pub fn automation_execution_history_localizes_drilldown_table_columns_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Origen")
-  assert_contains(html, "Resultado")
-  assert_contains(html, ">Tarea<")
-  assert_contains(html, "Plantilla")
-  assert_not_contains(html, "Created task")
-  assert_not_contains(html, ">Template<")
+  render_assertions.contains(html, "Origen")
+  render_assertions.contains(html, "Resultado")
+  render_assertions.contains(html, ">Tarea<")
+  render_assertions.contains(html, "Plantilla")
+  render_assertions.not_contains(html, "Created task")
+  render_assertions.not_contains(html, ">Template<")
 }
 
 pub fn automation_execution_history_marks_selected_execution_test() {
@@ -369,7 +376,7 @@ pub fn automation_execution_history_marks_selected_execution_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-execution-row\"")
-  assert_contains(html, "data-selected=\"true\"")
-  assert_contains(html, "automation-execution-row is-selected")
+  render_assertions.contains(html, "data-testid=\"automation-execution-row\"")
+  render_assertions.contains(html, "data-selected=\"true\"")
+  render_assertions.contains(html, "automation-execution-row is-selected")
 }

@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/project.{type Project, Project}
 import domain/project_role
@@ -11,14 +11,6 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/automations/engine_list
 import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn engine(id: Int, name: String, active: Bool) -> Workflow {
   Workflow(
@@ -93,19 +85,25 @@ pub fn automation_engine_list_renders_operational_rows_test() {
     engine_list.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "Engines - Roadmap")
-  assert_contains(html, "filter-bar automation-engines-filters")
-  assert_contains(html, "data-testid=\"automation-engines-filter-bar\"")
-  assert_contains(html, "data-testid=\"automation-engine-search\"")
-  assert_contains(html, "data-testid=\"automation-engine-status-filter\"")
-  assert_contains(html, "data-testid=\"automation-engine-row\"")
-  assert_contains(html, "Release automation")
-  assert_contains(html, "workflow-rules-btn")
-  assert_contains(html, automation_focus.engine_edit_trigger_id(3))
-  assert_contains(html, automation_focus.engine_delete_trigger_id(3))
-  assert_not_contains(html, "inert")
-  assert_not_contains(html, "section-header")
-  assert_not_contains(html, "info-callout-link")
+  render_assertions.contains(html, "Engines - Roadmap")
+  render_assertions.contains(html, "filter-bar automation-engines-filters")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-engines-filter-bar\"",
+  )
+  render_assertions.contains(html, "data-testid=\"automation-engine-search\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-engine-status-filter\"",
+  )
+  render_assertions.contains(html, "data-testid=\"automation-engine-row\"")
+  render_assertions.contains(html, "Release automation")
+  render_assertions.contains(html, "workflow-rules-btn")
+  render_assertions.contains(html, automation_focus.engine_edit_trigger_id(3))
+  render_assertions.contains(html, automation_focus.engine_delete_trigger_id(3))
+  render_assertions.not_contains(html, "inert")
+  render_assertions.not_contains(html, "section-header")
+  render_assertions.not_contains(html, "info-callout-link")
 }
 
 pub fn automation_engine_list_filters_by_status_test() {
@@ -122,9 +120,9 @@ pub fn automation_engine_list_filters_by_status_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Paused intake")
-  assert_contains(html, "Paused")
-  assert_not_contains(html, "Release automation")
+  render_assertions.contains(html, "Paused intake")
+  render_assertions.contains(html, "Paused")
+  render_assertions.not_contains(html, "Release automation")
 }
 
 pub fn automation_engine_list_marks_selected_engine_test() {
@@ -134,9 +132,9 @@ pub fn automation_engine_list_marks_selected_engine_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-engine-row\"")
-  assert_contains(html, "data-selected=\"true\"")
-  assert_contains(html, "automation-engine-row is-selected")
+  render_assertions.contains(html, "data-testid=\"automation-engine-row\"")
+  render_assertions.contains(html, "data-selected=\"true\"")
+  render_assertions.contains(html, "automation-engine-row is-selected")
 }
 
 pub fn automation_engine_list_renders_feature_local_create_panel_test() {
@@ -151,30 +149,36 @@ pub fn automation_engine_list_renders_feature_local_create_panel_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "automation-engine-panel")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"automation-engine-panel-title\"")
-  assert_contains(html, "id=\"automation-engine-panel-title\"")
-  assert_contains(html, "data-testid=\"automation-engine-name\"")
-  assert_contains(html, "autofocus")
-  assert_not_contains(
+  render_assertions.contains(html, "automation-engine-panel")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-engine-panel-title\"",
+  )
+  render_assertions.contains(html, "id=\"automation-engine-panel-title\"")
+  render_assertions.contains(html, "data-testid=\"automation-engine-name\"")
+  render_assertions.contains(html, "autofocus")
+  render_assertions.not_contains(
     html,
     "id=\"automation-engine-panel-title\" tabindex=\"-1\"",
   )
-  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "Create engine")
-  assert_contains(html, "data-testid=\"automation-engine-name\"")
-  assert_contains(html, "aria-label=\"Name\"")
-  assert_contains(html, "Release automation")
-  assert_contains(html, "data-testid=\"automation-engine-description\"")
-  assert_contains(html, "aria-label=\"Description\"")
-  assert_contains(html, "Creates follow-up work")
-  assert_contains(html, "data-testid=\"automation-engine-active\"")
-  assert_not_contains(html, "workflow-crud-dialog")
+  render_assertions.contains(html, "aria-keyshortcuts=\"Escape\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "Create engine")
+  render_assertions.contains(html, "data-testid=\"automation-engine-name\"")
+  render_assertions.contains(html, "aria-label=\"Name\"")
+  render_assertions.contains(html, "Release automation")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-engine-description\"",
+  )
+  render_assertions.contains(html, "aria-label=\"Description\"")
+  render_assertions.contains(html, "Creates follow-up work")
+  render_assertions.contains(html, "data-testid=\"automation-engine-active\"")
+  render_assertions.not_contains(html, "workflow-crud-dialog")
 }
 
 pub fn automation_engine_list_localizes_panel_actions_test() {
@@ -193,13 +197,13 @@ pub fn automation_engine_list_localizes_panel_actions_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Editar motor")
-  assert_contains(html, "aria-label=\"Cerrar\"")
-  assert_contains(html, ">Cancelar<")
-  assert_contains(html, "Guardando")
-  assert_not_contains(html, "aria-label=\"Close\"")
-  assert_not_contains(html, ">Cancel<")
-  assert_not_contains(html, "Saving...")
+  render_assertions.contains(html, "Editar motor")
+  render_assertions.contains(html, "aria-label=\"Cerrar\"")
+  render_assertions.contains(html, ">Cancelar<")
+  render_assertions.contains(html, "Guardando")
+  render_assertions.not_contains(html, "aria-label=\"Close\"")
+  render_assertions.not_contains(html, ">Cancel<")
+  render_assertions.not_contains(html, "Saving...")
 }
 
 pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
@@ -218,18 +222,24 @@ pub fn automation_engine_list_renders_feature_local_delete_panel_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "automation-engine-panel")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"automation-engine-panel-title\"")
-  assert_contains(html, "id=\"automation-engine-panel-title\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "autofocus")
-  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "Delete engine")
-  assert_contains(html, "Delete engine &quot;Release automation&quot;?")
-  assert_not_contains(html, "workflow-crud-dialog")
+  render_assertions.contains(html, "automation-engine-panel")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-engine-panel-title\"",
+  )
+  render_assertions.contains(html, "id=\"automation-engine-panel-title\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "autofocus")
+  render_assertions.contains(html, "aria-keyshortcuts=\"Escape\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "Delete engine")
+  render_assertions.contains(
+    html,
+    "Delete engine &quot;Release automation&quot;?",
+  )
+  render_assertions.not_contains(html, "workflow-crud-dialog")
 }

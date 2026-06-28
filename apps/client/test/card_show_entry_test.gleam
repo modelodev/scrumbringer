@@ -1,6 +1,7 @@
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card.{Active, Card, Draft}
 import domain/remote.{Loaded, Loading}
@@ -11,14 +12,6 @@ import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/show_tabs
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn forbidden_fragment(parts: List(String)) -> String {
   string.join(parts, "")
@@ -90,13 +83,16 @@ pub fn card_show_entry_renders_without_root_model_test() {
     show_entry.view(config(Some(sample_card())))
     |> element.to_document_string
 
-  assert_contains(html, "card-show")
-  assert_contains(html, "inspector-shell")
-  assert_contains(html, "data-testid=\"inspector-open-in-trigger\"")
-  assert_contains(html, "Customer Card")
-  assert_contains(html, "data-testid=\"entity-tabs\"")
-  assert_not_contains(html, forbidden_fragment(["card", "-scoped-navigation"]))
-  assert_not_contains(html, "card-progress")
+  render_assertions.contains(html, "card-show")
+  render_assertions.contains(html, "inspector-shell")
+  render_assertions.contains(html, "data-testid=\"inspector-open-in-trigger\"")
+  render_assertions.contains(html, "Customer Card")
+  render_assertions.contains(html, "data-testid=\"entity-tabs\"")
+  render_assertions.not_contains(
+    html,
+    forbidden_fragment(["card", "-scoped-navigation"]),
+  )
+  render_assertions.not_contains(html, "card-progress")
 }
 
 pub fn card_show_entry_renders_without_current_user_test() {
@@ -106,8 +102,8 @@ pub fn card_show_entry_renders_without_current_user_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "card-show")
-  assert_contains(html, "Customer Card")
+  render_assertions.contains(html, "card-show")
+  render_assertions.contains(html, "Customer Card")
 }
 
 pub fn card_show_secondary_actions_render_as_menu_items_test() {
@@ -115,16 +111,28 @@ pub fn card_show_secondary_actions_render_as_menu_items_test() {
     show_entry.view(config(Some(sample_card())))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"card-primary-activate-action\"")
-  assert_contains(html, "data-testid=\"inspector-more-actions-trigger\"")
-  assert_not_contains(html, "data-testid=\"card-secondary-activate-action\"")
-  assert_contains(html, "data-testid=\"card-secondary-move-action\"")
-  assert_contains(html, "data-testid=\"card-secondary-delete-action\"")
-  assert_not_contains(html, "card-secondary-actions-menu")
-  assert_not_contains(html, "card-open-in-menu")
-  assert_not_contains(html, "data-testid=\"card-activate-action\"")
-  assert_not_contains(html, "data-testid=\"card-move-action\"")
-  assert_not_contains(html, "data-testid=\"card-delete-action\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"card-primary-activate-action\"",
+  )
+  render_assertions.contains(
+    html,
+    "data-testid=\"inspector-more-actions-trigger\"",
+  )
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"card-secondary-activate-action\"",
+  )
+  render_assertions.contains(html, "data-testid=\"card-secondary-move-action\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"card-secondary-delete-action\"",
+  )
+  render_assertions.not_contains(html, "card-secondary-actions-menu")
+  render_assertions.not_contains(html, "card-open-in-menu")
+  render_assertions.not_contains(html, "data-testid=\"card-activate-action\"")
+  render_assertions.not_contains(html, "data-testid=\"card-move-action\"")
+  render_assertions.not_contains(html, "data-testid=\"card-delete-action\"")
 }
 
 pub fn card_show_task_group_uses_single_header_create_action_test() {
@@ -134,10 +142,10 @@ pub fn card_show_task_group_uses_single_header_create_action_test() {
     show_entry.view(config(Some(card)))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"card-create-task-action\"")
-  assert_contains(html, "Add task")
-  assert_not_contains(html, "Add subcard")
-  assert_not_contains(html, "New Card")
+  render_assertions.contains(html, "data-testid=\"card-create-task-action\"")
+  render_assertions.contains(html, "Add task")
+  render_assertions.not_contains(html, "Add subcard")
+  render_assertions.not_contains(html, "New Card")
 }
 
 pub fn card_show_header_renders_path_due_date_and_health_test() {
@@ -177,23 +185,26 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"card-header-path\"")
-  assert_contains(html, "Release")
-  assert_contains(html, "API Cleanup")
-  assert_contains(html, "Active · Due 2026-06-24 · 1 closed · 4 Tasks")
-  assert_contains(html, "data-testid=\"card-header-due\"")
-  assert_contains(html, "Due 2026-06-24")
-  assert_contains(html, "data-testid=\"card-task-metric-total\"")
-  assert_contains(html, "task-metric-chip is-compact")
-  assert_contains(html, "title=\"Total: 4\"")
-  assert_contains(html, "4")
-  assert_contains(html, "data-testid=\"card-task-metric-closed\"")
-  assert_contains(html, "title=\"Closed: 1\"")
-  assert_contains(html, "1")
-  assert_contains(html, "data-testid=\"card-task-metric-blocked\"")
-  assert_contains(html, "title=\"Blocked: 2\"")
-  assert_contains(html, "2")
-  assert_not_contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, "data-testid=\"card-header-path\"")
+  render_assertions.contains(html, "Release")
+  render_assertions.contains(html, "API Cleanup")
+  render_assertions.contains(
+    html,
+    "Active · Due 2026-06-24 · 1 closed · 4 Tasks",
+  )
+  render_assertions.contains(html, "data-testid=\"card-header-due\"")
+  render_assertions.contains(html, "Due 2026-06-24")
+  render_assertions.contains(html, "data-testid=\"card-task-metric-total\"")
+  render_assertions.contains(html, "task-metric-chip is-compact")
+  render_assertions.contains(html, "title=\"Total: 4\"")
+  render_assertions.contains(html, "4")
+  render_assertions.contains(html, "data-testid=\"card-task-metric-closed\"")
+  render_assertions.contains(html, "title=\"Closed: 1\"")
+  render_assertions.contains(html, "1")
+  render_assertions.contains(html, "data-testid=\"card-task-metric-blocked\"")
+  render_assertions.contains(html, "title=\"Blocked: 2\"")
+  render_assertions.contains(html, "2")
+  render_assertions.not_contains(html, "task-metric-chip-label")
 }
 
 pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
@@ -204,19 +215,19 @@ pub fn empty_card_show_offers_balanced_task_and_subcard_creation_test() {
     show_entry.view(config(Some(empty_card)))
     |> element.to_document_string
 
-  assert_contains(html, "inspector-empty-work")
-  assert_not_contains(html, "card-empty-work-decision")
-  assert_contains(html, "Active")
-  assert_contains(html, "Active · No due date · No tasks")
-  assert_not_contains(html, "detail-meta")
-  assert_not_contains(html, "card-state-badge")
-  assert_not_contains(html, "data-testid=\"card-header-due\"")
-  assert_contains(html, "empty-state-actions")
-  assert_contains(html, "This card has no work yet")
-  assert_contains(html, "Add subcard")
-  assert_contains(html, "Add task")
-  assert_not_contains(html, "In Progress")
-  assert_not_contains(html, forbidden_fragment(["0", "/", "0"]))
+  render_assertions.contains(html, "inspector-empty-work")
+  render_assertions.not_contains(html, "card-empty-work-decision")
+  render_assertions.contains(html, "Active")
+  render_assertions.contains(html, "Active · No due date · No tasks")
+  render_assertions.not_contains(html, "detail-meta")
+  render_assertions.not_contains(html, "card-state-badge")
+  render_assertions.not_contains(html, "data-testid=\"card-header-due\"")
+  render_assertions.contains(html, "empty-state-actions")
+  render_assertions.contains(html, "This card has no work yet")
+  render_assertions.contains(html, "Add subcard")
+  render_assertions.contains(html, "Add task")
+  render_assertions.not_contains(html, "In Progress")
+  render_assertions.not_contains(html, forbidden_fragment(["0", "/", "0"]))
 }
 
 pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
@@ -241,19 +252,25 @@ pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "card-summary-block")
-  assert_contains(html, "card-summary-signal")
-  assert_contains(html, "card-summary-metrics")
-  assert_contains(html, "detail-section-kicker")
-  assert_contains(html, "Description")
-  assert_contains(html, "Structure")
-  assert_contains(html, "Define the work")
-  assert_contains(html, "Ready root card dominated by loose documentation.")
-  assert_not_contains(html, forbidden_fragment(["detail", "-summary-grid"]))
-  assert_not_contains(html, "card-progress")
-  assert_not_contains(html, "Tasks0")
-  assert_not_contains(html, "Progress0%")
-  assert_not_contains(html, forbidden_fragment(["0", "/", "0"]))
+  render_assertions.contains(html, "card-summary-block")
+  render_assertions.contains(html, "card-summary-signal")
+  render_assertions.contains(html, "card-summary-metrics")
+  render_assertions.contains(html, "detail-section-kicker")
+  render_assertions.contains(html, "Description")
+  render_assertions.contains(html, "Structure")
+  render_assertions.contains(html, "Define the work")
+  render_assertions.contains(
+    html,
+    "Ready root card dominated by loose documentation.",
+  )
+  render_assertions.not_contains(
+    html,
+    forbidden_fragment(["detail", "-summary-grid"]),
+  )
+  render_assertions.not_contains(html, "card-progress")
+  render_assertions.not_contains(html, "Tasks0")
+  render_assertions.not_contains(html, "Progress0%")
+  render_assertions.not_contains(html, forbidden_fragment(["0", "/", "0"]))
 }
 
 pub fn card_show_entry_omits_missing_card_test() {
@@ -261,7 +278,7 @@ pub fn card_show_entry_omits_missing_card_test() {
     show_entry.view(config(None))
     |> element.to_document_string
 
-  assert_not_contains(html, "card-show")
+  render_assertions.not_contains(html, "card-show")
 }
 
 pub fn card_show_entry_filters_loaded_tasks_by_card_test() {

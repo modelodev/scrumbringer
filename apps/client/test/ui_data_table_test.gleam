@@ -1,13 +1,9 @@
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, NotAsked}
-import gleam/string
 import lustre/element
 import lustre/element/html.{text}
 import scrumbringer_client/ui/data_table
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
+import support/render_assertions
 
 fn base_config() -> data_table.DataTableConfig(String, msg) {
   data_table.new()
@@ -27,7 +23,7 @@ pub fn view_remote_renders_loading_state_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "Loading...")
+  render_assertions.contains(html, "Loading...")
 }
 
 pub fn view_remote_renders_error_state_test() {
@@ -42,7 +38,7 @@ pub fn view_remote_renders_error_state_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "Boom")
+  render_assertions.contains(html, "Boom")
 }
 
 pub fn view_remote_renders_empty_state_test() {
@@ -55,7 +51,7 @@ pub fn view_remote_renders_empty_state_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "No rows")
+  render_assertions.contains(html, "No rows")
 }
 
 pub fn view_remote_renders_table_rows_test() {
@@ -68,7 +64,7 @@ pub fn view_remote_renders_table_rows_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "Alice")
+  render_assertions.contains(html, "Alice")
 }
 
 pub fn view_remote_renders_table_headers_with_class_test() {
@@ -81,7 +77,7 @@ pub fn view_remote_renders_table_headers_with_class_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "table-header")
+  render_assertions.contains(html, "table-header")
 }
 
 pub fn view_uses_responsive_data_table_class_by_default_test() {
@@ -94,9 +90,9 @@ pub fn view_uses_responsive_data_table_class_by_default_test() {
     |> data_table.view()
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "data-table-scroll")
-  assert_contains(html, "class=\"table data-table\"")
-  assert_contains(html, "scope=\"col\"")
+  render_assertions.contains(html, "data-table-scroll")
+  render_assertions.contains(html, "class=\"table data-table\"")
+  render_assertions.contains(html, "scope=\"col\"")
 }
 
 pub fn sortable_column_renders_keyboard_button_test() {
@@ -109,10 +105,10 @@ pub fn sortable_column_renders_keyboard_button_test() {
     |> data_table.view()
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "table-sort-button")
-  assert_contains(html, "type=\"button\"")
-  assert_contains(html, "aria-label=\"Sort by Name\"")
-  assert_contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "table-sort-button")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.contains(html, "aria-label=\"Sort by Name\"")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
 }
 
 pub fn loading_state_is_announced_without_blocking_page_test() {
@@ -125,9 +121,9 @@ pub fn loading_state_is_announced_without_blocking_page_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "role=\"status\"")
-  assert_contains(html, "aria-live=\"polite\"")
-  assert_contains(html, "aria-busy=\"true\"")
+  render_assertions.contains(html, "role=\"status\"")
+  render_assertions.contains(html, "aria-live=\"polite\"")
+  render_assertions.contains(html, "aria-busy=\"true\"")
 }
 
 pub fn forbidden_state_is_alerted_test() {
@@ -143,8 +139,8 @@ pub fn forbidden_state_is_alerted_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "role=\"alert\"")
-  assert_contains(html, "No permission for this table")
+  render_assertions.contains(html, "role=\"alert\"")
+  render_assertions.contains(html, "No permission for this table")
 }
 
 pub fn empty_error_message_gets_safe_fallback_test() {
@@ -159,5 +155,5 @@ pub fn empty_error_message_gets_safe_fallback_test() {
     )
 
   let html = element.to_document_string(rendered)
-  assert_contains(html, "SERVER (500)")
+  render_assertions.contains(html, "SERVER (500)")
 }

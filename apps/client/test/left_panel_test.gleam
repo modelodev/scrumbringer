@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option as opt
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/view_mode as view_mode_module
 import scrumbringer_client/features/hierarchy/scope_view
@@ -11,14 +12,6 @@ import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn assert_true(value: Bool) {
   let assert True = value
@@ -128,7 +121,7 @@ pub fn left_panel_active_nav_has_active_class_test() {
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "nav-link active")
+  render_assertions.contains(html, "nav-link active")
 }
 
 pub fn left_panel_all_view_modes_can_be_active_test() {
@@ -141,7 +134,7 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
   |> list.each(fn(mode) {
     let rendered = left_panel.view(base_config(opt.Some(member_route(mode))))
     let html = element.to_document_string(rendered)
-    assert_contains(html, "nav-link active")
+    render_assertions.contains(html, "nav-link active")
   })
 }
 
@@ -149,8 +142,11 @@ pub fn left_panel_kanban_route_can_be_active_test() {
   let rendered = left_panel.view(base_config(opt.Some(member_kanban_route())))
   let html = element.to_document_string(rendered)
 
-  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-kanban\"")
-  assert_not_contains(
+  render_assertions.contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-kanban\"",
+  )
+  render_assertions.not_contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-cards\"",
   )
@@ -163,7 +159,7 @@ pub fn left_panel_does_not_render_removed_hierarchy_nav_test() {
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
   let html = element.to_document_string(rendered)
 
-  assert_not_contains(html, "nav-hierarchies")
+  render_assertions.not_contains(html, "nav-hierarchies")
 }
 
 pub fn left_panel_create_actions_are_global_shortcuts_test() {
@@ -174,10 +170,10 @@ pub fn left_panel_create_actions_are_global_shortcuts_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(html, "btn-action btn-action-shortcut")
-  assert_contains(html, "data-testid=\"btn-new-task\"")
-  assert_contains(html, "data-testid=\"btn-new-card\"")
-  assert_not_contains(html, "btn-action btn-action-primary")
+  render_assertions.contains(html, "btn-action btn-action-shortcut")
+  render_assertions.contains(html, "data-testid=\"btn-new-task\"")
+  render_assertions.contains(html, "data-testid=\"btn-new-card\"")
+  render_assertions.not_contains(html, "btn-action btn-action-primary")
 }
 
 pub fn left_panel_config_section_active_test() {
@@ -192,7 +188,7 @@ pub fn left_panel_config_section_active_test() {
   let html = element.to_document_string(rendered)
 
   // Should have active class on the Team nav item
-  assert_contains(html, "nav-link active")
+  render_assertions.contains(html, "nav-link active")
 }
 
 pub fn left_panel_config_has_single_automations_entry_test() {
@@ -204,12 +200,21 @@ pub fn left_panel_config_has_single_automations_entry_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"nav-automations\"")
-  assert_contains(html, "<span class=\"nav-label\">Automations</span>")
-  assert_not_contains(html, "data-testid=\"nav-templates\"")
-  assert_not_contains(html, "data-testid=\"nav-rule-metrics\"")
-  assert_not_contains(html, "<span class=\"nav-label\">Templates</span>")
-  assert_not_contains(html, "<span class=\"nav-label\">Executions</span>")
+  render_assertions.contains(html, "data-testid=\"nav-automations\"")
+  render_assertions.contains(
+    html,
+    "<span class=\"nav-label\">Automations</span>",
+  )
+  render_assertions.not_contains(html, "data-testid=\"nav-templates\"")
+  render_assertions.not_contains(html, "data-testid=\"nav-rule-metrics\"")
+  render_assertions.not_contains(
+    html,
+    "<span class=\"nav-label\">Templates</span>",
+  )
+  render_assertions.not_contains(
+    html,
+    "<span class=\"nav-label\">Executions</span>",
+  )
 }
 
 pub fn left_panel_automation_entry_active_for_all_console_modes_test() {
@@ -227,7 +232,7 @@ pub fn left_panel_automation_entry_active_for_all_console_modes_test() {
       )
     let html = left_panel.view(config) |> element.to_document_string
 
-    assert_contains(
+    render_assertions.contains(
       html,
       "class=\"nav-link active\" data-testid=\"nav-automations\"",
     )
@@ -247,7 +252,7 @@ pub fn left_panel_org_section_active_test() {
   let html = element.to_document_string(rendered)
 
   // Should have active class on the Invites nav item
-  assert_contains(html, "nav-link active")
+  render_assertions.contains(html, "nav-link active")
 }
 
 pub fn left_panel_collapsed_config_items_are_not_rendered_test() {
@@ -259,8 +264,8 @@ pub fn left_panel_collapsed_config_items_are_not_rendered_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"section-config\"")
-  assert_not_contains(html, "data-testid=\"nav-team\"")
+  render_assertions.contains(html, "data-testid=\"section-config\"")
+  render_assertions.not_contains(html, "data-testid=\"nav-team\"")
 }
 
 pub fn left_panel_collapsed_config_route_still_renders_active_item_test() {
@@ -272,7 +277,7 @@ pub fn left_panel_collapsed_config_route_still_renders_active_item_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(
+  render_assertions.contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-automations\"",
   )
@@ -288,8 +293,8 @@ pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"section-org\"")
-  assert_not_contains(html, "data-testid=\"nav-projects\"")
+  render_assertions.contains(html, "data-testid=\"section-org\"")
+  render_assertions.not_contains(html, "data-testid=\"nav-projects\"")
 }
 
 pub fn left_panel_collapsed_org_route_still_renders_active_item_test() {
@@ -301,7 +306,7 @@ pub fn left_panel_collapsed_org_route_still_renders_active_item_test() {
     )
   let html = left_panel.view(config) |> element.to_document_string
 
-  assert_contains(
+  render_assertions.contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-projects\"",
   )
@@ -333,12 +338,15 @@ pub fn left_panel_work_nav_order_is_pool_kanban_plan_capabilities_people_en_test
     "data-testid=\"nav-people\"",
   )
   |> assert_true
-  assert_contains(html, "<span class=\"nav-label\">Pool</span>")
-  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
-  assert_contains(html, "<span class=\"nav-label\">Plan</span>")
-  assert_contains(html, "<span class=\"nav-label\">Capabilities</span>")
-  assert_contains(html, "<span class=\"nav-label\">People</span>")
-  assert_not_contains(html, ">List<")
+  render_assertions.contains(html, "<span class=\"nav-label\">Pool</span>")
+  render_assertions.contains(html, "<span class=\"nav-label\">Kanban</span>")
+  render_assertions.contains(html, "<span class=\"nav-label\">Plan</span>")
+  render_assertions.contains(
+    html,
+    "<span class=\"nav-label\">Capabilities</span>",
+  )
+  render_assertions.contains(html, "<span class=\"nav-label\">People</span>")
+  render_assertions.not_contains(html, ">List<")
 }
 
 pub fn left_sidebar_does_not_render_depth_names_from_project_config_test() {
@@ -346,11 +354,17 @@ pub fn left_sidebar_does_not_render_depth_names_from_project_config_test() {
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Cards))))
     |> element.to_document_string
 
-  assert_not_contains(html, "data-testid=\"nav-depth-1\"")
-  assert_not_contains(html, "<span class=\"nav-label\">Epics</span>")
-  assert_not_contains(html, "data-testid=\"nav-depth-2\"")
-  assert_not_contains(html, "<span class=\"nav-label\">Stories</span>")
-  assert_not_contains(html, "<span class=\"nav-label\">Hierarchies</span>")
+  render_assertions.not_contains(html, "data-testid=\"nav-depth-1\"")
+  render_assertions.not_contains(html, "<span class=\"nav-label\">Epics</span>")
+  render_assertions.not_contains(html, "data-testid=\"nav-depth-2\"")
+  render_assertions.not_contains(
+    html,
+    "<span class=\"nav-label\">Stories</span>",
+  )
+  render_assertions.not_contains(
+    html,
+    "<span class=\"nav-label\">Hierarchies</span>",
+  )
 }
 
 pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
@@ -358,14 +372,17 @@ pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Cards))))
     |> element.to_document_string
 
-  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-cards\"")
+  render_assertions.contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-cards\"",
+  )
   count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
   count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
-  assert_not_contains(
+  render_assertions.not_contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-depth-1\"",
   )
-  assert_not_contains(
+  render_assertions.not_contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-depth-2\"",
   )
@@ -376,8 +393,11 @@ pub fn left_sidebar_kanban_route_does_not_activate_plan_test() {
     left_panel.view(base_config(opt.Some(member_kanban_route())))
     |> element.to_document_string
 
-  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-kanban\"")
-  assert_not_contains(
+  render_assertions.contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-kanban\"",
+  )
+  render_assertions.not_contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-cards\"",
   )
@@ -390,8 +410,11 @@ pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
     left_panel.view(base_config(opt.Some(member_depth_route(2))))
     |> element.to_document_string
 
-  assert_not_contains(html, "data-testid=\"nav-depth-2\"")
-  assert_contains(html, "class=\"nav-link active\" data-testid=\"nav-cards\"")
+  render_assertions.not_contains(html, "data-testid=\"nav-depth-2\"")
+  render_assertions.contains(
+    html,
+    "class=\"nav-link active\" data-testid=\"nav-cards\"",
+  )
   count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
   count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
 }
@@ -425,10 +448,13 @@ pub fn left_panel_work_nav_order_is_pool_kanban_plan_capacidades_personas_es_tes
     "data-testid=\"nav-people\"",
   )
   |> assert_true
-  assert_contains(html, "<span class=\"nav-label\">Pool</span>")
-  assert_contains(html, "<span class=\"nav-label\">Kanban</span>")
-  assert_contains(html, "<span class=\"nav-label\">Plan</span>")
-  assert_contains(html, "<span class=\"nav-label\">Capacidades</span>")
-  assert_contains(html, "<span class=\"nav-label\">Personas</span>")
-  assert_not_contains(html, ">Lista<")
+  render_assertions.contains(html, "<span class=\"nav-label\">Pool</span>")
+  render_assertions.contains(html, "<span class=\"nav-label\">Kanban</span>")
+  render_assertions.contains(html, "<span class=\"nav-label\">Plan</span>")
+  render_assertions.contains(
+    html,
+    "<span class=\"nav-label\">Capacidades</span>",
+  )
+  render_assertions.contains(html, "<span class=\"nav-label\">Personas</span>")
+  render_assertions.not_contains(html, ">Lista<")
 }

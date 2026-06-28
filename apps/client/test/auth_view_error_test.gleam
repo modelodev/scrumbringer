@@ -1,18 +1,10 @@
 import gleam/option as opt
-import gleam/string
 import lustre/element
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/token_flow
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
+import support/render_assertions
 
 fn config(auth: auth_state.AuthModel) -> auth_view.Config(String) {
   auth_view.Config(
@@ -41,8 +33,8 @@ pub fn login_error_renders_error_banner_test() {
 
   let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "error-banner")
-  assert_contains(html, "Bad creds")
+  render_assertions.contains(html, "error-banner")
+  render_assertions.contains(html, "Bad creds")
 }
 
 pub fn login_in_flight_adds_loading_class_test() {
@@ -51,10 +43,10 @@ pub fn login_in_flight_adds_loading_class_test() {
 
   let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "btn-loading")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "type=\"submit\"")
 }
 
 pub fn forgot_password_trigger_uses_semantic_button_test() {
@@ -62,12 +54,12 @@ pub fn forgot_password_trigger_uses_semantic_button_test() {
 
   let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "Forgot password?")
-  assert_contains(html, "auth-forgot")
-  assert_contains(html, "btn-ghost")
-  assert_contains(html, "btn-view-action")
-  assert_contains(html, "type=\"button\"")
-  assert_not_contains(html, "class=\"auth-forgot\"")
+  render_assertions.contains(html, "Forgot password?")
+  render_assertions.contains(html, "auth-forgot")
+  render_assertions.contains(html, "btn-ghost")
+  render_assertions.contains(html, "btn-view-action")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.not_contains(html, "class=\"auth-forgot\"")
 }
 
 pub fn forgot_password_error_renders_error_block_test() {
@@ -80,8 +72,8 @@ pub fn forgot_password_error_renders_error_block_test() {
 
   let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "class=\"error\"")
-  assert_contains(html, "Email not found")
+  render_assertions.contains(html, "class=\"error\"")
+  render_assertions.contains(html, "Email not found")
 }
 
 pub fn forgot_password_submit_uses_semantic_button_test() {
@@ -94,11 +86,11 @@ pub fn forgot_password_submit_uses_semantic_button_test() {
 
   let html = auth_view.view_login(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "Working")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-loading")
-  assert_contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "Working")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.contains(html, "type=\"submit\"")
 }
 
 pub fn accept_invite_submit_uses_semantic_button_test() {
@@ -117,10 +109,10 @@ pub fn accept_invite_submit_uses_semantic_button_test() {
   let html =
     auth_view.view_accept_invite(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "Register")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "Register")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "type=\"submit\"")
 }
 
 pub fn reset_password_submit_uses_semantic_button_test() {
@@ -139,8 +131,8 @@ pub fn reset_password_submit_uses_semantic_button_test() {
   let html =
     auth_view.view_reset_password(config(auth)) |> element.to_document_string
 
-  assert_contains(html, "Save new password")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "Save new password")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "type=\"submit\"")
 }

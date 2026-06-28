@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
@@ -8,14 +8,6 @@ import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import scrumbringer_client/features/tasks/show_editor
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn claimed_task() -> Task {
   let state =
@@ -91,9 +83,9 @@ pub fn show_editor_renders_config_data_without_root_model_test() {
     show_editor.view_readonly_fields(config(Some(7)), claimed_task())
     |> element.to_document_string
 
-  assert_contains(html, "Details")
-  assert_contains(html, "Edit task")
-  assert_contains(html, "Review release checklist.")
+  render_assertions.contains(html, "Details")
+  render_assertions.contains(html, "Edit task")
+  render_assertions.contains(html, "Review release checklist.")
 }
 
 pub fn show_editor_hides_edit_for_other_claimed_task_test() {
@@ -101,8 +93,8 @@ pub fn show_editor_hides_edit_for_other_claimed_task_test() {
     show_editor.view_readonly_fields(config(Some(8)), claimed_task())
     |> element.to_document_string
 
-  assert_not_contains(html, "Edit task")
-  assert_contains(html, "claim the task to keep editing")
+  render_assertions.not_contains(html, "Edit task")
+  render_assertions.contains(html, "claim the task to keep editing")
 }
 
 pub fn show_editor_hides_edit_for_closed_task_test() {
@@ -113,9 +105,9 @@ pub fn show_editor_hides_edit_for_closed_task_test() {
     show_editor.view_readonly_fields(config(Some(7)), task)
     |> element.to_document_string
 
-  assert_not_contains(html, "Edit task")
-  assert_contains(html, "Closed tasks are read-only")
-  assert_not_contains(html, "claim the task to keep editing")
+  render_assertions.not_contains(html, "Edit task")
+  render_assertions.contains(html, "Closed tasks are read-only")
+  render_assertions.not_contains(html, "claim the task to keep editing")
 }
 
 pub fn show_editor_marks_current_type_option_selected_test() {
@@ -138,8 +130,8 @@ pub fn show_editor_marks_current_type_option_selected_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "value=\"1\"")
-  assert_contains(html, "selected")
+  render_assertions.contains(html, "value=\"1\"")
+  render_assertions.contains(html, "selected")
 }
 
 pub fn show_editor_renders_segmented_priority_test() {
@@ -150,8 +142,8 @@ pub fn show_editor_renders_segmented_priority_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "task-priority-segmented")
-  assert_contains(html, "P1")
-  assert_contains(html, "P5")
-  assert_contains(html, "aria-pressed=\"true\"")
+  render_assertions.contains(html, "task-priority-segmented")
+  render_assertions.contains(html, "P1")
+  render_assertions.contains(html, "P5")
+  render_assertions.contains(html, "aria-pressed=\"true\"")
 }

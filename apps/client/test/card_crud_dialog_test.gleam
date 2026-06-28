@@ -4,6 +4,7 @@
 
 import lustre/effect
 import lustre/element
+import support/render_assertions
 
 import api/cards/contracts as card_contracts
 import domain/api_error.{ApiError}
@@ -12,7 +13,6 @@ import domain/card.{
   Purple, Red, Yellow,
 }
 import gleam/option
-import gleam/string
 import scrumbringer_client/components/card_crud_dialog.{
   type Model, CreateActivationResult, CreateAndActivatePending,
   CreateAndActivateSubmitted, CreateColorChanged, CreateColorToggle,
@@ -28,14 +28,6 @@ import scrumbringer_client/i18n/locale.{En, Es}
 
 fn assert_equal(actual: a, expected: a) {
   let assert True = actual == expected
-}
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
 }
 
 // =============================================================================
@@ -313,18 +305,18 @@ pub fn create_dialog_renders_shared_card_fields_test() {
     view_create_dialog_for_test(En)
     |> element.to_document_string
 
-  assert_contains(html, "card-create-form")
-  assert_contains(html, "Create Card")
-  assert_contains(html, "Card title")
-  assert_contains(html, "Card description")
-  assert_contains(html, "Color")
-  assert_contains(html, "None")
-  assert_contains(html, "Save draft")
-  assert_contains(html, "Create and activate")
-  assert_contains(html, "data-testid=\"card-create-and-activate\"")
-  assert_contains(html, "btn-icon-text")
-  assert_contains(html, "form=\"card-create-form\"")
-  assert_not_contains(html, "Create draft")
+  render_assertions.contains(html, "card-create-form")
+  render_assertions.contains(html, "Create Card")
+  render_assertions.contains(html, "Card title")
+  render_assertions.contains(html, "Card description")
+  render_assertions.contains(html, "Color")
+  render_assertions.contains(html, "None")
+  render_assertions.contains(html, "Save draft")
+  render_assertions.contains(html, "Create and activate")
+  render_assertions.contains(html, "data-testid=\"card-create-and-activate\"")
+  render_assertions.contains(html, "btn-icon-text")
+  render_assertions.contains(html, "form=\"card-create-form\"")
+  render_assertions.not_contains(html, "Create draft")
 }
 
 pub fn edit_dialog_renders_shared_card_fields_test() {
@@ -332,12 +324,12 @@ pub fn edit_dialog_renders_shared_card_fields_test() {
     view_edit_dialog_for_test(En, make_test_card())
     |> element.to_document_string
 
-  assert_contains(html, "card-edit-form")
-  assert_contains(html, "Edit Card")
-  assert_contains(html, "Test Card")
-  assert_contains(html, "Test Description")
-  assert_contains(html, "Color")
-  assert_contains(html, "Blue")
+  render_assertions.contains(html, "card-edit-form")
+  render_assertions.contains(html, "Edit Card")
+  render_assertions.contains(html, "Test Card")
+  render_assertions.contains(html, "Test Description")
+  render_assertions.contains(html, "Color")
+  render_assertions.contains(html, "Blue")
 }
 
 // =============================================================================

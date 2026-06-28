@@ -2,19 +2,12 @@ import gleam/option.{Some}
 import gleam/string
 import lustre/element
 import lustre/element/html.{button, div, text}
+import support/render_assertions
 
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/task_metric
 import scrumbringer_client/ui/tone
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn appears_before(html: String, first: String, second: String) -> Bool {
   case string.split_once(html, first) {
@@ -39,17 +32,17 @@ pub fn work_surface_header_renders_contract_test() {
     |> work_surface.header
     |> element.to_document_string
 
-  assert_contains(html, "work-surface-header pool-header")
-  assert_contains(html, "data-testid=\"surface-header\"")
-  assert_contains(html, ">Pool<")
-  assert_contains(html, ">Choose work.<")
-  assert_contains(html, "work-surface-summary")
-  assert_contains(html, "work-surface-chip available")
-  assert_contains(html, "work-surface-chip blocked")
-  assert_contains(html, ">4<")
-  assert_contains(html, ">Available<")
-  assert_contains(html, "work-surface-actions")
-  assert_contains(html, ">Create<")
+  render_assertions.contains(html, "work-surface-header pool-header")
+  render_assertions.contains(html, "data-testid=\"surface-header\"")
+  render_assertions.contains(html, ">Pool<")
+  render_assertions.contains(html, ">Choose work.<")
+  render_assertions.contains(html, "work-surface-summary")
+  render_assertions.contains(html, "work-surface-chip available")
+  render_assertions.contains(html, "work-surface-chip blocked")
+  render_assertions.contains(html, ">4<")
+  render_assertions.contains(html, ">Available<")
+  render_assertions.contains(html, "work-surface-actions")
+  render_assertions.contains(html, ">Create<")
 }
 
 pub fn work_surface_header_renders_task_summary_chip_test() {
@@ -68,15 +61,15 @@ pub fn work_surface_header_renders_task_summary_chip_test() {
     |> work_surface.header
     |> element.to_document_string
 
-  assert_contains(html, "task-metric-chip is-compact available")
-  assert_contains(html, "task-metric-chip is-compact blocked")
-  assert_contains(html, "data-testid=\"work-surface-chip\"")
-  assert_contains(html, "title=\"Available: 3\"")
-  assert_contains(html, "aria-label=\"Blocked: 1\"")
-  assert_contains(html, "task-metric-chip-icon")
-  assert_not_contains(html, "task-metric-chip-label")
-  assert_not_contains(html, ">Available<")
-  assert_not_contains(html, ">Blocked<")
+  render_assertions.contains(html, "task-metric-chip is-compact available")
+  render_assertions.contains(html, "task-metric-chip is-compact blocked")
+  render_assertions.contains(html, "data-testid=\"work-surface-chip\"")
+  render_assertions.contains(html, "title=\"Available: 3\"")
+  render_assertions.contains(html, "aria-label=\"Blocked: 1\"")
+  render_assertions.contains(html, "task-metric-chip-icon")
+  render_assertions.not_contains(html, "task-metric-chip-label")
+  render_assertions.not_contains(html, ">Available<")
+  render_assertions.not_contains(html, ">Blocked<")
 }
 
 pub fn work_surface_surface_renders_optional_slots_in_order_test() {
@@ -101,11 +94,11 @@ pub fn work_surface_surface_renders_optional_slots_in_order_test() {
     |> work_surface.surface
     |> element.to_document_string
 
-  assert_contains(html, "work-surface pool-surface")
-  assert_contains(html, "data-testid=\"pool-surface\"")
-  assert_contains(html, "work-surface-filters")
-  assert_contains(html, "work-surface-state")
-  assert_contains(html, "work-surface-content")
+  render_assertions.contains(html, "work-surface pool-surface")
+  render_assertions.contains(html, "data-testid=\"pool-surface\"")
+  render_assertions.contains(html, "work-surface-filters")
+  render_assertions.contains(html, "work-surface-state")
+  render_assertions.contains(html, "work-surface-content")
   let assert True = appears_before(html, ">Filters<", ">Loading<")
   let assert True = appears_before(html, ">Loading<", ">Tasks<")
 }
@@ -127,8 +120,8 @@ pub fn work_surface_surface_omits_missing_slots_test() {
     |> work_surface.surface
     |> element.to_document_string
 
-  assert_contains(html, "work-surface-header")
-  assert_not_contains(html, "work-surface-filters")
-  assert_not_contains(html, "work-surface-state")
-  assert_not_contains(html, "work-surface-content")
+  render_assertions.contains(html, "work-surface-header")
+  render_assertions.not_contains(html, "work-surface-filters")
+  render_assertions.not_contains(html, "work-surface-state")
+  render_assertions.not_contains(html, "work-surface-content")
 }

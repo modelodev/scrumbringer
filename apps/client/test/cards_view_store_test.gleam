@@ -1,6 +1,6 @@
 import gleam/option
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card.{type Card, Card, Draft}
 import domain/remote.{Loading}
@@ -14,10 +14,6 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/utils/card_queries
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
@@ -110,7 +106,7 @@ pub fn cards_uses_cache_when_available_test() {
     |> cards_view.view_cards
     |> element.to_document_string
 
-  assert_contains(html, "Card A")
+  render_assertions.contains(html, "Card A")
 }
 
 pub fn cards_shows_loading_only_without_cache_test() {
@@ -137,7 +133,7 @@ pub fn cards_shows_loading_only_without_cache_test() {
     |> element.to_document_string
 
   let expected = i18n.t(model.ui.locale, i18n_text.LoadingEllipsis)
-  assert_contains(html, expected)
+  render_assertions.contains(html, expected)
 }
 
 pub fn cards_shows_empty_without_cache_or_pending_test() {
@@ -165,5 +161,5 @@ pub fn cards_shows_empty_without_cache_or_pending_test() {
     |> element.to_document_string
 
   let expected = i18n.t(model.ui.locale, i18n_text.MemberCardsEmpty)
-  assert_contains(html, expected)
+  render_assertions.contains(html, expected)
 }

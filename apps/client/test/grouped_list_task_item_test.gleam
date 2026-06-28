@@ -6,16 +6,12 @@ import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/dict
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
 
 fn base_config(
   tasks: List(Task),
@@ -128,11 +124,11 @@ pub fn grouped_list_renders_claimed_by_and_border_class_test() {
     |> grouped_list.view
     |> element.to_document_string
 
-  assert_contains(html, "Claimed by admin@example.com")
-  assert_contains(html, "task-status-indicator")
-  assert_contains(html, "task-claimed-by")
-  assert_contains(html, "task-item card-border-blue")
-  assert_contains(html, "task-type-icon")
+  render_assertions.contains(html, "Claimed by admin@example.com")
+  render_assertions.contains(html, "task-status-indicator")
+  render_assertions.contains(html, "task-claimed-by")
+  render_assertions.contains(html, "task-item card-border-blue")
+  render_assertions.contains(html, "task-type-icon")
 }
 
 pub fn grouped_list_renders_available_label_and_claim_button_test() {
@@ -141,8 +137,8 @@ pub fn grouped_list_renders_available_label_and_claim_button_test() {
     |> grouped_list.view
     |> element.to_document_string
 
-  assert_contains(html, "Available")
-  assert_contains(html, "task-claim-btn")
+  render_assertions.contains(html, "Available")
+  render_assertions.contains(html, "task-claim-btn")
 }
 
 pub fn grouped_list_shows_notes_indicator_test() {
@@ -153,5 +149,5 @@ pub fn grouped_list_shows_notes_indicator_test() {
     |> grouped_list.view
     |> element.to_document_string
 
-  assert_contains(html, "card-notes-indicator")
+  render_assertions.contains(html, "card-notes-indicator")
 }

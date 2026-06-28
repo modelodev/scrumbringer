@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/metrics.{
   type OrgMetricsOverview, NoSample, OrgMetricsOverview, WindowDays,
@@ -14,10 +14,6 @@ import domain/remote
 import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 fn project() -> Project {
   Project(
@@ -102,12 +98,12 @@ pub fn project_card_renders_expanded_members_from_config_test() {
     |> element.fragment
     |> element.to_document_string
 
-  assert_contains(html, "Platform")
-  assert_contains(html, "1 person")
-  assert_contains(html, "member@example.com")
-  assert_contains(html, "Add member")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
+  render_assertions.contains(html, "Platform")
+  render_assertions.contains(html, "1 person")
+  render_assertions.contains(html, "member@example.com")
+  render_assertions.contains(html, "Add member")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
 }
 
 pub fn project_card_confirm_remove_uses_semantic_accessible_buttons_test() {
@@ -123,8 +119,8 @@ pub fn project_card_confirm_remove_uses_semantic_accessible_buttons_test() {
     |> element.fragment
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "aria-label=\"Remove: member@example.com\"")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "aria-label=\"Remove: member@example.com\"")
 }

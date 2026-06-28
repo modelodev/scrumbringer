@@ -1,20 +1,12 @@
 import gleam/option.{Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/task_status
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/tone
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn task_status_indicator_maps_status_semantics_test() {
   let assert icons.InboxEmpty =
@@ -41,14 +33,17 @@ pub fn full_status_indicator_renders_label_and_accessibility_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "task-status-indicator is-full ongoing")
-  assert_contains(html, "data-testid=\"task-status-indicator\"")
-  assert_contains(html, "title=\"Active work session is running\"")
-  assert_contains(html, "aria-label=\"Active work session is running\"")
-  assert_contains(html, "task-status-indicator-icon")
-  assert_contains(html, "nav-icon")
-  assert_contains(html, "task-status-indicator-label")
-  assert_contains(html, ">Working now<")
+  render_assertions.contains(html, "task-status-indicator is-full ongoing")
+  render_assertions.contains(html, "data-testid=\"task-status-indicator\"")
+  render_assertions.contains(html, "title=\"Active work session is running\"")
+  render_assertions.contains(
+    html,
+    "aria-label=\"Active work session is running\"",
+  )
+  render_assertions.contains(html, "task-status-indicator-icon")
+  render_assertions.contains(html, "nav-icon")
+  render_assertions.contains(html, "task-status-indicator-label")
+  render_assertions.contains(html, ">Working now<")
 }
 
 pub fn compact_status_indicator_hides_label_but_keeps_accessibility_test() {
@@ -56,11 +51,14 @@ pub fn compact_status_indicator_hides_label_but_keeps_accessibility_test() {
     task_status_indicator.compact(locale.En, task_status.Closed)
     |> element.to_document_string
 
-  assert_contains(html, "task-status-indicator is-compact success")
-  assert_contains(html, "title=\"Closed and no longer actionable\"")
-  assert_contains(html, "aria-label=\"Closed and no longer actionable\"")
-  assert_contains(html, "task-status-indicator-icon")
-  assert_not_contains(html, "task-status-indicator-label")
+  render_assertions.contains(html, "task-status-indicator is-compact success")
+  render_assertions.contains(html, "title=\"Closed and no longer actionable\"")
+  render_assertions.contains(
+    html,
+    "aria-label=\"Closed and no longer actionable\"",
+  )
+  render_assertions.contains(html, "task-status-indicator-icon")
+  render_assertions.not_contains(html, "task-status-indicator-label")
 }
 
 pub fn status_indicator_accepts_contextual_visible_label_test() {
@@ -76,8 +74,8 @@ pub fn status_indicator_accepts_contextual_visible_label_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "task-claimed-by")
-  assert_contains(html, "data-testid=\"claimed-by\"")
-  assert_contains(html, "title=\"Claimed by ada@example.com\"")
-  assert_contains(html, ">Claimed by ada@example.com<")
+  render_assertions.contains(html, "task-claimed-by")
+  render_assertions.contains(html, "data-testid=\"claimed-by\"")
+  render_assertions.contains(html, "title=\"Claimed by ada@example.com\"")
+  render_assertions.contains(html, ">Claimed by ada@example.com<")
 }

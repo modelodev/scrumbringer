@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card
 import domain/remote.{Loaded}
@@ -20,29 +20,21 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
-
 pub fn pool_renders_header_control_bar_and_body_test() {
   let html =
     pool_view.view_pool_main(main_config(pool_prefs.Canvas))
     |> element.to_document_string
 
-  assert_contains(html, "class=\"work-surface pool-view\"")
-  assert_contains(html, "work-surface-chrome")
-  assert_contains(html, "work-surface-header")
-  assert_contains(html, "work-surface-filters")
-  assert_contains(html, "work-surface-content")
-  assert_contains(html, "data-testid=\"pool-control-bar\"")
-  assert_contains(html, "id=\"member-canvas\"")
-  assert_contains(html, "Task 1")
-  assert_contains(html, ">7<")
-  assert_not_contains(html, "My tasks")
+  render_assertions.contains(html, "class=\"work-surface pool-view\"")
+  render_assertions.contains(html, "work-surface-chrome")
+  render_assertions.contains(html, "work-surface-header")
+  render_assertions.contains(html, "work-surface-filters")
+  render_assertions.contains(html, "work-surface-content")
+  render_assertions.contains(html, "data-testid=\"pool-control-bar\"")
+  render_assertions.contains(html, "id=\"member-canvas\"")
+  render_assertions.contains(html, "Task 1")
+  render_assertions.contains(html, ">7<")
+  render_assertions.not_contains(html, "My tasks")
 }
 
 pub fn pool_list_mode_renders_task_rows_test() {
@@ -50,9 +42,9 @@ pub fn pool_list_mode_renders_task_rows_test() {
     pool_view.view_pool_main(main_config(pool_prefs.List))
     |> element.to_document_string
 
-  assert_contains(html, "class=\"task-list\"")
-  assert_contains(html, "task-row")
-  assert_contains(html, "Task 1")
+  render_assertions.contains(html, "class=\"task-list\"")
+  render_assertions.contains(html, "task-row")
+  render_assertions.contains(html, "Task 1")
 }
 
 pub fn pool_ready_to_claim_empty_mentions_blocked_tasks_test() {
@@ -65,10 +57,10 @@ pub fn pool_ready_to_claim_empty_mentions_blocked_tasks_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "No claimable tasks right now")
-  assert_contains(html, "There are 1 blocked tasks")
-  assert_contains(html, "View blocked")
-  assert_not_contains(html, "Create your first task")
+  render_assertions.contains(html, "No claimable tasks right now")
+  render_assertions.contains(html, "There are 1 blocked tasks")
+  render_assertions.contains(html, "View blocked")
+  render_assertions.not_contains(html, "Create your first task")
 }
 
 pub fn pool_blocked_empty_does_not_suggest_new_task_test() {
@@ -80,9 +72,9 @@ pub fn pool_blocked_empty_does_not_suggest_new_task_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "No blocked tasks")
-  assert_contains(html, "View open")
-  assert_not_contains(html, "Create your first task")
+  render_assertions.contains(html, "No blocked tasks")
+  render_assertions.contains(html, "View open")
+  render_assertions.not_contains(html, "Create your first task")
 }
 
 fn main_config(view_mode: pool_prefs.ViewMode) -> pool_view.MainConfig(String) {

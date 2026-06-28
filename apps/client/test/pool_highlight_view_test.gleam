@@ -2,6 +2,7 @@ import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
@@ -12,14 +13,6 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/view_config as pool_view
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
 
 fn pool_callbacks() -> pool_view.Callbacks(String) {
   pool_view.Callbacks(
@@ -140,11 +133,11 @@ pub fn pool_card_applies_highlight_classes_test() {
     pool_view.view_task_card(pool_context(model), other)
     |> element.to_document_string
 
-  assert_contains(source_html, "is-highlight-source")
-  assert_contains(source_html, "highlight-warning")
-  assert_contains(target_html, "is-highlight-target")
-  assert_contains(target_html, "highlight-warning")
-  assert_contains(other_html, "is-highlight-dimmed")
+  render_assertions.contains(source_html, "is-highlight-source")
+  render_assertions.contains(source_html, "highlight-warning")
+  render_assertions.contains(target_html, "is-highlight-target")
+  render_assertions.contains(target_html, "highlight-warning")
+  render_assertions.contains(other_html, "is-highlight-dimmed")
 }
 
 pub fn pool_card_shows_hidden_blockers_message_test() {
@@ -201,7 +194,7 @@ pub fn pool_card_applies_created_highlight_info_class_test() {
     pool_view.view_task_card(pool_context(model), other)
     |> element.to_document_string
 
-  assert_contains(created_html, "is-highlight-source")
-  assert_contains(created_html, "highlight-info")
-  assert_not_contains(other_html, "highlight-info")
+  render_assertions.contains(created_html, "is-highlight-source")
+  render_assertions.contains(created_html, "highlight-info")
+  render_assertions.not_contains(other_html, "highlight-info")
 }

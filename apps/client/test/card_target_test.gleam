@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/features/cards/card_target
 import scrumbringer_client/features/cards/card_target_field
@@ -12,24 +13,16 @@ import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
-
 pub fn duplicate_titles_resolve_only_with_path_or_id_test() {
   let options = card_target.plan_scope_targets(cards(), depth_names())
   let assert Ok(first) = list.find(options, fn(option) { option.id == 2 })
   let assert Ok(second) = list.find(options, fn(option) { option.id == 4 })
 
-  assert_contains(first.label, "Checkout")
-  assert_contains(first.label, "Root / Web / Checkout")
-  assert_contains(first.label, "Story #2")
-  assert_contains(second.label, "Root / API / Checkout")
-  assert_contains(second.label, "Story #4")
+  render_assertions.contains(first.label, "Checkout")
+  render_assertions.contains(first.label, "Root / Web / Checkout")
+  render_assertions.contains(first.label, "Story #2")
+  render_assertions.contains(second.label, "Root / API / Checkout")
+  render_assertions.contains(second.label, "Story #4")
   let assert "" = card_target.search_value_to_card_id(options, "Checkout")
   let assert "2" = card_target.search_value_to_card_id(options, first.label)
   let assert "4" = card_target.search_value_to_card_id(options, "#4")
@@ -41,10 +34,10 @@ pub fn plan_scope_targets_include_only_active_cards_test() {
     |> list.map(fn(option) { option.label })
     |> string.join(" | ")
 
-  assert_contains(labels, "Root")
-  assert_contains(labels, "Checkout")
-  assert_not_contains(labels, "Draft Idea")
-  assert_not_contains(labels, "Closed Release")
+  render_assertions.contains(labels, "Root")
+  render_assertions.contains(labels, "Checkout")
+  render_assertions.not_contains(labels, "Draft Idea")
+  render_assertions.not_contains(labels, "Closed Release")
 }
 
 pub fn task_card_targets_include_active_leaf_cards_and_disabled_drafts_test() {
@@ -60,7 +53,7 @@ pub fn task_card_targets_include_active_leaf_cards_and_disabled_drafts_test() {
       locale.Es,
       card_target.DraftTaskTargetCannotReceiveTasks,
     )
-  assert_contains(reason, "Borrador")
+  render_assertions.contains(reason, "Borrador")
 }
 
 pub fn card_target_filters_options_by_title_path_and_id_test() {
@@ -96,7 +89,7 @@ pub fn move_destination_targets_preserve_disabled_reasons_test() {
 
   let assert [option] = options
   let assert Some(reason) = option.disabled_reason
-  assert_contains(
+  render_assertions.contains(
     card_target.disabled_reason_label(locale.Es, reason),
     "propia",
   )
@@ -139,10 +132,10 @@ pub fn card_target_field_failed_state_renders_retry_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Could not load active cards")
-  assert_contains(html, "Retry")
-  assert_contains(html, "data-testid=\"task-create-card-retry\"")
-  assert_not_contains(html, "Checkout")
+  render_assertions.contains(html, "Could not load active cards")
+  render_assertions.contains(html, "Retry")
+  render_assertions.contains(html, "data-testid=\"task-create-card-retry\"")
+  render_assertions.not_contains(html, "Checkout")
 }
 
 pub fn card_target_picker_hides_options_when_selected_without_query_test() {

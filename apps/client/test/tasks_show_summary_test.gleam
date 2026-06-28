@@ -1,6 +1,7 @@
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/remote.{Loaded}
 import domain/task.{
@@ -10,14 +11,6 @@ import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/show/summary as task_show_summary
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn forbidden_fragment(parts: List(String)) -> String {
   string.join(parts, "")
@@ -33,17 +26,23 @@ pub fn task_show_summary_renders_operational_context_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Operational summary")
-  assert_contains(html, "task-inspector-facts")
-  assert_contains(html, "data-testid=\"task-show-summary-status-indicator\"")
-  assert_contains(html, "task-status-indicator")
-  assert_contains(html, "Available")
-  assert_contains(html, "P2")
-  assert_contains(html, "Feature")
-  assert_contains(html, "Release card")
-  assert_contains(html, "Claim to My Tasks")
-  assert_contains(html, "No active blockers")
-  assert_not_contains(html, forbidden_fragment(["task", "-show-summary-grid"]))
+  render_assertions.contains(html, "Operational summary")
+  render_assertions.contains(html, "task-inspector-facts")
+  render_assertions.contains(
+    html,
+    "data-testid=\"task-show-summary-status-indicator\"",
+  )
+  render_assertions.contains(html, "task-status-indicator")
+  render_assertions.contains(html, "Available")
+  render_assertions.contains(html, "P2")
+  render_assertions.contains(html, "Feature")
+  render_assertions.contains(html, "Release card")
+  render_assertions.contains(html, "Claim to My Tasks")
+  render_assertions.contains(html, "No active blockers")
+  render_assertions.not_contains(
+    html,
+    forbidden_fragment(["task", "-show-summary-grid"]),
+  )
 }
 
 pub fn task_show_summary_uses_loaded_dependency_blockers_test() {
@@ -59,7 +58,7 @@ pub fn task_show_summary_uses_loaded_dependency_blockers_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Blocked by 1 tasks")
+  render_assertions.contains(html, "Blocked by 1 tasks")
 }
 
 pub fn task_show_summary_links_automation_origin_to_executions_test() {
@@ -84,36 +83,51 @@ pub fn task_show_summary_links_automation_origin_to_executions_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Origin")
-  assert_contains(html, "Created by automation")
-  assert_contains(html, "data-testid=\"automation-origin-status\"")
-  assert_contains(
+  render_assertions.contains(html, "Origin")
+  render_assertions.contains(html, "Created by automation")
+  render_assertions.contains(html, "data-testid=\"automation-origin-status\"")
+  render_assertions.contains(
     html,
     "Release flow -&gt; Development closed -&gt; QA Verification v3",
   )
-  assert_contains(html, "data-testid=\"automation-origin-trace\"")
-  assert_contains(html, "data-testid=\"automation-origin-primary-link\"")
-  assert_contains(html, ">Go to automation<")
-  assert_contains(
+  render_assertions.contains(html, "data-testid=\"automation-origin-trace\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-origin-primary-link\"",
+  )
+  render_assertions.contains(html, ">Go to automation<")
+  render_assertions.contains(
     html,
     "href=\"/config/workflows?project=1&amp;mode=executions&amp;execution=101\"",
   )
-  assert_contains(html, "data-testid=\"automation-origin-engine-link\"")
-  assert_contains(html, "data-testid=\"automation-origin-rule-link\"")
-  assert_contains(html, "data-testid=\"automation-origin-template-link\"")
-  assert_contains(html, ">View engine<")
-  assert_contains(html, ">View rule<")
-  assert_contains(html, ">View template<")
-  assert_contains(html, "href=\"/config/workflows?project=1&amp;engine=3\"")
-  assert_contains(
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-origin-engine-link\"",
+  )
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-origin-rule-link\"",
+  )
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-origin-template-link\"",
+  )
+  render_assertions.contains(html, ">View engine<")
+  render_assertions.contains(html, ">View rule<")
+  render_assertions.contains(html, ">View template<")
+  render_assertions.contains(
+    html,
+    "href=\"/config/workflows?project=1&amp;engine=3\"",
+  )
+  render_assertions.contains(
     html,
     "href=\"/config/workflows?project=1&amp;engine=3&amp;rule=8\"",
   )
-  assert_contains(
+  render_assertions.contains(
     html,
     "href=\"/config/workflows?project=1&amp;mode=templates&amp;template=12\"",
   )
-  assert_not_contains(html, "Created by automation -&gt;")
+  render_assertions.not_contains(html, "Created by automation -&gt;")
 }
 
 pub fn task_show_summary_localizes_automation_origin_test() {
@@ -138,13 +152,13 @@ pub fn task_show_summary_localizes_automation_origin_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Origen")
-  assert_contains(html, "Creada por automatización")
-  assert_contains(html, ">Ir a automatización<")
-  assert_contains(html, ">Ver motor<")
-  assert_contains(html, ">Ver regla<")
-  assert_contains(html, ">Ver plantilla<")
-  assert_not_contains(html, "Creada por automatización -&gt;")
+  render_assertions.contains(html, "Origen")
+  render_assertions.contains(html, "Creada por automatización")
+  render_assertions.contains(html, ">Ir a automatización<")
+  render_assertions.contains(html, ">Ver motor<")
+  render_assertions.contains(html, ">Ver regla<")
+  render_assertions.contains(html, ">Ver plantilla<")
+  render_assertions.not_contains(html, "Creada por automatización -&gt;")
 }
 
 pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
@@ -169,16 +183,25 @@ pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Engine #3 -&gt; Rule #8 -&gt; Template #12 v3")
-  assert_contains(html, ">Go to automation<")
-  assert_contains(
+  render_assertions.contains(
+    html,
+    "Engine #3 -&gt; Rule #8 -&gt; Template #12 v3",
+  )
+  render_assertions.contains(html, ">Go to automation<")
+  render_assertions.contains(
     html,
     "href=\"/config/workflows?project=1&amp;engine=3&amp;rule=8\"",
   )
-  assert_contains(html, "data-testid=\"automation-origin-primary-link\"")
-  assert_not_contains(html, "data-testid=\"automation-origin-rule-link\"")
-  assert_not_contains(html, "Motor #3")
-  assert_not_contains(html, "Plantilla #12")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-origin-primary-link\"",
+  )
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"automation-origin-rule-link\"",
+  )
+  render_assertions.not_contains(html, "Motor #3")
+  render_assertions.not_contains(html, "Plantilla #12")
 }
 
 fn task() -> Task {

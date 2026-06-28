@@ -1,5 +1,5 @@
 import gleam/option as opt
-import gleam/string
+import support/render_assertions
 
 import lustre/attribute
 import lustre/element
@@ -7,14 +7,6 @@ import lustre/element/html
 
 import scrumbringer_client/ui/inspector_header
 import scrumbringer_client/ui/inspector_shell
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn inspector_header_uses_single_actions_slot_test() {
   let html =
@@ -35,11 +27,11 @@ pub fn inspector_header_uses_single_actions_slot_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "inspector-action-bar")
-  assert_contains(html, "id=\"card-show-title\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_not_contains(html, "card-open-in-menu")
-  assert_not_contains(html, "task-open-in-menu")
+  render_assertions.contains(html, "inspector-action-bar")
+  render_assertions.contains(html, "id=\"card-show-title\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.not_contains(html, "card-open-in-menu")
+  render_assertions.not_contains(html, "task-open-in-menu")
 }
 
 pub fn inspector_shell_uses_passive_dialog_contract_test() {
@@ -55,8 +47,8 @@ pub fn inspector_shell_uses_passive_dialog_contract_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"card-show-title\"")
-  assert_not_contains(html, "aria-keyshortcuts=\"Escape\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(html, "aria-labelledby=\"card-show-title\"")
+  render_assertions.not_contains(html, "aria-keyshortcuts=\"Escape\"")
 }

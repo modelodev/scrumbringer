@@ -10,6 +10,7 @@ import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -18,14 +19,6 @@ import scrumbringer_client/features/capability_board/view as capability_board
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn assert_true(value: Bool) {
   let assert True = value
@@ -202,28 +195,31 @@ pub fn capability_board_list_groups_tasks_by_capability_and_card_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"plan-scope-bar\"")
-  assert_contains(html, "data-testid=\"capability-mode-list\"")
-  assert_contains(html, "data-testid=\"capability-mode-matrix\"")
-  assert_contains(html, "data-testid=\"work-filter-type\"")
-  assert_contains(html, "data-testid=\"work-filter-capability\"")
-  assert_contains(html, "data-testid=\"work-filter-search\"")
-  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
-  assert_not_contains(html, "data-testid=\"capabilities-toolbar\"")
-  assert_not_contains(html, "data-testid=\"filter-type\"")
-  assert_not_contains(html, "data-testid=\"filter-capability\"")
-  assert_not_contains(html, ">Lens<")
-  assert_contains(html, "data-testid=\"capability-list\"")
-  assert_contains(html, "Backend")
-  assert_contains(html, "Frontend")
-  assert_contains(html, "No capability")
-  assert_contains(html, "Sprint")
-  assert_contains(html, "Frontend polish")
-  assert_contains(html, "Backend API")
-  assert_contains(html, "Docs refresh")
-  assert_not_contains(html, "Closed task")
-  assert_contains(html, "task-claim-btn")
-  assert_contains(html, "Claimed by admin@example.com")
+  render_assertions.contains(html, "data-testid=\"plan-scope-bar\"")
+  render_assertions.contains(html, "data-testid=\"capability-mode-list\"")
+  render_assertions.contains(html, "data-testid=\"capability-mode-matrix\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-type\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-capability\"")
+  render_assertions.contains(html, "data-testid=\"work-filter-search\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"work-filter-capability-scope\"",
+  )
+  render_assertions.not_contains(html, "data-testid=\"capabilities-toolbar\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-type\"")
+  render_assertions.not_contains(html, "data-testid=\"filter-capability\"")
+  render_assertions.not_contains(html, ">Lens<")
+  render_assertions.contains(html, "data-testid=\"capability-list\"")
+  render_assertions.contains(html, "Backend")
+  render_assertions.contains(html, "Frontend")
+  render_assertions.contains(html, "No capability")
+  render_assertions.contains(html, "Sprint")
+  render_assertions.contains(html, "Frontend polish")
+  render_assertions.contains(html, "Backend API")
+  render_assertions.contains(html, "Docs refresh")
+  render_assertions.not_contains(html, "Closed task")
+  render_assertions.contains(html, "task-claim-btn")
+  render_assertions.contains(html, "Claimed by admin@example.com")
 }
 
 pub fn capability_board_matrix_is_read_only_and_hides_empty_affordances_test() {
@@ -241,19 +237,22 @@ pub fn capability_board_matrix_is_read_only_and_hides_empty_affordances_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"capability-matrix\"")
-  assert_contains(html, "data-testid=\"capability-matrix-empty-cell\"")
-  assert_contains(html, "grid-template-columns")
-  assert_contains(html, "repeat(2, minmax(112px, 1fr))")
-  assert_contains(html, "data-testid=\"task-metric-breakdown\"")
-  assert_contains(html, "data-testid=\"task-metric-available\"")
-  assert_contains(html, "data-testid=\"task-metric-ongoing\"")
-  assert_not_contains(html, ">claim<")
-  assert_not_contains(html, "auto-fit")
-  assert_contains(html, ">Level<")
-  assert_contains(html, ">Total<")
-  assert_not_contains(html, "chevron")
-  assert_not_contains(html, "expand-icon")
+  render_assertions.contains(html, "data-testid=\"capability-matrix\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"capability-matrix-empty-cell\"",
+  )
+  render_assertions.contains(html, "grid-template-columns")
+  render_assertions.contains(html, "repeat(2, minmax(112px, 1fr))")
+  render_assertions.contains(html, "data-testid=\"task-metric-breakdown\"")
+  render_assertions.contains(html, "data-testid=\"task-metric-available\"")
+  render_assertions.contains(html, "data-testid=\"task-metric-ongoing\"")
+  render_assertions.not_contains(html, ">claim<")
+  render_assertions.not_contains(html, "auto-fit")
+  render_assertions.contains(html, ">Level<")
+  render_assertions.contains(html, ">Total<")
+  render_assertions.not_contains(html, "chevron")
+  render_assertions.not_contains(html, "expand-icon")
 }
 
 pub fn capability_board_list_marks_hidden_preview_tasks_test() {
@@ -269,16 +268,16 @@ pub fn capability_board_list_marks_hidden_preview_tasks_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Task one")
-  assert_contains(html, "Task two")
-  assert_contains(html, "Task three")
-  assert_not_contains(html, "Task four")
-  assert_not_contains(html, "<details")
-  assert_not_contains(html, "<summary")
-  assert_contains(html, "data-testid=\"capability-list-more\"")
-  assert_contains(html, "data-testid=\"capability-list-more-link\"")
-  assert_contains(html, "aria-expanded=\"false\"")
-  assert_contains(html, "+1 more task")
+  render_assertions.contains(html, "Task one")
+  render_assertions.contains(html, "Task two")
+  render_assertions.contains(html, "Task three")
+  render_assertions.not_contains(html, "Task four")
+  render_assertions.not_contains(html, "<details")
+  render_assertions.not_contains(html, "<summary")
+  render_assertions.contains(html, "data-testid=\"capability-list-more\"")
+  render_assertions.contains(html, "data-testid=\"capability-list-more-link\"")
+  render_assertions.contains(html, "aria-expanded=\"false\"")
+  render_assertions.contains(html, "+1 more task")
 }
 
 pub fn capability_board_list_expands_hidden_preview_tasks_below_link_test() {
@@ -299,9 +298,9 @@ pub fn capability_board_list_expands_hidden_preview_tasks_below_link_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Task four")
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "Show fewer")
+  render_assertions.contains(html, "Task four")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "Show fewer")
   assert_true(string.contains(html, "Task four</span>"))
   let assert Ok(before_toggle) = string.split_once(html, "Task four")
   let assert True = string.contains(before_toggle.1, "Show fewer")
@@ -321,9 +320,9 @@ pub fn capability_board_more_tasks_link_counts_multiple_hidden_tasks_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "+2 more tasks")
-  assert_not_contains(html, "Task four")
-  assert_not_contains(html, "Task five")
+  render_assertions.contains(html, "+2 more tasks")
+  render_assertions.not_contains(html, "Task four")
+  render_assertions.not_contains(html, "Task five")
 }
 
 pub fn capability_board_card_scope_rows_direct_children_test() {
@@ -343,10 +342,10 @@ pub fn capability_board_card_scope_rows_direct_children_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"plan-scope-card-search\"")
-  assert_not_contains(html, "data-testid=\"plan-scope-card\"")
-  assert_contains(html, ">Card<")
-  assert_contains(html, "Checkout")
+  render_assertions.contains(html, "data-testid=\"plan-scope-card-search\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-scope-card\"")
+  render_assertions.contains(html, ">Card<")
+  render_assertions.contains(html, "Checkout")
 }
 
 pub fn capability_board_show_closed_includes_closed_tasks_test() {
@@ -363,9 +362,9 @@ pub fn capability_board_show_closed_includes_closed_tasks_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Closed task")
-  assert_contains(html, "closed")
-  assert_not_contains(html, "complete")
+  render_assertions.contains(html, "Closed task")
+  render_assertions.contains(html, "closed")
+  render_assertions.not_contains(html, "complete")
 }
 
 pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {
@@ -383,10 +382,10 @@ pub fn capability_board_scope_mine_filters_to_my_capabilities_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Backend API")
-  assert_not_contains(html, "Frontend polish")
-  assert_not_contains(html, "Docs refresh")
-  assert_not_contains(html, "No capability")
+  render_assertions.contains(html, "Backend API")
+  render_assertions.not_contains(html, "Frontend polish")
+  render_assertions.not_contains(html, "Docs refresh")
+  render_assertions.not_contains(html, "No capability")
 }
 
 pub fn capability_board_shows_no_results_after_filters_test() {
@@ -398,7 +397,7 @@ pub fn capability_board_shows_no_results_after_filters_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(
+  render_assertions.contains(
     html,
     "No active tasks grouped by capability match the current filters",
   )
@@ -410,7 +409,7 @@ pub fn capability_board_shows_loading_state_test() {
     |> capability_board.view
     |> element.to_document_string
 
-  assert_contains(html, "Loading capabilities...")
+  render_assertions.contains(html, "Loading capabilities...")
 }
 
 pub fn capability_board_shows_error_state_test() {

@@ -1,6 +1,6 @@
-import gleam/string
 import gleeunit
 import lustre/element
+import support/render_assertions
 
 import domain/metrics.{
   NoSample, OrgMetricsOverview, OrgMetricsProjectOverview, WindowDays,
@@ -13,14 +13,6 @@ import scrumbringer_client/i18n/locale
 
 pub fn main() {
   gleeunit.main()
-}
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
 }
 
 pub fn overview_no_sample_renders_label_test() {
@@ -71,12 +63,12 @@ pub fn overview_no_sample_renders_label_test() {
 
   let html = metrics_view.view_metrics(config) |> element.to_document_string
 
-  assert_contains(html, "Flow health")
-  assert_contains(html, "No sample (n=0)")
-  assert_contains(html, "Time to first claim")
-  assert_contains(html, "Core")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-xs")
-  assert_not_contains(html, "class=\"btn-xs\"")
+  render_assertions.contains(html, "Flow health")
+  render_assertions.contains(html, "No sample (n=0)")
+  render_assertions.contains(html, "Time to first claim")
+  render_assertions.contains(html, "Core")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-xs")
+  render_assertions.not_contains(html, "class=\"btn-xs\"")
 }

@@ -1,18 +1,10 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
 import lustre/element/html
+import support/render_assertions
 
 import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/inspector_actions
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn inspector_actions_renders_shared_open_and_more_menus_test() {
   let html =
@@ -32,14 +24,17 @@ pub fn inspector_actions_renders_shared_open_and_more_menus_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "inspector-action-bar")
-  assert_contains(html, "card-inspector-actions")
-  assert_contains(html, "data-testid=\"inspector-open-in-trigger\"")
-  assert_contains(html, "data-testid=\"inspector-more-actions-trigger\"")
-  assert_contains(html, "id=\"card-4-open-in-panel\"")
-  assert_contains(html, "id=\"card-4-more-actions-panel\"")
-  assert_contains(html, "popover=\"auto\"")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "inspector-action-bar")
+  render_assertions.contains(html, "card-inspector-actions")
+  render_assertions.contains(html, "data-testid=\"inspector-open-in-trigger\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"inspector-more-actions-trigger\"",
+  )
+  render_assertions.contains(html, "id=\"card-4-open-in-panel\"")
+  render_assertions.contains(html, "id=\"card-4-more-actions-panel\"")
+  render_assertions.contains(html, "popover=\"auto\"")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn inspector_actions_omits_empty_menus_test() {
@@ -55,7 +50,7 @@ pub fn inspector_actions_omits_empty_menus_test() {
     ))
     |> element.to_document_string
 
-  assert_not_contains(html, "inspector-action-bar")
-  assert_not_contains(html, "inspector-open-in-trigger")
-  assert_not_contains(html, "inspector-more-actions-trigger")
+  render_assertions.not_contains(html, "inspector-action-bar")
+  render_assertions.not_contains(html, "inspector-open-in-trigger")
+  render_assertions.not_contains(html, "inspector-more-actions-trigger")
 }

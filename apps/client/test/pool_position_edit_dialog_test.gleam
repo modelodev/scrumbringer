@@ -1,13 +1,9 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/features/pool/position_edit_dialog
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 pub fn position_edit_dialog_renders_fields_test() {
   let html =
@@ -24,10 +20,10 @@ pub fn position_edit_dialog_renders_fields_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Edit position")
-  assert_contains(html, "value=\"12\"")
-  assert_contains(html, "value=\"34\"")
-  assert_contains(html, "Save")
+  render_assertions.contains(html, "Edit position")
+  render_assertions.contains(html, "value=\"12\"")
+  render_assertions.contains(html, "value=\"34\"")
+  render_assertions.contains(html, "Save")
 }
 
 pub fn position_edit_dialog_renders_loading_and_error_test() {
@@ -45,8 +41,8 @@ pub fn position_edit_dialog_renders_loading_and_error_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Invalid coordinates")
-  assert_contains(html, "btn-loading")
-  assert_contains(html, "Saving")
-  assert_contains(html, "disabled")
+  render_assertions.contains(html, "Invalid coordinates")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.contains(html, "Saving")
+  render_assertions.contains(html, "disabled")
 }

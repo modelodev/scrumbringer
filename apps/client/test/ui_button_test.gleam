@@ -1,13 +1,10 @@
 import gleam/string
 import lustre/attribute
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/button
 import scrumbringer_client/ui/icons
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 pub fn primary_global_button_renders_semantic_classes_test() {
   let html =
@@ -23,12 +20,12 @@ pub fn primary_global_button_renders_semantic_classes_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-icon-text")
-  assert_contains(html, "pool-header-action")
-  assert_contains(html, "data-testid=\"btn-new-task\"")
-  assert_contains(html, "type=\"button\"")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-icon-text")
+  render_assertions.contains(html, "pool-header-action")
+  render_assertions.contains(html, "data-testid=\"btn-new-task\"")
+  render_assertions.contains(html, "type=\"button\"")
 }
 
 pub fn icon_only_button_has_accessible_label_test() {
@@ -43,10 +40,10 @@ pub fn icon_only_button_has_accessible_label_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger-icon")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "aria-label=\"Delete card\"")
-  assert_contains(html, "title=\"Delete card\"")
+  render_assertions.contains(html, "btn-danger-icon")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "aria-label=\"Delete card\"")
+  render_assertions.contains(html, "title=\"Delete card\"")
 }
 
 pub fn text_button_can_use_contextual_accessible_label_test() {
@@ -56,9 +53,9 @@ pub fn text_button_can_use_contextual_accessible_label_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, ">Remove<")
-  assert_contains(html, "aria-label=\"Remove: Platform\"")
-  assert_contains(html, "title=\"Remove: Platform\"")
+  render_assertions.contains(html, ">Remove<")
+  render_assertions.contains(html, "aria-label=\"Remove: Platform\"")
+  render_assertions.contains(html, "title=\"Remove: Platform\"")
 }
 
 pub fn disabled_button_and_id_are_preserved_test() {
@@ -70,9 +67,9 @@ pub fn disabled_button_and_id_are_preserved_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "disabled")
-  assert_contains(html, "id=\"activate-button\"")
-  assert_contains(html, "data-testid=\"activate-testid\"")
+  render_assertions.contains(html, "disabled")
+  render_assertions.contains(html, "id=\"activate-button\"")
+  render_assertions.contains(html, "data-testid=\"activate-testid\"")
 }
 
 pub fn autofocus_button_renders_native_attribute_test() {
@@ -82,7 +79,7 @@ pub fn autofocus_button_renders_native_attribute_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "autofocus")
+  render_assertions.contains(html, "autofocus")
 }
 
 pub fn submit_button_can_target_external_form_test() {
@@ -93,9 +90,9 @@ pub fn submit_button_can_target_external_form_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "type=\"submit\"")
-  assert_contains(html, "form=\"profile-form\"")
-  assert_contains(html, "disabled")
+  render_assertions.contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "form=\"profile-form\"")
+  render_assertions.contains(html, "disabled")
   let assert False = string.contains(html, "data-")
 }
 
@@ -112,13 +109,13 @@ pub fn submit_icon_text_button_keeps_submit_semantics_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "type=\"submit\"")
-  assert_contains(html, "form=\"card-create-form\"")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-icon-text")
-  assert_contains(html, "btn-icon-prefix")
-  assert_contains(html, "data-testid=\"card-create-and-activate\"")
-  assert_contains(html, "Create and activate")
+  render_assertions.contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "form=\"card-create-form\"")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-icon-text")
+  render_assertions.contains(html, "btn-icon-prefix")
+  render_assertions.contains(html, "data-testid=\"card-create-and-activate\"")
+  render_assertions.contains(html, "Create and activate")
 }
 
 pub fn extra_classes_are_accumulated_test() {
@@ -129,8 +126,8 @@ pub fn extra_classes_are_accumulated_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "btn-compact")
-  assert_contains(html, "btn-loading")
+  render_assertions.contains(html, "btn-compact")
+  render_assertions.contains(html, "btn-loading")
 }
 
 pub fn neutral_icon_button_does_not_force_intent_class_test() {
@@ -145,8 +142,8 @@ pub fn neutral_icon_button_does_not_force_intent_class_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "btn-icon")
-  assert_contains(html, "btn-xs")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.contains(html, "btn-xs")
   let assert False = string.contains(html, "btn-primary")
   let assert False = string.contains(html, "btn-secondary")
   let assert False = string.contains(html, "btn-ghost")
@@ -165,8 +162,8 @@ pub fn tooltip_is_rendered_when_provided_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "data-tooltip=\"Claim\"")
-  assert_contains(html, "aria-label=\"Claim task\"")
+  render_assertions.contains(html, "data-tooltip=\"Claim\"")
+  render_assertions.contains(html, "aria-label=\"Claim task\"")
 }
 
 pub fn stop_propagation_button_preserves_semantic_contract_test() {
@@ -182,10 +179,10 @@ pub fn stop_propagation_button_preserves_semantic_contract_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-icon-text")
-  assert_contains(html, "aria-label=\"Attach template\"")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-icon-text")
+  render_assertions.contains(html, "aria-label=\"Attach template\"")
 }
 
 pub fn button_can_carry_specific_accessibility_attributes_test() {
@@ -202,10 +199,10 @@ pub fn button_can_carry_specific_accessibility_attributes_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "aria-haspopup=\"dialog\"")
-  assert_contains(html, "aria-expanded=\"true\"")
-  assert_contains(html, "btn-global-action")
-  assert_contains(html, "btn-icon")
+  render_assertions.contains(html, "aria-haspopup=\"dialog\"")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "btn-global-action")
+  render_assertions.contains(html, "btn-icon")
 }
 
 pub fn blocked_reason_removes_click_and_keeps_button_focusable_test() {
@@ -221,10 +218,10 @@ pub fn blocked_reason_removes_click_and_keeps_button_focusable_test() {
     |> button.view
     |> element.to_document_string
 
-  assert_contains(html, "aria-disabled=\"true\"")
-  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
-  assert_contains(html, "aria-label=\"Cannot delete: has tasks\"")
-  assert_contains(html, "title=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "aria-label=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "title=\"Cannot delete: has tasks\"")
   let assert False = string.contains(html, " disabled")
   let assert False = string.contains(html, "data-lustre-on-click")
 }

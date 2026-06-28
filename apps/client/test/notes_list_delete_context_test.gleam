@@ -2,8 +2,8 @@
 
 import gleam/int
 import gleam/option
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/note/entity.{type Note, Note}
 import domain/note/id as note_id
@@ -15,14 +15,6 @@ import domain/task/id as task_id
 import domain/user/id as user_id
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/tooltips/types.{DeleteAsAdmin, DeleteOwnNote}
-
-fn assert_contains(html: String, text: String) {
-  let assert True = string.contains(html, text)
-}
-
-fn assert_not_contains(html: String, text: String) {
-  let assert False = string.contains(html, text)
-}
 
 pub fn from_note_marks_current_user_note_as_own_test() {
   let view = notes_list.from_note(note(1, user_id: 7), own_context())
@@ -118,8 +110,8 @@ pub fn delete_button_shows_own_note_label_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Eliminar nota")
-  assert_not_contains(html, "(como admin)")
+  render_assertions.contains(html, "Eliminar nota")
+  render_assertions.not_contains(html, "(como admin)")
 }
 
 fn own_context() -> notes_list.NoteViewContext {
@@ -183,7 +175,7 @@ pub fn delete_button_shows_admin_context_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Eliminar nota (como admin)")
+  render_assertions.contains(html, "Eliminar nota (como admin)")
 }
 
 pub fn pin_button_uses_pinned_state_test() {
@@ -218,8 +210,8 @@ pub fn pin_button_uses_pinned_state_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Desfijar nota")
-  assert_contains(html, "data-testid=\"note-pin-action\"")
+  render_assertions.contains(html, "Desfijar nota")
+  render_assertions.contains(html, "data-testid=\"note-pin-action\"")
 }
 
 pub fn pin_button_explains_blocked_permission_test() {
@@ -254,6 +246,6 @@ pub fn pin_button_explains_blocked_permission_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Solo autor o manager")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "Solo autor o manager")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }

@@ -1,10 +1,10 @@
 import gleam/int
 import gleam/option as opt
 import gleam/set
-import gleam/string
 import lustre/attribute
 import lustre/element
 import lustre/element/html.{div, text}
+import support/render_assertions
 
 import domain/automation
 import domain/remote.{Loaded, NotAsked}
@@ -20,14 +20,6 @@ import scrumbringer_client/features/automations/rule_list
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn engine(id: Int, name: String) -> Workflow {
   Workflow(
@@ -227,33 +219,36 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Card automation scope")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
-  assert_contains(html, "id=\"automation-rule-panel-title\"")
-  assert_contains(html, "aria-label=\"Name\"")
-  assert_contains(html, "autofocus")
-  assert_not_contains(
+  render_assertions.contains(html, "Card automation scope")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-rule-panel-title\"",
+  )
+  render_assertions.contains(html, "id=\"automation-rule-panel-title\"")
+  render_assertions.contains(html, "aria-label=\"Name\"")
+  render_assertions.contains(html, "autofocus")
+  render_assertions.not_contains(
     html,
     "id=\"automation-rule-panel-title\" tabindex=\"-1\"",
   )
-  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "aria-label=\"Goal\"")
-  assert_contains(html, "aria-label=\"Rule subject\"")
-  assert_contains(html, "aria-label=\"Event\"")
-  assert_contains(html, "aria-label=\"Rule task template\"")
-  assert_contains(html, ">Any card<")
-  assert_contains(html, ">Cards at level: Initiative<")
-  assert_contains(html, ">Cards at level: Feature<")
-  assert_contains(html, ">Cards at level: Story<")
-  assert_contains(html, "value=\"2\"")
-  assert_contains(html, "When a Feature is closed")
-  assert_not_contains(html, "type=\"number\"")
-  assert_not_contains(html, "subtree")
+  render_assertions.contains(html, "aria-keyshortcuts=\"Escape\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "aria-label=\"Goal\"")
+  render_assertions.contains(html, "aria-label=\"Rule subject\"")
+  render_assertions.contains(html, "aria-label=\"Event\"")
+  render_assertions.contains(html, "aria-label=\"Rule task template\"")
+  render_assertions.contains(html, ">Any card<")
+  render_assertions.contains(html, ">Cards at level: Initiative<")
+  render_assertions.contains(html, ">Cards at level: Feature<")
+  render_assertions.contains(html, ">Cards at level: Story<")
+  render_assertions.contains(html, "value=\"2\"")
+  render_assertions.contains(html, "When a Feature is closed")
+  render_assertions.not_contains(html, "type=\"number\"")
+  render_assertions.not_contains(html, "subtree")
 }
 
 pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
@@ -274,11 +269,11 @@ pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Card level 9 is no longer available.")
-  assert_contains(html, "Choose an existing card level or Any card.")
-  assert_contains(html, "role=\"alert\"")
-  assert_contains(html, "disabled")
-  assert_not_contains(html, "value=\"9\" selected")
+  render_assertions.contains(html, "Card level 9 is no longer available.")
+  render_assertions.contains(html, "Choose an existing card level or Any card.")
+  render_assertions.contains(html, "role=\"alert\"")
+  render_assertions.contains(html, "disabled")
+  render_assertions.not_contains(html, "value=\"9\" selected")
 }
 
 pub fn automation_rule_delete_panel_focuses_title_test() {
@@ -294,14 +289,17 @@ pub fn automation_rule_delete_panel_focuses_title_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "automation-rule-panel-danger")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
-  assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
-  assert_contains(html, "id=\"automation-rule-panel-title\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "autofocus")
-  assert_contains(html, "Delete rule")
+  render_assertions.contains(html, "automation-rule-panel-danger")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-rule-panel-title\"",
+  )
+  render_assertions.contains(html, "id=\"automation-rule-panel-title\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "autofocus")
+  render_assertions.contains(html, "Delete rule")
 }
 
 pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {
@@ -309,35 +307,35 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
     rule_list.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "Rules - Release automation")
-  assert_contains(html, "Back to Automations")
-  assert_contains(html, "automation-rules-heading")
-  assert_contains(html, automation_focus.create_rule_trigger_id)
-  assert_contains(html, "automation-rule-list")
-  assert_contains(html, "Close bug workflow")
-  assert_contains(html, "When a Bug task is closed")
-  assert_contains(html, "-&gt; Create Bug triage in the Pool")
-  assert_contains(html, "Engine:")
-  assert_contains(html, "Release automation")
-  assert_contains(html, "Template:")
-  assert_contains(html, "Created:")
-  assert_contains(html, "Ignored:")
-  assert_not_contains(html, "data-table")
-  assert_not_contains(html, "<table")
-  assert_not_contains(html, "Automatizacion")
-  assert_not_contains(html, "Resource Type")
-  assert_not_contains(html, "Target State")
-  assert_not_contains(html, "Suppressed")
-  assert_not_contains(html, "admin-section-header")
-  assert_contains(html, "Bug triage")
-  assert_contains(html, "4")
-  assert_contains(html, "2")
-  assert_contains(html, "btn-view-action")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, automation_focus.rule_edit_trigger_id(9))
-  assert_contains(html, automation_focus.rule_delete_trigger_id(9))
-  assert_not_contains(html, "inert")
-  assert_not_contains(html, "btn btn-sm btn-primary")
+  render_assertions.contains(html, "Rules - Release automation")
+  render_assertions.contains(html, "Back to Automations")
+  render_assertions.contains(html, "automation-rules-heading")
+  render_assertions.contains(html, automation_focus.create_rule_trigger_id)
+  render_assertions.contains(html, "automation-rule-list")
+  render_assertions.contains(html, "Close bug workflow")
+  render_assertions.contains(html, "When a Bug task is closed")
+  render_assertions.contains(html, "-&gt; Create Bug triage in the Pool")
+  render_assertions.contains(html, "Engine:")
+  render_assertions.contains(html, "Release automation")
+  render_assertions.contains(html, "Template:")
+  render_assertions.contains(html, "Created:")
+  render_assertions.contains(html, "Ignored:")
+  render_assertions.not_contains(html, "data-table")
+  render_assertions.not_contains(html, "<table")
+  render_assertions.not_contains(html, "Automatizacion")
+  render_assertions.not_contains(html, "Resource Type")
+  render_assertions.not_contains(html, "Target State")
+  render_assertions.not_contains(html, "Suppressed")
+  render_assertions.not_contains(html, "admin-section-header")
+  render_assertions.contains(html, "Bug triage")
+  render_assertions.contains(html, "4")
+  render_assertions.contains(html, "2")
+  render_assertions.contains(html, "btn-view-action")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, automation_focus.rule_edit_trigger_id(9))
+  render_assertions.contains(html, automation_focus.rule_delete_trigger_id(9))
+  render_assertions.not_contains(html, "inert")
+  render_assertions.not_contains(html, "btn btn-sm btn-primary")
 }
 
 pub fn automation_rule_list_localizes_rule_meta_labels_test() {
@@ -345,14 +343,14 @@ pub fn automation_rule_list_localizes_rule_meta_labels_test() {
     rule_list.view(rule_list.Config(..config(), locale: locale.Es))
     |> element.to_document_string
 
-  assert_contains(html, "Motor:")
-  assert_contains(html, "Plantilla:")
-  assert_contains(html, "Creadas:")
-  assert_contains(html, "Ignoradas:")
-  assert_not_contains(html, "Engine:")
-  assert_not_contains(html, "Template:")
-  assert_not_contains(html, "Created:")
-  assert_not_contains(html, "Ignored:")
+  render_assertions.contains(html, "Motor:")
+  render_assertions.contains(html, "Plantilla:")
+  render_assertions.contains(html, "Creadas:")
+  render_assertions.contains(html, "Ignoradas:")
+  render_assertions.not_contains(html, "Engine:")
+  render_assertions.not_contains(html, "Template:")
+  render_assertions.not_contains(html, "Created:")
+  render_assertions.not_contains(html, "Ignored:")
 }
 
 pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_test() {
@@ -365,7 +363,7 @@ pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_t
     )
     |> element.to_document_string
 
-  assert_contains(html, "No rules yet")
+  render_assertions.contains(html, "No rules yet")
 }
 
 pub fn automation_rule_list_marks_selected_rule_test() {
@@ -373,13 +371,13 @@ pub fn automation_rule_list_marks_selected_rule_test() {
     rule_list.view(rule_list.Config(..config(), selected_rule_id: opt.Some(9)))
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-rule-row\"")
-  assert_contains(html, "role=\"button\"")
-  assert_contains(html, "tabindex=\"0\"")
-  assert_contains(html, "data-selected=\"true\"")
-  assert_contains(html, "rule-row")
-  assert_contains(html, "is-selected")
-  assert_contains(html, "aria-expanded=\"true\"")
+  render_assertions.contains(html, "data-testid=\"automation-rule-row\"")
+  render_assertions.contains(html, "role=\"button\"")
+  render_assertions.contains(html, "tabindex=\"0\"")
+  render_assertions.contains(html, "data-selected=\"true\"")
+  render_assertions.contains(html, "rule-row")
+  render_assertions.contains(html, "is-selected")
+  render_assertions.contains(html, "aria-expanded=\"true\"")
 }
 
 pub fn automation_rule_list_activation_keys_match_button_behavior_test() {
@@ -407,28 +405,34 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
     )
     |> element.to_document_string
 
-  assert_contains(html, "automation-rule-panel")
-  assert_contains(html, "data-testid=\"automation-rule-builder\"")
-  assert_contains(html, "aria-labelledby=\"automation-rule-panel-title\"")
-  assert_contains(html, "New rule")
-  assert_contains(html, "When")
-  assert_contains(html, "Any task type")
-  assert_contains(html, "Bug")
-  assert_contains(html, "Preview")
-  assert_contains(html, "When a Bug task is closed")
-  assert_contains(html, "Create work from")
-  assert_contains(html, "data-testid=\"automation-template-search\"")
-  assert_contains(html, "data-testid=\"automation-template-picker\"")
-  assert_contains(html, "data-testid=\"automation-rule-create-template\"")
-  assert_contains(html, "id=\"automation-create-template-trigger\"")
-  assert_contains(html, "Create Template")
-  assert_contains(html, "Follow-up task")
-  assert_contains(html, "Manual QA review")
-  assert_contains(html, "Bug - P3")
-  assert_contains(html, "It will create &quot;Follow-up task&quot;")
-  assert_not_contains(html, "rule-crud-dialog")
-  assert_not_contains(html, "Resource Type")
-  assert_not_contains(html, "Target State")
+  render_assertions.contains(html, "automation-rule-panel")
+  render_assertions.contains(html, "data-testid=\"automation-rule-builder\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-rule-panel-title\"",
+  )
+  render_assertions.contains(html, "New rule")
+  render_assertions.contains(html, "When")
+  render_assertions.contains(html, "Any task type")
+  render_assertions.contains(html, "Bug")
+  render_assertions.contains(html, "Preview")
+  render_assertions.contains(html, "When a Bug task is closed")
+  render_assertions.contains(html, "Create work from")
+  render_assertions.contains(html, "data-testid=\"automation-template-search\"")
+  render_assertions.contains(html, "data-testid=\"automation-template-picker\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-rule-create-template\"",
+  )
+  render_assertions.contains(html, "id=\"automation-create-template-trigger\"")
+  render_assertions.contains(html, "Create Template")
+  render_assertions.contains(html, "Follow-up task")
+  render_assertions.contains(html, "Manual QA review")
+  render_assertions.contains(html, "Bug - P3")
+  render_assertions.contains(html, "It will create &quot;Follow-up task&quot;")
+  render_assertions.not_contains(html, "rule-crud-dialog")
+  render_assertions.not_contains(html, "Resource Type")
+  render_assertions.not_contains(html, "Target State")
 }
 
 pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test() {
@@ -456,11 +460,11 @@ pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-rule-builder\"")
-  assert_contains(html, "data-testid=\"automation-template-panel\"")
-  assert_contains(html, "template panel")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "data-testid=\"automation-rule-builder\"")
+  render_assertions.contains(html, "data-testid=\"automation-template-panel\"")
+  render_assertions.contains(html, "template panel")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
 }
 
 pub fn automation_rule_builder_offers_only_supported_task_events_test() {
@@ -481,20 +485,20 @@ pub fn automation_rule_builder_offers_only_supported_task_events_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "value=\"task_created\"")
-  assert_contains(html, "value=\"task_claimed\"")
-  assert_contains(html, "value=\"task_released\"")
-  assert_contains(html, "value=\"task_closed\"")
-  assert_contains(html, ">is created<")
-  assert_contains(html, ">is claimed<")
-  assert_contains(html, ">is released<")
-  assert_contains(html, ">is closed<")
-  assert_not_contains(html, "task_blocked")
-  assert_not_contains(html, "task_unblocked")
-  assert_not_contains(html, "task_due")
-  assert_not_contains(html, "due date")
-  assert_not_contains(html, ">is blocked<")
-  assert_not_contains(html, ">is unblocked<")
+  render_assertions.contains(html, "value=\"task_created\"")
+  render_assertions.contains(html, "value=\"task_claimed\"")
+  render_assertions.contains(html, "value=\"task_released\"")
+  render_assertions.contains(html, "value=\"task_closed\"")
+  render_assertions.contains(html, ">is created<")
+  render_assertions.contains(html, ">is claimed<")
+  render_assertions.contains(html, ">is released<")
+  render_assertions.contains(html, ">is closed<")
+  render_assertions.not_contains(html, "task_blocked")
+  render_assertions.not_contains(html, "task_unblocked")
+  render_assertions.not_contains(html, "task_due")
+  render_assertions.not_contains(html, "due date")
+  render_assertions.not_contains(html, ">is blocked<")
+  render_assertions.not_contains(html, ">is unblocked<")
 }
 
 pub fn automation_rule_builder_offers_only_supported_card_events_test() {
@@ -515,16 +519,16 @@ pub fn automation_rule_builder_offers_only_supported_card_events_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "value=\"card_activated\"")
-  assert_contains(html, "value=\"card_closed\"")
-  assert_contains(html, ">is activated<")
-  assert_contains(html, ">is closed<")
-  assert_not_contains(html, "task_created")
-  assert_not_contains(html, "task_claimed")
-  assert_not_contains(html, "task_released")
-  assert_not_contains(html, "task_closed")
-  assert_not_contains(html, "subtree")
-  assert_not_contains(html, "card_type")
+  render_assertions.contains(html, "value=\"card_activated\"")
+  render_assertions.contains(html, "value=\"card_closed\"")
+  render_assertions.contains(html, ">is activated<")
+  render_assertions.contains(html, ">is closed<")
+  render_assertions.not_contains(html, "task_created")
+  render_assertions.not_contains(html, "task_claimed")
+  render_assertions.not_contains(html, "task_released")
+  render_assertions.not_contains(html, "task_closed")
+  render_assertions.not_contains(html, "subtree")
+  render_assertions.not_contains(html, "card_type")
 }
 
 pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test() {
@@ -546,14 +550,14 @@ pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test
     )
     |> element.to_document_string
 
-  assert_contains(html, "Card follow-up")
-  assert_contains(html, "Review {{card_title}}")
-  assert_contains(
+  render_assertions.contains(html, "Card follow-up")
+  render_assertions.contains(html, "Review {{card_title}}")
+  render_assertions.contains(
     html,
     "This template uses variables unavailable for the selected trigger: {{card_title}}.",
   )
-  assert_contains(html, "role=\"alert\"")
-  assert_contains(html, "disabled")
+  render_assertions.contains(html, "role=\"alert\"")
+  render_assertions.contains(html, "disabled")
 }
 
 pub fn automation_rule_list_localizes_rule_builder_controls_test() {
@@ -575,36 +579,42 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Nueva regla")
-  assert_contains(html, "Cuando")
-  assert_contains(html, "Evento")
-  assert_contains(html, "se activa")
-  assert_contains(html, "aria-label=\"Alcance de automatización de tarjeta\"")
-  assert_contains(html, ">Cualquier tarjeta<")
-  assert_contains(html, ">Tarjetas de nivel: Initiative<")
-  assert_contains(html, ">Tarjetas de nivel: Feature<")
-  assert_contains(html, "Crear trabajo desde")
-  assert_contains(html, "aria-label=\"Plantilla de tarea de la regla\"")
-  assert_contains(html, "Elige una plantilla")
-  assert_contains(html, "Vista previa")
-  assert_contains(
+  render_assertions.contains(html, "Nueva regla")
+  render_assertions.contains(html, "Cuando")
+  render_assertions.contains(html, "Evento")
+  render_assertions.contains(html, "se activa")
+  render_assertions.contains(
+    html,
+    "aria-label=\"Alcance de automatización de tarjeta\"",
+  )
+  render_assertions.contains(html, ">Cualquier tarjeta<")
+  render_assertions.contains(html, ">Tarjetas de nivel: Initiative<")
+  render_assertions.contains(html, ">Tarjetas de nivel: Feature<")
+  render_assertions.contains(html, "Crear trabajo desde")
+  render_assertions.contains(
+    html,
+    "aria-label=\"Plantilla de tarea de la regla\"",
+  )
+  render_assertions.contains(html, "Elige una plantilla")
+  render_assertions.contains(html, "Vista previa")
+  render_assertions.contains(
     html,
     "Cuando cualquier tarjeta se active, se creará trabajo en el Pool.",
   )
-  assert_contains(
+  render_assertions.contains(
     html,
     "Creará &quot;Follow-up task&quot; como trabajo disponible.",
   )
-  assert_contains(
+  render_assertions.contains(
     html,
     "Aviso: activar una tarjeta con muchas subtarjetas puede crear mucho trabajo en el Pool.",
   )
-  assert_not_contains(html, "Card automation scope")
-  assert_not_contains(html, "Create work from")
-  assert_not_contains(html, "Choose a template")
-  assert_not_contains(html, ">Preview<")
-  assert_not_contains(html, "When any card is activated")
-  assert_not_contains(html, "It will create")
+  render_assertions.not_contains(html, "Card automation scope")
+  render_assertions.not_contains(html, "Create work from")
+  render_assertions.not_contains(html, "Choose a template")
+  render_assertions.not_contains(html, ">Preview<")
+  render_assertions.not_contains(html, "When any card is activated")
+  render_assertions.not_contains(html, "It will create")
 }
 
 pub fn automation_rule_list_template_picker_filters_and_previews_test() {
@@ -627,11 +637,11 @@ pub fn automation_rule_list_template_picker_filters_and_previews_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Search templates")
-  assert_contains(html, "value=\"Follow\"")
-  assert_contains(html, "Follow-up task")
-  assert_contains(html, "Manual QA review")
-  assert_not_contains(html, "Docs sweep")
+  render_assertions.contains(html, "Search templates")
+  render_assertions.contains(html, "value=\"Follow\"")
+  render_assertions.contains(html, "Follow-up task")
+  render_assertions.contains(html, "Manual QA review")
+  render_assertions.not_contains(html, "Docs sweep")
 }
 
 pub fn automation_rule_list_template_picker_empty_filter_state_test() {
@@ -653,7 +663,7 @@ pub fn automation_rule_list_template_picker_empty_filter_state_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "No templates match this search.")
-  assert_not_contains(html, "Follow-up task")
-  assert_not_contains(html, "Docs sweep")
+  render_assertions.contains(html, "No templates match this search.")
+  render_assertions.not_contains(html, "Follow-up task")
+  render_assertions.not_contains(html, "Docs sweep")
 }

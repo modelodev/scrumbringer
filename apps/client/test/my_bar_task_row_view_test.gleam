@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card
 import domain/metrics.{MyMetrics, WindowDays}
@@ -12,14 +12,6 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn claimed_task() -> Task {
   let state =
@@ -108,13 +100,13 @@ pub fn member_bar_task_row_renders_from_config_test() {
     my_bar_view.view_member_bar_task_row(config(), claimed_task())
     |> element.to_document_string
 
-  assert_contains(html, "Prepare release")
-  assert_contains(html, "Release card")
-  assert_contains(html, "P2")
-  assert_contains(html, "Bug")
-  assert_contains(html, "Start")
-  assert_contains(html, "Release")
-  assert_contains(html, "Close task")
+  render_assertions.contains(html, "Prepare release")
+  render_assertions.contains(html, "Release card")
+  render_assertions.contains(html, "P2")
+  render_assertions.contains(html, "Bug")
+  render_assertions.contains(html, "Start")
+  render_assertions.contains(html, "Release")
+  render_assertions.contains(html, "Close task")
 }
 
 pub fn my_bar_section_renders_from_config_test() {
@@ -122,15 +114,18 @@ pub fn my_bar_section_renders_from_config_test() {
     my_bar_view.view_bar(bar_config([claimed_task_with_card()]))
     |> element.to_document_string
 
-  assert_contains(html, "My Metrics")
-  assert_contains(html, "Window: 14 days")
-  assert_contains(html, "Claimed")
-  assert_contains(html, "Released")
-  assert_contains(html, "Closed")
-  assert_contains(html, "Release card")
-  assert_contains(html, "Prepare release")
-  assert_contains(html, "Add task to Release card")
-  assert_contains(html, "my-bar-add-task")
-  assert_contains(html, "btn-entity-action")
-  assert_not_contains(html, "class=\"btn-icon btn-sm my-bar-add-task\"")
+  render_assertions.contains(html, "My Metrics")
+  render_assertions.contains(html, "Window: 14 days")
+  render_assertions.contains(html, "Claimed")
+  render_assertions.contains(html, "Released")
+  render_assertions.contains(html, "Closed")
+  render_assertions.contains(html, "Release card")
+  render_assertions.contains(html, "Prepare release")
+  render_assertions.contains(html, "Add task to Release card")
+  render_assertions.contains(html, "my-bar-add-task")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.not_contains(
+    html,
+    "class=\"btn-icon btn-sm my-bar-add-task\"",
+  )
 }

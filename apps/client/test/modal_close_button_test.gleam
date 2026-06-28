@@ -1,9 +1,9 @@
 //// Tests for modal_close_button UI component.
 
 import gleam/option.{Some}
-import gleam/string
 import lustre/element
 import scrumbringer_client/ui/modal_close_button
+import support/render_assertions
 
 // =============================================================================
 // Test Helpers
@@ -11,10 +11,6 @@ import scrumbringer_client/ui/modal_close_button
 
 fn render_to_string() -> String {
   modal_close_button.view(Nil) |> element.to_string()
-}
-
-fn assert_contains(haystack: String, needle: String) {
-  let assert True = string.contains(haystack, needle)
 }
 
 // =============================================================================
@@ -26,8 +22,8 @@ pub fn renders_close_button_with_aria_label_test() {
   let html = render_to_string()
 
   // Then: Has ARIA label for accessibility
-  assert_contains(html, "aria-label")
-  assert_contains(html, "Close")
+  render_assertions.contains(html, "aria-label")
+  render_assertions.contains(html, "Close")
 }
 
 pub fn renders_close_button_with_correct_class_test() {
@@ -35,8 +31,8 @@ pub fn renders_close_button_with_correct_class_test() {
   let html = render_to_string()
 
   // Then: Has expected CSS classes
-  assert_contains(html, "btn-icon")
-  assert_contains(html, "modal-close")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.contains(html, "modal-close")
 }
 
 pub fn renders_stable_entity_show_close_target_test() {
@@ -49,7 +45,7 @@ pub fn renders_stable_entity_show_close_target_test() {
     )
     |> element.to_string()
 
-  assert_contains(html, "data-testid=\"entity-show-close\"")
+  render_assertions.contains(html, "data-testid=\"entity-show-close\"")
 }
 
 pub fn renders_close_icon_test() {
@@ -57,7 +53,7 @@ pub fn renders_close_icon_test() {
   let html = render_to_string()
 
   // Then: Contains close icon (×)
-  assert_contains(html, "\u{2715}")
+  render_assertions.contains(html, "\u{2715}")
 }
 
 pub fn view_with_class_uses_custom_class_test() {
@@ -67,5 +63,5 @@ pub fn view_with_class_uses_custom_class_test() {
     |> element.to_string()
 
   // Then: Uses custom class
-  assert_contains(html, "my-custom-close")
+  render_assertions.contains(html, "my-custom-close")
 }

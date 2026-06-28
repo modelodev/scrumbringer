@@ -1,20 +1,12 @@
 import gleam/option
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/org.{type InviteLink, Active, InviteLink}
 import domain/remote
 import scrumbringer_client/client_state/admin/invites as invites_state
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn invite_link(email: String) -> InviteLink {
   InviteLink(
@@ -58,10 +50,13 @@ pub fn invites_view_loaded_links_uses_config_data_test() {
     invites_view.view_invites(config(state))
     |> element.to_document_string
 
-  assert_contains(html, "INVITES")
-  assert_contains(html, "new@example.test")
-  assert_contains(html, "https://scrumbringer.test/accept-invite?token=token")
-  assert_contains(html, "Pending")
+  render_assertions.contains(html, "INVITES")
+  render_assertions.contains(html, "new@example.test")
+  render_assertions.contains(
+    html,
+    "https://scrumbringer.test/accept-invite?token=token",
+  )
+  render_assertions.contains(html, "Pending")
 }
 
 pub fn invites_view_active_state_uses_spanish_open_copy_test() {
@@ -78,6 +73,6 @@ pub fn invites_view_active_state_uses_spanish_open_copy_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Por aceptar")
-  assert_not_contains(html, "Draft")
+  render_assertions.contains(html, "Por aceptar")
+  render_assertions.not_contains(html, "Draft")
 }

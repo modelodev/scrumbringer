@@ -1,6 +1,6 @@
 import gleam/dict
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/metrics.{
   NoSample, OrgMetricsOverview, OrgMetricsProjectOverview,
@@ -139,14 +139,6 @@ fn user_card_config(model: client_state.Model) -> user_card.Config(String) {
   )
 }
 
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
-
 fn base_model() -> client_state.Model {
   client_state.default_model()
 }
@@ -188,8 +180,8 @@ pub fn filter_projects_by_name_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "Project Alpha")
-  assert_not_contains(html, "Project Beta")
+  render_assertions.contains(html, "Project Alpha")
+  render_assertions.not_contains(html, "Project Beta")
 }
 
 pub fn project_collapsed_hides_members_test() {
@@ -232,7 +224,7 @@ pub fn project_collapsed_hides_members_test() {
 
   let html = render_assignments(model)
 
-  assert_not_contains(html, "member@example.com")
+  render_assertions.not_contains(html, "member@example.com")
 }
 
 pub fn project_expanded_shows_members_test() {
@@ -279,7 +271,7 @@ pub fn project_expanded_shows_members_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "member@example.com")
+  render_assertions.contains(html, "member@example.com")
 }
 
 pub fn user_without_projects_shows_badge_test() {
@@ -310,7 +302,7 @@ pub fn user_without_projects_shows_badge_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "NO PROJECTS")
+  render_assertions.contains(html, "NO PROJECTS")
 }
 
 pub fn project_without_members_shows_badge_test() {
@@ -336,7 +328,7 @@ pub fn project_without_members_shows_badge_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "NO MEMBERS")
+  render_assertions.contains(html, "NO MEMBERS")
 }
 
 pub fn project_metrics_summary_renders_counts_test() {
@@ -402,13 +394,13 @@ pub fn project_metrics_summary_renders_counts_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "assignments-task-metric")
-  assert_contains(html, "task-metric-chip is-compact")
-  assert_contains(html, "title=\"Available: 3\"")
-  assert_contains(html, "title=\"Ongoing: 1\"")
-  assert_contains(html, "title=\"Closed: 2\"")
-  assert_not_contains(html, "task-metric-chip-label")
-  assert_contains(html, "Release %: 50%")
+  render_assertions.contains(html, "assignments-task-metric")
+  render_assertions.contains(html, "task-metric-chip is-compact")
+  render_assertions.contains(html, "title=\"Available: 3\"")
+  render_assertions.contains(html, "title=\"Ongoing: 1\"")
+  render_assertions.contains(html, "title=\"Closed: 2\"")
+  render_assertions.not_contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, "Release %: 50%")
 }
 
 pub fn user_metrics_summary_renders_counts_test() {
@@ -454,14 +446,14 @@ pub fn user_metrics_summary_renders_counts_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "assignments-task-metric")
-  assert_contains(html, "task-metric-chip is-compact")
-  assert_contains(html, "title=\"Claimed: 4\"")
-  assert_contains(html, "Released: 1")
-  assert_contains(html, "title=\"Closed: 2\"")
-  assert_contains(html, "title=\"Ongoing: 1\"")
-  assert_not_contains(html, "task-metric-chip-label")
-  assert_contains(html, "Last claim: 2026-01-02")
+  render_assertions.contains(html, "assignments-task-metric")
+  render_assertions.contains(html, "task-metric-chip is-compact")
+  render_assertions.contains(html, "title=\"Claimed: 4\"")
+  render_assertions.contains(html, "Released: 1")
+  render_assertions.contains(html, "title=\"Closed: 2\"")
+  render_assertions.contains(html, "title=\"Ongoing: 1\"")
+  render_assertions.not_contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, "Last claim: 2026-01-02")
 }
 
 pub fn empty_state_when_no_projects_test() {
@@ -482,8 +474,8 @@ pub fn empty_state_when_no_projects_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "No projects yet")
-  assert_contains(html, "Create Project")
+  render_assertions.contains(html, "No projects yet")
+  render_assertions.contains(html, "Create Project")
 }
 
 pub fn empty_state_when_no_users_test() {
@@ -505,8 +497,8 @@ pub fn empty_state_when_no_users_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "No people yet")
-  assert_contains(html, "Create invite link")
+  render_assertions.contains(html, "No people yet")
+  render_assertions.contains(html, "Create invite link")
 }
 
 pub fn empty_state_when_only_admin_user_test() {
@@ -547,8 +539,8 @@ pub fn empty_state_when_only_admin_user_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "No people yet")
-  assert_contains(html, "Create invite link")
+  render_assertions.contains(html, "No people yet")
+  render_assertions.contains(html, "Create invite link")
 }
 
 pub fn filter_users_by_email_test() {
@@ -590,8 +582,8 @@ pub fn filter_users_by_email_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "admin@example.com")
-  assert_not_contains(html, "member@example.com")
+  render_assertions.contains(html, "admin@example.com")
+  render_assertions.not_contains(html, "member@example.com")
 }
 
 pub fn assignments_renders_table_layout_project_mode_test() {
@@ -617,9 +609,9 @@ pub fn assignments_renders_table_layout_project_mode_test() {
 
   let html = render_assignments(model)
 
-  assert_contains(html, "section admin-surface")
-  assert_contains(html, "admin-surface-filters")
-  assert_contains(html, "table assignments-table")
+  render_assertions.contains(html, "section admin-surface")
+  render_assertions.contains(html, "admin-surface-filters")
+  render_assertions.contains(html, "table assignments-table")
 }
 
 pub fn assignments_expansion_row_toggles_test() {
@@ -675,6 +667,6 @@ pub fn assignments_expansion_row_toggles_test() {
   let collapsed_html = render_assignments(collapsed_model)
   let expanded_html = render_assignments(expanded_model)
 
-  assert_not_contains(collapsed_html, "expansion-row")
-  assert_contains(expanded_html, "expansion-row")
+  render_assertions.not_contains(collapsed_html, "expansion-row")
+  render_assertions.contains(expanded_html, "expansion-row")
 }

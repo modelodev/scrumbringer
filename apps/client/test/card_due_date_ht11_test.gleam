@@ -1,19 +1,11 @@
 import domain/card.{type Card, Active, Card, Closed}
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 import scrumbringer_client/ui/card_with_tasks_surface
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 pub fn overdue_open_card_uses_danger_due_date_style_test() {
   let html =
@@ -22,10 +14,10 @@ pub fn overdue_open_card_uses_danger_due_date_style_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "card-due-date")
-  assert_contains(html, "card-due-date-overdue")
-  assert_contains(html, "2026-06-18")
-  assert_not_contains(html, "decay-shake")
+  render_assertions.contains(html, "card-due-date")
+  render_assertions.contains(html, "card-due-date-overdue")
+  render_assertions.contains(html, "2026-06-18")
+  render_assertions.not_contains(html, "decay-shake")
 }
 
 pub fn closed_card_does_not_show_overdue_alarm_test() {
@@ -35,10 +27,10 @@ pub fn closed_card_does_not_show_overdue_alarm_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "card-due-date")
-  assert_contains(html, "2026-06-18")
-  assert_not_contains(html, "card-due-date-overdue")
-  assert_not_contains(html, "decay-shake")
+  render_assertions.contains(html, "card-due-date")
+  render_assertions.contains(html, "2026-06-18")
+  render_assertions.not_contains(html, "card-due-date-overdue")
+  render_assertions.not_contains(html, "decay-shake")
 }
 
 pub fn invalid_card_due_date_does_not_show_overdue_alarm_test() {
@@ -48,9 +40,9 @@ pub fn invalid_card_due_date_does_not_show_overdue_alarm_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "card-due-date")
-  assert_contains(html, "not-a-date")
-  assert_not_contains(html, "card-due-date-overdue")
+  render_assertions.contains(html, "card-due-date")
+  render_assertions.contains(html, "not-a-date")
+  render_assertions.not_contains(html, "card-due-date-overdue")
 }
 
 fn config(card: Card) {

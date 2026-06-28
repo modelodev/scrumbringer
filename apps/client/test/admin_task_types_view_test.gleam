@@ -1,6 +1,6 @@
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/capability.{Capability}
 import domain/project.{Project}
@@ -14,14 +14,6 @@ import scrumbringer_client/client_state/admin/task_types as admin_task_types
 import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/i18n/locale.{En, Es}
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn base_model() -> Model {
   default_model()
@@ -68,13 +60,16 @@ pub fn task_types_table_renders_capability_name_test() {
     admin_view.view_task_types(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, "Backend")
-  assert_not_contains(html, ">1<")
-  assert_contains(html, "cell-number")
-  assert_contains(html, "aria-label=\"Edit Task Type\"")
-  assert_contains(html, "btn-delete-blocked")
-  assert_contains(html, "data-tooltip=\"Cannot delete: has 7 tasks\"")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "Backend")
+  render_assertions.not_contains(html, ">1<")
+  render_assertions.contains(html, "cell-number")
+  render_assertions.contains(html, "aria-label=\"Edit Task Type\"")
+  render_assertions.contains(html, "btn-delete-blocked")
+  render_assertions.contains(
+    html,
+    "data-tooltip=\"Cannot delete: has 7 tasks\"",
+  )
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn task_types_table_renders_none_when_no_capability_test() {
@@ -102,7 +97,7 @@ pub fn task_types_table_renders_none_when_no_capability_test() {
     admin_view.view_task_types(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, ">None<")
+  render_assertions.contains(html, ">None<")
 }
 
 pub fn icon_picker_trigger_hides_slug_test() {
@@ -113,7 +108,7 @@ pub fn icon_picker_trigger_hides_slug_test() {
     )
     |> element.to_document_string
 
-  assert_not_contains(html, "clipboard-document-list")
+  render_assertions.not_contains(html, "clipboard-document-list")
 }
 
 pub fn task_types_table_does_not_render_ids_test() {
@@ -141,7 +136,7 @@ pub fn task_types_table_does_not_render_ids_test() {
     admin_view.view_task_types(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_not_contains(html, ">1234<")
+  render_assertions.not_contains(html, ">1234<")
 }
 
 pub fn task_type_create_dialog_shows_create_copy_and_optional_label_test() {
@@ -149,13 +144,13 @@ pub fn task_type_create_dialog_shows_create_copy_and_optional_label_test() {
     task_type_crud_dialog.view_create_dialog_for_test(Es)
     |> element.to_document_string
 
-  assert_contains(html, "Crear tipo")
-  assert_contains(html, "form-group-optional")
-  assert_contains(html, "Opcionales")
-  assert_contains(html, "create-name")
-  assert_contains(html, "Ej: Bug, Mejora, Documentacion")
-  assert_contains(html, "create-capability")
-  assert_contains(html, "icon-picker-trigger")
+  render_assertions.contains(html, "Crear tipo")
+  render_assertions.contains(html, "form-group-optional")
+  render_assertions.contains(html, "Opcionales")
+  render_assertions.contains(html, "create-name")
+  render_assertions.contains(html, "Ej: Bug, Mejora, Documentacion")
+  render_assertions.contains(html, "create-capability")
+  render_assertions.contains(html, "icon-picker-trigger")
 }
 
 pub fn task_type_edit_dialog_uses_shared_optional_fields_test() {
@@ -172,9 +167,9 @@ pub fn task_type_edit_dialog_uses_shared_optional_fields_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Edit Task Type")
-  assert_contains(html, "edit-name")
-  assert_contains(html, "form-group-optional")
-  assert_contains(html, "edit-capability")
-  assert_contains(html, "icon-picker-trigger")
+  render_assertions.contains(html, "Edit Task Type")
+  render_assertions.contains(html, "edit-name")
+  render_assertions.contains(html, "form-group-optional")
+  render_assertions.contains(html, "edit-capability")
+  render_assertions.contains(html, "icon-picker-trigger")
 }

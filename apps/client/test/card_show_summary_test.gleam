@@ -1,5 +1,5 @@
 import gleam/option
-import gleam/string
+import support/render_assertions
 
 import lustre/element
 import lustre/element/html.{span, text}
@@ -41,29 +41,21 @@ fn render(blocked_count: Int) -> String {
   |> element.to_document_string
 }
 
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
-
 pub fn summary_renders_compact_metrics_and_structure_test() {
   let html = render(0)
 
-  assert_contains(html, "card-summary-section")
-  assert_contains(html, "card-summary-metric-total")
-  assert_contains(html, "card-summary-metric-closed")
-  assert_contains(html, "card-summary-metric-blocked")
-  assert_contains(html, "is-compact")
-  assert_not_contains(html, "task-metric-chip-label")
-  assert_contains(html, "Roadmap &gt; Checkout")
-  assert_contains(html, "Decision")
+  render_assertions.contains(html, "card-summary-section")
+  render_assertions.contains(html, "card-summary-metric-total")
+  render_assertions.contains(html, "card-summary-metric-closed")
+  render_assertions.contains(html, "card-summary-metric-blocked")
+  render_assertions.contains(html, "is-compact")
+  render_assertions.not_contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, "Roadmap &gt; Checkout")
+  render_assertions.contains(html, "Decision")
 }
 
 pub fn summary_uses_blocked_signal_when_blockers_exist_test() {
   let html = render(1)
 
-  assert_contains(html, "card-summary-signal is-blocked")
+  render_assertions.contains(html, "card-summary-signal is-blocked")
 }

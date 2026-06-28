@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/remote.{Loaded}
 import domain/task_type.{type TaskType, TaskType}
@@ -10,14 +10,6 @@ import scrumbringer_client/client_state/admin/task_templates as admin_task_templ
 import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn sample_template() -> TaskTemplate {
   TaskTemplate(
@@ -105,33 +97,39 @@ pub fn automation_template_library_renders_from_config_without_root_model_test()
     template_library.view(config())
     |> element.to_document_string
 
-  assert_contains(html, "Template library")
-  assert_contains(html, "filter-bar automation-templates-filters")
-  assert_contains(html, "data-testid=\"automation-template-picker\"")
-  assert_contains(html, automation_focus.create_template_trigger_id)
-  assert_contains(html, "data-testid=\"automation-template-search\"")
-  assert_contains(html, "data-testid=\"automation-template-row\"")
-  assert_contains(html, "Regression checklist")
-  assert_contains(html, "Review backlog")
-  assert_contains(html, "Bug")
-  assert_contains(html, "4")
-  assert_contains(html, "Uses")
-  assert_contains(html, "Created")
-  assert_contains(html, "Last")
-  assert_contains(html, "2026-06-08T10:00:00Z")
-  assert_contains(html, "Never")
-  assert_contains(html, "automation-template-unused-badge")
-  assert_contains(html, "Unused")
-  assert_contains(html, "template-edit-btn")
-  assert_contains(html, "template-delete-btn")
-  assert_contains(html, automation_focus.template_edit_trigger_id(7))
-  assert_contains(html, automation_focus.template_delete_trigger_id(7))
-  assert_contains(html, automation_focus.template_edit_trigger_id(8))
-  assert_contains(html, automation_focus.template_delete_trigger_id(8))
-  assert_not_contains(html, "inert")
-  assert_not_contains(html, "section-header")
-  assert_not_contains(html, "info-callout-link")
-  assert_not_contains(html, "task-template-crud-dialog")
+  render_assertions.contains(html, "Template library")
+  render_assertions.contains(html, "filter-bar automation-templates-filters")
+  render_assertions.contains(html, "data-testid=\"automation-template-picker\"")
+  render_assertions.contains(html, automation_focus.create_template_trigger_id)
+  render_assertions.contains(html, "data-testid=\"automation-template-search\"")
+  render_assertions.contains(html, "data-testid=\"automation-template-row\"")
+  render_assertions.contains(html, "Regression checklist")
+  render_assertions.contains(html, "Review backlog")
+  render_assertions.contains(html, "Bug")
+  render_assertions.contains(html, "4")
+  render_assertions.contains(html, "Uses")
+  render_assertions.contains(html, "Created")
+  render_assertions.contains(html, "Last")
+  render_assertions.contains(html, "2026-06-08T10:00:00Z")
+  render_assertions.contains(html, "Never")
+  render_assertions.contains(html, "automation-template-unused-badge")
+  render_assertions.contains(html, "Unused")
+  render_assertions.contains(html, "template-edit-btn")
+  render_assertions.contains(html, "template-delete-btn")
+  render_assertions.contains(html, automation_focus.template_edit_trigger_id(7))
+  render_assertions.contains(
+    html,
+    automation_focus.template_delete_trigger_id(7),
+  )
+  render_assertions.contains(html, automation_focus.template_edit_trigger_id(8))
+  render_assertions.contains(
+    html,
+    automation_focus.template_delete_trigger_id(8),
+  )
+  render_assertions.not_contains(html, "inert")
+  render_assertions.not_contains(html, "section-header")
+  render_assertions.not_contains(html, "info-callout-link")
+  render_assertions.not_contains(html, "task-template-crud-dialog")
 }
 
 pub fn automation_template_library_localizes_unused_template_warning_test() {
@@ -141,14 +139,14 @@ pub fn automation_template_library_localizes_unused_template_warning_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Usos")
-  assert_contains(html, "Sin uso")
-  assert_contains(html, "Creadas")
-  assert_contains(html, "Última")
-  assert_contains(html, "Nunca")
-  assert_not_contains(html, "Uses")
-  assert_not_contains(html, "Unused")
-  assert_not_contains(html, "Never")
+  render_assertions.contains(html, "Usos")
+  render_assertions.contains(html, "Sin uso")
+  render_assertions.contains(html, "Creadas")
+  render_assertions.contains(html, "Última")
+  render_assertions.contains(html, "Nunca")
+  render_assertions.not_contains(html, "Uses")
+  render_assertions.not_contains(html, "Unused")
+  render_assertions.not_contains(html, "Never")
 }
 
 pub fn automation_template_library_renders_empty_state_without_root_model_test() {
@@ -158,7 +156,7 @@ pub fn automation_template_library_renders_empty_state_without_root_model_test()
     )
     |> element.to_document_string
 
-  assert_contains(html, "No templates yet")
+  render_assertions.contains(html, "No templates yet")
 }
 
 pub fn automation_template_library_filters_library_by_search_query_test() {
@@ -168,8 +166,8 @@ pub fn automation_template_library_filters_library_by_search_query_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "No templates yet")
-  assert_not_contains(html, "Regression checklist")
+  render_assertions.contains(html, "No templates yet")
+  render_assertions.not_contains(html, "Regression checklist")
 }
 
 pub fn automation_template_library_marks_selected_template_test() {
@@ -179,9 +177,9 @@ pub fn automation_template_library_marks_selected_template_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"automation-template-row\"")
-  assert_contains(html, "data-selected=\"true\"")
-  assert_contains(html, "automation-template-row is-selected")
+  render_assertions.contains(html, "data-testid=\"automation-template-row\"")
+  render_assertions.contains(html, "data-selected=\"true\"")
+  render_assertions.contains(html, "automation-template-row is-selected")
 }
 
 pub fn automation_template_library_renders_feature_local_create_panel_test() {
@@ -198,48 +196,54 @@ pub fn automation_template_library_renders_feature_local_create_panel_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "automation-template-panel")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"automation-template-panel-title\"")
-  assert_contains(html, "id=\"automation-template-panel-title\"")
-  assert_contains(html, "data-testid=\"automation-template-name\"")
-  assert_contains(html, "autofocus")
-  assert_not_contains(
+  render_assertions.contains(html, "automation-template-panel")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-template-panel-title\"",
+  )
+  render_assertions.contains(html, "id=\"automation-template-panel-title\"")
+  render_assertions.contains(html, "data-testid=\"automation-template-name\"")
+  render_assertions.contains(html, "autofocus")
+  render_assertions.not_contains(
     html,
     "id=\"automation-template-panel-title\" tabindex=\"-1\"",
   )
-  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "Create Template")
-  assert_contains(html, "automation-template-name")
-  assert_contains(html, "aria-label=\"Name\"")
-  assert_contains(html, "aria-label=\"Description\"")
-  assert_contains(html, "aria-label=\"Type\"")
-  assert_contains(html, "aria-label=\"Priority\"")
-  assert_contains(html, "QA checklist")
-  assert_contains(html, "Check {{project}}")
-  assert_contains(html, "Available variables")
-  assert_contains(html, "Use variables in the description")
-  assert_contains(html, "data-testid=\"automation-template-variable-chip\"")
-  assert_contains(html, "data-variable=\"{{origin}}\"")
-  assert_contains(html, "data-variable=\"{{trigger}}\"")
-  assert_contains(html, "data-variable=\"{{project}}\"")
-  assert_contains(html, "data-variable=\"{{user}}\"")
-  assert_contains(html, "data-variable=\"{{task_title}}\"")
-  assert_contains(html, "data-variable=\"{{task_type}}\"")
-  assert_contains(html, "data-variable=\"{{card_title}}\"")
-  assert_contains(html, "data-variable=\"{{card_level}}\"")
-  assert_contains(html, "aria-label=\"Insert variable {{origin}}\"")
-  assert_contains(html, "Select type")
-  assert_contains(html, "Cancel")
-  assert_not_contains(html, "{{father}}")
-  assert_not_contains(html, "{{due_date}}")
-  assert_not_contains(html, "New template")
-  assert_not_contains(html, "Select task type")
-  assert_not_contains(html, "task-template-crud-dialog")
+  render_assertions.contains(html, "aria-keyshortcuts=\"Escape\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "Create Template")
+  render_assertions.contains(html, "automation-template-name")
+  render_assertions.contains(html, "aria-label=\"Name\"")
+  render_assertions.contains(html, "aria-label=\"Description\"")
+  render_assertions.contains(html, "aria-label=\"Type\"")
+  render_assertions.contains(html, "aria-label=\"Priority\"")
+  render_assertions.contains(html, "QA checklist")
+  render_assertions.contains(html, "Check {{project}}")
+  render_assertions.contains(html, "Available variables")
+  render_assertions.contains(html, "Use variables in the description")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-template-variable-chip\"",
+  )
+  render_assertions.contains(html, "data-variable=\"{{origin}}\"")
+  render_assertions.contains(html, "data-variable=\"{{trigger}}\"")
+  render_assertions.contains(html, "data-variable=\"{{project}}\"")
+  render_assertions.contains(html, "data-variable=\"{{user}}\"")
+  render_assertions.contains(html, "data-variable=\"{{task_title}}\"")
+  render_assertions.contains(html, "data-variable=\"{{task_type}}\"")
+  render_assertions.contains(html, "data-variable=\"{{card_title}}\"")
+  render_assertions.contains(html, "data-variable=\"{{card_level}}\"")
+  render_assertions.contains(html, "aria-label=\"Insert variable {{origin}}\"")
+  render_assertions.contains(html, "Select type")
+  render_assertions.contains(html, "Cancel")
+  render_assertions.not_contains(html, "{{father}}")
+  render_assertions.not_contains(html, "{{due_date}}")
+  render_assertions.not_contains(html, "New template")
+  render_assertions.not_contains(html, "Select task type")
+  render_assertions.not_contains(html, "task-template-crud-dialog")
 }
 
 pub fn automation_template_library_renders_feature_local_delete_panel_test() {
@@ -254,24 +258,30 @@ pub fn automation_template_library_renders_feature_local_delete_panel_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Delete Template")
-  assert_contains(html, "inert")
-  assert_contains(html, "aria-hidden=\"true\"")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-labelledby=\"automation-template-panel-title\"")
-  assert_contains(html, "id=\"automation-template-panel-title\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "autofocus")
-  assert_contains(html, "aria-keyshortcuts=\"Escape\"")
-  assert_contains(html, "tabindex=\"-1\"")
-  assert_contains(html, "Delete template &quot;Regression checklist&quot;?")
-  assert_contains(html, "Regression checklist")
-  assert_contains(
+  render_assertions.contains(html, "Delete Template")
+  render_assertions.contains(html, "inert")
+  render_assertions.contains(html, "aria-hidden=\"true\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(
+    html,
+    "aria-labelledby=\"automation-template-panel-title\"",
+  )
+  render_assertions.contains(html, "id=\"automation-template-panel-title\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(html, "autofocus")
+  render_assertions.contains(html, "aria-keyshortcuts=\"Escape\"")
+  render_assertions.contains(html, "tabindex=\"-1\"")
+  render_assertions.contains(
+    html,
+    "Delete template &quot;Regression checklist&quot;?",
+  )
+  render_assertions.contains(html, "Regression checklist")
+  render_assertions.contains(
     html,
     "Rules using this template should be paused or updated first.",
   )
-  assert_not_contains(html, "task-template-crud-dialog")
+  render_assertions.not_contains(html, "task-template-crud-dialog")
 }
 
 pub fn automation_template_library_warns_when_editing_used_template_test() {
@@ -286,10 +296,10 @@ pub fn automation_template_library_warns_when_editing_used_template_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "Edit Template")
-  assert_contains(html, "automation-template-panel__warning")
-  assert_contains(html, "role=\"note\"")
-  assert_contains(
+  render_assertions.contains(html, "Edit Template")
+  render_assertions.contains(html, "automation-template-panel__warning")
+  render_assertions.contains(html, "role=\"note\"")
+  render_assertions.contains(
     html,
     "Changes affect only future generated tasks; tasks already created keep their original content and origin.",
   )
@@ -307,7 +317,10 @@ pub fn automation_template_library_skips_future_warning_for_unused_template_test
     )
     |> element.to_document_string
 
-  assert_contains(html, "Edit Template")
-  assert_not_contains(html, "automation-template-panel__warning")
-  assert_not_contains(html, "Changes affect only future generated tasks")
+  render_assertions.contains(html, "Edit Template")
+  render_assertions.not_contains(html, "automation-template-panel__warning")
+  render_assertions.not_contains(
+    html,
+    "Changes affect only future generated tasks",
+  )
 }

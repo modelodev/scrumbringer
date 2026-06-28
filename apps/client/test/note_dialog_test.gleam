@@ -1,8 +1,8 @@
 //// Tests for note_dialog UI component.
 
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/note_dialog.{type Config, Config}
 
@@ -12,10 +12,6 @@ import scrumbringer_client/ui/note_dialog.{type Config, Config}
 
 fn render_to_string(config: Config(Nil)) -> String {
   note_dialog.view(config) |> element.to_string()
-}
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
 }
 
 fn default_config() -> Config(Nil) {
@@ -46,7 +42,7 @@ pub fn renders_title_test() {
   let html = render_to_string(config)
 
   // Then: Title is present
-  assert_contains(html, "Nueva nota")
+  render_assertions.contains(html, "Nueva nota")
 }
 
 pub fn renders_placeholder_test() {
@@ -57,7 +53,7 @@ pub fn renders_placeholder_test() {
   let html = render_to_string(config)
 
   // Then: Placeholder is present
-  assert_contains(html, "Escribe aquí...")
+  render_assertions.contains(html, "Escribe aquí...")
 }
 
 pub fn renders_error_when_present_test() {
@@ -68,7 +64,7 @@ pub fn renders_error_when_present_test() {
   let html = render_to_string(config)
 
   // Then: Error message is present
-  assert_contains(html, "Content is required")
+  render_assertions.contains(html, "Content is required")
 }
 
 pub fn renders_cancel_button_test() {
@@ -79,7 +75,7 @@ pub fn renders_cancel_button_test() {
   let html = render_to_string(config)
 
   // Then: Cancel button is present
-  assert_contains(html, "Cancelar")
+  render_assertions.contains(html, "Cancelar")
 }
 
 pub fn has_correct_css_classes_test() {
@@ -90,10 +86,10 @@ pub fn has_correct_css_classes_test() {
   let html = render_to_string(config)
 
   // Then: Has expected CSS classes
-  assert_contains(html, "note-dialog-overlay")
-  assert_contains(html, "note-dialog-header")
-  assert_contains(html, "note-dialog-body")
-  assert_contains(html, "note-dialog-footer")
+  render_assertions.contains(html, "note-dialog-overlay")
+  render_assertions.contains(html, "note-dialog-header")
+  render_assertions.contains(html, "note-dialog-body")
+  render_assertions.contains(html, "note-dialog-footer")
 }
 
 pub fn has_aria_attributes_test() {
@@ -104,9 +100,9 @@ pub fn has_aria_attributes_test() {
   let html = render_to_string(config)
 
   // Then: Has ARIA attributes for accessibility
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "aria-label=\"Close\"")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(html, "aria-label=\"Close\"")
 }
 
 pub fn uses_configured_close_label_test() {
@@ -114,5 +110,5 @@ pub fn uses_configured_close_label_test() {
 
   let html = render_to_string(config)
 
-  assert_contains(html, "aria-label=\"Cerrar\"")
+  render_assertions.contains(html, "aria-label=\"Cerrar\"")
 }

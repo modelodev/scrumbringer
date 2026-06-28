@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/metrics.{type OrgMetricsUserOverview, OrgMetricsUserOverview}
 import domain/org.{type OrgUser, OrgUser}
@@ -12,14 +12,6 @@ import domain/remote
 import scrumbringer_client/client_state/admin/assignments as assignments_state
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 fn user() -> OrgUser {
   OrgUser(
@@ -84,16 +76,16 @@ pub fn user_card_renders_expanded_projects_from_config_test() {
     |> element.fragment
     |> element.to_document_string
 
-  assert_contains(html, "member@example.com")
-  assert_contains(html, "1 project")
-  assert_contains(html, "Platform")
-  assert_contains(html, "Add to project")
-  assert_contains(html, "assignments-task-metric")
-  assert_contains(html, "task-metric-chip is-compact")
-  assert_contains(html, "title=\"Claimed: 2\"")
-  assert_not_contains(html, "task-metric-chip-label")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
+  render_assertions.contains(html, "member@example.com")
+  render_assertions.contains(html, "1 project")
+  render_assertions.contains(html, "Platform")
+  render_assertions.contains(html, "Add to project")
+  render_assertions.contains(html, "assignments-task-metric")
+  render_assertions.contains(html, "task-metric-chip is-compact")
+  render_assertions.contains(html, "title=\"Claimed: 2\"")
+  render_assertions.not_contains(html, "task-metric-chip-label")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
 }
 
 pub fn user_card_confirm_remove_uses_semantic_accessible_buttons_test() {
@@ -109,8 +101,8 @@ pub fn user_card_confirm_remove_uses_semantic_accessible_buttons_test() {
     |> element.fragment
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "aria-label=\"Remove: Platform\"")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "aria-label=\"Remove: Platform\"")
 }

@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/remote
 import domain/task.{type Task, Task, TaskDependency}
@@ -10,14 +10,6 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
-
-fn assert_not_contains(html: String, fragment: String) {
-  let assert False = string.contains(html, fragment)
-}
 
 pub fn task_dependencies_renders_loaded_dependencies_test() {
   let html =
@@ -51,11 +43,11 @@ pub fn task_dependencies_renders_loaded_dependencies_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Dependencies (1)")
-  assert_contains(html, "Configure API")
-  assert_contains(html, "Claimed by ana@example.com")
-  assert_contains(html, "Write docs")
-  assert_contains(html, "Closed")
+  render_assertions.contains(html, "Dependencies (1)")
+  render_assertions.contains(html, "Configure API")
+  render_assertions.contains(html, "Claimed by ana@example.com")
+  render_assertions.contains(html, "Write docs")
+  render_assertions.contains(html, "Closed")
 }
 
 pub fn task_dependencies_renders_empty_state_test() {
@@ -69,9 +61,9 @@ pub fn task_dependencies_renders_empty_state_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "Dependencies")
-  assert_contains(html, "No dependencies")
-  assert_contains(html, "Add dependency")
+  render_assertions.contains(html, "Dependencies")
+  render_assertions.contains(html, "No dependencies")
+  render_assertions.contains(html, "Add dependency")
 }
 
 pub fn task_dependencies_dialog_filters_candidates_test() {
@@ -98,14 +90,14 @@ pub fn task_dependencies_dialog_filters_candidates_test() {
     ))
     |> element.to_document_string
 
-  assert_contains(html, "This task depends on")
-  assert_contains(html, "API client")
-  assert_contains(html, "dependency-candidate selected")
-  assert_contains(html, "type=\"submit\"")
-  assert_contains(html, "form=\"task-dependency-form\"")
-  assert_not_contains(html, "Current task")
-  assert_not_contains(html, "Finished API")
-  assert_not_contains(html, "Other task")
+  render_assertions.contains(html, "This task depends on")
+  render_assertions.contains(html, "API client")
+  render_assertions.contains(html, "dependency-candidate selected")
+  render_assertions.contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "form=\"task-dependency-form\"")
+  render_assertions.not_contains(html, "Current task")
+  render_assertions.not_contains(html, "Finished API")
+  render_assertions.not_contains(html, "Other task")
 }
 
 pub fn task_dependencies_dialog_renders_loading_submit_state_test() {
@@ -126,9 +118,9 @@ pub fn task_dependencies_dialog_renders_loading_submit_state_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "btn-loading")
-  assert_contains(html, "Adding")
-  assert_contains(html, "disabled")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.contains(html, "Adding")
+  render_assertions.contains(html, "disabled")
 }
 
 fn config(

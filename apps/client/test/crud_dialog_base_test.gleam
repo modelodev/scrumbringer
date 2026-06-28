@@ -13,10 +13,7 @@ import scrumbringer_client/components/crud_dialog_base.{
   with_optional_aria_label, with_optional_placeholder,
 }
 import scrumbringer_client/i18n/locale
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
+import support/render_assertions
 
 pub fn optional_text_input_value_uses_empty_input_for_absent_text_test() {
   let assert "" = optional_text_input_value(option.None)
@@ -77,7 +74,7 @@ pub fn view_cancel_button_renders_localized_text_test() {
     view_cancel_button(locale.Es, Nil)
     |> element.to_document_string
 
-  assert_contains(html, "Cancelar")
+  render_assertions.contains(html, "Cancelar")
 }
 
 pub fn view_cancel_button_with_class_preserves_classes_test() {
@@ -85,9 +82,9 @@ pub fn view_cancel_button_with_class_preserves_classes_test() {
     view_cancel_button_with_class(locale.En, Nil, "dialog-cancel")
     |> element.to_document_string
 
-  assert_contains(html, "Cancel")
-  assert_contains(html, "btn-secondary")
-  assert_contains(html, "dialog-cancel")
+  render_assertions.contains(html, "Cancel")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "dialog-cancel")
 }
 
 pub fn view_dialog_error_renders_standard_error_block_test() {
@@ -95,8 +92,8 @@ pub fn view_dialog_error_renders_standard_error_block_test() {
     view_dialog_error(option.Some("Boom"))
     |> element.to_document_string
 
-  assert_contains(html, "dialog-error")
-  assert_contains(html, "Boom")
+  render_assertions.contains(html, "dialog-error")
+  render_assertions.contains(html, "Boom")
 }
 
 pub fn view_form_error_renders_compact_error_block_test() {
@@ -104,8 +101,8 @@ pub fn view_form_error_renders_compact_error_block_test() {
     view_form_error(option.Some("Missing name"))
     |> element.to_document_string
 
-  assert_contains(html, "form-error")
-  assert_contains(html, "Missing name")
+  render_assertions.contains(html, "form-error")
+  render_assertions.contains(html, "Missing name")
 }
 
 pub fn optional_field_attributes_are_added_only_when_present_test() {
@@ -118,9 +115,9 @@ pub fn optional_field_attributes_are_added_only_when_present_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "aria-label=\"Visible label\"")
-  assert_contains(html, "placeholder=\"Type here\"")
-  assert_contains(html, "autofocus")
+  render_assertions.contains(html, "aria-label=\"Visible label\"")
+  render_assertions.contains(html, "placeholder=\"Type here\"")
+  render_assertions.contains(html, "autofocus")
 }
 
 pub fn optional_field_attributes_are_omitted_when_absent_test() {
@@ -149,14 +146,14 @@ pub fn view_dialog_shell_renders_standard_structure_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "dialog-overlay")
-  assert_contains(html, "dialog dialog-md")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "dialog-error")
-  assert_contains(html, "Header")
-  assert_contains(html, "Body")
-  assert_contains(html, "Footer")
+  render_assertions.contains(html, "dialog-overlay")
+  render_assertions.contains(html, "dialog dialog-md")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(html, "dialog-error")
+  render_assertions.contains(html, "Header")
+  render_assertions.contains(html, "Body")
+  render_assertions.contains(html, "Footer")
 }
 
 pub fn view_dialog_frame_preserves_custom_body_structure_test() {
@@ -169,12 +166,12 @@ pub fn view_dialog_frame_preserves_custom_body_structure_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "dialog-overlay")
-  assert_contains(html, "dialog dialog-lg dialog-lg-tight")
-  assert_contains(html, "role=\"dialog\"")
-  assert_contains(html, "aria-modal=\"true\"")
-  assert_contains(html, "Custom body")
-  assert_contains(html, "dialog-footer")
+  render_assertions.contains(html, "dialog-overlay")
+  render_assertions.contains(html, "dialog dialog-lg dialog-lg-tight")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.contains(html, "Custom body")
+  render_assertions.contains(html, "dialog-footer")
 }
 
 pub fn view_submit_button_renders_form_and_loading_state_test() {
@@ -182,10 +179,10 @@ pub fn view_submit_button_renders_form_and_loading_state_test() {
     view_submit_button("form-id", True, "Save", "Saving")
     |> element.to_document_string
 
-  assert_contains(html, "form=\"form-id\"")
-  assert_contains(html, "disabled")
-  assert_contains(html, "btn-loading")
-  assert_contains(html, "Saving")
+  render_assertions.contains(html, "form=\"form-id\"")
+  render_assertions.contains(html, "disabled")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.contains(html, "Saving")
 }
 
 pub fn view_primary_action_button_renders_button_action_test() {
@@ -193,11 +190,11 @@ pub fn view_primary_action_button_renders_button_action_test() {
     view_primary_action_button(Nil, True, "Create", "Creating", "btn-compact")
     |> element.to_document_string
 
-  assert_contains(html, "type=\"button\"")
-  assert_contains(html, "disabled")
-  assert_contains(html, "btn-primary")
-  assert_contains(html, "btn-compact")
-  assert_contains(html, "Creating")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.contains(html, "disabled")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-compact")
+  render_assertions.contains(html, "Creating")
 }
 
 pub fn view_danger_button_renders_danger_class_and_loading_label_test() {
@@ -205,9 +202,9 @@ pub fn view_danger_button_renders_danger_class_and_loading_label_test() {
     view_danger_button(Nil, True, "Delete", "Removing")
     |> element.to_document_string
 
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "disabled")
-  assert_contains(html, "Removing")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "disabled")
+  render_assertions.contains(html, "Removing")
 }
 
 pub fn view_danger_action_button_renders_extra_disabled_state_test() {
@@ -222,9 +219,9 @@ pub fn view_danger_action_button_renders_extra_disabled_state_test() {
     )
     |> element.to_document_string
 
-  assert_contains(html, "type=\"button\"")
-  assert_contains(html, "disabled")
-  assert_contains(html, "btn-danger")
-  assert_contains(html, "danger-extra")
-  assert_contains(html, "Delete")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.contains(html, "disabled")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "danger-extra")
+  render_assertions.contains(html, "Delete")
 }

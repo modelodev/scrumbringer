@@ -1,6 +1,6 @@
 import gleam/option as opt
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import domain/card.{Card, Draft}
 import domain/project.{Project}
@@ -13,14 +13,6 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/features/admin/view as admin_view
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
 
 fn base_model() -> Model {
   default_model()
@@ -71,12 +63,12 @@ pub fn cards_view_renders_detail_button_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, "section admin-surface")
-  assert_contains(html, "admin-surface-filters")
-  assert_contains(html, "admin-surface-content")
-  assert_contains(html, "data-testid=\"cards-filters\"")
-  assert_contains(html, "card-title-button")
-  assert_contains(html, "card-show-open")
+  render_assertions.contains(html, "section admin-surface")
+  render_assertions.contains(html, "admin-surface-filters")
+  render_assertions.contains(html, "admin-surface-content")
+  render_assertions.contains(html, "data-testid=\"cards-filters\"")
+  render_assertions.contains(html, "card-title-button")
+  render_assertions.contains(html, "card-show-open")
 }
 
 pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
@@ -94,10 +86,10 @@ pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, "card-delete-btn")
-  assert_contains(html, "btn-delete-blocked")
-  assert_contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
-  assert_contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "card-delete-btn")
+  render_assertions.contains(html, "btn-delete-blocked")
+  render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn cards_view_keeps_delete_available_for_empty_cards_test() {
@@ -119,8 +111,8 @@ pub fn cards_view_keeps_delete_available_for_empty_cards_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, "card-delete-btn")
-  assert_contains(html, "aria-label=\"Delete Card\"")
+  render_assertions.contains(html, "card-delete-btn")
+  render_assertions.contains(html, "aria-label=\"Delete Card\"")
 }
 
 pub fn card_crud_dialog_passes_parent_card_for_child_creation_test() {
@@ -143,8 +135,8 @@ pub fn card_crud_dialog_passes_parent_card_for_child_creation_test() {
     admin_view.view_card_crud_dialog(model, 1)
     |> element.to_document_string
 
-  assert_contains(html, "mode=\"create\"")
-  assert_contains(html, "parent-card-id=\"42\"")
+  render_assertions.contains(html, "mode=\"create\"")
+  render_assertions.contains(html, "parent-card-id=\"42\"")
 }
 
 pub fn cards_view_renders_detail_modal_when_open_test() {
@@ -170,7 +162,7 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_contains(html, "card-show")
+  render_assertions.contains(html, "card-show")
 }
 
 pub fn cards_view_does_not_render_local_crud_dialog_test() {
@@ -192,5 +184,5 @@ pub fn cards_view_does_not_render_local_crud_dialog_test() {
     admin_view.view_cards(model, opt.Some(sample_project()))
     |> element.to_document_string
 
-  assert_not_contains(html, "card-crud-dialog")
+  render_assertions.not_contains(html, "card-crud-dialog")
 }

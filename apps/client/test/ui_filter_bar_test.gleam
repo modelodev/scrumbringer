@@ -1,12 +1,8 @@
-import gleam/string
 import lustre/element
+import support/render_assertions
 
 import scrumbringer_client/ui/button
 import scrumbringer_client/ui/filter_bar
-
-fn assert_contains(html: String, fragment: String) {
-  let assert True = string.contains(html, fragment)
-}
 
 pub fn filter_bar_search_preserves_value_placeholder_and_testid_test() {
   let html =
@@ -24,12 +20,12 @@ pub fn filter_bar_search_preserves_value_placeholder_and_testid_test() {
     |> filter_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "filter-bar task-filters")
-  assert_contains(html, "data-testid=\"task-filter-bar\"")
-  assert_contains(html, "data-testid=\"filter-search\"")
-  assert_contains(html, "placeholder=\"Search tasks\"")
-  assert_contains(html, "value=\"api\"")
-  assert_contains(html, "custom-search")
+  render_assertions.contains(html, "filter-bar task-filters")
+  render_assertions.contains(html, "data-testid=\"task-filter-bar\"")
+  render_assertions.contains(html, "data-testid=\"filter-search\"")
+  render_assertions.contains(html, "placeholder=\"Search tasks\"")
+  render_assertions.contains(html, "value=\"api\"")
+  render_assertions.contains(html, "custom-search")
 }
 
 pub fn filter_bar_select_renders_options_and_selected_value_test() {
@@ -49,11 +45,11 @@ pub fn filter_bar_select_renders_options_and_selected_value_test() {
     |> filter_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "data-testid=\"filter-type\"")
-  assert_contains(html, "value=\"2\"")
-  assert_contains(html, ">All<")
-  assert_contains(html, ">Feature<")
-  assert_contains(html, "selected")
+  render_assertions.contains(html, "data-testid=\"filter-type\"")
+  render_assertions.contains(html, "value=\"2\"")
+  render_assertions.contains(html, ">All<")
+  render_assertions.contains(html, ">Feature<")
+  render_assertions.contains(html, "selected")
 }
 
 pub fn filter_bar_checkbox_and_actions_use_separate_slots_test() {
@@ -75,10 +71,10 @@ pub fn filter_bar_checkbox_and_actions_use_separate_slots_test() {
     |> filter_bar.view
     |> element.to_document_string
 
-  assert_contains(html, "filter-bar-fields")
-  assert_contains(html, "filter-bar-actions")
-  assert_contains(html, "data-testid=\"filter-closed\"")
-  assert_contains(html, "checked")
-  assert_contains(html, "Show closed")
-  assert_contains(html, ">Clear<")
+  render_assertions.contains(html, "filter-bar-fields")
+  render_assertions.contains(html, "filter-bar-actions")
+  render_assertions.contains(html, "data-testid=\"filter-closed\"")
+  render_assertions.contains(html, "checked")
+  render_assertions.contains(html, "Show closed")
+  render_assertions.contains(html, ">Clear<")
 }
