@@ -35,7 +35,6 @@ pub fn css() -> List(String) {
 .pool-my-tasks-dropzone.drop-over { border-color: var(--sb-primary); background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-elevated)); }
 .dropzone-hint { font-size: var(--sb-font-sm); color: var(--sb-muted); margin-bottom: 6px; }",
     "@media (max-width: 1280px) { .pool-layout { flex-direction: column; } .pool-right { width: 100%; } }",
-    ".theme-switch { display: inline-flex; align-items: center; gap: 8px; }",
     ".user { color: var(--sb-text-soft); }",
     ".section { display: flex; flex-direction: column; gap: 10px; }",
     ".field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }",
@@ -74,7 +73,6 @@ pub fn css() -> List(String) {
     ".btn-xs { padding: 4px 8px; font-size: var(--sb-font-sm); border-radius: 8px; }",
     ".btn-ghost { background: transparent; border-color: transparent; color: var(--sb-text); }",
     ".btn-ghost:hover { background: var(--sb-elevated); border-color: var(--sb-border); }",
-    ".btn-active { border-color: var(--sb-primary); }",
     ".btn-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; line-height: 1; }",
     ".btn[data-tooltip]::after { content: attr(data-tooltip); display: none; position: absolute; right: 0; top: -28px; z-index: 40; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 999px; padding: 2px 8px; font-size: var(--sb-font-sm); color: var(--sb-text); white-space: nowrap; box-shadow: var(--sb-shadow-sm); }",
     ".btn[data-tooltip]:hover::after, .btn[data-tooltip]:focus-visible::after { display: inline-flex; }",

@@ -6,8 +6,6 @@ pub fn css() -> List(String) {
     // =====================================================
     // UX IMPROVEMENTS - Cards & Sections (E03-E10)
     // =====================================================
-    ".admin-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }",
-    ".admin-card-header { font-size: var(--sb-font-sm); font-weight: var(--sb-weight-bold); text-transform: uppercase; letter-spacing: var(--sb-letter-label); line-height: var(--sb-line-tight); color: var(--sb-muted-strong); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--sb-border); }",
     ".admin-center-panel { display: flex; flex-direction: column; min-height: 0; }",
     ".panel { min-height: 0; }",
     ".form { display: flex; flex-direction: column; gap: 12px; }",
@@ -48,7 +46,6 @@ pub fn css() -> List(String) {
     ".info-callout-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }",
     ".info-callout-title { font-weight: var(--sb-weight-semibold); margin-bottom: 4px; }",
     ".info-callout-text { font-size: var(--sb-font-md); color: var(--sb-muted); line-height: var(--sb-line-body); max-width: var(--sb-measure-prose); }",
-    ".info-callout-link { color: var(--sb-primary); text-decoration: underline; text-underline-offset: 2px; }",
     ".info-callout-variables { font-size: var(--sb-font-sm); color: var(--sb-muted); font-family: var(--sb-font-mono); opacity: 0.9; }",
     ".automation-template-panel__warning { font-size: var(--sb-font-md); line-height: var(--sb-line-body); color: var(--sb-warning-text); background: color-mix(in oklab, var(--sb-warning) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-warning) 34%, var(--sb-border)); border-radius: 8px; padding: 10px 12px; }",
     ".error-banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin-bottom: 12px; }",
@@ -496,7 +493,6 @@ pub fn css() -> List(String) {
     ".task-blocked-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: var(--sb-radius-pill); border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 12%, var(--sb-surface)); color: var(--sb-warning-text); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); line-height: 1; }",
     ".task-blocked-count { font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); font-variant-numeric: tabular-nums; }",
     ".task-blocked-inline { margin-left: 6px; }",
-    ".task-blocked-card { font-size: var(--sb-font-xs); }",
     ".task-card-signal { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; min-width: 20px; border-radius: var(--sb-radius-pill); border: 1px solid var(--sb-border); background: var(--sb-surface); line-height: 1; }",
     ".task-card-signal-automation { color: var(--sb-primary); border-color: color-mix(in oklab, var(--sb-primary) 34%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 8%, var(--sb-surface)); }",
     ".task-card-signal-due.is-overdue { color: var(--sb-error-text); border-color: color-mix(in oklab, var(--sb-error) 42%, var(--sb-border)); background: color-mix(in oklab, var(--sb-error) 10%, var(--sb-surface)); }",
