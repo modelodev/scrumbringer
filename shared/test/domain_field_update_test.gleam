@@ -1,22 +1,6 @@
 import domain/field_update.{type FieldUpdate, Set, Unchanged}
 import gleam/option.{None, Some}
 
-// =============================================================================
-// Constructor tests
-// =============================================================================
-
-pub fn unchanged_constructor_test() {
-  let assert Unchanged = field_update.unchanged()
-}
-
-pub fn set_constructor_test() {
-  let assert Set("hello") = field_update.set("hello")
-}
-
-// =============================================================================
-// Conversion tests
-// =============================================================================
-
 pub fn to_option_unchanged_returns_none_test() {
   let assert None =
     Unchanged

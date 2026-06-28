@@ -2795,6 +2795,31 @@ Estado de ejecucion:
   - total Gleam actual: `197.554` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.460` lineas;
   - deficit restante para `-20k`: `3.540` lineas.
+- Vigesimosexto pase de wrappers/constructores triviales de test:
+  - retirados `auth_msg_wrapper_test.gleam`, `i18n_msg_wrapper_test.gleam` y
+    `layout_msg_wrapper_test.gleam`, que solo comparaban helpers de cableado con
+    los constructores equivalentes de `client_state`;
+  - retirados de `domain_field_update_test.gleam` los tests de constructores
+    `unchanged` y `set`, manteniendo la cobertura de conversiones,
+    transformaciones y `unwrap` que valida comportamiento observable;
+  - no se retiran los wrappers de produccion porque siguen siendo API de
+    integracion usada por vistas y updates;
+  - delta adicional: `-51` lineas Gleam mantenidas netas;
+  - V/C/R: valor bajo-medio, complejidad baja, riesgo bajo. Elimina tests que
+    fijaban detalles triviales de implementacion sin reducir cobertura de
+    contratos de producto, render, JSON, rutas ni persistencia;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `cd shared && gleam format --check src test && gleam test`
+      (`269 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el vigesimosexto pase:
+  - total Gleam actual: `197.503` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.511` lineas;
+  - deficit restante para `-20k`: `3.489` lineas.
 
 ## Orden recomendado de ejecucion
 
