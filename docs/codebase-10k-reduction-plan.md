@@ -2840,6 +2840,28 @@ Estado de ejecucion:
   - total Gleam actual: `197.444` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.570` lineas;
   - deficit restante para `-20k`: `3.430` lineas.
+- Vigesimoctavo pase de helpers HTTP locales de metricas modales:
+  - extraidos en `modal_metrics_http_test.gleam` los helpers privados
+    `card_metrics_response` y `task_metrics_response` para encapsular la ruta
+    `include=metrics` repetida en escenarios de card/task;
+  - no se amplia `fixtures.gleam` porque el uso es local a este modulo y crear
+    API compartida de test anadiria superficie publica sin segundo consumidor;
+  - conservados explicitos los escenarios de autorizacion, not found,
+    infraestructura no disponible y conteos exactos;
+  - delta adicional: `-44` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce repeticion de
+    request HTTP sin ocultar setup de datos ni asserts de contrato;
+  - verificacion:
+    - `cd apps/server && gleam format test/modal_metrics_http_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `cd apps/server && gleam format --check src test`;
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el vigesimoctavo pase:
+  - total Gleam actual: `197.400` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.614` lineas;
+  - deficit restante para `-20k`: `3.386` lineas.
 
 ## Orden recomendado de ejecucion
 

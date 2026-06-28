@@ -29,26 +29,12 @@ pub fn include_metrics_returns_metrics_payload_for_card_and_task_test() {
       "Task for metrics",
     )
 
-  let card_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(session),
-    )
+  let card_res = card_metrics_response(handler, session, card_id)
   expect.expect_status(card_res, 200)
   string.contains(simulate.read_body(card_res), "\"metrics\"")
   |> expect.is_true
 
-  let task_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(session),
-    )
+  let task_res = task_metrics_response(handler, session, task_id)
   expect.expect_status(task_res, 200)
   string.contains(simulate.read_body(task_res), "\"metrics\"")
   |> expect.is_true
@@ -65,14 +51,7 @@ pub fn include_metrics_forbidden_uses_typed_error_code_test() {
   let assert Ok(member_session) =
     fixtures.login(handler, "member@example.com", "passwordpassword")
 
-  let res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(member_session),
-    )
+  let res = card_metrics_response(handler, member_session, card_id)
 
   expect.expect_status(res, 403)
   string.contains(simulate.read_body(res), "\"code\":\"forbidden\"")
@@ -101,14 +80,7 @@ pub fn include_metrics_task_forbidden_returns_not_found_typed_error_code_test() 
   let assert Ok(member_session) =
     fixtures.login(handler, "member3@example.com", "passwordpassword")
 
-  let res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(member_session),
-    )
+  let res = task_metrics_response(handler, member_session, task_id)
 
   expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
@@ -209,14 +181,7 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       ),
     )
 
-  let res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(session),
-    )
+  let res = task_metrics_response(handler, session, task_id)
 
   expect.expect_status(res, 200)
   let body = simulate.read_body(res)
@@ -295,14 +260,7 @@ pub fn include_metrics_card_return_expected_counts_test() {
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
-  let card_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(session),
-    )
+  let card_res = card_metrics_response(handler, session, card_id)
   expect.expect_status(card_res, 200)
   let card_body = simulate.read_body(card_res)
   string.contains(card_body, "\"tasks_total\":1") |> expect.is_true
@@ -313,11 +271,7 @@ pub fn include_metrics_card_return_expected_counts_test() {
 pub fn include_metrics_not_found_uses_typed_error_code_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res =
-    handler(
-      simulate.request(http.Get, "/api/v1/tasks/999999?include=metrics")
-      |> fixtures.with_auth(session),
-    )
+  let res = task_metrics_response(handler, session, 999_999)
 
   expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
@@ -327,11 +281,7 @@ pub fn include_metrics_not_found_uses_typed_error_code_test() {
 pub fn include_metrics_card_not_found_uses_typed_error_code_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res =
-    handler(
-      simulate.request(http.Get, "/api/v1/cards/999999?include=metrics")
-      |> fixtures.with_auth(session),
-    )
+  let res = card_metrics_response(handler, session, 999_999)
 
   expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "\"code\":\"not_found\"")
@@ -351,14 +301,7 @@ pub fn include_metrics_task_unavailable_returns_typed_409_test() {
     )
 
   create_shadow_tasks_table(db)
-  let res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(session),
-    )
+  let res = task_metrics_response(handler, session, task_id)
   drop_shadow_tasks_table(db)
 
   expect.expect_status(res, 409)
@@ -373,14 +316,7 @@ pub fn include_metrics_card_unavailable_returns_typed_409_test() {
     fixtures.create_card(handler, session, project_id, "Card")
 
   create_shadow_tasks_table(db)
-  let res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "?include=metrics",
-      )
-      |> fixtures.with_auth(session),
-    )
+  let res = card_metrics_response(handler, session, card_id)
   drop_shadow_tasks_table(db)
 
   expect.expect_status(res, 409)
@@ -402,6 +338,26 @@ fn create_shadow_tasks_table(db: pog.Connection) -> Nil {
     |> pog.execute(db)
 
   Nil
+}
+
+fn card_metrics_response(handler, session: fixtures.Session, card_id: Int) {
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/cards/" <> int.to_string(card_id) <> "?include=metrics",
+    )
+    |> fixtures.with_auth(session),
+  )
+}
+
+fn task_metrics_response(handler, session: fixtures.Session, task_id: Int) {
+  handler(
+    simulate.request(
+      http.Get,
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
+    )
+    |> fixtures.with_auth(session),
+  )
 }
 
 fn drop_shadow_tasks_table(db: pog.Connection) -> Nil {
