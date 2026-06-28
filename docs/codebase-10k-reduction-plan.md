@@ -1488,7 +1488,11 @@ Estado de ejecucion:
   `card_show_headline` y `card_show_summary`). Se eliminan constructores
   completos de card/task conservando solo jerarquia, estado, contadores y due
   date cuando el render o la URL los observan.
-- Delta parcial WP-12: `-3.624` lineas netas mantenidas (`-44` del primer pase
+- Trigesimoquinto pase de fixtures de dominio aplicado a pool/plan
+  (`plan_kanban_view` y `pool_task_card`). Se retiran descripcion, version,
+  prioridad y contexto de card cuando el componente recibe esos datos por
+  `Config` o solo necesita asociacion a card.
+- Delta parcial WP-12: `-3.639` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1545,7 +1549,8 @@ Estado de ejecucion:
   `-13` del trigesimosegundo pase de fixtures de dominio compartidas en tests
   de cliente, `-35` del trigesimotercer pase de fixtures de dominio
   compartidas en tests de cliente, `-46` del trigesimocuarto pase de fixtures
-  de dominio compartidas en tests de cliente).
+  de dominio compartidas en tests de cliente, `-15` del trigesimoquinto pase
+  de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

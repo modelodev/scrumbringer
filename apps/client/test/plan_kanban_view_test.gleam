@@ -159,13 +159,5 @@ fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
 }
 
 fn available_task() -> Task {
-  Task(
-    ..domain_fixtures.task(2, "Review copy", 1),
-    description: None,
-    priority: 2,
-    version: 2,
-    card_id: Some(1),
-    card_title: Some("Release 1.5"),
-    card_color: Some(card.Blue),
-  )
+  Task(..domain_fixtures.task(2, "Review copy", 1), card_id: Some(1))
 }
