@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/option as opt
 import lustre/effect
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
@@ -14,7 +15,7 @@ import domain/remote
 import domain/task
 import domain/task/id as task_id
 import domain/task/state as task_state
-import domain/task_type.{TaskType, TaskTypeInline}
+import domain/task_type.{TaskType}
 import domain/user.{User}
 import domain/user/id as user_id
 import scrumbringer_client/client_state
@@ -107,27 +108,12 @@ fn sample_task() -> task.Task {
     )
 
   task.Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: opt.None,
-    title: "Prepare release",
+    ..domain_fixtures.task(42, "Prepare release", 1),
     description: opt.Some("Review release checklist."),
     priority: 2,
     state: state,
-    created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
-    due_date: opt.None,
     version: 3,
-    parent_card_id: opt.None,
-    card_id: opt.None,
-    card_title: opt.None,
-    card_color: opt.None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: opt.None,
   )
 }
 
