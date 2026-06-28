@@ -1105,6 +1105,11 @@ Estado de ejecucion:
   - `api_activity_url_test` mantiene el contrato de URLs y decoder de
     paginacion, sin proteger helpers muertos;
   - delta adicional WP-10: `-14` lineas mantenidas.
+- Micro-pase adicional de helper de opciones sin consumidor:
+  - retirado `helpers/options.empty_to_opt`; el modulo conserva los helpers
+    vivos `search_to_opt` y `empty_to_int_opt`, usados por filtros del Pool;
+  - retirado el test directo del helper muerto en `update_helpers_test`;
+  - delta adicional WP-10: `-12` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1124,10 +1129,11 @@ Estado de ejecucion:
     `1887 passed` tras privatizar helpers app-specific sin consumidores
     externos;
     `1887 passed` tras retirar `pool/chrome.tasks_onboarding`;
-    `1887 passed` tras retirar helpers muertos de `api/activity`);
+    `1887 passed` tras retirar helpers muertos de `api/activity`;
+    `1886 passed` tras retirar `helpers/options.empty_to_opt`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-1.489` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.501` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

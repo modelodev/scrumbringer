@@ -4,14 +4,6 @@ import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
-/// Convert empty string to None, non-empty to Some.
-pub fn empty_to_opt(value: String) -> Option(String) {
-  case string.trim(value) == "" {
-    True -> None
-    False -> Some(value)
-  }
-}
-
 /// Convert user search input to a normalized optional query.
 pub fn search_to_opt(value: String) -> Option(String) {
   let trimmed = string.trim(value)
