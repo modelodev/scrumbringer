@@ -937,8 +937,11 @@ Estado de ejecucion:
     perder `description`, `priority`, `type_id` ni `card_id`;
   - `required_cookie_value`, para retirar parsers locales de `set-cookie`.
 - Migrados `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam` para
-  delegar esos helpers, manteniendo intactos los escenarios.
-- Delta parcial WP-12: `-44` lineas netas mantenidas.
+  delegar esos helpers y sustituir el patron repetido `login_as` +
+  extraccion de cookies por `login_session`, manteniendo intactos los
+  escenarios.
+- Delta parcial WP-12: `-301` lineas netas mantenidas (`-44` del primer pase
+  de helpers de task/cookie y `-257` del pase de login/session).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

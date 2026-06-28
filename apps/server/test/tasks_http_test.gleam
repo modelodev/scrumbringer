@@ -16,14 +16,20 @@ fn fixture_session(token: String, csrf: String) -> fixtures.Session {
   fixtures.Session(token: token, csrf: csrf)
 }
 
+fn login_session(
+  handler: fn(wisp.Request) -> wisp.Response,
+  email: String,
+) -> #(String, String) {
+  let session = fixtures.login(handler, email, "passwordpassword") |> expect.ok
+  #(session.token, session.csrf)
+}
+
 pub fn task_types_list_sorted_by_name_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -70,10 +76,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, admin_session, admin_csrf, "Core")
   let project_id =
@@ -96,10 +99,8 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
     "member",
   )
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
   let member_req =
     simulate.request(
@@ -143,9 +144,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -282,9 +281,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -371,9 +368,7 @@ pub fn task_get_includes_task_contract_fields_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -446,9 +441,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -532,10 +525,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, admin_session, admin_csrf, "Core")
   let project_id =
@@ -579,15 +569,10 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   )
   add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
-  let other_login_res =
-    login_as(handler, "other@example.com", "passwordpassword")
-  let other_session = find_cookie_value(other_login_res.headers, "sb_session")
-  let other_csrf = find_cookie_value(other_login_res.headers, "sb_csrf")
+  let #(other_session, other_csrf) = login_session(handler, "other@example.com")
 
   let task_id =
     create_task(
@@ -702,9 +687,7 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -744,9 +727,7 @@ pub fn delete_task_without_operational_history_removes_task_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -772,9 +753,7 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -804,9 +783,7 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -842,9 +819,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Editable Available")
   let project_id =
@@ -888,9 +863,7 @@ pub fn release_all_tasks_for_member_success_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Bulk Release")
   let project_id =
@@ -919,9 +892,8 @@ pub fn release_all_tasks_for_member_success_test() {
   let task_b =
     create_task(handler, session, csrf, project_id, "Task B", "", 1, type_id)
 
-  let member_login = login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
   claim_task(
     handler,
@@ -1021,9 +993,7 @@ pub fn release_all_tasks_for_member_forbidden_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Bulk Release Forbidden")
   let project_id =
@@ -1046,9 +1016,8 @@ pub fn release_all_tasks_for_member_forbidden_test() {
   let admin_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
 
-  let member_login = login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
   let req =
     simulate.request(
@@ -1073,9 +1042,7 @@ pub fn release_all_tasks_for_member_self_release_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Bulk Release Self")
   let project_id =
@@ -1111,9 +1078,7 @@ pub fn release_all_tasks_for_member_not_found_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   let req =
     simulate.request(
@@ -1134,9 +1099,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Deps")
   let project_id =
@@ -1194,9 +1157,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Deps One")
   create_project(handler, session, csrf, "Deps Two")
@@ -1269,9 +1230,7 @@ pub fn task_dependencies_reject_closed_dependency_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Deps Closed")
   let project_id =
@@ -1352,9 +1311,7 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Blocked Claim")
   let project_id =
@@ -1397,9 +1354,7 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Blocked Claim Closed")
   let project_id =
@@ -1456,9 +1411,7 @@ pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Blocked Claim Removed")
   let project_id =
@@ -1717,13 +1670,9 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
   add_member(handler, admin_session, admin_csrf, project_id, owner_id, "member")
   add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
 
-  let owner_login = login_as(handler, "owner@example.com", "passwordpassword")
-  let owner_session = find_cookie_value(owner_login.headers, "sb_session")
-  let owner_csrf = find_cookie_value(owner_login.headers, "sb_csrf")
-  let other_login =
-    login_as(handler, "other-owner@example.com", "passwordpassword")
-  let other_session = find_cookie_value(other_login.headers, "sb_session")
-  let other_csrf = find_cookie_value(other_login.headers, "sb_csrf")
+  let #(owner_session, owner_csrf) = login_session(handler, "owner@example.com")
+  let #(other_session, other_csrf) =
+    login_session(handler, "other-owner@example.com")
 
   let task_id =
     create_task(
@@ -1892,10 +1841,8 @@ pub fn pool_filters_by_user_capabilities_test() {
     backend_type,
   )
 
-  let member_login =
-    login_as(handler, "cap-user@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "cap-user@example.com")
 
   let res =
     list_project_tasks(handler, member_session, member_csrf, project_id, "")
@@ -1909,9 +1856,7 @@ pub fn me_metrics_returns_counts_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -1969,17 +1914,12 @@ pub fn org_metrics_overview_requires_org_admin_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
   // member is authenticated but not org admin
   let req =
@@ -2005,9 +1945,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2121,17 +2059,12 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
   let member_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
@@ -2196,9 +2129,7 @@ pub fn org_metrics_users_invalid_window_days_returns_422_test() {
   let scrumbringer_server.App(..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/users?window_days=999")
@@ -2214,21 +2145,15 @@ pub fn tasks_list_requires_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, admin_session, admin_csrf, "Core")
   let project_id =
     single_int(db, "select id from projects where name = 'Core'", [])
 
   create_member_user(handler, db, "outsider@example.com", "inv_out")
-  let outsider_login_res =
-    login_as(handler, "outsider@example.com", "passwordpassword")
-  let outsider_session =
-    find_cookie_value(outsider_login_res.headers, "sb_session")
-  let outsider_csrf = find_cookie_value(outsider_login_res.headers, "sb_csrf")
+  let #(outsider_session, outsider_csrf) =
+    login_session(handler, "outsider@example.com")
 
   let req =
     simulate.request(
@@ -2248,9 +2173,7 @@ pub fn task_get_requires_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2268,11 +2191,8 @@ pub fn task_get_requires_membership_test() {
     create_task(handler, session, csrf, project_id, "Secret", "", 3, type_id)
 
   create_member_user(handler, db, "outsider@example.com", "inv_out")
-  let outsider_login_res =
-    login_as(handler, "outsider@example.com", "passwordpassword")
-  let outsider_session =
-    find_cookie_value(outsider_login_res.headers, "sb_session")
-  let outsider_csrf = find_cookie_value(outsider_login_res.headers, "sb_csrf")
+  let #(outsider_session, outsider_csrf) =
+    login_session(handler, "outsider@example.com")
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int_to_string(task_id))
@@ -2290,9 +2210,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2473,10 +2391,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res =
-    login_as(handler, "admin@example.com", "passwordpassword")
-  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
-  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, admin_session, admin_csrf, "Core")
   let project_id =
@@ -2520,15 +2435,10 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   )
   add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
 
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+  let #(member_session, member_csrf) =
+    login_session(handler, "member@example.com")
 
-  let other_login_res =
-    login_as(handler, "other@example.com", "passwordpassword")
-  let other_session = find_cookie_value(other_login_res.headers, "sb_session")
-  let other_csrf = find_cookie_value(other_login_res.headers, "sb_csrf")
+  let #(other_session, other_csrf) = login_session(handler, "other@example.com")
 
   let task_id =
     create_task(
@@ -2616,9 +2526,7 @@ pub fn patch_rejects_blank_title_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2661,9 +2569,7 @@ pub fn me_work_session_start_pause_and_persist_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2736,9 +2642,7 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2802,9 +2706,7 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2846,9 +2748,7 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -2876,9 +2776,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, "Core")
   let project_id =
@@ -3549,9 +3447,7 @@ fn ht08_project(name: String) {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let #(session, csrf) = login_session(handler, "admin@example.com")
 
   create_project(handler, session, csrf, name)
   let project_id =
@@ -3579,31 +3475,9 @@ fn create_member_user(
   |> fn(_) { Nil }
 }
 
-fn login_as(
-  handler: fn(wisp.Request) -> wisp.Response,
-  email: String,
-  password: String,
-) -> wisp.Response {
-  let req =
-    simulate.request(http.Post, "/api/v1/auth/login")
-    |> simulate.json_body(
-      json.object([
-        #("email", json.string(email)),
-        #("password", json.string(password)),
-      ]),
-    )
-
-  handler(req)
-}
-
 fn bootstrap_app() -> scrumbringer_server.App {
   let #(app, _, _) = fixtures.bootstrap() |> expect.ok
   app
-}
-
-fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
-  fixtures.required_cookie_value(headers, name)
-  |> expect.ok
 }
 
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
