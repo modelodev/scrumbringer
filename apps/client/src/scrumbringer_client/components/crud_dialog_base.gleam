@@ -20,10 +20,6 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/modal_header
 
-pub type OptionalIntParseError {
-  InvalidOptionalInt(String)
-}
-
 pub type RequiredTextError {
   EmptyRequiredText
 }
@@ -33,23 +29,6 @@ pub type DialogLifecycle(entity) {
   Creating
   Editing(entity)
   Deleting(entity)
-}
-
-/// Converts optional text fields into form input values.
-pub fn optional_text_input_value(value: Option(String)) -> String {
-  case value {
-    option.None -> ""
-    option.Some(text) -> text
-  }
-}
-
-/// Prepends optional payload fields while preserving the existing CRUD payload
-/// merge behaviour.
-pub fn prepend_fields(base: List(a), fields: List(a)) -> List(a) {
-  case fields {
-    [] -> base
-    [field, ..rest] -> prepend_fields([field, ..base], rest)
-  }
 }
 
 /// Parses required text fields, returning the trimmed value.
@@ -96,29 +75,6 @@ pub fn decode_int_attribute(
   int.parse(value)
   |> result.map(to_msg)
   |> result.replace_error(Nil)
-}
-
-/// Parses optional integer form/select values.
-pub fn parse_optional_int(
-  value: String,
-) -> Result(Option(Int), OptionalIntParseError) {
-  case value {
-    "" | "null" | "undefined" -> Ok(option.None)
-    _ ->
-      case int.parse(value) {
-        Ok(id) -> Ok(option.Some(id))
-        Error(_) -> Error(InvalidOptionalInt(value))
-      }
-  }
-}
-
-/// Parses optional integer form/select values, preserving the current tolerant
-/// DOM-event behaviour for components that do final validation on submit.
-pub fn optional_int_or_none(value: String) -> Option(Int) {
-  case parse_optional_int(value) {
-    Ok(parsed) -> parsed
-    Error(_) -> option.None
-  }
 }
 
 /// Renders a localized cancel button for CRUD dialog footers.
@@ -196,7 +152,7 @@ fn primary_action_button(
 }
 
 /// Renders the standard CRUD dialog error block.
-pub fn view_dialog_error(error: Option(String)) -> Element(msg) {
+fn view_dialog_error(error: Option(String)) -> Element(msg) {
   case error {
     option.Some(message) ->
       div([attribute.class("dialog-error")], [
@@ -332,7 +288,7 @@ pub fn view_primary_action_button(
 }
 
 /// Renders the standard danger action button used by CRUD delete dialogs.
-pub fn view_danger_button(
+fn view_danger_button(
   on_click_msg: msg,
   in_flight: Bool,
   idle_label: String,

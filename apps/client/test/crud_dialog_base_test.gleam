@@ -3,29 +3,14 @@ import lustre/effect
 import lustre/element
 import lustre/element/html
 import scrumbringer_client/components/crud_dialog_base.{
-  EmptyRequiredText, InvalidOptionalInt, optional_int_or_none,
-  optional_text_input_value, parse_optional_int, prepend_fields, required_text,
-  submit_if_idle, view_cancel_button, view_cancel_button_with_class,
-  view_danger_action_button, view_danger_button, view_dialog_error,
-  view_dialog_frame, view_dialog_shell, view_form_error,
-  view_primary_action_button, view_submit_button, with_autofocus_when,
-  with_optional_aria_label, with_optional_placeholder,
+  EmptyRequiredText, required_text, submit_if_idle, view_cancel_button,
+  view_cancel_button_with_class, view_danger_action_button,
+  view_delete_dialog_shell, view_dialog_frame, view_dialog_shell,
+  view_form_error, view_primary_action_button, view_submit_button,
+  with_autofocus_when, with_optional_aria_label, with_optional_placeholder,
 }
 import scrumbringer_client/i18n/locale
 import support/render_assertions
-
-pub fn optional_text_input_value_uses_empty_input_for_absent_text_test() {
-  let assert "" = optional_text_input_value(option.None)
-}
-
-pub fn optional_text_input_value_preserves_present_text_test() {
-  let assert "done" = optional_text_input_value(option.Some("done"))
-}
-
-pub fn prepend_fields_preserves_existing_payload_merge_order_test() {
-  let assert [#("extra_b", 2), #("extra_a", 1), #("base", 0)] =
-    prepend_fields([#("base", 0)], [#("extra_a", 1), #("extra_b", 2)])
-}
 
 pub fn required_text_trims_valid_input_test() {
   let assert Ok("Name") = required_text("  Name  ")
@@ -49,25 +34,6 @@ pub fn submit_if_idle_runs_submit_when_idle_test() {
   let assert 2 = next
 }
 
-pub fn parse_optional_int_accepts_empty_values_test() {
-  let assert Ok(option.None) = parse_optional_int("")
-  let assert Ok(option.None) = parse_optional_int("null")
-  let assert Ok(option.None) = parse_optional_int("undefined")
-}
-
-pub fn parse_optional_int_accepts_integer_test() {
-  let assert Ok(option.Some(42)) = parse_optional_int("42")
-}
-
-pub fn parse_optional_int_rejects_invalid_integer_test() {
-  let assert Error(InvalidOptionalInt("bad")) = parse_optional_int("bad")
-}
-
-pub fn optional_int_or_none_keeps_tolerant_dom_event_fallback_test() {
-  let assert option.Some(7) = optional_int_or_none("7")
-  let assert option.None = optional_int_or_none("bad")
-}
-
 pub fn view_cancel_button_renders_localized_text_test() {
   let html =
     view_cancel_button(locale.Es, Nil)
@@ -84,15 +50,6 @@ pub fn view_cancel_button_with_class_preserves_classes_test() {
   render_assertions.contains(html, "Cancel")
   render_assertions.contains(html, "btn-secondary")
   render_assertions.contains(html, "dialog-cancel")
-}
-
-pub fn view_dialog_error_renders_standard_error_block_test() {
-  let html =
-    view_dialog_error(option.Some("Boom"))
-    |> render_assertions.html
-
-  render_assertions.contains(html, "dialog-error")
-  render_assertions.contains(html, "Boom")
 }
 
 pub fn view_form_error_renders_compact_error_block_test() {
@@ -196,16 +153,6 @@ pub fn view_primary_action_button_renders_button_action_test() {
   render_assertions.contains(html, "Creating")
 }
 
-pub fn view_danger_button_renders_danger_class_and_loading_label_test() {
-  let html =
-    view_danger_button(Nil, True, "Delete", "Removing")
-    |> render_assertions.html
-
-  render_assertions.contains(html, "btn-danger")
-  render_assertions.contains(html, "disabled")
-  render_assertions.contains(html, "Removing")
-}
-
 pub fn view_danger_action_button_renders_extra_disabled_state_test() {
   let html =
     view_danger_action_button(
@@ -223,4 +170,27 @@ pub fn view_danger_action_button_renders_extra_disabled_state_test() {
   render_assertions.contains(html, "btn-danger")
   render_assertions.contains(html, "danger-extra")
   render_assertions.contains(html, "Delete")
+}
+
+pub fn view_delete_dialog_shell_renders_danger_footer_test() {
+  let html =
+    view_delete_dialog_shell(
+      locale.En,
+      "Delete",
+      element.text("!"),
+      "Delete this item?",
+      option.Some("Boom"),
+      True,
+      Nil,
+      Nil,
+      "Removing",
+    )
+    |> render_assertions.html
+
+  render_assertions.contains(html, "dialog dialog-sm")
+  render_assertions.contains(html, "dialog-error")
+  render_assertions.contains(html, "Delete this item?")
+  render_assertions.contains(html, "btn-danger")
+  render_assertions.contains(html, "btn-loading")
+  render_assertions.contains(html, "Removing")
 }

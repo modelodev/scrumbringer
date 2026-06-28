@@ -1281,6 +1281,15 @@ Estado de ejecucion:
     modulo;
   - no cambia el contrato renderizado ni se retira cobertura funcional;
   - delta adicional WP-10: `-4` lineas mantenidas y cinco exports menos.
+- Micro-pase adicional de API muerta en `crud_dialog_base`:
+  - retirados `OptionalIntParseError`, `optional_text_input_value`,
+    `prepend_fields`, `parse_optional_int` y `optional_int_or_none`, sin
+    consumidores de produccion;
+  - `view_dialog_error` y `view_danger_button` pasan a privados porque son
+    detalles internos de `view_dialog_shell` y `view_delete_dialog_shell`;
+  - la cobertura se desplaza de helpers directos muertos al shell publico de
+    borrado, manteniendo validacion de error, boton danger, loading y copy;
+  - delta adicional WP-10: `-74` lineas mantenidas y siete exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1314,10 +1323,11 @@ Estado de ejecucion:
     `1859 passed` tras conectar el picker a `icon_catalog.catalog`;
     `1859 passed` tras retirar API preventiva de `signal_chip`;
     `1857 passed` tras privatizar wrappers internos de `action_buttons`;
-    `1857 passed` tras privatizar helpers internos de tabs/iconos);
+    `1857 passed` tras privatizar helpers internos de tabs/iconos;
+    `1849 passed` tras retirar API muerta de `crud_dialog_base`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.975` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-3.049` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
