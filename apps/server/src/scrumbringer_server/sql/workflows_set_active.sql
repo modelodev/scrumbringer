@@ -1,4 +1,3 @@
--- name: set_workflow_active
 UPDATE workflows
 SET active = $4
 WHERE id = $1

@@ -1,4 +1,3 @@
--- name: metrics_project_tasks
 with task_scope as (
   select
     t.id,

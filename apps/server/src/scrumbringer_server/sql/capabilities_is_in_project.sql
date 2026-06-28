@@ -1,4 +1,3 @@
--- name: capability_is_in_project
 select exists(
   select 1
   from capabilities

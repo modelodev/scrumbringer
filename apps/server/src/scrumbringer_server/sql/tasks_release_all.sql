@@ -1,4 +1,3 @@
--- name: release_all_tasks_for_user
 with updated as (
   update tasks
   set

@@ -1,4 +1,3 @@
--- name: create_task
 -- Create a new task in a project, ensuring the task type belongs to the project
 -- and associating it with a non-closed leaf card in the same project.
 with type_ok as (

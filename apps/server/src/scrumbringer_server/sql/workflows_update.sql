@@ -1,4 +1,3 @@
--- name: update_workflow
 UPDATE workflows
 SET
   name = case when $4 = '__unset__' then name else $4 end,

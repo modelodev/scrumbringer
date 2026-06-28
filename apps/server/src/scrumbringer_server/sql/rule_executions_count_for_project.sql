@@ -1,4 +1,3 @@
--- name: rule_executions_count_for_project
 -- Count business executions visible in a project.
 select count(*)::int as total
 from rule_executions re

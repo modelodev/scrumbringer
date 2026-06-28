@@ -1,4 +1,3 @@
--- name: list_tasks_for_project
 select
   t.id,
   t.project_id,

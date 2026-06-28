@@ -1,4 +1,3 @@
--- name: get_task_for_user
 select
   t.id,
   t.project_id,

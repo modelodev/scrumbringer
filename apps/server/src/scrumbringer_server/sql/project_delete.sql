@@ -1,4 +1,3 @@
--- name: project_delete
 -- Delete a project and all related data (cascade)
 -- Returns the deleted project id if successful
 with

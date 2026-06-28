@@ -1,4 +1,3 @@
--- name: task_notes_delete
 delete from notes n
 using task_notes tn
 where tn.note_id = n.id

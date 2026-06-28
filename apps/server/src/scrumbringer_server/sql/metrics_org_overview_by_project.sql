@@ -1,4 +1,3 @@
--- name: metrics_org_overview_by_project
 with event_counts as (
   select
     e.project_id,

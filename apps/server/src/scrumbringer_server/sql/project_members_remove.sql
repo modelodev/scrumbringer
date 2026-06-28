@@ -1,4 +1,3 @@
--- name: remove_project_member
 with
   target as (
     select role

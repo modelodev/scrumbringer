@@ -1,4 +1,3 @@
--- name: list_org_invite_links
 select
   email,
   token,

@@ -1,4 +1,3 @@
--- name: list_project_members
 select
   project_members.project_id,
   project_members.user_id,

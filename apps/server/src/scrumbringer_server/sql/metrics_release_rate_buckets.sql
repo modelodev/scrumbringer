@@ -1,4 +1,3 @@
--- name: metrics_release_rate_buckets
 with per_user as (
   select
     actor_user_id,

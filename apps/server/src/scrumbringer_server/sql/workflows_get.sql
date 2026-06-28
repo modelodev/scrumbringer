@@ -1,4 +1,3 @@
--- name: get_workflow
 SELECT
   w.id,
   w.org_id,

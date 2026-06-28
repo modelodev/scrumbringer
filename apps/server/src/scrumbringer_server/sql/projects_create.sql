@@ -1,4 +1,3 @@
--- name: create_project
 -- Create a project and add the creator as a manager member.
 with new_project as (
   insert into projects (org_id, name)

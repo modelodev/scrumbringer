@@ -1,4 +1,3 @@
--- name: list_capabilities_for_project
 select
   id,
   project_id,

@@ -1,4 +1,3 @@
--- name: list_cards_for_project
 SELECT
     c.id,
     c.project_id,

@@ -1,4 +1,3 @@
--- name: rule_executions_count
 -- Count total executions for a rule (for pagination).
 select count(*)::int as total
 from rule_executions

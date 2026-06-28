@@ -1,4 +1,3 @@
--- name: rule_executions_list
 -- Get paginated list of executions for a rule (drill-down).
 select
     re.id,

@@ -1,4 +1,3 @@
--- name: metrics_org_overview
 with event_counts as (
   select
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,

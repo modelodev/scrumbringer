@@ -1,4 +1,3 @@
--- name: list_workflows_for_project
 SELECT
   w.id,
   w.org_id,

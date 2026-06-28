@@ -1,4 +1,3 @@
--- name: rules_find_matching
 -- Find active rules that match a state change event.
 -- For task events, filters by task_type_id if specified.
 -- For card events, task_type_id filter is ignored.

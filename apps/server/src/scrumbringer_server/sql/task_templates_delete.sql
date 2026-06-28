@@ -1,4 +1,3 @@
--- name: delete_task_template
 WITH matched AS (
   SELECT id
   FROM task_templates

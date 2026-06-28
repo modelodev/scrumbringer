@@ -1,4 +1,3 @@
--- name: update_task_type
 -- Story 4.9 AC13: Update task type name, icon, or capability
 update task_types
 set

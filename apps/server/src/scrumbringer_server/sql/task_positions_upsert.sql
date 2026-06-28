@@ -1,4 +1,3 @@
--- name: task_positions_upsert
 insert into task_positions (task_id, user_id, x, y, updated_at)
 values ($1, $2, $3, $4, now())
 on conflict (task_id, user_id) do update

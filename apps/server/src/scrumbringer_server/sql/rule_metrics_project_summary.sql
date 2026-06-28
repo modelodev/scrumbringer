@@ -1,4 +1,3 @@
--- name: rule_metrics_project_summary
 -- Get project-scoped rule metrics summary.
 select
     w.id as workflow_id,

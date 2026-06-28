@@ -1,4 +1,3 @@
--- name: update_capability
 update capabilities
 set name = $3
 where project_id = $1

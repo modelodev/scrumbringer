@@ -1,4 +1,3 @@
--- name: update_task_template
 WITH current AS (
   SELECT id, type_id
   FROM task_templates

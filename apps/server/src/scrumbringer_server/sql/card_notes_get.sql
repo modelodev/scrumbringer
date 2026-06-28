@@ -1,4 +1,3 @@
--- name: card_notes_get
 -- AC20: Include author email and role for tooltip
 select
   n.id,

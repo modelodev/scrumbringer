@@ -1,4 +1,3 @@
--- name: card_notes_delete
 delete from notes n
 using card_notes cn
 where cn.note_id = n.id

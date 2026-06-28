@@ -1,4 +1,3 @@
--- name: delete_rule
 WITH matched AS (
   SELECT id
   FROM rules

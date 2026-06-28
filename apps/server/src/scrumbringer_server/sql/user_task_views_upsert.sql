@@ -1,4 +1,3 @@
--- name: user_task_views_upsert
 insert into user_task_views (user_id, task_id, last_viewed_at)
 values ($1, $2, now())
 on conflict (user_id, task_id)

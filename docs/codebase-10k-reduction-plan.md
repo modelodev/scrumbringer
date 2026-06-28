@@ -754,15 +754,26 @@ Estado de ejecucion:
   - `tasks_list_by_card.sql`,
   - `task_templates_list_for_org.sql`.
 - Regenerado `sql.gleam` con `make squirrel`.
+- Retirados los 110 comentarios `-- name:` restantes de SQL fuente. En esta
+  version de Squirrel del proyecto, la funcion generada viene del nombre del
+  fichero `.sql`; conservar un segundo nombre en comentario duplicaba identidad
+  y ya habia provocado auditorias falsas por divergencia.
 - Delta inicial:
   - SQL fuente: `-87` lineas;
   - generado derivado: `-309` lineas;
   - total paquete: `-396` lineas.
+- Delta adicional:
+  - SQL fuente mantenido: `-110` lineas;
+  - generado derivado: `-54` lineas tras regeneracion reproducible de
+    `sql.gleam`, que sustituye los `/// name:` divergentes por referencias al
+    fichero `.sql` real y elimina los comentarios `-- name:` embebidos en las
+    cadenas SQL.
 - Verificacion:
   - `DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable make squirrel`;
   - `cd apps/server && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`);
   - `rg "sql\\.(cards_task_count|ping|tasks_list_by_card|task_templates_list_for_org)\\b" apps/server/src apps/server/test`.
+  - `rg "^-- name:" apps/server/src/scrumbringer_server/sql` sin resultados.
 
 ### WP-09. Seeds y escenarios QA
 

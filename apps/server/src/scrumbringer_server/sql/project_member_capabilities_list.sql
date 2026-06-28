@@ -1,4 +1,3 @@
--- name: list_project_member_capabilities
 select
   pmc.project_id,
   pmc.user_id,

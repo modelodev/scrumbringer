@@ -1,4 +1,3 @@
--- name: rule_executions_list_for_project
 -- List business executions visible in a project.
 select
     re.id,

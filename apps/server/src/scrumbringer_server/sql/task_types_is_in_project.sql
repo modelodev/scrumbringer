@@ -1,4 +1,3 @@
--- name: task_type_is_in_project
 select exists(
   select 1
   from task_types

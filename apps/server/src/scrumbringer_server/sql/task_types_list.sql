@@ -1,4 +1,3 @@
--- name: list_task_types_for_project
 -- Story 4.9 AC15: Include tasks_count for each task type
 select
   tt.id,

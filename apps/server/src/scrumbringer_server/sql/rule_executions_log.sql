@@ -1,4 +1,3 @@
--- name: rule_executions_log
 -- Log a rule execution for idempotency tracking and metrics.
 insert into rule_executions (
   rule_id,

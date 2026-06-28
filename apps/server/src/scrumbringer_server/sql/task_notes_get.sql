@@ -1,4 +1,3 @@
--- name: task_notes_get
 select
   n.id,
   tn.task_id,

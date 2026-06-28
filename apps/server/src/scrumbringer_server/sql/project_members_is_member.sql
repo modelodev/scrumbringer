@@ -1,4 +1,3 @@
--- name: is_project_member
 select exists(
   select 1
   from project_members

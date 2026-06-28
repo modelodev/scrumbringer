@@ -1,4 +1,3 @@
--- name: card_notes_set_pinned
 with updated as (
   update notes n
   set pinned = $3,

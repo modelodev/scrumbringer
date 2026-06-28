@@ -1,4 +1,3 @@
--- name: update_rule
 UPDATE rules
 SET
   name = $2,

@@ -1,4 +1,3 @@
--- name: card_notes_create
 -- AC20: Include author email and role for tooltip
 with card_scope as (
   select id, project_id

@@ -1,4 +1,3 @@
--- name: create_card
 WITH input AS (
   SELECT
     $1::int AS project_id,

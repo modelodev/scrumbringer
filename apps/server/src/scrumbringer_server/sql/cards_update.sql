@@ -1,4 +1,3 @@
--- name: update_card
 UPDATE cards
 SET
   title = $2,

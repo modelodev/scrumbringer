@@ -1,4 +1,3 @@
--- name: audit_events_insert_card
 insert into audit_events (
   org_id,
   project_id,

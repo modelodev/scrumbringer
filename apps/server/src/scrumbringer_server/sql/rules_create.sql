@@ -1,4 +1,3 @@
--- name: create_rule
 INSERT INTO rules (
   workflow_id,
   name,

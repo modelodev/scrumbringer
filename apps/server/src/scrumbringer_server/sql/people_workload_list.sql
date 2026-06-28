@@ -1,4 +1,3 @@
--- name: people_workload_list
 select
   pm.project_id,
   pm.user_id,

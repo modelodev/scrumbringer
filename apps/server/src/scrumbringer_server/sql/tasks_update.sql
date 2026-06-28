@@ -1,4 +1,3 @@
--- name: update_editable_task
 with updated as (
 update tasks
 set

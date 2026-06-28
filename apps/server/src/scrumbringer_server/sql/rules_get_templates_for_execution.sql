@@ -1,4 +1,3 @@
--- name: rules_get_templates_for_execution
 -- Get the selected template for a rule execution.
 select
   t.id,

@@ -1,4 +1,3 @@
--- name: task_notes_create
 with task_scope as (
   select id, project_id
   from tasks

@@ -1,4 +1,3 @@
--- name: delete_task
 with eligible as (
   select t.id
   from tasks t

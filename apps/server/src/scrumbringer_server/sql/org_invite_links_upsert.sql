@@ -1,4 +1,3 @@
--- name: upsert_org_invite_link
 -- Invalidate any active invite link for email and create a new one.
 with invalidated as (
   update org_invite_links

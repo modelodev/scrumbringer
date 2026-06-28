@@ -1,4 +1,3 @@
--- name: metrics_users_overview
 with event_counts as (
   select
     e.actor_user_id as user_id,

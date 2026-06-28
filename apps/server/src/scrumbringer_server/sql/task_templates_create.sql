@@ -1,4 +1,3 @@
--- name: create_task_template
 WITH type_ok AS (
   SELECT tt.id
   FROM task_types tt

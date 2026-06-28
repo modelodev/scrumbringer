@@ -1,4 +1,3 @@
--- name: invalidate_org_invite_link
 update org_invite_links
 set invalidated_at = now()
 where org_id = $1

@@ -1,4 +1,3 @@
--- name: list_projects_for_user
 select
   p.id,
   p.org_id,

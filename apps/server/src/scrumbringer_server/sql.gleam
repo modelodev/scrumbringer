@@ -19,7 +19,8 @@ pub type AuditEventsInsertCardRow {
   AuditEventsInsertCardRow(id: Int)
 }
 
-/// name: audit_events_insert_card
+/// Runs the `audit_events_insert_card` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_card.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -37,8 +38,7 @@ pub fn audit_events_insert_card(
     decode.success(AuditEventsInsertCardRow(id:))
   }
 
-  "-- name: audit_events_insert_card
-insert into audit_events (
+  "insert into audit_events (
   org_id,
   project_id,
   card_id,
@@ -69,7 +69,8 @@ pub type AuditEventsInsertTaskRow {
   AuditEventsInsertTaskRow(id: Int)
 }
 
-/// name: audit_events_insert_task
+/// Runs the `audit_events_insert_task` query
+/// defined in `./src/scrumbringer_server/sql/audit_events_insert_task.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -87,8 +88,7 @@ pub fn audit_events_insert_task(
     decode.success(AuditEventsInsertTaskRow(id:))
   }
 
-  "-- name: audit_events_insert_task
-insert into audit_events (
+  "insert into audit_events (
   org_id,
   project_id,
   task_id,
@@ -119,7 +119,8 @@ pub type AutomationConfigEventsInsertRow {
   AutomationConfigEventsInsertRow(id: Int)
 }
 
-/// name: automation_config_events_insert
+/// Runs the `automation_config_events_insert` query
+/// defined in `./src/scrumbringer_server/sql/automation_config_events_insert.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -139,8 +140,7 @@ pub fn automation_config_events_insert(
     decode.success(AutomationConfigEventsInsertRow(id:))
   }
 
-  "-- name: automation_config_events_insert
-insert into automation_config_events (
+  "insert into automation_config_events (
   org_id,
   project_id,
   actor_user_id,
@@ -180,7 +180,8 @@ pub type CapabilitiesCreateRow {
   )
 }
 
-/// name: create_capability
+/// Runs the `capabilities_create` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -198,8 +199,7 @@ pub fn capabilities_create(
     decode.success(CapabilitiesCreateRow(id:, project_id:, name:, created_at:))
   }
 
-  "-- name: create_capability
-insert into capabilities (project_id, name)
+  "insert into capabilities (project_id, name)
 values ($1, $2)
 returning
   id,
@@ -224,7 +224,8 @@ pub type CapabilitiesDeleteRow {
   CapabilitiesDeleteRow(id: Int)
 }
 
-/// name: delete_capability
+/// Runs the `capabilities_delete` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -239,8 +240,7 @@ pub fn capabilities_delete(
     decode.success(CapabilitiesDeleteRow(id:))
   }
 
-  "-- name: delete_capability
-delete from capabilities
+  "delete from capabilities
 where id = $1 and project_id = $2
 returning id;
 "
@@ -261,7 +261,8 @@ pub type CapabilitiesIsInProjectRow {
   CapabilitiesIsInProjectRow(ok: Bool)
 }
 
-/// name: capability_is_in_project
+/// Runs the `capabilities_is_in_project` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_is_in_project.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -276,8 +277,7 @@ pub fn capabilities_is_in_project(
     decode.success(CapabilitiesIsInProjectRow(ok:))
   }
 
-  "-- name: capability_is_in_project
-select exists(
+  "select exists(
   select 1
   from capabilities
   where id = $1
@@ -306,7 +306,8 @@ pub type CapabilitiesListForProjectRow {
   )
 }
 
-/// name: list_capabilities_for_project
+/// Runs the `capabilities_list_for_project` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_list_for_project.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -328,8 +329,7 @@ pub fn capabilities_list_for_project(
     ))
   }
 
-  "-- name: list_capabilities_for_project
-select
+  "select
   id,
   project_id,
   name,
@@ -359,7 +359,8 @@ pub type CapabilitiesUpdateRow {
   )
 }
 
-/// name: update_capability
+/// Runs the `capabilities_update` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -378,8 +379,7 @@ pub fn capabilities_update(
     decode.success(CapabilitiesUpdateRow(id:, project_id:, name:, created_at:))
   }
 
-  "-- name: update_capability
-update capabilities
+  "update capabilities
 set name = $3
 where project_id = $1
   and id = $2
@@ -397,7 +397,8 @@ returning
   |> pog.execute(db)
 }
 
-/// name: delete_all_capability_members
+/// Runs the `capability_members_delete_all` query
+/// defined in `./src/scrumbringer_server/sql/capability_members_delete_all.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -409,8 +410,7 @@ pub fn capability_members_delete_all(
 ) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
-  "-- name: delete_all_capability_members
-delete from project_member_capabilities
+  "delete from project_member_capabilities
 where project_id = $1 and capability_id = $2;
 "
   |> pog.query
@@ -430,7 +430,8 @@ pub type CapabilityMembersListRow {
   CapabilityMembersListRow(project_id: Int, capability_id: Int, user_id: Int)
 }
 
-/// name: list_capability_members
+/// Runs the `capability_members_list` query
+/// defined in `./src/scrumbringer_server/sql/capability_members_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -451,8 +452,7 @@ pub fn capability_members_list(
     ))
   }
 
-  "-- name: list_capability_members
-select
+  "select
   pmc.project_id,
   pmc.capability_id,
   pmc.user_id
@@ -490,7 +490,6 @@ pub type CardNotesCreateRow {
   )
 }
 
-/// name: card_notes_create
 /// AC20: Include author email and role for tooltip
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -532,8 +531,7 @@ pub fn card_notes_create(
     ))
   }
 
-  "-- name: card_notes_create
--- AC20: Include author email and role for tooltip
+  "-- AC20: Include author email and role for tooltip
 with card_scope as (
   select id, project_id
   from cards
@@ -587,7 +585,8 @@ pub type CardNotesDeleteRow {
   CardNotesDeleteRow(id: Int)
 }
 
-/// name: card_notes_delete
+/// Runs the `card_notes_delete` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -602,8 +601,7 @@ pub fn card_notes_delete(
     decode.success(CardNotesDeleteRow(id:))
   }
 
-  "-- name: card_notes_delete
-delete from notes n
+  "delete from notes n
 using card_notes cn
 where cn.note_id = n.id
   and cn.card_id = $1
@@ -640,7 +638,6 @@ pub type CardNotesGetRow {
   )
 }
 
-/// name: card_notes_get
 /// AC20: Include author email and role for tooltip
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -680,8 +677,7 @@ pub fn card_notes_get(
     ))
   }
 
-  "-- name: card_notes_get
--- AC20: Include author email and role for tooltip
+  "-- AC20: Include author email and role for tooltip
 select
   n.id,
   cn.card_id,
@@ -733,7 +729,6 @@ pub type CardNotesListRow {
   )
 }
 
-/// name: card_notes_list
 /// AC20: Include author email and role for tooltip
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -772,8 +767,7 @@ pub fn card_notes_list(
     ))
   }
 
-  "-- name: card_notes_list
--- AC20: Include author email and role for tooltip
+  "-- AC20: Include author email and role for tooltip
 select
   n.id,
   cn.card_id,
@@ -824,7 +818,8 @@ pub type CardNotesSetPinnedRow {
   )
 }
 
-/// name: card_notes_set_pinned
+/// Runs the `card_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_set_pinned.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -864,8 +859,7 @@ pub fn card_notes_set_pinned(
     ))
   }
 
-  "-- name: card_notes_set_pinned
-with updated as (
+  "with updated as (
   update notes n
   set pinned = $3,
       updated_at = now()
@@ -920,7 +914,8 @@ pub type CardsCreateRow {
   )
 }
 
-/// name: create_card
+/// Runs the `cards_create` query
+/// defined in `./src/scrumbringer_server/sql/cards_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -958,8 +953,7 @@ pub fn cards_create(
     ))
   }
 
-  "-- name: create_card
-WITH input AS (
+  "WITH input AS (
   SELECT
     $1::int AS project_id,
     $2::text AS title,
@@ -1016,7 +1010,8 @@ RETURNING
   |> pog.execute(db)
 }
 
-/// name: delete_card
+/// Runs the `cards_delete` query
+/// defined in `./src/scrumbringer_server/sql/cards_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1027,8 +1022,7 @@ pub fn cards_delete(
 ) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
-  "-- name: delete_card
-DELETE FROM cards WHERE id = $1;
+  "DELETE FROM cards WHERE id = $1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -1061,7 +1055,8 @@ pub type CardsGetRow {
   )
 }
 
-/// name: get_card
+/// Runs the `cards_get` query
+/// defined in `./src/scrumbringer_server/sql/cards_get.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1104,8 +1099,7 @@ pub fn cards_get(
     ))
   }
 
-  "-- name: get_card
-SELECT
+  "SELECT
     c.id,
     c.project_id,
     c.title,
@@ -1165,7 +1159,8 @@ pub type CardsListRow {
   )
 }
 
-/// name: list_cards_for_project
+/// Runs the `cards_list` query
+/// defined in `./src/scrumbringer_server/sql/cards_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1208,8 +1203,7 @@ pub fn cards_list(
     ))
   }
 
-  "-- name: list_cards_for_project
-SELECT
+  "SELECT
     c.id,
     c.project_id,
     c.title,
@@ -1265,7 +1259,8 @@ pub type CardsUpdateRow {
   )
 }
 
-/// name: update_card
+/// Runs the `cards_update` query
+/// defined in `./src/scrumbringer_server/sql/cards_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1302,8 +1297,7 @@ pub fn cards_update(
     ))
   }
 
-  "-- name: update_card
-UPDATE cards
+  "UPDATE cards
 SET
   title = $2,
   description = $3,
@@ -1347,7 +1341,6 @@ pub type EngineGetProjectNameRow {
   EngineGetProjectNameRow(name: String)
 }
 
-/// name: engine_get_project_name
 /// Get project name for variable substitution.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -1362,8 +1355,7 @@ pub fn engine_get_project_name(
     decode.success(EngineGetProjectNameRow(name:))
   }
 
-  "-- name: engine_get_project_name
--- Get project name for variable substitution.
+  "-- Get project name for variable substitution.
 select name from projects where id = $1;
 "
   |> pog.query
@@ -1382,7 +1374,6 @@ pub type EngineGetUserNameRow {
   EngineGetUserNameRow(display_name: String)
 }
 
-/// name: engine_get_user_name
 /// Get user email for variable substitution.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -1397,8 +1388,7 @@ pub fn engine_get_user_name(
     decode.success(EngineGetUserNameRow(display_name:))
   }
 
-  "-- name: engine_get_user_name
--- Get user email for variable substitution.
+  "-- Get user email for variable substitution.
 select email as display_name from users where id = $1 and deleted_at is null;
 "
   |> pog.query
@@ -1417,7 +1407,8 @@ pub type MetricsMyRow {
   MetricsMyRow(claimed_count: Int, released_count: Int, closed_count: Int)
 }
 
-/// name: metrics_my
+/// Runs the `metrics_my` query
+/// defined in `./src/scrumbringer_server/sql/metrics_my.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1434,8 +1425,7 @@ pub fn metrics_my(
     decode.success(MetricsMyRow(claimed_count:, released_count:, closed_count:))
   }
 
-  "-- name: metrics_my
-select
+  "select
   coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
   coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
   coalesce(sum(case when event_type = 'task_closed' then 1 else 0 end), 0) as closed_count
@@ -1470,7 +1460,8 @@ pub type MetricsOrgOverviewRow {
   )
 }
 
-/// name: metrics_org_overview
+/// Runs the `metrics_org_overview` query
+/// defined in `./src/scrumbringer_server/sql/metrics_org_overview.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1503,8 +1494,7 @@ pub fn metrics_org_overview(
     ))
   }
 
-  "-- name: metrics_org_overview
-with event_counts as (
+  "with event_counts as (
   select
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
     coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
@@ -1584,7 +1574,8 @@ pub type MetricsOrgOverviewByProjectRow {
   )
 }
 
-/// name: metrics_org_overview_by_project
+/// Runs the `metrics_org_overview_by_project` query
+/// defined in `./src/scrumbringer_server/sql/metrics_org_overview_by_project.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1621,8 +1612,7 @@ pub fn metrics_org_overview_by_project(
     ))
   }
 
-  "-- name: metrics_org_overview_by_project
-with event_counts as (
+  "with event_counts as (
   select
     e.project_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
@@ -1722,7 +1712,8 @@ pub type MetricsProjectTasksRow {
   )
 }
 
-/// name: metrics_project_tasks
+/// Runs the `metrics_project_tasks` query
+/// defined in `./src/scrumbringer_server/sql/metrics_project_tasks.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1781,8 +1772,7 @@ pub fn metrics_project_tasks(
     ))
   }
 
-  "-- name: metrics_project_tasks
-with task_scope as (
+  "with task_scope as (
   select
     t.id,
     t.project_id,
@@ -1875,7 +1865,8 @@ pub type MetricsReleaseRateBucketsRow {
   MetricsReleaseRateBucketsRow(bucket: String, count: Int)
 }
 
-/// name: metrics_release_rate_buckets
+/// Runs the `metrics_release_rate_buckets` query
+/// defined in `./src/scrumbringer_server/sql/metrics_release_rate_buckets.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1891,8 +1882,7 @@ pub fn metrics_release_rate_buckets(
     decode.success(MetricsReleaseRateBucketsRow(bucket:, count:))
   }
 
-  "-- name: metrics_release_rate_buckets
-with per_user as (
+  "with per_user as (
   select
     actor_user_id,
     coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claims,
@@ -1950,7 +1940,8 @@ pub type MetricsTimeToFirstClaimBucketsRow {
   MetricsTimeToFirstClaimBucketsRow(bucket: String, count: Int)
 }
 
-/// name: metrics_time_to_first_claim_buckets
+/// Runs the `metrics_time_to_first_claim_buckets` query
+/// defined in `./src/scrumbringer_server/sql/metrics_time_to_first_claim_buckets.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1966,8 +1957,7 @@ pub fn metrics_time_to_first_claim_buckets(
     decode.success(MetricsTimeToFirstClaimBucketsRow(bucket:, count:))
   }
 
-  "-- name: metrics_time_to_first_claim_buckets
-with first_claim as (
+  "with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
@@ -2023,7 +2013,8 @@ pub type MetricsTimeToFirstClaimP50MsRow {
   MetricsTimeToFirstClaimP50MsRow(p50_ms: Int, sample_size: Int)
 }
 
-/// name: metrics_time_to_first_claim_p50_ms
+/// Runs the `metrics_time_to_first_claim_p50_ms` query
+/// defined in `./src/scrumbringer_server/sql/metrics_time_to_first_claim_p50_ms.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2039,8 +2030,7 @@ pub fn metrics_time_to_first_claim_p50_ms(
     decode.success(MetricsTimeToFirstClaimP50MsRow(p50_ms:, sample_size:))
   }
 
-  "-- name: metrics_time_to_first_claim_p50_ms
-with first_claim as (
+  "with first_claim as (
   select
     actor_user_id,
     min(created_at) as first_claim_at
@@ -2090,7 +2080,8 @@ pub type MetricsUsersOverviewRow {
   )
 }
 
-/// name: metrics_users_overview
+/// Runs the `metrics_users_overview` query
+/// defined in `./src/scrumbringer_server/sql/metrics_users_overview.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2119,8 +2110,7 @@ pub fn metrics_users_overview(
     ))
   }
 
-  "-- name: metrics_users_overview
-with event_counts as (
+  "with event_counts as (
   select
     e.actor_user_id as user_id,
     coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
@@ -2180,7 +2170,8 @@ pub type OrgInviteLinksInvalidateRow {
   )
 }
 
-/// name: invalidate_org_invite_link
+/// Runs the `org_invite_links_invalidate` query
+/// defined in `./src/scrumbringer_server/sql/org_invite_links_invalidate.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2207,8 +2198,7 @@ pub fn org_invite_links_invalidate(
     ))
   }
 
-  "-- name: invalidate_org_invite_link
-update org_invite_links
+  "update org_invite_links
 set invalidated_at = now()
 where org_id = $1
   and email = $2
@@ -2250,7 +2240,8 @@ pub type OrgInviteLinksListRow {
   )
 }
 
-/// name: list_org_invite_links
+/// Runs the `org_invite_links_list` query
+/// defined in `./src/scrumbringer_server/sql/org_invite_links_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2276,8 +2267,7 @@ pub fn org_invite_links_list(
     ))
   }
 
-  "-- name: list_org_invite_links
-select
+  "select
   email,
   token,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
@@ -2315,7 +2305,6 @@ pub type OrgInviteLinksUpsertRow {
   )
 }
 
-/// name: upsert_org_invite_link
 /// Invalidate any active invite link for email and create a new one.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -2345,8 +2334,7 @@ pub fn org_invite_links_upsert(
     ))
   }
 
-  "-- name: upsert_org_invite_link
--- Invalidate any active invite link for email and create a new one.
+  "-- Invalidate any active invite link for email and create a new one.
 with invalidated as (
   update org_invite_links
   set invalidated_at = now()
@@ -2394,7 +2382,6 @@ pub type OrgInvitesRow {
   OrgInvitesRow(code: String, created_at: String, expires_at: String)
 }
 
-/// name: create_org_invite
 /// Insert a new org invite and return the API-facing fields.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -2414,8 +2401,7 @@ pub fn org_invites(
     decode.success(OrgInvitesRow(code:, created_at:, expires_at:))
   }
 
-  "-- name: create_org_invite
--- Insert a new org invite and return the API-facing fields.
+  "-- Insert a new org invite and return the API-facing fields.
 insert into org_invites (code, org_id, created_by, expires_at)
 values ($1, $2, $3, now() + (($4::int) * interval '1 hour'))
 returning
@@ -2442,7 +2428,8 @@ pub type OrgUsersListRow {
   OrgUsersListRow(id: Int, email: String, org_role: String, created_at: String)
 }
 
-/// name: list_org_users
+/// Runs the `org_users_list` query
+/// defined in `./src/scrumbringer_server/sql/org_users_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2460,8 +2447,7 @@ pub fn org_users_list(
     decode.success(OrgUsersListRow(id:, email:, org_role:, created_at:))
   }
 
-  "-- name: list_org_users
-select
+  "select
   id,
   email,
   org_role,
@@ -2506,7 +2492,8 @@ pub type PeopleWorkloadListRow {
   )
 }
 
-/// name: people_workload_list
+/// Runs the `people_workload_list` query
+/// defined in `./src/scrumbringer_server/sql/people_workload_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2552,8 +2539,7 @@ pub fn people_workload_list(
     ))
   }
 
-  "-- name: people_workload_list
-select
+  "select
   pm.project_id,
   pm.user_id,
   u.email,
@@ -2615,7 +2601,6 @@ pub type ProjectDeleteRow {
   ProjectDeleteRow(id: Int)
 }
 
-/// name: project_delete
 /// Delete a project and all related data (cascade)
 /// Returns the deleted project id if successful
 ///
@@ -2631,8 +2616,7 @@ pub fn project_delete(
     decode.success(ProjectDeleteRow(id:))
   }
 
-  "-- name: project_delete
--- Delete a project and all related data (cascade)
+  "-- Delete a project and all related data (cascade)
 -- Returns the deleted project id if successful
 with
   deleted_rules as (
@@ -2685,7 +2669,8 @@ pub type ProjectMemberCapabilitiesDeleteRow {
   ProjectMemberCapabilitiesDeleteRow(project_id: Int)
 }
 
-/// name: delete_project_member_capability
+/// Runs the `project_member_capabilities_delete` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2701,8 +2686,7 @@ pub fn project_member_capabilities_delete(
     decode.success(ProjectMemberCapabilitiesDeleteRow(project_id:))
   }
 
-  "-- name: delete_project_member_capability
-delete from project_member_capabilities
+  "delete from project_member_capabilities
 where project_id = $1 and user_id = $2 and capability_id = $3
 returning project_id;
 "
@@ -2724,7 +2708,8 @@ pub type ProjectMemberCapabilitiesDeleteAllRow {
   ProjectMemberCapabilitiesDeleteAllRow(project_id: Int)
 }
 
-/// name: delete_all_project_member_capabilities
+/// Runs the `project_member_capabilities_delete_all` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete_all.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2739,8 +2724,7 @@ pub fn project_member_capabilities_delete_all(
     decode.success(ProjectMemberCapabilitiesDeleteAllRow(project_id:))
   }
 
-  "-- name: delete_all_project_member_capabilities
-delete from project_member_capabilities
+  "delete from project_member_capabilities
 where project_id = $1 and user_id = $2
 returning project_id;
 "
@@ -2765,7 +2749,8 @@ pub type ProjectMemberCapabilitiesInsertRow {
   )
 }
 
-/// name: insert_project_member_capability
+/// Runs the `project_member_capabilities_insert` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_insert.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2787,8 +2772,7 @@ pub fn project_member_capabilities_insert(
     ))
   }
 
-  "-- name: insert_project_member_capability
-insert into project_member_capabilities (project_id, user_id, capability_id)
+  "insert into project_member_capabilities (project_id, user_id, capability_id)
 values ($1, $2, $3)
 returning project_id, user_id, capability_id;
 "
@@ -2815,7 +2799,8 @@ pub type ProjectMemberCapabilitiesListRow {
   )
 }
 
-/// name: list_project_member_capabilities
+/// Runs the `project_member_capabilities_list` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2838,8 +2823,7 @@ pub fn project_member_capabilities_list(
     ))
   }
 
-  "-- name: list_project_member_capabilities
-select
+  "select
   pmc.project_id,
   pmc.user_id,
   pmc.capability_id,
@@ -2871,7 +2855,8 @@ pub type ProjectMembersInsertRow {
   )
 }
 
-/// name: insert_project_member
+/// Runs the `project_members_insert` query
+/// defined in `./src/scrumbringer_server/sql/project_members_insert.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2895,8 +2880,7 @@ pub fn project_members_insert(
     ))
   }
 
-  "-- name: insert_project_member
-insert into project_members (project_id, user_id, role)
+  "insert into project_members (project_id, user_id, role)
 values ($1, $2, $3)
 returning
   project_id,
@@ -2922,7 +2906,8 @@ pub type ProjectMembersIsAnyManagerInOrgRow {
   ProjectMembersIsAnyManagerInOrgRow(is_manager: Bool)
 }
 
-/// name: is_any_project_manager_in_org
+/// Runs the `project_members_is_any_manager_in_org` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_any_manager_in_org.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2937,8 +2922,7 @@ pub fn project_members_is_any_manager_in_org(
     decode.success(ProjectMembersIsAnyManagerInOrgRow(is_manager:))
   }
 
-  "-- name: is_any_project_manager_in_org
-select exists(
+  "select exists(
   select 1
   from project_members pm
   join projects p on p.id = pm.project_id
@@ -2964,7 +2948,8 @@ pub type ProjectMembersIsManagerRow {
   ProjectMembersIsManagerRow(is_manager: Bool)
 }
 
-/// name: is_project_manager
+/// Runs the `project_members_is_manager` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_manager.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -2979,8 +2964,7 @@ pub fn project_members_is_manager(
     decode.success(ProjectMembersIsManagerRow(is_manager:))
   }
 
-  "-- name: is_project_manager
-select exists(
+  "select exists(
   select 1
   from project_members
   where project_id = $1
@@ -3005,7 +2989,8 @@ pub type ProjectMembersIsMemberRow {
   ProjectMembersIsMemberRow(is_member: Bool)
 }
 
-/// name: is_project_member
+/// Runs the `project_members_is_member` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_member.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3020,8 +3005,7 @@ pub fn project_members_is_member(
     decode.success(ProjectMembersIsMemberRow(is_member:))
   }
 
-  "-- name: is_project_member
-select exists(
+  "select exists(
   select 1
   from project_members
   where project_id = $1
@@ -3051,7 +3035,8 @@ pub type ProjectMembersListRow {
   )
 }
 
-/// name: list_project_members
+/// Runs the `project_members_list` query
+/// defined in `./src/scrumbringer_server/sql/project_members_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3075,8 +3060,7 @@ pub fn project_members_list(
     ))
   }
 
-  "-- name: list_project_members
-select
+  "select
   project_members.project_id,
   project_members.user_id,
   project_members.role,
@@ -3115,7 +3099,8 @@ pub type ProjectMembersRemoveRow {
   )
 }
 
-/// name: remove_project_member
+/// Runs the `project_members_remove` query
+/// defined in `./src/scrumbringer_server/sql/project_members_remove.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3136,8 +3121,7 @@ pub fn project_members_remove(
     ))
   }
 
-  "-- name: remove_project_member
-with
+  "with
   target as (
     select role
     from project_members
@@ -3288,7 +3272,8 @@ pub type ProjectUpdateRow {
   ProjectUpdateRow(id: Int, org_id: Int, name: String, created_at: String)
 }
 
-/// name: project_update
+/// Runs the `project_update` query
+/// defined in `./src/scrumbringer_server/sql/project_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3306,8 +3291,7 @@ pub fn project_update(
     decode.success(ProjectUpdateRow(id:, org_id:, name:, created_at:))
   }
 
-  "-- name: project_update
-update projects
+  "update projects
 set name = $2
 where id = $1
 returning
@@ -3339,7 +3323,6 @@ pub type ProjectsCreateRow {
   )
 }
 
-/// name: create_project
 /// Create a project and add the creator as a manager member.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -3360,8 +3343,7 @@ pub fn projects_create(
     decode.success(ProjectsCreateRow(id:, org_id:, name:, created_at:, my_role:))
   }
 
-  "-- name: create_project
--- Create a project and add the creator as a manager member.
+  "-- Create a project and add the creator as a manager member.
 with new_project as (
   insert into projects (org_id, name)
   values ($1, $2)
@@ -3437,7 +3419,8 @@ pub type ProjectsForUserRow {
   )
 }
 
-/// name: list_projects_for_user
+/// Runs the `projects_for_user` query
+/// defined in `./src/scrumbringer_server/sql/projects_for_user.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3463,8 +3446,7 @@ pub fn projects_for_user(
     ))
   }
 
-  "-- name: list_projects_for_user
-select
+  "select
   p.id,
   p.org_id,
   p.name,
@@ -3492,7 +3474,8 @@ pub type ProjectsOrgIdRow {
   ProjectsOrgIdRow(org_id: Int)
 }
 
-/// name: project_org_id
+/// Runs the `projects_org_id` query
+/// defined in `./src/scrumbringer_server/sql/projects_org_id.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -3506,8 +3489,7 @@ pub fn projects_org_id(
     decode.success(ProjectsOrgIdRow(org_id:))
   }
 
-  "-- name: project_org_id
-select org_id
+  "select org_id
 from projects
 where id = $1;
 "
@@ -3527,7 +3509,6 @@ pub type RuleExecutionsCountRow {
   RuleExecutionsCountRow(total: Int)
 }
 
-/// name: rule_executions_count
 /// Count total executions for a rule (for pagination).
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -3544,8 +3525,7 @@ pub fn rule_executions_count(
     decode.success(RuleExecutionsCountRow(total:))
   }
 
-  "-- name: rule_executions_count
--- Count total executions for a rule (for pagination).
+  "-- Count total executions for a rule (for pagination).
 select count(*)::int as total
 from rule_executions
 where rule_id = $1
@@ -3571,7 +3551,6 @@ pub type RuleExecutionsCountForProjectRow {
   RuleExecutionsCountForProjectRow(total: Int)
 }
 
-/// name: rule_executions_count_for_project
 /// Count business executions visible in a project.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -3588,8 +3567,7 @@ pub fn rule_executions_count_for_project(
     decode.success(RuleExecutionsCountForProjectRow(total:))
   }
 
-  "-- name: rule_executions_count_for_project
--- Count business executions visible in a project.
+  "-- Count business executions visible in a project.
 select count(*)::int as total
 from rule_executions re
 join rules r on r.id = re.rule_id
@@ -3637,7 +3615,6 @@ pub type RuleExecutionsListRow {
   )
 }
 
-/// name: rule_executions_list
 /// Get paginated list of executions for a rule (drill-down).
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -3678,8 +3655,7 @@ pub fn rule_executions_list(
     ))
   }
 
-  "-- name: rule_executions_list
--- Get paginated list of executions for a rule (drill-down).
+  "-- Get paginated list of executions for a rule (drill-down).
 select
     re.id,
     coalesce(re.task_id, 0) as task_id,
@@ -3741,7 +3717,6 @@ pub type RuleExecutionsListForProjectRow {
   )
 }
 
-/// name: rule_executions_list_for_project
 /// List business executions visible in a project.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -3798,8 +3773,7 @@ pub fn rule_executions_list_for_project(
     ))
   }
 
-  "-- name: rule_executions_list_for_project
--- List business executions visible in a project.
+  "-- List business executions visible in a project.
 select
     re.id,
     w.id as workflow_id,
@@ -3873,7 +3847,6 @@ pub type RuleExecutionsLogRow {
   )
 }
 
-/// name: rule_executions_log
 /// Log a rule execution for idempotency tracking and metrics.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -3921,8 +3894,7 @@ pub fn rule_executions_log(
     ))
   }
 
-  "-- name: rule_executions_log
--- Log a rule execution for idempotency tracking and metrics.
+  "-- Log a rule execution for idempotency tracking and metrics.
 insert into rule_executions (
   rule_id,
   event_key,
@@ -3987,7 +3959,6 @@ pub type RuleExecutionsMarkCreatedTaskRow {
   RuleExecutionsMarkCreatedTaskRow(id: Int)
 }
 
-/// name: rule_executions_mark_created_task
 /// Attach the task created by a reserved rule execution.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4003,8 +3974,7 @@ pub fn rule_executions_mark_created_task(
     decode.success(RuleExecutionsMarkCreatedTaskRow(id:))
   }
 
-  "-- name: rule_executions_mark_created_task
--- Attach the task created by a reserved rule execution.
+  "-- Attach the task created by a reserved rule execution.
 update rule_executions
 set created_task_id = $2
 where id = $1
@@ -4037,7 +4007,6 @@ pub type RuleMetricsByRuleRow {
   )
 }
 
-/// name: rule_metrics_by_rule
 /// Get detailed metrics for a single rule with suppression breakdown.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4072,8 +4041,7 @@ pub fn rule_metrics_by_rule(
     ))
   }
 
-  "-- name: rule_metrics_by_rule
--- Get detailed metrics for a single rule with suppression breakdown.
+  "-- Get detailed metrics for a single rule with suppression breakdown.
 select
     r.id as rule_id,
     r.name as rule_name,
@@ -4116,7 +4084,6 @@ pub type RuleMetricsByWorkflowRow {
   )
 }
 
-/// name: rule_metrics_by_workflow
 /// Get aggregated metrics for all rules in a workflow.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4145,8 +4112,7 @@ pub fn rule_metrics_by_workflow(
     ))
   }
 
-  "-- name: rule_metrics_by_workflow
--- Get aggregated metrics for all rules in a workflow.
+  "-- Get aggregated metrics for all rules in a workflow.
 select
     r.id as rule_id,
     r.name as rule_name,
@@ -4188,7 +4154,6 @@ pub type RuleMetricsOrgSummaryRow {
   )
 }
 
-/// name: rule_metrics_org_summary
 /// Get org-wide rule metrics summary.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4219,8 +4184,7 @@ pub fn rule_metrics_org_summary(
     ))
   }
 
-  "-- name: rule_metrics_org_summary
--- Get org-wide rule metrics summary.
+  "-- Get org-wide rule metrics summary.
 select
     w.id as workflow_id,
     w.name as workflow_name,
@@ -4263,7 +4227,6 @@ pub type RuleMetricsProjectSummaryRow {
   )
 }
 
-/// name: rule_metrics_project_summary
 /// Get project-scoped rule metrics summary.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4292,8 +4255,7 @@ pub fn rule_metrics_project_summary(
     ))
   }
 
-  "-- name: rule_metrics_project_summary
--- Get project-scoped rule metrics summary.
+  "-- Get project-scoped rule metrics summary.
 select
     w.id as workflow_id,
     w.name as workflow_name,
@@ -4340,7 +4302,8 @@ pub type RuleTemplatesListForRuleRow {
   )
 }
 
-/// name: list_rule_templates_for_rule
+/// Runs the `rule_templates_list_for_rule` query
+/// defined in `./src/scrumbringer_server/sql/rule_templates_list_for_rule.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4376,8 +4339,7 @@ pub fn rule_templates_list_for_rule(
     ))
   }
 
-  "-- name: list_rule_templates_for_rule
-SELECT
+  "SELECT
   t.id,
   t.org_id,
   coalesce(t.project_id, 0) as project_id,
@@ -4411,7 +4373,6 @@ pub type RuleTemplatesSelectRow {
   RuleTemplatesSelectRow(rule_id: Int)
 }
 
-/// name: select_rule_template
 /// A rule has exactly one task template in the automation model.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4428,8 +4389,7 @@ pub fn rule_templates_select(
     decode.success(RuleTemplatesSelectRow(rule_id:))
   }
 
-  "-- name: select_rule_template
--- A rule has exactly one task template in the automation model.
+  "-- A rule has exactly one task template in the automation model.
 INSERT INTO rule_templates (rule_id, template_id, execution_order)
 VALUES ($1, $2, $3)
 ON CONFLICT (rule_id)
@@ -4468,7 +4428,8 @@ pub type RulesCreateRow {
   )
 }
 
-/// name: create_rule
+/// Runs the `rules_create` query
+/// defined in `./src/scrumbringer_server/sql/rules_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4512,8 +4473,7 @@ pub fn rules_create(
     ))
   }
 
-  "-- name: create_rule
-INSERT INTO rules (
+  "INSERT INTO rules (
   workflow_id,
   name,
   goal,
@@ -4577,7 +4537,8 @@ pub type RulesDeleteRow {
   )
 }
 
-/// name: delete_rule
+/// Runs the `rules_delete` query
+/// defined in `./src/scrumbringer_server/sql/rules_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4599,8 +4560,7 @@ pub fn rules_delete(
     ))
   }
 
-  "-- name: delete_rule
-WITH matched AS (
+  "WITH matched AS (
   SELECT id
   FROM rules
   WHERE id = $1
@@ -4662,7 +4622,6 @@ pub type RulesFindMatchingRow {
   )
 }
 
-/// name: rules_find_matching
 /// Find active rules that match a state change event.
 /// For task events, filters by task_type_id if specified.
 /// For card events, task_type_id filter is ignored.
@@ -4710,8 +4669,7 @@ pub fn rules_find_matching(
     ))
   }
 
-  "-- name: rules_find_matching
--- Find active rules that match a state change event.
+  "-- Find active rules that match a state change event.
 -- For task events, filters by task_type_id if specified.
 -- For card events, task_type_id filter is ignored.
 -- Params: $1=trigger_kind, $2=project_id, $3=org_id, $4=task_type_id, $5=card_depth
@@ -4784,7 +4742,8 @@ pub type RulesGetRow {
   )
 }
 
-/// name: get_rule
+/// Runs the `rules_get` query
+/// defined in `./src/scrumbringer_server/sql/rules_get.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4820,8 +4779,7 @@ pub fn rules_get(
     ))
   }
 
-  "-- name: get_rule
-SELECT
+  "SELECT
   r.id,
   r.workflow_id,
   r.name,
@@ -4864,7 +4822,6 @@ pub type RulesGetTemplatesForExecutionRow {
   )
 }
 
-/// name: rules_get_templates_for_execution
 /// Get the selected template for a rule execution.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -4901,8 +4858,7 @@ pub fn rules_get_templates_for_execution(
     ))
   }
 
-  "-- name: rules_get_templates_for_execution
--- Get the selected template for a rule execution.
+  "-- Get the selected template for a rule execution.
 select
   t.id,
   t.org_id,
@@ -4948,7 +4904,8 @@ pub type RulesListForWorkflowRow {
   )
 }
 
-/// name: list_rules_for_workflow
+/// Runs the `rules_list_for_workflow` query
+/// defined in `./src/scrumbringer_server/sql/rules_list_for_workflow.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4984,8 +4941,7 @@ pub fn rules_list_for_workflow(
     ))
   }
 
-  "-- name: list_rules_for_workflow
-SELECT
+  "SELECT
   r.id,
   r.workflow_id,
   r.name,
@@ -5017,7 +4973,8 @@ pub type RulesSetActiveForWorkflowRow {
   RulesSetActiveForWorkflowRow(id: Int)
 }
 
-/// name: set_rules_active_for_workflow
+/// Runs the `rules_set_active_for_workflow` query
+/// defined in `./src/scrumbringer_server/sql/rules_set_active_for_workflow.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5032,8 +4989,7 @@ pub fn rules_set_active_for_workflow(
     decode.success(RulesSetActiveForWorkflowRow(id:))
   }
 
-  "-- name: set_rules_active_for_workflow
-UPDATE rules
+  "UPDATE rules
 SET active = $2
 WHERE workflow_id = $1
 RETURNING id;
@@ -5067,7 +5023,8 @@ pub type RulesUpdateRow {
   )
 }
 
-/// name: update_rule
+/// Runs the `rules_update` query
+/// defined in `./src/scrumbringer_server/sql/rules_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5111,8 +5068,7 @@ pub fn rules_update(
     ))
   }
 
-  "-- name: update_rule
-UPDATE rules
+  "UPDATE rules
 SET
   name = $2,
   goal = nullif($3, ''),
@@ -5169,7 +5125,8 @@ pub type TaskDependenciesCreateRow {
   )
 }
 
-/// name: create_task_dependency
+/// Runs the `task_dependencies_create` query
+/// defined in `./src/scrumbringer_server/sql/task_dependencies_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5201,8 +5158,7 @@ pub fn task_dependencies_create(
     ))
   }
 
-  "-- name: create_task_dependency
-with inserted as (
+  "with inserted as (
   insert into task_dependencies (task_id, depends_on_task_id, created_by)
   values ($1, $2, $3)
   returning depends_on_task_id
@@ -5245,7 +5201,8 @@ pub type TaskDependenciesDeleteRow {
   TaskDependenciesDeleteRow(task_id: Int, depends_on_task_id: Int)
 }
 
-/// name: delete_task_dependency
+/// Runs the `task_dependencies_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_dependencies_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5261,8 +5218,7 @@ pub fn task_dependencies_delete(
     decode.success(TaskDependenciesDeleteRow(task_id:, depends_on_task_id:))
   }
 
-  "-- name: delete_task_dependency
-delete from task_dependencies
+  "delete from task_dependencies
 where task_id = $1
   and depends_on_task_id = $2
 returning
@@ -5295,7 +5251,8 @@ pub type TaskDependenciesListRow {
   )
 }
 
-/// name: list_task_dependencies
+/// Runs the `task_dependencies_list` query
+/// defined in `./src/scrumbringer_server/sql/task_dependencies_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5325,8 +5282,7 @@ pub fn task_dependencies_list(
     ))
   }
 
-  "-- name: list_task_dependencies
-select
+  "select
   td.depends_on_task_id as task_id,
   t.title,
   t.execution_state as status,
@@ -5377,7 +5333,8 @@ pub type TaskNotesCreateRow {
   )
 }
 
-/// name: task_notes_create
+/// Runs the `task_notes_create` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5418,8 +5375,7 @@ pub fn task_notes_create(
     ))
   }
 
-  "-- name: task_notes_create
-with task_scope as (
+  "with task_scope as (
   select id, project_id
   from tasks
   where id = $1
@@ -5472,7 +5428,8 @@ pub type TaskNotesDeleteRow {
   TaskNotesDeleteRow(id: Int)
 }
 
-/// name: task_notes_delete
+/// Runs the `task_notes_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5487,8 +5444,7 @@ pub fn task_notes_delete(
     decode.success(TaskNotesDeleteRow(id:))
   }
 
-  "-- name: task_notes_delete
-delete from notes n
+  "delete from notes n
 using task_notes tn
 where tn.note_id = n.id
   and tn.task_id = $1
@@ -5525,7 +5481,8 @@ pub type TaskNotesGetRow {
   )
 }
 
-/// name: task_notes_get
+/// Runs the `task_notes_get` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_get.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5564,8 +5521,7 @@ pub fn task_notes_get(
     ))
   }
 
-  "-- name: task_notes_get
-select
+  "select
   n.id,
   tn.task_id,
   n.project_id,
@@ -5616,7 +5572,8 @@ pub type TaskNotesListRow {
   )
 }
 
-/// name: task_notes_list
+/// Runs the `task_notes_list` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5654,8 +5611,7 @@ pub fn task_notes_list(
     ))
   }
 
-  "-- name: task_notes_list
-select
+  "select
   n.id,
   tn.task_id,
   n.project_id,
@@ -5705,7 +5661,8 @@ pub type TaskNotesSetPinnedRow {
   )
 }
 
-/// name: task_notes_set_pinned
+/// Runs the `task_notes_set_pinned` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_set_pinned.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5745,8 +5702,7 @@ pub fn task_notes_set_pinned(
     ))
   }
 
-  "-- name: task_notes_set_pinned
-with updated as (
+  "with updated as (
   update notes n
   set pinned = $3,
       updated_at = now()
@@ -5797,7 +5753,8 @@ pub type TaskPositionsListForUserRow {
   )
 }
 
-/// name: task_positions_list_for_user
+/// Runs the `task_positions_list_for_user` query
+/// defined in `./src/scrumbringer_server/sql/task_positions_list_for_user.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5822,8 +5779,7 @@ pub fn task_positions_list_for_user(
     ))
   }
 
-  "-- name: task_positions_list_for_user
-select
+  "select
   tp.task_id,
   tp.user_id,
   tp.x,
@@ -5864,7 +5820,8 @@ pub type TaskPositionsUpsertRow {
   )
 }
 
-/// name: task_positions_upsert
+/// Runs the `task_positions_upsert` query
+/// defined in `./src/scrumbringer_server/sql/task_positions_upsert.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5891,8 +5848,7 @@ pub fn task_positions_upsert(
     ))
   }
 
-  "-- name: task_positions_upsert
-insert into task_positions (task_id, user_id, x, y, updated_at)
+  "insert into task_positions (task_id, user_id, x, y, updated_at)
 values ($1, $2, $3, $4, now())
 on conflict (task_id, user_id) do update
 set x = $3,
@@ -5936,7 +5892,8 @@ pub type TaskTemplatesCreateRow {
   )
 }
 
-/// name: create_task_template
+/// Runs the `task_templates_create` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5978,8 +5935,7 @@ pub fn task_templates_create(
     ))
   }
 
-  "-- name: create_task_template
-WITH type_ok AS (
+  "WITH type_ok AS (
   SELECT tt.id
   FROM task_types tt
   JOIN projects p ON p.id = tt.project_id
@@ -6047,7 +6003,8 @@ pub type TaskTemplatesDeleteRow {
   )
 }
 
-/// name: delete_task_template
+/// Runs the `task_templates_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6072,8 +6029,7 @@ pub fn task_templates_delete(
     ))
   }
 
-  "-- name: delete_task_template
-WITH matched AS (
+  "WITH matched AS (
   SELECT id
   FROM task_templates
   WHERE id = $1
@@ -6140,7 +6096,8 @@ pub type TaskTemplatesGetRow {
   )
 }
 
-/// name: get_task_template
+/// Runs the `task_templates_get` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_get.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6176,8 +6133,7 @@ pub fn task_templates_get(
     ))
   }
 
-  "-- name: get_task_template
-SELECT
+  "SELECT
   t.id,
   t.org_id,
   coalesce(t.project_id, 0) as project_id,
@@ -6225,7 +6181,6 @@ pub type TaskTemplatesListForProjectRow {
   )
 }
 
-/// name: list_task_templates_for_project
 /// Story 4.9 AC20: Include template usage counters
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -6268,8 +6223,7 @@ pub fn task_templates_list_for_project(
     ))
   }
 
-  "-- name: list_task_templates_for_project
--- Story 4.9 AC20: Include template usage counters
+  "-- Story 4.9 AC20: Include template usage counters
 SELECT
   t.id,
   t.org_id,
@@ -6339,7 +6293,8 @@ pub type TaskTemplatesUpdateRow {
   )
 }
 
-/// name: update_task_template
+/// Runs the `task_templates_update` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6381,8 +6336,7 @@ pub fn task_templates_update(
     ))
   }
 
-  "-- name: update_task_template
-WITH current AS (
+  "WITH current AS (
   SELECT id, type_id
   FROM task_templates
   WHERE id = $1
@@ -6464,7 +6418,8 @@ pub type TaskTypesCreateRow {
   )
 }
 
-/// name: create_task_type
+/// Runs the `task_types_create` query
+/// defined in `./src/scrumbringer_server/sql/task_types_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6491,8 +6446,7 @@ pub fn task_types_create(
     ))
   }
 
-  "-- name: create_task_type
-insert into task_types (project_id, name, icon, capability_id)
+  "insert into task_types (project_id, name, icon, capability_id)
 values ($1, $2, $3, nullif($4, 0))
 returning
   id,
@@ -6520,7 +6474,6 @@ pub type TaskTypesDeleteRow {
   TaskTypesDeleteRow(id: Int)
 }
 
-/// name: delete_task_type
 /// Story 4.9 AC14: Delete task type (only if no tasks use it)
 /// Returns empty if type has associated tasks (foreign key constraint)
 ///
@@ -6536,8 +6489,7 @@ pub fn task_types_delete(
     decode.success(TaskTypesDeleteRow(id:))
   }
 
-  "-- name: delete_task_type
--- Story 4.9 AC14: Delete task type (only if no tasks use it)
+  "-- Story 4.9 AC14: Delete task type (only if no tasks use it)
 -- Returns empty if type has associated tasks (foreign key constraint)
 delete from task_types
 where id = $1
@@ -6562,7 +6514,8 @@ pub type TaskTypesIsInProjectRow {
   TaskTypesIsInProjectRow(ok: Bool)
 }
 
-/// name: task_type_is_in_project
+/// Runs the `task_types_is_in_project` query
+/// defined in `./src/scrumbringer_server/sql/task_types_is_in_project.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6577,8 +6530,7 @@ pub fn task_types_is_in_project(
     decode.success(TaskTypesIsInProjectRow(ok:))
   }
 
-  "-- name: task_type_is_in_project
-select exists(
+  "select exists(
   select 1
   from task_types
   where id = $1
@@ -6609,7 +6561,6 @@ pub type TaskTypesListRow {
   )
 }
 
-/// name: list_task_types_for_project
 /// Story 4.9 AC15: Include tasks_count for each task type
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -6636,8 +6587,7 @@ pub fn task_types_list(
     ))
   }
 
-  "-- name: list_task_types_for_project
--- Story 4.9 AC15: Include tasks_count for each task type
+  "-- Story 4.9 AC15: Include tasks_count for each task type
 select
   tt.id,
   tt.project_id,
@@ -6676,7 +6626,6 @@ pub type TaskTypesUpdateRow {
   )
 }
 
-/// name: update_task_type
 /// Story 4.9 AC13: Update task type name, icon, or capability
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
@@ -6704,8 +6653,7 @@ pub fn task_types_update(
     ))
   }
 
-  "-- name: update_task_type
--- Story 4.9 AC13: Update task type name, icon, or capability
+  "-- Story 4.9 AC13: Update task type name, icon, or capability
 update task_types
 set
   name = $2,
@@ -6773,7 +6721,8 @@ pub type TasksClaimRow {
   )
 }
 
-/// name: claim_task
+/// Runs the `tasks_claim` query
+/// defined in `./src/scrumbringer_server/sql/tasks_claim.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -6857,8 +6806,7 @@ pub fn tasks_claim(
     ))
   }
 
-  "-- name: claim_task
-with recursive claim_target as (
+  "with recursive claim_target as (
   select id, card_id
   from tasks
   where id = $1
@@ -7048,7 +6996,8 @@ pub type TasksCloseRow {
   )
 }
 
-/// name: close_task
+/// Runs the `tasks_close` query
+/// defined in `./src/scrumbringer_server/sql/tasks_close.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -7132,8 +7081,7 @@ pub fn tasks_close(
     ))
   }
 
-  "-- name: close_task
-with updated as (
+  "with updated as (
   update tasks
   set
     claimed_by = null,
@@ -7296,7 +7244,6 @@ pub type TasksCreateRow {
   )
 }
 
-/// name: create_task
 /// Create a new task in a project, ensuring the task type belongs to the project
 /// and associating it with a non-closed leaf card in the same project.
 ///
@@ -7388,8 +7335,7 @@ pub fn tasks_create(
     ))
   }
 
-  "-- name: create_task
--- Create a new task in a project, ensuring the task type belongs to the project
+  "-- Create a new task in a project, ensuring the task type belongs to the project
 -- and associating it with a non-closed leaf card in the same project.
 with type_ok as (
   select id
@@ -7504,7 +7450,8 @@ pub type TasksDeleteRow {
   TasksDeleteRow(id: Int)
 }
 
-/// name: delete_task
+/// Runs the `tasks_delete` query
+/// defined in `./src/scrumbringer_server/sql/tasks_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -7518,8 +7465,7 @@ pub fn tasks_delete(
     decode.success(TasksDeleteRow(id:))
   }
 
-  "-- name: delete_task
-with eligible as (
+  "with eligible as (
   select t.id
   from tasks t
   where t.id = $1
@@ -7619,7 +7565,8 @@ pub type TasksGetForUserRow {
   )
 }
 
-/// name: get_task_for_user
+/// Runs the `tasks_get_for_user` query
+/// defined in `./src/scrumbringer_server/sql/tasks_get_for_user.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -7702,8 +7649,7 @@ pub fn tasks_get_for_user(
     ))
   }
 
-  "-- name: get_task_for_user
-select
+  "select
   t.id,
   t.project_id,
   t.type_id,
@@ -7864,7 +7810,8 @@ pub type TasksListRow {
   )
 }
 
-/// name: list_tasks_for_project
+/// Runs the `tasks_list` query
+/// defined in `./src/scrumbringer_server/sql/tasks_list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -7954,8 +7901,7 @@ pub fn tasks_list(
     ))
   }
 
-  "-- name: list_tasks_for_project
-select
+  "select
   t.id,
   t.project_id,
   t.type_id,
@@ -8169,7 +8115,8 @@ pub type TasksReleaseRow {
   )
 }
 
-/// name: release_task
+/// Runs the `tasks_release` query
+/// defined in `./src/scrumbringer_server/sql/tasks_release.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8253,8 +8200,7 @@ pub fn tasks_release(
     ))
   }
 
-  "-- name: release_task
-with updated as (
+  "with updated as (
   update tasks
   set
     claimed_by = null,
@@ -8376,7 +8322,8 @@ pub type TasksReleaseAllRow {
   TasksReleaseAllRow(id: Int)
 }
 
-/// name: release_all_tasks_for_user
+/// Runs the `tasks_release_all` query
+/// defined in `./src/scrumbringer_server/sql/tasks_release_all.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8391,8 +8338,7 @@ pub fn tasks_release_all(
     decode.success(TasksReleaseAllRow(id:))
   }
 
-  "-- name: release_all_tasks_for_user
-with updated as (
+  "with updated as (
   update tasks
   set
     claimed_by = null,
@@ -8460,7 +8406,8 @@ pub type TasksUpdateRow {
   )
 }
 
-/// name: update_editable_task
+/// Runs the `tasks_update` query
+/// defined in `./src/scrumbringer_server/sql/tasks_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8551,8 +8498,7 @@ pub fn tasks_update(
     ))
   }
 
-  "-- name: update_editable_task
-with updated as (
+  "with updated as (
 update tasks
 set
   title = case when $3 = '__unset__' then title else $3 end,
@@ -8688,7 +8634,8 @@ pub type UserCardViewsUpsertRow {
   UserCardViewsUpsertRow(user_id: Int, card_id: Int, last_viewed_at: String)
 }
 
-/// name: user_card_views_upsert
+/// Runs the `user_card_views_upsert` query
+/// defined in `./src/scrumbringer_server/sql/user_card_views_upsert.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8705,8 +8652,7 @@ pub fn user_card_views_upsert(
     decode.success(UserCardViewsUpsertRow(user_id:, card_id:, last_viewed_at:))
   }
 
-  "-- name: user_card_views_upsert
-insert into user_card_views (user_id, card_id, last_viewed_at)
+  "insert into user_card_views (user_id, card_id, last_viewed_at)
 values ($1, $2, now())
 on conflict (user_id, card_id)
 do update set last_viewed_at = excluded.last_viewed_at
@@ -8729,7 +8675,8 @@ pub type UserTaskViewsUpsertRow {
   UserTaskViewsUpsertRow(user_id: Int, task_id: Int, last_viewed_at: String)
 }
 
-/// name: user_task_views_upsert
+/// Runs the `user_task_views_upsert` query
+/// defined in `./src/scrumbringer_server/sql/user_task_views_upsert.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8746,8 +8693,7 @@ pub fn user_task_views_upsert(
     decode.success(UserTaskViewsUpsertRow(user_id:, task_id:, last_viewed_at:))
   }
 
-  "-- name: user_task_views_upsert
-insert into user_task_views (user_id, task_id, last_viewed_at)
+  "insert into user_task_views (user_id, task_id, last_viewed_at)
 values ($1, $2, now())
 on conflict (user_id, task_id)
 do update set last_viewed_at = excluded.last_viewed_at
@@ -8770,7 +8716,8 @@ pub type UsersOrgIdRow {
   UsersOrgIdRow(org_id: Int)
 }
 
-/// name: user_org_id
+/// Runs the `users_org_id` query
+/// defined in `./src/scrumbringer_server/sql/users_org_id.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8784,8 +8731,7 @@ pub fn users_org_id(
     decode.success(UsersOrgIdRow(org_id:))
   }
 
-  "-- name: user_org_id
-select org_id
+  "select org_id
 from users
 where id = $1
   and deleted_at is null;
@@ -8815,7 +8761,8 @@ pub type WorkflowsCreateRow {
   )
 }
 
-/// name: create_workflow
+/// Runs the `workflows_create` query
+/// defined in `./src/scrumbringer_server/sql/workflows_create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8850,8 +8797,7 @@ pub fn workflows_create(
     ))
   }
 
-  "-- name: create_workflow
-INSERT INTO workflows (org_id, project_id, name, description, active, created_by)
+  "INSERT INTO workflows (org_id, project_id, name, description, active, created_by)
 VALUES (
   $1,
   CASE WHEN $2 <= 0 THEN null ELSE $2 END,
@@ -8896,7 +8842,8 @@ pub type WorkflowsDeleteRow {
   )
 }
 
-/// name: delete_workflow
+/// Runs the `workflows_delete` query
+/// defined in `./src/scrumbringer_server/sql/workflows_delete.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -8920,8 +8867,7 @@ pub fn workflows_delete(
     ))
   }
 
-  "-- name: delete_workflow
-WITH matched AS (
+  "WITH matched AS (
   SELECT id
   FROM workflows
   WHERE id = $1
@@ -8996,7 +8942,8 @@ pub type WorkflowsGetRow {
   )
 }
 
-/// name: get_workflow
+/// Runs the `workflows_get` query
+/// defined in `./src/scrumbringer_server/sql/workflows_get.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -9028,8 +8975,7 @@ pub fn workflows_get(
     ))
   }
 
-  "-- name: get_workflow
-SELECT
+  "SELECT
   w.id,
   w.org_id,
   coalesce(w.project_id, 0) as project_id,
@@ -9073,7 +9019,8 @@ pub type WorkflowsListForProjectRow {
   )
 }
 
-/// name: list_workflows_for_project
+/// Runs the `workflows_list_for_project` query
+/// defined in `./src/scrumbringer_server/sql/workflows_list_for_project.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -9105,8 +9052,7 @@ pub fn workflows_list_for_project(
     ))
   }
 
-  "-- name: list_workflows_for_project
-SELECT
+  "SELECT
   w.id,
   w.org_id,
   coalesce(w.project_id, 0) as project_id,
@@ -9141,7 +9087,8 @@ pub type WorkflowsSetActiveRow {
   WorkflowsSetActiveRow(id: Int)
 }
 
-/// name: set_workflow_active
+/// Runs the `workflows_set_active` query
+/// defined in `./src/scrumbringer_server/sql/workflows_set_active.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -9158,8 +9105,7 @@ pub fn workflows_set_active(
     decode.success(WorkflowsSetActiveRow(id:))
   }
 
-  "-- name: set_workflow_active
-UPDATE workflows
+  "UPDATE workflows
 SET active = $4
 WHERE id = $1
   AND org_id = $2
@@ -9199,7 +9145,8 @@ pub type WorkflowsUpdateRow {
   )
 }
 
-/// name: update_workflow
+/// Runs the `workflows_update` query
+/// defined in `./src/scrumbringer_server/sql/workflows_update.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -9233,8 +9180,7 @@ pub fn workflows_update(
     ))
   }
 
-  "-- name: update_workflow
-UPDATE workflows
+  "UPDATE workflows
 SET
   name = case when $4 = '__unset__' then name else $4 end,
   description = case when $5 = '__unset__' then description else nullif($5, '') end

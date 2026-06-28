@@ -1,4 +1,3 @@
--- name: create_workflow
 INSERT INTO workflows (org_id, project_id, name, description, active, created_by)
 VALUES (
   $1,

@@ -1,4 +1,3 @@
--- name: automation_config_events_insert
 insert into automation_config_events (
   org_id,
   project_id,

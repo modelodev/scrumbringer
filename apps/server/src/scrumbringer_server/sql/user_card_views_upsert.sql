@@ -1,4 +1,3 @@
--- name: user_card_views_upsert
 insert into user_card_views (user_id, card_id, last_viewed_at)
 values ($1, $2, now())
 on conflict (user_id, card_id)

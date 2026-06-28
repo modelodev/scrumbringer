@@ -1,4 +1,3 @@
--- name: delete_workflow
 WITH matched AS (
   SELECT id
   FROM workflows

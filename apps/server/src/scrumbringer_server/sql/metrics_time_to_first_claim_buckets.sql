@@ -1,4 +1,3 @@
--- name: metrics_time_to_first_claim_buckets
 with first_claim as (
   select
     actor_user_id,

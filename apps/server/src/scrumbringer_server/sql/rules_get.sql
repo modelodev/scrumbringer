@@ -1,4 +1,3 @@
--- name: get_rule
 SELECT
   r.id,
   r.workflow_id,

@@ -1,4 +1,3 @@
--- name: get_task_template
 SELECT
   t.id,
   t.org_id,

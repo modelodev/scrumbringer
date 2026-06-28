@@ -1,4 +1,3 @@
--- name: list_rule_templates_for_rule
 SELECT
   t.id,
   t.org_id,

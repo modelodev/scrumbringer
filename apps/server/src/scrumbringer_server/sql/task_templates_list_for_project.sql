@@ -1,4 +1,3 @@
--- name: list_task_templates_for_project
 -- Story 4.9 AC20: Include template usage counters
 SELECT
   t.id,

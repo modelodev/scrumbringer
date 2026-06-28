@@ -1,4 +1,3 @@
--- name: insert_project_member
 insert into project_members (project_id, user_id, role)
 values ($1, $2, $3)
 returning

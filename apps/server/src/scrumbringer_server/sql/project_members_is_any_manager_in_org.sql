@@ -1,4 +1,3 @@
--- name: is_any_project_manager_in_org
 select exists(
   select 1
   from project_members pm

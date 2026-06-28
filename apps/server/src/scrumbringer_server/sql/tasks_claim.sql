@@ -1,4 +1,3 @@
--- name: claim_task
 with recursive claim_target as (
   select id, card_id
   from tasks

@@ -1,4 +1,3 @@
--- name: rule_metrics_by_workflow
 -- Get aggregated metrics for all rules in a workflow.
 select
     r.id as rule_id,

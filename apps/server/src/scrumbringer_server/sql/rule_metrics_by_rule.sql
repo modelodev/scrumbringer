@@ -1,4 +1,3 @@
--- name: rule_metrics_by_rule
 -- Get detailed metrics for a single rule with suppression breakdown.
 select
     r.id as rule_id,

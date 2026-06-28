@@ -1,4 +1,3 @@
--- name: task_positions_list_for_user
 select
   tp.task_id,
   tp.user_id,

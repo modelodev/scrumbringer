@@ -1,4 +1,3 @@
--- name: create_task_dependency
 with inserted as (
   insert into task_dependencies (task_id, depends_on_task_id, created_by)
   values ($1, $2, $3)

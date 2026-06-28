@@ -1,4 +1,3 @@
--- name: list_rules_for_workflow
 SELECT
   r.id,
   r.workflow_id,

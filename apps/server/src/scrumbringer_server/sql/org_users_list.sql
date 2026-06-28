@@ -1,4 +1,3 @@
--- name: list_org_users
 select
   id,
   email,

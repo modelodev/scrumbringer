@@ -1,4 +1,3 @@
--- name: release_task
 with updated as (
   update tasks
   set

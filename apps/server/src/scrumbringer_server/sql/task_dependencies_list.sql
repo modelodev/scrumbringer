@@ -1,4 +1,3 @@
--- name: list_task_dependencies
 select
   td.depends_on_task_id as task_id,
   t.title,

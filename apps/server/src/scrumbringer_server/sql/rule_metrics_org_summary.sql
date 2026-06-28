@@ -1,4 +1,3 @@
--- name: rule_metrics_org_summary
 -- Get org-wide rule metrics summary.
 select
     w.id as workflow_id,

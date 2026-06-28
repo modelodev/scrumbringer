@@ -1,4 +1,3 @@
--- name: project_update
 update projects
 set name = $2
 where id = $1
