@@ -1,8 +1,9 @@
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
-import domain/card.{Card, Draft}
+import domain/card.{Card}
 import domain/project.{Project}
 import domain/project_role.{Manager}
 import domain/remote.{Loaded}
@@ -31,21 +32,7 @@ fn sample_project() {
 }
 
 fn sample_card() {
-  Card(
-    id: 1,
-    project_id: 1,
-    parent_card_id: opt.None,
-    title: "Playwright Card",
-    description: "",
-    color: opt.None,
-    state: Draft,
-    task_count: 1,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    has_new_notes: False,
-  )
+  Card(..domain_fixtures.card(1, 1, "Playwright Card"), task_count: 1)
 }
 
 pub fn cards_view_renders_detail_button_test() {

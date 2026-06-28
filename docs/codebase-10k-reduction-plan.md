@@ -1431,7 +1431,10 @@ Estado de ejecucion:
 - Vigesimo pase de fixtures de dominio aplicado a `pool_task_card`. Se recorta
   el helper base de task conservando icono, prioridad, autor/fecha y card
   asociada, que son los datos visuales que gobiernan esos casos.
-- Delta parcial WP-12: `-3.242` lineas netas mantenidas (`-44` del primer pase
+- Vigesimoprimer pase de fixtures de dominio aplicado a `admin_cards_view`.
+  `sample_card` reutiliza la fixture compartida y conserva solo `task_count`
+  como dato especifico de los contratos de borrado y detalle.
+- Delta parcial WP-12: `-3.255` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1472,7 +1475,8 @@ Estado de ejecucion:
   decimoctavo pase de fixtures de dominio compartidas en tests de cliente,
   `-45` del decimonoveno pase de fixtures de dominio compartidas en tests de
   cliente, `-11` del vigesimo pase de fixtures de dominio compartidas en tests
-  de cliente).
+  de cliente, `-13` del vigesimoprimer pase de fixtures de dominio compartidas
+  en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
