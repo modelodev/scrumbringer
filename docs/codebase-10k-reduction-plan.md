@@ -1373,7 +1373,11 @@ Estado de ejecucion:
   `tasks_task_list`, `tasks_show_update` y `tasks_show_feedback_update`). Los
   tests pasan a declarar solo los campos observables del caso: descripcion,
   prioridad, fecha de creacion, version y card asociada.
-- Delta parcial WP-12: `-2.673` lineas netas mantenidas (`-44` del primer pase
+- Septimo pase de fixtures de dominio aplicado a tests de logica pura de task
+  (`tasks_claimability`, `tasks_dependency_list` y `task_blocking_status`). Se
+  retiran constructores e imports locales donde el escenario solo depende de
+  `state`, `blocked_count` o dependencia abierta/cerrada.
+- Delta parcial WP-12: `-2.701` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1398,7 +1402,8 @@ Estado de ejecucion:
   pase de fixtures de dominio compartidas en tests de cliente, `-43` del
   cuarto pase de fixtures de dominio compartidas en tests de cliente, `-56` del
   quinto pase de fixtures de dominio compartidas en tests de cliente, `-72` del
-  sexto pase de fixtures de dominio compartidas en tests de cliente).
+  sexto pase de fixtures de dominio compartidas en tests de cliente, `-28` del
+  septimo pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

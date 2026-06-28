@@ -4,7 +4,6 @@ import support/domain_fixtures
 import domain/remote.{Loaded, Loading}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/dependency_list
 
 pub fn add_to_remote_starts_loaded_list_when_not_loaded_test() {
@@ -67,7 +66,6 @@ fn closed_done_state() -> task_state.TaskExecutionState {
 fn sample_task() -> Task {
   Task(
     ..domain_fixtures.task(42, "Task", 1),
-    task_type: TaskTypeInline(id: 1, name: "Task", icon: "check"),
     description: Some("Details"),
     priority: 1,
   )

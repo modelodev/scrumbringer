@@ -1,8 +1,7 @@
-import gleam/option.{None}
+import support/domain_fixtures
 
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/claimability
 
 pub fn available_unblocked_task_can_be_claimed_test() {
@@ -36,26 +35,11 @@ pub fn closed_task_cannot_be_claimed_test() {
 
 fn sample_task(state: task_state.TaskExecutionState, blocked_count: Int) -> Task {
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    ongoing_by: None,
-    title: "Prepare release",
-    description: None,
+    ..domain_fixtures.task(42, "Prepare release", 1),
     priority: 2,
     state: state,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
     blocked_count: blocked_count,
-    dependencies: [],
-    automation_origin: None,
   )
 }
