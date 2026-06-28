@@ -202,12 +202,6 @@ pub fn no_tasks(title: String, description: String) -> EmptyStateConfig(msg) {
   |> with_meaning(HealthyEmpty)
 }
 
-/// Empty state for no cards.
-pub fn no_cards(title: String, description: String) -> EmptyStateConfig(msg) {
-  new("clipboard-document-list", title, description)
-  |> with_meaning(HealthyEmpty)
-}
-
 /// Empty state for no projects.
 pub fn no_projects(title: String, description: String) -> EmptyStateConfig(msg) {
   new("folder", title, description)
@@ -218,24 +212,6 @@ pub fn no_projects(title: String, description: String) -> EmptyStateConfig(msg) 
 pub fn no_members(title: String, description: String) -> EmptyStateConfig(msg) {
   new("user-group", title, description)
   |> with_meaning(NeedsSetup)
-}
-
-/// Empty state for no search results.
-pub fn no_results(title: String, description: String) -> EmptyStateConfig(msg) {
-  new("magnifying-glass", title, description)
-  |> with_meaning(NoResults)
-}
-
-/// Empty state for all tasks closed (celebration).
-pub fn all_done(title: String, description: String) -> EmptyStateConfig(msg) {
-  new("sparkles", title, description)
-  |> with_meaning(HealthyEmpty)
-}
-
-/// Empty state for inbox/notifications.
-pub fn empty_inbox(title: String, description: String) -> EmptyStateConfig(msg) {
-  new("inbox", title, description)
-  |> with_meaning(HealthyEmpty)
 }
 
 fn root_attrs(meaning: Meaning, extra_class: opt.Option(String)) {

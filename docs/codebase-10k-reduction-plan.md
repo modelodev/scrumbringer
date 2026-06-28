@@ -937,6 +937,12 @@ Estado de ejecucion:
   - `rg` exacto de los simbolos retirados sin consumidores;
   - `git diff --check`;
   - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test` sin resultados.
+- Micro-pase adicional UI:
+  - retirados `add_button_with_size`, `no_cards`, `no_results`, `all_done` y
+    `empty_inbox`, todos sin consumidores reales tras el pase de helpers
+    publicos;
+  - delta adicional: `-27` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pase: `-761` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
