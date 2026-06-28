@@ -114,10 +114,6 @@ pub fn try_update(
       handle_task_type_create_icon_changed(model, icon)
       |> without_auth_check
 
-    admin_messages.TaskTypeCreateIconSearchChanged(search) ->
-      handle_task_type_create_icon_search_changed(model, search)
-      |> without_auth_check
-
     admin_messages.TaskTypeIconLoaded ->
       handle_task_type_icon_loaded(model)
       |> without_auth_check
@@ -285,7 +281,6 @@ fn handle_task_type_dialog_closed(
       task_types_dialog_mode: opt.None,
       task_types_create_name: "",
       task_types_create_icon: "",
-      task_types_create_icon_search: "",
       task_types_create_in_flight: False,
       task_types_create_capability_id: opt.None,
       task_types_create_error: opt.None,
@@ -354,17 +349,6 @@ fn handle_task_type_icon_errored(
       ..model,
       task_types_icon_preview: admin_task_types.IconError,
     ),
-    effect.none(),
-  )
-}
-
-/// Handle icon picker search input change.
-fn handle_task_type_create_icon_search_changed(
-  model: admin_task_types.Model,
-  search: String,
-) -> #(admin_task_types.Model, Effect(parent_msg)) {
-  #(
-    admin_task_types.Model(..model, task_types_create_icon_search: search),
     effect.none(),
   )
 }
@@ -499,7 +483,6 @@ fn handle_task_type_created_ok(
       task_types_create_in_flight: False,
       task_types_create_name: "",
       task_types_create_icon: "",
-      task_types_create_icon_search: "",
       task_types_create_capability_id: opt.None,
       task_types_create_error: opt.None,
       task_types_icon_preview: admin_task_types.IconIdle,

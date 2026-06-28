@@ -7,7 +7,6 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option}
-import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -281,18 +280,4 @@ pub fn get(icon_id: String) -> Option(CatalogIcon) {
   catalog()
   |> list.find(fn(icon) { icon.id == icon_id })
   |> option.from_result
-}
-
-/// Search catalog by query (matches ID or label).
-pub fn search(query: String) -> List(CatalogIcon) {
-  let q = string.lowercase(string.trim(query))
-  case q {
-    "" -> catalog()
-    _ ->
-      catalog()
-      |> list.filter(fn(icon) {
-        string.contains(string.lowercase(icon.label), q)
-        || string.contains(icon.id, q)
-      })
-  }
 }

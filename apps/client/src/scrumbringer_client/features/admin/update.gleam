@@ -340,7 +340,6 @@ fn update_without_api_tokens(
     | admin_messages.TaskTypeCreateDialogClosed
     | admin_messages.TaskTypeCreateNameChanged(_)
     | admin_messages.TaskTypeCreateIconChanged(_)
-    | admin_messages.TaskTypeCreateIconSearchChanged(_)
     | admin_messages.TaskTypeIconLoaded
     | admin_messages.TaskTypeIconErrored
     | admin_messages.TaskTypeCreateCapabilityChanged(_)

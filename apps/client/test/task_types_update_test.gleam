@@ -104,7 +104,6 @@ pub fn create_dialog_closed_resets_form_state_test() {
       task_types_dialog_mode: option.Some(admin_task_types.TaskTypeDialogCreate),
       task_types_create_name: "Bug",
       task_types_create_icon: "bug",
-      task_types_create_icon_search: "bu",
       task_types_create_capability_id: option.Some("7"),
       task_types_create_in_flight: True,
       task_types_create_error: option.Some("error"),
@@ -117,7 +116,6 @@ pub fn create_dialog_closed_resets_form_state_test() {
   let assert option.None = next.task_types_dialog_mode
   let assert "" = next.task_types_create_name
   let assert "" = next.task_types_create_icon
-  let assert "" = next.task_types_create_icon_search
   let assert option.None = next.task_types_create_capability_id
   let assert False = next.task_types_create_in_flight
   let assert option.None = next.task_types_create_error
@@ -134,12 +132,6 @@ pub fn field_handlers_update_create_form_test() {
     )
   let #(model, _, _, _) =
     update(model, admin_messages.TaskTypeCreateIconChanged("bug"), option.None)
-  let #(model, _, _, _) =
-    update(
-      model,
-      admin_messages.TaskTypeCreateIconSearchChanged("bu"),
-      option.None,
-    )
   let #(next, fx, _, _) =
     update(
       model,
@@ -150,7 +142,6 @@ pub fn field_handlers_update_create_form_test() {
   let assert "Bug" = next.task_types_create_name
   let assert "bug" = next.task_types_create_icon
   let assert admin_task_types.IconOk = next.task_types_icon_preview
-  let assert "bu" = next.task_types_create_icon_search
   let assert option.Some("7") = next.task_types_create_capability_id
   let assert True = fx == effect.none()
 }
@@ -212,7 +203,6 @@ pub fn created_ok_closes_dialog_and_resets_form_test() {
       task_types_dialog_mode: option.Some(admin_task_types.TaskTypeDialogCreate),
       task_types_create_name: "Bug",
       task_types_create_icon: "bug",
-      task_types_create_icon_search: "bu",
       task_types_create_capability_id: option.Some("7"),
       task_types_create_in_flight: True,
       task_types_create_error: option.Some("old"),
@@ -230,7 +220,6 @@ pub fn created_ok_closes_dialog_and_resets_form_test() {
   let assert False = next.task_types_create_in_flight
   let assert "" = next.task_types_create_name
   let assert "" = next.task_types_create_icon
-  let assert "" = next.task_types_create_icon_search
   let assert option.None = next.task_types_create_capability_id
   let assert option.None = next.task_types_create_error
   let assert admin_task_types.IconIdle = next.task_types_icon_preview
