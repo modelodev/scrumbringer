@@ -1180,6 +1180,15 @@ Estado de ejecucion:
   - sus helpers restantes (`empty` y `section`) duplicaban primitivas Lustre
     locales y no aportaban contrato visual compartido;
   - delta adicional WP-10: `-41` lineas mantenidas.
+- Micro-pase adicional de tooltips UI huerfanos:
+  - retirados `ui/tooltips/author_tooltip`, `notes_preview_tooltip`,
+    `progress_tooltip` y `tab_badge`, componentes sin consumidores de
+    produccion y cubiertos solo por tests directos del propio componente;
+  - `ui/tooltips/types` conserva solo `DeleteNoteContext`, que sigue siendo
+    contrato vivo de `notes_list`;
+  - retirados los tests directos de componentes muertos, manteniendo la
+    cobertura de `notes_list` para el contexto de borrado;
+  - delta adicional WP-10: `-407` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1205,10 +1214,11 @@ Estado de ejecucion:
     `1884 passed` tras retirar API preventiva de `ui/button`;
     `1879 passed` tras retirar primitivas UI preventivas sin consumidores;
     `1871 passed` tras retirar `ui/css_class`;
-    `1871 passed` tras retirar `ui/layout`);
+    `1871 passed` tras retirar `ui/layout`;
+    `1864 passed` tras retirar tooltips UI huerfanos);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.155` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.562` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
@@ -2163,7 +2173,7 @@ anterior:
 | --- | --- | --- |
 | Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; `tasks_http_test` ya no mantiene helper local de task type; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
 | Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; helpers locales ya migrados y primer pase de `render_assertions.html` aplicado. Repetir `rg "element\\.to_document_string" apps/client/test` para detectar usos que aun deban pasar por soporte compartido. |
-| Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
+| Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI sin consumidores ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
 | Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
 | Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; repetir comparacion de clases usadas en views contra `styles/*`. |
