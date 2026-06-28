@@ -5,8 +5,6 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/option.{None, Some}
-import gleam/string
-import lustre/element
 
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -15,29 +13,25 @@ import scrumbringer_client/features/plan/kanban_view
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
+import support/render_assertions
 
 pub fn plan_kanban_has_kanban_title_and_hides_claimable_task_ui_test() {
   let html =
     config([available_task()])
     |> kanban_view.view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "work-surface-title\">Kanban")
-  assert_not_contains(html, "work-surface-title\">Plan")
-  assert_not_contains(html, "data-testid=\"plan-mode-kanban\"")
-  assert_not_contains(html, "data-testid=\"plan-mode-structure\"")
-  assert_not_contains(html, "kanban-task-item")
-  assert_not_contains(html, "btn-claim-mini")
-  assert_not_contains(html, "draggable=\"true\"")
-  assert_contains(html, "data-testid=\"work-filter-capability-scope\"")
+  render_assertions.contains(html, "work-surface-title\">Kanban")
+  render_assertions.not_contains(html, "work-surface-title\">Plan")
+  render_assertions.not_contains(html, "data-testid=\"plan-mode-kanban\"")
+  render_assertions.not_contains(html, "data-testid=\"plan-mode-structure\"")
+  render_assertions.not_contains(html, "kanban-task-item")
+  render_assertions.not_contains(html, "btn-claim-mini")
+  render_assertions.not_contains(html, "draggable=\"true\"")
+  render_assertions.contains(
+    html,
+    "data-testid=\"work-filter-capability-scope\"",
+  )
 }
 
 pub fn plan_kanban_card_scope_without_selection_shows_card_target_options_test() {
@@ -48,44 +42,44 @@ pub fn plan_kanban_card_scope_without_selection_shows_card_target_options_test()
       selected_card_id: None,
     )
     |> kanban_view.view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "data-testid=\"kanban-empty-card-scope\"")
-  assert_contains(html, "Select an active card")
-  assert_contains(html, "data-testid=\"plan-scope-card-option\"")
-  assert_contains(html, "Release 1.5")
-  assert_not_contains(html, "Draft prep")
-  assert_not_contains(html, "Closed outcome")
+  render_assertions.contains(html, "data-testid=\"kanban-empty-card-scope\"")
+  render_assertions.contains(html, "Select an active card")
+  render_assertions.contains(html, "data-testid=\"plan-scope-card-option\"")
+  render_assertions.contains(html, "Release 1.5")
+  render_assertions.not_contains(html, "Draft prep")
+  render_assertions.not_contains(html, "Closed outcome")
 }
 
 pub fn plan_kanban_hides_management_actions_even_for_managers_test() {
   let html =
     kanban_board.KanbanConfig(..config([]), is_pm_or_admin: True)
     |> kanban_view.view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_not_contains(html, "kanban-card-edit-action")
-  assert_not_contains(html, "kanban-card-delete-action")
+  render_assertions.not_contains(html, "kanban-card-edit-action")
+  render_assertions.not_contains(html, "kanban-card-delete-action")
 }
 
 pub fn plan_kanban_uses_active_universe_and_closed_toggle_test() {
   let default_html =
     config([])
     |> kanban_view.view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(default_html, "Release 1.5")
-  assert_not_contains(default_html, "Draft prep")
-  assert_not_contains(default_html, "Closed outcome")
+  render_assertions.contains(default_html, "Release 1.5")
+  render_assertions.not_contains(default_html, "Draft prep")
+  render_assertions.not_contains(default_html, "Closed outcome")
 
   let closed_html =
     kanban_board.KanbanConfig(..config([]), show_closed: Some(True))
     |> kanban_view.view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(closed_html, "Release 1.5")
-  assert_not_contains(closed_html, "Draft prep")
-  assert_contains(closed_html, "Closed outcome")
+  render_assertions.contains(closed_html, "Release 1.5")
+  render_assertions.not_contains(closed_html, "Draft prep")
+  render_assertions.contains(closed_html, "Closed outcome")
 }
 
 fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {

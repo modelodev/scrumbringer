@@ -1,6 +1,4 @@
 import gleam/option.{None, Some}
-import gleam/string
-import lustre/element
 
 import domain/task.{type Task, AutomationOrigin, Task, TaskDependency}
 import domain/task/state as task_state
@@ -8,14 +6,7 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/task_card
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
-
-fn assert_contains(text: String, fragment: String) {
-  let assert True = string.contains(text, fragment)
-}
-
-fn assert_not_contains(text: String, fragment: String) {
-  let assert False = string.contains(text, fragment)
-}
+import support/render_assertions
 
 pub fn task_card_renders_blocked_canvas_card_test() {
   let html =
@@ -48,26 +39,26 @@ pub fn task_card_renders_blocked_canvas_card_test() {
       touch_preview: True,
       highlight_class: " highlighted",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "task-card preview-left")
-  assert_contains(html, "decay-shake-high")
-  assert_contains(html, "task-blocked")
-  assert_contains(html, "highlighted")
-  assert_contains(html, "touch-preview")
-  assert_contains(html, "Prepare release")
-  assert_contains(html, "Blocked by 1 tasks")
-  assert_contains(html, "data-testid=\"task-card-signal-due\"")
-  assert_contains(html, "Overdue since 2026-06-18")
-  assert_contains(html, "API contract")
-  assert_contains(html, "task-card-open-action")
-  assert_contains(html, "aria-label=\"Open task: Prepare release\"")
-  assert_contains(html, "task-card-primary-action")
-  assert_contains(html, "task-card-primary-action-blocked")
-  assert_contains(html, "aria-disabled=\"true\"")
-  assert_not_contains(html, "task-blocked-card")
-  assert_not_contains(html, "Task has open dependencies")
-  assert_not_contains(html, "Closed dependency")
+  render_assertions.contains(html, "task-card preview-left")
+  render_assertions.contains(html, "decay-shake-high")
+  render_assertions.contains(html, "task-blocked")
+  render_assertions.contains(html, "highlighted")
+  render_assertions.contains(html, "touch-preview")
+  render_assertions.contains(html, "Prepare release")
+  render_assertions.contains(html, "Blocked by 1 tasks")
+  render_assertions.contains(html, "data-testid=\"task-card-signal-due\"")
+  render_assertions.contains(html, "Overdue since 2026-06-18")
+  render_assertions.contains(html, "API contract")
+  render_assertions.contains(html, "task-card-open-action")
+  render_assertions.contains(html, "aria-label=\"Open task: Prepare release\"")
+  render_assertions.contains(html, "task-card-primary-action")
+  render_assertions.contains(html, "task-card-primary-action-blocked")
+  render_assertions.contains(html, "aria-disabled=\"true\"")
+  render_assertions.not_contains(html, "task-blocked-card")
+  render_assertions.not_contains(html, "Task has open dependencies")
+  render_assertions.not_contains(html, "Closed dependency")
 }
 
 pub fn task_card_renders_due_today_signal_without_canvas_text_test() {
@@ -79,13 +70,13 @@ pub fn task_card_renders_due_today_signal_without_canvas_text_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "data-testid=\"task-card-signal-due\"")
-  assert_contains(html, "is-due-today")
-  assert_contains(html, "aria-label=\"Due today\"")
-  assert_not_contains(html, ">Due today<")
-  assert_contains(html, "width:128px; height:128px;")
+  render_assertions.contains(html, "data-testid=\"task-card-signal-due\"")
+  render_assertions.contains(html, "is-due-today")
+  render_assertions.contains(html, "aria-label=\"Due today\"")
+  render_assertions.not_contains(html, ">Due today<")
+  render_assertions.contains(html, "width:128px; height:128px;")
 }
 
 pub fn task_card_renders_due_soon_signal_without_long_date_text_test() {
@@ -97,12 +88,12 @@ pub fn task_card_renders_due_soon_signal_without_long_date_text_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "data-testid=\"task-card-signal-due\"")
-  assert_contains(html, "is-due-soon")
-  assert_contains(html, "Due soon: 2026-06-24")
-  assert_not_contains(html, ">2026-06-24<")
+  render_assertions.contains(html, "data-testid=\"task-card-signal-due\"")
+  render_assertions.contains(html, "is-due-soon")
+  render_assertions.contains(html, "Due soon: 2026-06-24")
+  render_assertions.not_contains(html, ">2026-06-24<")
 }
 
 pub fn task_card_ignores_invalid_due_date_signal_test() {
@@ -114,12 +105,12 @@ pub fn task_card_ignores_invalid_due_date_signal_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_not_contains(html, "data-testid=\"task-card-signal-due\"")
-  assert_not_contains(html, "is-overdue")
-  assert_not_contains(html, "is-due-today")
-  assert_not_contains(html, "is-due-soon")
+  render_assertions.not_contains(html, "data-testid=\"task-card-signal-due\"")
+  render_assertions.not_contains(html, "is-overdue")
+  render_assertions.not_contains(html, "is-due-today")
+  render_assertions.not_contains(html, "is-due-soon")
 }
 
 pub fn task_card_localizes_automation_signal_test() {
@@ -148,12 +139,18 @@ pub fn task_card_localizes_automation_signal_test() {
         locale: locale.Es,
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "task-card-signal-automation")
-  assert_contains(html, "data-testid=\"automation-created-task-origin\"")
-  assert_contains(html, "aria-label=\"Creada por regla de automatización #8\"")
-  assert_not_contains(html, "Created by automation")
+  render_assertions.contains(html, "task-card-signal-automation")
+  render_assertions.contains(
+    html,
+    "data-testid=\"automation-created-task-origin\"",
+  )
+  render_assertions.contains(
+    html,
+    "aria-label=\"Creada por regla de automatización #8\"",
+  )
+  render_assertions.not_contains(html, "Created by automation")
 }
 
 pub fn task_card_renders_claimed_owner_actions_test() {
@@ -172,12 +169,12 @@ pub fn task_card_renders_claimed_owner_actions_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "task-card")
-  assert_contains(html, "Release")
-  assert_contains(html, "Close task")
-  assert_not_contains(html, "task-card-primary-action")
+  render_assertions.contains(html, "task-card")
+  render_assertions.contains(html, "Release")
+  render_assertions.contains(html, "Close task")
+  render_assertions.not_contains(html, "task-card-primary-action")
 }
 
 pub fn task_card_renders_available_claim_action_test() {
@@ -189,17 +186,17 @@ pub fn task_card_renders_available_claim_action_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "task-card-actions-left")
-  assert_contains(html, "task-card-primary-action")
-  assert_contains(html, "btn-entity-action")
-  assert_contains(html, "btn-icon")
-  assert_contains(html, "aria-label=\"Claim to My Tasks\"")
-  assert_contains(html, "task-card-open-action")
-  assert_contains(html, "aria-label=\"Open task: Prepare release\"")
-  assert_not_contains(html, "class=\"task-card-primary-action\"")
-  assert_not_contains(html, "task-card-primary-label")
+  render_assertions.contains(html, "task-card-actions-left")
+  render_assertions.contains(html, "task-card-primary-action")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-icon")
+  render_assertions.contains(html, "aria-label=\"Claim to My Tasks\"")
+  render_assertions.contains(html, "task-card-open-action")
+  render_assertions.contains(html, "aria-label=\"Open task: Prepare release\"")
+  render_assertions.not_contains(html, "class=\"task-card-primary-action\"")
+  render_assertions.not_contains(html, "task-card-primary-label")
 }
 
 pub fn task_card_position_does_not_clamp_cards_into_overlap_test() {
@@ -211,11 +208,11 @@ pub fn task_card_position_does_not_clamp_cards_into_overlap_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "left:max(0px,900px)")
-  assert_not_contains(html, "left:clamp")
-  assert_not_contains(html, "calc(100% - 128px)")
+  render_assertions.contains(html, "left:max(0px,900px)")
+  render_assertions.not_contains(html, "left:clamp")
+  render_assertions.not_contains(html, "calc(100% - 128px)")
 }
 
 pub fn task_card_renders_mobile_context_for_touch_layout_test() {
@@ -227,12 +224,12 @@ pub fn task_card_renders_mobile_context_for_touch_layout_test() {
       touch_preview: False,
       highlight_class: "",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  assert_contains(html, "task-card-mobile-context")
-  assert_contains(html, "Release card")
-  assert_contains(html, "3 days ago")
-  assert_contains(html, "Task description")
+  render_assertions.contains(html, "task-card-mobile-context")
+  render_assertions.contains(html, "Release card")
+  render_assertions.contains(html, "3 days ago")
+  render_assertions.contains(html, "Task description")
 }
 
 fn config(

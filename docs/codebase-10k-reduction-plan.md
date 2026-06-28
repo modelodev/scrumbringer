@@ -435,6 +435,20 @@ Criterios de aceptacion:
   reducido a soporte compartido y casos con motivo especial.
 - Los tests siguen expresando el comportamiento, no la implementacion interna.
 
+Estado de ejecucion:
+
+- Parcialmente ejecutado en rama `refactor-cleanup`.
+- Creado `apps/client/test/support/render_assertions.gleam` con `contains`,
+  `not_contains` y `html`.
+- Migrados `plan_kanban_view_test.gleam`, `pool_task_card_test.gleam` y
+  `styles_btn_loading_test.gleam` para validar el patron en tests pequenos.
+- Delta parcial WP-02: `-2` lineas netas mantenidas; el primer paquete crea el
+  soporte compartido y prepara la reduccion posterior en `people_view_test` y
+  otros tests de vista.
+- Verificacion:
+  - `cd apps/client && gleam format src test`;
+  - `cd apps/client && gleam test` (`1912 passed`).
+
 ### WP-03. Reducir roots Lustre por owners reales
 
 Objetivo: bajar complejidad de roots sin crear un framework de rutas.
