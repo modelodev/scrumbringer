@@ -171,7 +171,6 @@ pub type Msg {
   TaskTypeCreateNameChanged(String)
   TaskTypeCreateIconChanged(String)
   TaskTypeCreateIconSearchChanged(String)
-  TaskTypeCreateIconCategoryChanged(String)
   TaskTypeIconLoaded
   TaskTypeIconErrored
   TaskTypeCreateCapabilityChanged(String)

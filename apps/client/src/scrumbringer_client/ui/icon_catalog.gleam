@@ -19,19 +19,9 @@ import gleroglero/outline
 // Types
 // =============================================================================
 
-/// Icon category for filtering in the picker.
-pub type IconCategory {
-  All
-  Tasks
-  Status
-  Priority
-  Objects
-  Actions
-}
-
 /// A curated icon entry with metadata.
 pub type CatalogIcon {
-  CatalogIcon(id: String, label: String, category: IconCategory)
+  CatalogIcon(id: String, label: String)
 }
 
 // =============================================================================
@@ -42,93 +32,76 @@ pub type CatalogIcon {
 pub fn catalog() -> List(CatalogIcon) {
   [
     // Tasks (work items)
-    CatalogIcon("bug-ant", "Bug", Tasks),
-    CatalogIcon("sparkles", "Feature", Tasks),
-    CatalogIcon("clipboard-document-check", "Task", Tasks),
-    CatalogIcon("clipboard-document-list", "List", Tasks),
-    CatalogIcon("document-text", "Document", Tasks),
-    CatalogIcon("light-bulb", "Idea", Tasks),
-    CatalogIcon("wrench-screwdriver", "Fix", Tasks),
-    CatalogIcon("wrench", "Maintenance", Tasks),
-    CatalogIcon("beaker", "Experiment", Tasks),
-    CatalogIcon("rocket-launch", "Launch", Tasks),
-    CatalogIcon("code-bracket", "Code", Tasks),
-    CatalogIcon("command-line", "Script", Tasks),
-    CatalogIcon("cube", "Component", Tasks),
-    CatalogIcon("puzzle-piece", "Integration", Tasks),
-    CatalogIcon("shield-check", "Security", Tasks),
-    CatalogIcon("chart-bar", "Analytics", Tasks),
+    CatalogIcon("bug-ant", "Bug"),
+    CatalogIcon("sparkles", "Feature"),
+    CatalogIcon("clipboard-document-check", "Task"),
+    CatalogIcon("clipboard-document-list", "List"),
+    CatalogIcon("document-text", "Document"),
+    CatalogIcon("light-bulb", "Idea"),
+    CatalogIcon("wrench-screwdriver", "Fix"),
+    CatalogIcon("wrench", "Maintenance"),
+    CatalogIcon("beaker", "Experiment"),
+    CatalogIcon("rocket-launch", "Launch"),
+    CatalogIcon("code-bracket", "Code"),
+    CatalogIcon("command-line", "Script"),
+    CatalogIcon("cube", "Component"),
+    CatalogIcon("puzzle-piece", "Integration"),
+    CatalogIcon("shield-check", "Security"),
+    CatalogIcon("chart-bar", "Analytics"),
     // Status (states)
-    CatalogIcon("check-circle", "Closed", Status),
-    CatalogIcon("check", "Check", Status),
-    CatalogIcon("x-circle", "Cancelled", Status),
-    CatalogIcon("pause-circle", "Paused", Status),
-    CatalogIcon("play-circle", "In Progress", Status),
-    CatalogIcon("stop-circle", "Blocked", Status),
-    CatalogIcon("clock", "Pending", Status),
-    CatalogIcon("arrow-path", "Recurring", Status),
-    CatalogIcon("eye", "Review", Status),
-    CatalogIcon("eye-slash", "Hidden", Status),
-    CatalogIcon("lock-closed", "Locked", Status),
-    CatalogIcon("lock-open", "Unlocked", Status),
-    CatalogIcon("archive-box", "Archived", Status),
+    CatalogIcon("check-circle", "Closed"),
+    CatalogIcon("check", "Check"),
+    CatalogIcon("x-circle", "Cancelled"),
+    CatalogIcon("pause-circle", "Paused"),
+    CatalogIcon("play-circle", "In Progress"),
+    CatalogIcon("stop-circle", "Blocked"),
+    CatalogIcon("clock", "Pending"),
+    CatalogIcon("arrow-path", "Recurring"),
+    CatalogIcon("eye", "Review"),
+    CatalogIcon("eye-slash", "Hidden"),
+    CatalogIcon("lock-closed", "Locked"),
+    CatalogIcon("lock-open", "Unlocked"),
+    CatalogIcon("archive-box", "Archived"),
     // Priority (importance)
-    CatalogIcon("bolt", "Urgent", Priority),
-    CatalogIcon("fire", "Critical", Priority),
-    CatalogIcon("flag", "Flagged", Priority),
-    CatalogIcon("star", "Important", Priority),
-    CatalogIcon("exclamation-triangle", "Warning", Priority),
-    CatalogIcon("exclamation-circle", "Alert", Priority),
-    CatalogIcon("bell", "Notification", Priority),
-    CatalogIcon("bell-alert", "Alarm", Priority),
+    CatalogIcon("bolt", "Urgent"),
+    CatalogIcon("fire", "Critical"),
+    CatalogIcon("flag", "Flagged"),
+    CatalogIcon("star", "Important"),
+    CatalogIcon("exclamation-triangle", "Warning"),
+    CatalogIcon("exclamation-circle", "Alert"),
+    CatalogIcon("bell", "Notification"),
+    CatalogIcon("bell-alert", "Alarm"),
     // Objects (things)
-    CatalogIcon("folder", "Folder", Objects),
-    CatalogIcon("folder-open", "Open Folder", Objects),
-    CatalogIcon("inbox", "Inbox", Objects),
-    CatalogIcon("inbox-stack", "Queue", Objects),
-    CatalogIcon("tag", "Tag", Objects),
-    CatalogIcon("bookmark", "Bookmark", Objects),
-    CatalogIcon("paper-clip", "Attachment", Objects),
-    CatalogIcon("link", "Link", Objects),
-    CatalogIcon("photo", "Image", Objects),
-    CatalogIcon("calendar", "Calendar", Objects),
-    CatalogIcon("calendar-days", "Schedule", Objects),
-    CatalogIcon("globe-alt", "Web", Objects),
-    CatalogIcon("server", "Server", Objects),
-    CatalogIcon("cpu-chip", "Hardware", Objects),
+    CatalogIcon("folder", "Folder"),
+    CatalogIcon("folder-open", "Open Folder"),
+    CatalogIcon("inbox", "Inbox"),
+    CatalogIcon("inbox-stack", "Queue"),
+    CatalogIcon("tag", "Tag"),
+    CatalogIcon("bookmark", "Bookmark"),
+    CatalogIcon("paper-clip", "Attachment"),
+    CatalogIcon("link", "Link"),
+    CatalogIcon("photo", "Image"),
+    CatalogIcon("calendar", "Calendar"),
+    CatalogIcon("calendar-days", "Schedule"),
+    CatalogIcon("globe-alt", "Web"),
+    CatalogIcon("server", "Server"),
+    CatalogIcon("cpu-chip", "Hardware"),
     // Actions (verbs)
-    CatalogIcon("pencil", "Edit", Actions),
-    CatalogIcon("pencil-square", "Write", Actions),
-    CatalogIcon("trash", "Delete", Actions),
-    CatalogIcon("plus-circle", "Add", Actions),
-    CatalogIcon("minus-circle", "Remove", Actions),
-    CatalogIcon("magnifying-glass", "Search", Actions),
-    CatalogIcon("paper-airplane", "Send", Actions),
-    CatalogIcon("chat-bubble-left-right", "Discuss", Actions),
-    CatalogIcon("hand-thumb-up", "Approve", Actions),
-    CatalogIcon("hand-thumb-down", "Reject", Actions),
-    CatalogIcon("arrow-down-tray", "Download", Actions),
-    CatalogIcon("arrow-up-tray", "Upload", Actions),
-    CatalogIcon("cog-6-tooth", "Settings", Actions),
-    CatalogIcon("adjustments-horizontal", "Configure", Actions),
+    CatalogIcon("pencil", "Edit"),
+    CatalogIcon("pencil-square", "Write"),
+    CatalogIcon("trash", "Delete"),
+    CatalogIcon("plus-circle", "Add"),
+    CatalogIcon("minus-circle", "Remove"),
+    CatalogIcon("magnifying-glass", "Search"),
+    CatalogIcon("paper-airplane", "Send"),
+    CatalogIcon("chat-bubble-left-right", "Discuss"),
+    CatalogIcon("hand-thumb-up", "Approve"),
+    CatalogIcon("hand-thumb-down", "Reject"),
+    CatalogIcon("arrow-down-tray", "Download"),
+    CatalogIcon("arrow-up-tray", "Upload"),
+    CatalogIcon("cog-6-tooth", "Settings"),
+    CatalogIcon("adjustments-horizontal", "Configure"),
   ]
-}
-
-/// Get all category values for tabs.
-pub fn categories() -> List(IconCategory) {
-  [All, Tasks, Status, Priority, Objects, Actions]
-}
-
-/// Convert category to display label.
-pub fn category_label(cat: IconCategory) -> String {
-  case cat {
-    All -> "Todos"
-    Tasks -> "Tareas"
-    Status -> "Estado"
-    Priority -> "Prioridad"
-    Objects -> "Objetos"
-    Actions -> "Acciones"
-  }
 }
 
 // =============================================================================
@@ -308,14 +281,6 @@ pub fn get(icon_id: String) -> Option(CatalogIcon) {
   catalog()
   |> list.find(fn(icon) { icon.id == icon_id })
   |> option.from_result
-}
-
-/// Filter catalog by category.
-pub fn by_category(cat: IconCategory) -> List(CatalogIcon) {
-  case cat {
-    All -> catalog()
-    _ -> list.filter(catalog(), fn(icon) { icon.category == cat })
-  }
 }
 
 /// Search catalog by query (matches ID or label).
