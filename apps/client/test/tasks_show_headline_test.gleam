@@ -4,7 +4,6 @@ import support/domain_fixtures
 import domain/remote.{type Remote, Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/show/headline
 import scrumbringer_client/i18n/locale
 
@@ -61,16 +60,7 @@ fn config(
 }
 
 fn available_task() -> Task {
-  Task(
-    ..domain_fixtures.task(42, "Prepare release", 1),
-    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    priority: 2,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
-    version: 3,
-    card_id: Some(10),
-    card_title: Some("Release card"),
-  )
+  domain_fixtures.task(42, "Prepare release", 1)
 }
 
 fn claimed_task(claimed_by: Int, mode: task_state.TaskClaimMode) -> Task {

@@ -210,9 +210,6 @@ fn task() -> Task {
     ..domain_fixtures.task(42, "Prepare release", 1),
     task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
     priority: 2,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
-    version: 3,
   )
 }
 

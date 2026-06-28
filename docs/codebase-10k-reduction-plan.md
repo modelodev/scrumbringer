@@ -1463,7 +1463,12 @@ Estado de ejecucion:
   (`pool_blocking`, `pool_positions_route`, `pool_refresh_update` y
   `pool_task_dependencies`). Se sustituyen builders completos por fixtures
   conservando solo dependencias, posiciones e ids/estado observados.
-- Delta parcial WP-12: `-3.494` lineas netas mantenidas (`-44` del primer pase
+- Trigesimo pase de fixtures de dominio aplicado a tests de task show
+  (`tasks_show_header`, `tasks_show_headline`, `tasks_show_permissions` y
+  `tasks_show_summary`). Se retiran tipo/card/fechas/version cuando el HTML o
+  la regla solo observan estado, usuario y titulo; se conserva `Feature/P2`
+  donde el resumen lo verifica.
+- Delta parcial WP-12: `-3.524` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1514,7 +1519,8 @@ Estado de ejecucion:
   cliente, `-19` del vigesimoseptimo pase de fixtures de dominio compartidas
   en tests de cliente, `-11` del vigesimoctavo pase de fixtures de dominio
   compartidas en tests de cliente, `-41` del vigesimonoveno pase de fixtures
-  de dominio compartidas en tests de cliente).
+  de dominio compartidas en tests de cliente, `-30` del trigesimo pase de
+  fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

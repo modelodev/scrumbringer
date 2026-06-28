@@ -43,12 +43,5 @@ fn claimed_by(user_id: Int) -> task_state.TaskExecutionState {
 }
 
 fn task(state: task_state.TaskExecutionState) -> Task {
-  Task(
-    ..domain_fixtures.task(42, "Prepare release", 1),
-    description: Some("Review release checklist."),
-    priority: 2,
-    state: state,
-    created_at: "2026-03-20T14:00:00Z",
-    version: 3,
-  )
+  Task(..domain_fixtures.task(42, "Prepare release", 1), state: state)
 }

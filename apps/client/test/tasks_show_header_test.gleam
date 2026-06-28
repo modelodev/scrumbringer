@@ -6,7 +6,6 @@ import support/render_assertions
 import domain/remote.{Loaded}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/show/header as task_show_header
 import scrumbringer_client/i18n/locale
 
@@ -120,16 +119,7 @@ pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {
 }
 
 fn available_task() -> Task {
-  Task(
-    ..domain_fixtures.task(42, "Prepare release", 1),
-    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    priority: 2,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
-    version: 3,
-    card_id: Some(10),
-    card_title: Some("Release card"),
-  )
+  domain_fixtures.task(42, "Prepare release", 1)
 }
 
 fn claimed_task() -> Task {
