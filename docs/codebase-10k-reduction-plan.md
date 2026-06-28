@@ -1406,7 +1406,11 @@ Estado de ejecucion:
   sustituye el constructor manual completo por `domain_fixtures.task`,
   manteniendo el estado reclamado, descripcion, prioridad, fechas y version que
   gobiernan el comportamiento de apertura, edicion y render.
-- Delta parcial WP-12: `-3.052` lineas netas mantenidas (`-44` del primer pase
+- Decimocuarto pase de fixtures de dominio aplicado a
+  `capability_board_view`. Se retiran constructores completos de card y task
+  manteniendo tipo/icono, estado, card, color y descripcion visibles en el
+  agrupado por capacidad.
+- Delta parcial WP-12: `-3.073` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1439,7 +1443,8 @@ Estado de ejecucion:
   del undecimo pase de fixtures de dominio compartidas en tests de cliente,
   `-53` del duodecimo pase de fixtures de dominio compartidas en tests de
   cliente, `-14` del decimotercer pase de fixtures de dominio compartidas en
-  tests de cliente).
+  tests de cliente, `-21` del decimocuarto pase de fixtures de dominio
+  compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
