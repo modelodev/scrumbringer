@@ -3,17 +3,10 @@ import domain/project.{Project}
 import domain/project_role.{Manager, Member}
 import gleam/option
 import scrumbringer_client/permissions
+import support/domain_fixtures
 
 fn project_with_role(role) {
-  Project(
-    id: 1,
-    name: "P1",
-    my_role: role,
-    created_at: "",
-    members_count: 0,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  Project(..domain_fixtures.project(1, "P1"), my_role: role, members_count: 0)
 }
 
 pub fn visible_sections_org_admin_test() {
@@ -78,15 +71,13 @@ pub fn can_access_members_requires_selected_project_or_any_admin_test() {
       permissions.Members,
       org_role.Member,
       projects,
-      option.Some(Project(
-        id: 2,
-        name: "P2",
-        my_role: Member,
-        created_at: "",
-        members_count: 0,
-        card_depth_names: [],
-        healthy_pool_limit: 20,
-      )),
+      option.Some(
+        Project(
+          ..domain_fixtures.project(2, "P2"),
+          my_role: Member,
+          members_count: 0,
+        ),
+      ),
     )
 }
 

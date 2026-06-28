@@ -1526,7 +1526,12 @@ Estado de ejecucion:
   `admin_task_types_route_test`. El helper local de `TaskType` reutiliza
   `domain_fixtures.task_type` y conserva solo el override de icono usado por
   ese contrato.
-- Delta parcial WP-12: `-3.984` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimotercer pase de fixtures de dominio aplicado a
+  `helpers_selection_test` y `permissions_test`. Se retiran constructores
+  completos de `Project` usando `domain_fixtures.project`, conservando
+  overrides de rol, `members_count` y `healthy_pool_limit` cuando gobiernan
+  los contratos de permisos o seleccion.
+- Delta parcial WP-12: `-4.019` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1593,7 +1598,8 @@ Estado de ejecucion:
   dominio compartidas en tests de cliente, `-9` del cuadragesimoprimer pase
   de fixtures de dominio compartidas en tests de cliente, `-5` del
   cuadragesimosegundo pase de fixtures de dominio compartidas en tests de
-  cliente).
+  cliente, `-35` del cuadragesimotercer pase de fixtures de dominio
+  compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

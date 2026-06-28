@@ -1,5 +1,4 @@
 import domain/project.{Project}
-import domain/project_role.{Manager}
 import domain/remote.{Loaded}
 import domain/task.{WorkSession, WorkSessionsPayload}
 import gleam/option as opt
@@ -8,6 +7,7 @@ import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/pool/view_context as pool_view_context
+import support/domain_fixtures
 
 pub fn active_projects_returns_empty_when_not_loaded_test() {
   let model = client_state.default_model()
@@ -15,16 +15,7 @@ pub fn active_projects_returns_empty_when_not_loaded_test() {
 }
 
 pub fn selected_project_returns_selected_project_test() {
-  let project =
-    Project(
-      id: 1,
-      name: "Alpha",
-      my_role: Manager,
-      created_at: "2026-01-01",
-      members_count: 1,
-      card_depth_names: [],
-      healthy_pool_limit: 20,
-    )
+  let project = domain_fixtures.project(1, "Alpha")
   let model =
     client_state.default_model()
     |> client_state.update_core(fn(core) {
@@ -40,15 +31,7 @@ pub fn selected_project_returns_selected_project_test() {
 
 pub fn pool_view_context_uses_selected_project_healthy_pool_limit_test() {
   let project =
-    Project(
-      id: 1,
-      name: "Alpha",
-      my_role: Manager,
-      created_at: "2026-01-01",
-      members_count: 1,
-      card_depth_names: [],
-      healthy_pool_limit: 12,
-    )
+    Project(..domain_fixtures.project(1, "Alpha"), healthy_pool_limit: 12)
   let model =
     client_state.default_model()
     |> client_state.update_core(fn(core) {
@@ -65,16 +48,7 @@ pub fn pool_view_context_uses_selected_project_healthy_pool_limit_test() {
 }
 
 pub fn ensure_selected_project_picks_first_when_missing_test() {
-  let project =
-    Project(
-      id: 10,
-      name: "Alpha",
-      my_role: Manager,
-      created_at: "2026-01-01",
-      members_count: 1,
-      card_depth_names: [],
-      healthy_pool_limit: 20,
-    )
+  let project = domain_fixtures.project(10, "Alpha")
   let assert opt.Some(10) =
     state_selectors.ensure_selected_project(opt.Some(99), [project])
 }
