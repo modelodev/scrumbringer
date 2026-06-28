@@ -1144,6 +1144,12 @@ Estado de ejecucion:
   - retirados tests de implementacion de `css_class`, conservando los tests de
     iconos, section header y componentes UI consumidores;
   - delta adicional WP-10: `-322` lineas mantenidas.
+- Micro-pase adicional de layout UI huerfano:
+  - retirado `ui/layout`, modulo publico sin consumidores tras haber eliminado
+    los switchers preventivos de tema/idioma;
+  - sus helpers restantes (`empty` y `section`) duplicaban primitivas Lustre
+    locales y no aportaban contrato visual compartido;
+  - delta adicional WP-10: `-41` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1168,10 +1174,11 @@ Estado de ejecucion:
     `1886 passed` tras retirar accessors de `ui/badge`;
     `1884 passed` tras retirar API preventiva de `ui/button`;
     `1879 passed` tras retirar primitivas UI preventivas sin consumidores;
-    `1871 passed` tras retirar `ui/css_class`);
+    `1871 passed` tras retirar `ui/css_class`;
+    `1871 passed` tras retirar `ui/layout`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.114` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.155` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
