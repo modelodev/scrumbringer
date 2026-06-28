@@ -1,10 +1,11 @@
 import gleam/option.{None, Some}
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/remote.{Failed, Loaded, Loading}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskType, TaskTypeInline}
+import domain/task_type.{TaskType}
 import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/visibility.{
@@ -12,29 +13,7 @@ import scrumbringer_client/features/pool/visibility.{
 }
 
 fn task(id: Int, title: String, type_id: Int, state) -> Task {
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: type_id,
-    task_type: TaskTypeInline(id: type_id, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: title,
-    description: Some("Task description"),
-    priority: 3,
-    state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, title, type_id), state: state)
 }
 
 fn task_type(id: Int, capability_id) {

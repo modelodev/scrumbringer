@@ -1,4 +1,5 @@
 import gleam/option.{None, Some}
+import support/domain_fixtures
 
 import domain/card.{Active, Blue, Card, Gray}
 import domain/remote.{Loaded, NotAsked}
@@ -112,44 +113,22 @@ pub fn active_tasks_uses_task_metadata_and_missing_task_fallback_test() {
 
 fn card(id: Int, title: String, color) {
   Card(
-    id: id,
-    project_id: 1,
-    parent_card_id: None,
-    title: title,
-    description: "",
-    color: color,
+    ..domain_fixtures.card(id, 1, title),
     state: Active,
-    task_count: 0,
-    closed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
-    has_new_notes: False,
+    color: color,
   )
 }
 
 fn task(id: Int, state: task_state.TaskExecutionState) {
   Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(id, "Task", 1),
     task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    ongoing_by: None,
-    title: "Task",
     description: None,
     priority: 2,
     state: state,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }

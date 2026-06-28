@@ -1352,7 +1352,11 @@ Estado de ejecucion:
   `card_id`). Se retiran builders locales repetidos en tests de store,
   cache de cards, feedback de task creada y highlights de bloqueo, manteniendo
   overrides explicitos para los campos relevantes de cada escenario.
-- Delta parcial WP-12: `-2.361` lineas netas mantenidas (`-44` del primer pase
+- Segundo pase de fixtures de dominio aplicado a tests de pool available,
+  right panel y blocking status. Los tests conservan como overrides visibles
+  los metadatos que forman parte del escenario (`state`, `blocked_count`,
+  icono/tipo, `created_by` y fechas).
+- Delta parcial WP-12: `-2.435` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1372,7 +1376,8 @@ Estado de ejecucion:
   HTTP no-lista, `-3` del pase de helpers `require_query_string/bool`, `-56`
   del pase de aserciones compartidas en tests de cliente, `-8` del pase de
   aserciones de strings compartidas en tests de cliente, `-85` del pase de
-  fixtures de dominio compartidas en tests de cliente).
+  fixtures de dominio compartidas en tests de cliente, `-74` del segundo pase
+  de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

@@ -2,6 +2,7 @@ import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/option as opt
+import support/domain_fixtures
 
 import scrumbringer_client/features/tasks/blocking_status
 
@@ -22,26 +23,11 @@ pub fn is_blocked_uses_open_blocker_count_test() {
 
 fn task(id: Int, blocked_count: Int) -> Task {
   Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(id, "Task", 1),
     task_type: TaskTypeInline(id: 1, name: "Task", icon: "clipboard"),
-    ongoing_by: opt.None,
-    title: "Task",
     description: opt.None,
     priority: 2,
     state: task_state.Available,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    version: 1,
-    parent_card_id: opt.None,
-    card_id: opt.None,
-    card_title: opt.None,
-    card_color: opt.None,
-    has_new_notes: False,
     blocked_count: blocked_count,
-    dependencies: [],
-    automation_origin: opt.None,
   )
 }
