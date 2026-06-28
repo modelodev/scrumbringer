@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/card
@@ -62,29 +63,7 @@ fn make_task(
       mode: mode,
     )
 
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: title,
-    description: None,
-    priority: 3,
-    state: state,
-    created_by: 1,
-    created_at: "2026-02-01T09:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, title, 1), description: None, state: state)
 }
 
 fn task_with_type(task: Task, type_id: Int, type_name: String) -> Task {
@@ -119,19 +98,10 @@ fn make_card(
   title: String,
 ) -> card.Card {
   card.Card(
-    id: id,
-    project_id: 1,
+    ..domain_fixtures.card(id, 1, title),
     parent_card_id: parent_card_id,
-    title: title,
-    description: "",
     color: Some(card.Blue),
     state: card.Active,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-02-01T09:00:00Z",
-    due_date: None,
-    has_new_notes: False,
   )
 }
 
