@@ -3443,45 +3443,17 @@ fn create_task_with_card(
   type_id: Int,
   card_id: Int,
 ) -> Int {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
-    )
-    |> fixtures.with_auth(fixture_session(session, csrf))
-    |> simulate.json_body(
-      json.object([
-        #("title", json.string(title)),
-        #("description", json.string(description)),
-        #("priority", json.int(priority)),
-        #("type_id", json.int(type_id)),
-        #("card_id", json.int(card_id)),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-
-  let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let task_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use task <- decode.field("task", task_decoder)
-    decode.success(task)
-  }
-
-  let response_decoder = {
-    use id <- decode.field("data", data_decoder)
-    decode.success(id)
-  }
-
-  let assert Ok(id) = decode.run(dynamic, response_decoder)
-  id
+  fixtures.create_task_with_card_full(
+    handler,
+    fixture_session(session, csrf),
+    project_id,
+    title,
+    description,
+    priority,
+    type_id,
+    card_id,
+  )
+  |> expect.ok
 }
 
 fn add_member(
@@ -3629,29 +3601,9 @@ fn bootstrap_app() -> scrumbringer_server.App {
   app
 }
 
-fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
-  headers
-  |> list.filter_map(fn(h) {
-    case h.0 {
-      "set-cookie" -> Ok(h.1)
-      _ -> Error(Nil)
-    }
-  })
-}
-
 fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
-  let target = name <> "="
-
-  let assert Ok(header) =
-    set_cookie_headers(headers)
-    |> list.find(fn(h) { string.starts_with(h, target) })
-
-  let assert Ok(#(value, _)) =
-    header
-    |> string.drop_start(string.length(target))
-    |> string.split_once(";")
-
-  value
+  fixtures.required_cookie_value(headers, name)
+  |> expect.ok
 }
 
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {

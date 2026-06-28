@@ -159,6 +159,17 @@ pub fn extract_session(
   }
 }
 
+/// Extract a required cookie value from response headers.
+pub fn required_cookie_value(
+  headers: List(#(String, String)),
+  name: String,
+) -> Result(String, String) {
+  case find_cookie_value(headers, name) {
+    Some(value) -> Ok(value)
+    None -> Error("Missing " <> name <> " cookie")
+  }
+}
+
 // =============================================================================
 // Authentication
 // =============================================================================
@@ -788,6 +799,49 @@ pub fn create_task_with_card(
     status ->
       Error(
         "create_task_with_card failed: status="
+        <> int.to_string(status)
+        <> " title="
+        <> title
+        <> " body="
+        <> simulate.read_body(res),
+      )
+  }
+}
+
+/// Create a task associated with a card, preserving all payload fields.
+pub fn create_task_with_card_full(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  card_id: Int,
+) -> Result(Int, String) {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+      )
+      |> with_auth(session)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string(title)),
+          #("description", json.string(description)),
+          #("priority", json.int(priority)),
+          #("type_id", json.int(type_id)),
+          #("card_id", json.int(card_id)),
+        ]),
+      ),
+    )
+
+  case res.status {
+    200 -> decode_entity_id(simulate.read_body(res), TaskEntity)
+    status ->
+      Error(
+        "create_task_with_card_full failed: status="
         <> int.to_string(status)
         <> " title="
         <> title

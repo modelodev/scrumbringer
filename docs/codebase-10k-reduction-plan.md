@@ -929,6 +929,21 @@ Criterios de aceptacion:
 - No aparece `should`.
 - Los helpers compartidos siguen siendo estrechos y faciles de leer.
 
+Estado de ejecucion:
+
+- Segundo pase iniciado en rama `refactor-cleanup`.
+- `apps/server/test/fixtures.gleam` incorpora:
+  - `create_task_with_card_full`, para compartir el POST tipado de tasks sin
+    perder `description`, `priority`, `type_id` ni `card_id`;
+  - `required_cookie_value`, para retirar parsers locales de `set-cookie`.
+- Migrados `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam` para
+  delegar esos helpers, manteniendo intactos los escenarios.
+- Delta parcial WP-12: `-44` lineas netas mantenidas.
+- Verificacion:
+  - `cd apps/server && gleam format src test`;
+  - `cd apps/server && gleam build`;
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+
 ### WP-13. Fase 2: consolidar proyecciones SQL task/card
 
 Objetivo: reducir duplicacion entre queries `tasks_*`, mappers y projections
