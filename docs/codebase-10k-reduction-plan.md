@@ -1,15 +1,16 @@
-# Plan de reduccion mantenible de 20k lineas
+# Plan de reduccion mantenible de 20k lineas + tramo 30k
 
 Fecha: 2026-06-28
 
 ## Objetivo
 
-Reducir aproximadamente 20.000 lineas netas de la base de codigo sin introducir
-sobreingenieria. La reduccion debe venir de eliminar duplicacion, codigo muerto,
-API publica accidental, fixtures repetidas, estados redundantes, queries SQL
-obsoletas y responsabilidades mezcladas. No cuenta como exito mover lineas a
-otro modulo si no desaparece una decision duplicada o una frontera publica
-innecesaria.
+Reducir aproximadamente 20.000 lineas netas como objetivo base y dejar un tramo
+condicionado hasta 30.000 lineas si la evidencia de la ejecucion lo permite sin
+introducir sobreingenieria. La reduccion debe venir de eliminar duplicacion,
+codigo muerto, API publica accidental, fixtures repetidas, estados redundantes,
+queries SQL obsoletas y responsabilidades mezcladas. No cuenta como exito mover
+lineas a otro modulo si no desaparece una decision duplicada o una frontera
+publica innecesaria.
 
 El objetivo principal acepta dos contabilidades separadas:
 
@@ -28,18 +29,24 @@ El objetivo principal acepta dos contabilidades separadas:
 
 Meta de cierre:
 
-- Objetivo principal: `-20.000` lineas netas entre codigo mantenido y generado
+- Objetivo base: `-20.000` lineas netas entre codigo mantenido y generado
   derivado.
-- Subobjetivo minimo mantenido: al menos `-12.000` lineas deben venir de codigo
+- Subobjetivo base mantenido: al menos `-12.000` lineas deben venir de codigo
   mantenido no generado.
-- Subobjetivo generado: hasta `-8.000` lineas pueden venir de `sql.gleam` si el
-  diff se explica por cambios en SQL fuente real.
-- Tramo aspiracional: `-30.000` lineas solo si los paquetes anteriores quedan
-  verdes y el analisis V/C/R mantiene riesgo bajo o medio. No es criterio base.
+- Subobjetivo generado base: hasta `-8.000` lineas pueden venir de `sql.gleam`
+  si el diff se explica por cambios en SQL fuente real.
+- Tramo de extension: `-30.000` lineas solo si los paquetes anteriores quedan
+  verdes, el analisis V/C/R mantiene riesgo bajo o medio y se alcanzan al menos
+  `-22.000` lineas mantenidas no generadas. El generado derivado puede ayudar,
+  pero no puede ser la mayor parte del exito.
+- Mas de `-30.000` no se fija como objetivo de este plan. Solo se decidiria tras
+  una nueva auditoria posterior a los 30k, porque a partir de ahi aumenta mucho
+  la probabilidad de borrar cobertura util o introducir abstracciones debiles.
 
 ## Baseline actual
 
-Medicion ejecutada sobre `f1df9c16 Execute remaining refactor work packages`.
+Medicion original ejecutada sobre `f1df9c16 Execute remaining refactor work
+packages`.
 
 | Area | Lineas Gleam |
 | --- | ---: |
@@ -62,22 +69,44 @@ Baseline SQL/Squirrel mantenido:
 | SQL fuente sin uso directo por funcion generada | 4 ficheros | Candidatos: `cards_task_count`, `ping`, `tasks_list_by_card`, `task_templates_list_for_org`. |
 | DB schema/migrations | 6.420 lineas | Contrato e historia; auditar validez, no recortar por metrica. |
 
+Medicion actual tras `b23225cb Consolidate HTTP payload decoding`:
+
+| Area | Lineas Gleam |
+| --- | ---: |
+| Cliente produccion | 87.799 |
+| Servidor produccion | 42.246 |
+| Shared produccion | 7.150 |
+| Cliente tests | 42.858 |
+| Servidor tests | 22.255 |
+| Shared tests | 3.435 |
+| Total Gleam | 205.743 |
+| Produccion sin `sql.gleam` generado | 128.021 |
+
+SQL/Squirrel actual:
+
+| Area | Lineas / conteo | Lectura |
+| --- | ---: | --- |
+| SQL fuente Squirrel | 2.838 lineas en 109 ficheros | No quedan ficheros `.sql` sin consumidor directo por nombre de funcion generada. |
+| `sql.gleam` generado | 9.174 lineas | Sigue siendo generado; cuenta solo como delta derivado de SQL fuente. |
+
 Modulos de mayor peso que condicionan el plan:
 
 | Modulo | Lineas | Lectura |
 | --- | ---: | --- |
-| `apps/server/src/scrumbringer_server/sql.gleam` | 9.576 | Generado; no editar manualmente. |
-| `apps/server/test/tasks_http_test.gleam` | 3.853 | Alto potencial de fixture/DSL compartida. |
+| `apps/server/src/scrumbringer_server/sql.gleam` | 9.174 | Generado; no editar manualmente. |
+| `apps/server/test/tasks_http_test.gleam` | 2.747 | Alto potencial de fixture/DSL compartida restante. |
 | `apps/client/src/scrumbringer_client/client_update.gleam` | 2.461 | Root de orquestacion; reducir solo por owners reales. |
-| `apps/client/src/scrumbringer_client/client_view.gleam` | 2.169 | App shell; extraer composicion repetida, no crear framework. |
-| `apps/server/test/notes_and_positions_http_test.gleam` | 2.165 | Tests largos con helpers duplicados. |
-| `apps/server/src/scrumbringer_server/seed_db.gleam` | 1.782 | Orquestacion de seeds; dividir por escenarios. |
+| `apps/client/src/scrumbringer_client/client_view.gleam` | 2.155 | App shell; extraer composicion repetida, no crear framework. |
+| `apps/server/test/rules_engine_test.gleam` | 1.728 | Test de reglas grande; consolidar fixtures sin perder escenarios. |
+| `apps/server/test/fixtures.gleam` | 1.563 | Helper compartido ya creado; vigilar que no se convierta en DSL generico. |
 | `apps/client/src/scrumbringer_client/features/projects/update.gleam` | 1.608 | Settings/hierarchy/onboarding mezclados. |
 | `apps/client/src/scrumbringer_client/features/plan/structure_view.gleam` | 1.595 | Selectores, politicas y DOM juntos. |
 | `apps/client/src/scrumbringer_client/features/cards/show.gleam` | 1.486 | Ya mejorado; quedan paneles/work/actions. |
 | `apps/client/src/scrumbringer_client/features/people/view.gleam` | 1.346 | Vista + agrupacion + acciones. |
+| `apps/server/test/notes_and_positions_http_test.gleam` | 1.339 | Tests largos con helpers duplicados restantes. |
 | `apps/client/src/scrumbringer_client/features/capability_board/view.gleam` | 1.335 | Vista + breakdown + acciones. |
 | `apps/client/src/scrumbringer_client/features/automations/rule_list.gleam` | 1.273 | UI de reglas con logica de frase/acciones. |
+| `apps/server/src/scrumbringer_server/seed_db.gleam` | 1.025 | Orquestacion de seeds ya reducida; auditar solo escenarios con valor QA. |
 
 ## Principios de diseno
 
@@ -184,7 +213,8 @@ caracterizado y las fronteras mejoran.
 ## Meta de reduccion
 
 Objetivo base: `-20.000` lineas netas, separando codigo mantenido y generado
-derivado.
+derivado. Objetivo extendido: `-30.000` lineas solo si los paquetes reales
+entregan ahorro mantenible con gates verdes.
 
 La Fase 1 debe alcanzar una reduccion limpia similar al plan original. La Fase
 2 solo empieza cuando la Fase 1 tiene tests verdes, agent-browser sin fallos
@@ -215,10 +245,31 @@ medicion real. Si tras WP-12 a WP-15 no se alcanza el umbral, no se inventan
 recortes: se documenta el deficit y se decide si activar el tramo aspiracional
 con nuevos candidatos de bajo riesgo.
 
-El tramo de `-30.000` solo se considera si el total real de Fase 1+2 queda por
-encima del rango alto sin aumentar riesgo, o si aparecen superficies claramente
-obsoletas no detectadas en esta auditoria. No se acepta perseguirlo mediante
-edicion manual de generado, perdida de cobertura o abstracciones universales.
+El tramo de `-30.000` se activa solo con estas condiciones:
+
+- Reduccion acumulada real de al menos `-18.000` lineas antes de abrir paquetes
+  nuevos de mayor riesgo, con tests completos verdes.
+- Al menos `-14.000` lineas reales ya vienen de codigo mantenido no generado en
+  ese punto.
+- Existe una lista concreta de candidatos adicionales con guardarrail propio,
+  no una bolsa generica de "modulos grandes".
+- Cada candidato adicional mantiene V/C/R bajo o medio. Si el riesgo sube a
+  alto, requiere caracterizacion previa y debe justificar por que reduce
+  complejidad, no solo lineas.
+
+Para cerrar `-30.000`:
+
+- Minimo `-22.000` lineas deben venir de codigo mantenido no generado.
+- Maximo `-8.000` lineas pueden venir de `sql.gleam` generado, y solo como
+  efecto de `make squirrel` tras cambios en SQL fuente mantenido.
+- No se puede contar migraciones historicas, documentacion viva ni cobertura
+  funcional eliminada como ahorro de mantenimiento.
+- No se puede introducir una abstraccion nueva sin dos consumidores reales y una
+  reduccion neta del paquete completo.
+
+Mas alla de `-30.000` no se planifica ahora. Solo se permitiria despues de una
+segunda auditoria post-30k que demuestre codigo claramente obsoleto o
+duplicacion estructural no cubierta por este plan.
 
 ## Paquetes de trabajo
 
@@ -251,7 +302,7 @@ Criterios de aceptacion:
 Objetivo: reducir duplicacion en tests de servidor conservando cobertura por
 contrato publico.
 
-Evidencia actual:
+Evidencia inicial:
 
 - `apps/server/test/tasks_http_test.gleam`: 3.853 lineas.
 - `apps/server/test/notes_and_positions_http_test.gleam`: 2.165 lineas.
@@ -678,7 +729,7 @@ Criterios de aceptacion:
 Objetivo: limpiar la entrada mantenida de Squirrel sin editar a mano el
 artefacto generado.
 
-Evidencia actual:
+Evidencia inicial:
 
 - Squirrel esta bloqueado en `apps/server/manifest.toml` a `4.6.0`.
 - `make squirrel` ejecuta `cd apps/server && DATABASE_URL=... gleam run -m
@@ -1341,6 +1392,70 @@ Criterios de aceptacion:
 - Los casos AU siguen teniendo datos representativos.
 - No se elimina seed que cubre un permiso, estado o empty state unico.
 
+### WP-16. Tramo 30k: auditoria de extension condicionada
+
+Objetivo: decidir y ejecutar solo los paquetes adicionales necesarios para
+pasar de `-20k` a `-30k` sin degradar cobertura, UX ni claridad arquitectonica.
+
+Condicion de entrada:
+
+- WP-00 a WP-15 ejecutados, descartados o cerrados con justificacion.
+- Reduccion acumulada real de al menos `-18k`.
+- Suites `shared`, `client` y `server` verdes.
+- AU-01 a AU-12 ejecutados con agent-browser tras el ultimo cambio visible.
+- Informe de deficiencias actualizado con V/C/R.
+
+Diseno:
+
+- Recalcular inventario despues de WP-15:
+  - top 50 modulos por lineas;
+  - top 30 tests por lineas;
+  - top 30 ficheros SQL fuente por lineas y funciones generadas;
+  - `pub` sin consumidores;
+  - clases/i18n/seeds sin consumidores;
+  - handlers/use cases con mappers/presenters repetidos.
+- Abrir solo paquetes con una de estas senales:
+  - tres o mas consumidores con duplicacion real;
+  - query SQL fuente que permite borrar una funcion generada completa;
+  - test largo donde se elimina setup repetido sin borrar casos;
+  - componente UI duplicado con contrato de accesibilidad compartible;
+  - use case con politica pura repetida que puede testearse directamente.
+- Ejecutar paquetes de menor riesgo primero:
+  1. tests y fixtures restantes;
+  2. `pub` accidental y codigo obsoleto;
+  3. estilos/i18n/seeds residuales;
+  4. componentes UI duplicados;
+  5. SQL/use cases solo con caracterizacion previa.
+
+Codigo a eliminar:
+
+- Helpers locales equivalentes a helpers compartidos.
+- Tests repetidos que solo verifican setup identico.
+- SQL fuente con consumidor inexistente o reemplazado por query mas clara.
+- Funciones `pub` mantenidas solo por tests de implementacion.
+- Componentes visuales duplicados despues de que exista una primitiva testeada.
+- Seeds o escenarios visuales sin caso AU asociado.
+
+Estimacion:
+
+- `-4.000` a `-8.000` lineas mantenidas adicionales si WP-12 a WP-15 quedan en
+  rango medio.
+- `0` a `-1.500` lineas generadas adicionales si aparece consolidacion SQL real
+  no detectada en WP-13.
+- Si WP-12 a WP-15 ya alcanzan el rango alto, WP-16 puede limitarse a medicion,
+  refactor final y validacion.
+
+Criterios de aceptacion:
+
+- La reduccion acumulada supera `-30k`.
+- Al menos `-22k` vienen de codigo mantenido no generado.
+- Cada paquete extendido tiene guardarrail `rg`, test o AU asociado.
+- Ningun paquete extendido introduce abstracciones de un solo consumidor.
+- Las deficiencias detectadas por agent-browser o revision manual se corrigen o
+  quedan documentadas como preexistentes con owner claro.
+- Si no aparecen candidatos de bajo/medio riesgo suficientes, se cierra el plan
+  en `-20k` y se documenta por que perseguir `-30k` seria sobreingenieria.
+
 ## Orden recomendado de ejecucion
 
 1. WP-00 baseline.
@@ -1360,7 +1475,10 @@ Criterios de aceptacion:
 15. WP-13 proyecciones SQL task/card.
 16. WP-14 use cases y presenters de segundo pase.
 17. WP-15 estilos, i18n y seeds de segundo pase.
-18. Gate final: objetivo `-20k`, refactor final y validacion agent-browser.
+18. Gate base: objetivo `-20k`, refactor final y validacion agent-browser.
+19. WP-16 tramo `-30k` si cumple condiciones de entrada.
+20. Gate extendido: objetivo `-30k`, refactor final y validacion agent-browser
+    completa.
 
 La razon del orden: primero se reducen tests y API accidental para que los
 refactors grandes no arrastren acoplamientos falsos. Despues se atacan roots y
@@ -1480,11 +1598,20 @@ Lectura de la evidencia:
   mantenido si se incluyen tests, y exige al menos 12k no generadas. Es
   ambiciosa pero plausible si se ejecuta en dos fases y se mide el generado
   solo como delta derivado.
+- Tras los primeros paquetes ejecutados en `refactor-cleanup`, la medicion baja
+  a 205.743 lineas Gleam totales, 128.021 lineas de produccion mantenida sin
+  `sql.gleam`, 2.838 lineas SQL fuente y 9.174 lineas generadas por Squirrel.
+- Con estas cifras, elevar el plan a `-30k` es posible solo como tramo
+  condicionado: requiere apurar los rangos altos de tests, frontend y backend,
+  mas una consolidacion SQL real. No es razonable prometer mas de `-30k` sin una
+  nueva auditoria, porque `sql.gleam` completo solo suma 9.174 lineas y no puede
+  usarse como bolsa libre.
 - Los tests HTTP y render helpers tienen duplicacion suficiente para empezar
   por ahi con bajo riesgo.
-- La entrada Squirrel suma 114 SQL fuente y 3.037 lineas; las queries sin uso
-  directo por nombre generado son `cards_task_count`, `ping`,
-  `tasks_list_by_card` y `task_templates_list_for_org`.
+- La entrada Squirrel inicial sumaba 114 SQL fuente y 3.037 lineas; las queries
+  sin uso directo por nombre generado eran `cards_task_count`, `ping`,
+  `tasks_list_by_card` y `task_templates_list_for_org`. Tras WP-08, quedan 109
+  ficheros SQL fuente, 2.838 lineas y no hay candidatos sin consumidor directo.
 - Los roots y use cases grandes deben tratarse despues de reducir acoplamiento
   de tests; partirlos primero aumentaria lineas y riesgo.
 
@@ -1499,7 +1626,7 @@ Cada paquete debe entregar:
 - Justificacion V/C/R: valor, complejidad, riesgo.
 - Rechazos explicitos de mejoras que serian sobreingenieria.
 
-El objetivo completo se considera listo solo si:
+El objetivo base de `-20k` se considera listo solo si:
 
 1. La reduccion neta acumulada supera 20.000 lineas entre codigo mantenido y
    generado derivado.
@@ -1515,6 +1642,18 @@ El objetivo completo se considera listo solo si:
 9. El informe final incluye deficiencias encontradas por revision manual,
    tests automatizados y validacion navegada.
 
+El tramo extendido de `-30k` se considera listo solo si, ademas de todo lo
+anterior:
+
+1. La reduccion neta acumulada supera 30.000 lineas.
+2. Al menos 22.000 lineas vienen de codigo mantenido no generado.
+3. El ahorro generado no supera 8.000 lineas y esta asociado a commits donde se
+   borra, fusiona o simplifica SQL fuente mantenido.
+4. No queda ningun paquete extendido sin V/C/R documentado y sin decision
+   explicita sobre mejoras rechazadas por sobreingenieria.
+5. Se repite la validacion agent-browser completa despues del ultimo paquete,
+   no solo despues de Fase 1.
+
 ## Riesgos y limites
 
 - La reduccion de tests no debe borrar escenarios de producto; debe borrar
@@ -1529,13 +1668,13 @@ El objetivo completo se considera listo solo si:
 - No perseguir cero botones raw: algunos son primitivas UI legitimas.
 - No perseguir cero strings: SQL, JSON, DOM y DB son fronteras validas.
 
-## Primeros candidatos concretos
+## Candidatos concretos y estado actual
 
-| Candidato | Motivo | Guardarrail inicial |
+| Candidato | Motivo | Estado / guardarrail |
 | --- | --- | --- |
-| Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` |
-| Client render assertions | Decenas de `assert_contains` repetidos. | `rg "fn assert_contains|fn assert_not_contains" apps/client/test` |
-| Public API accidental | 3.384 simbolos publicos en src. | `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` |
-| SQL fuente Squirrel obsoleto | 4 queries fuente sin uso directo por nombre generado. | Buscar `sql.<basename>` excluyendo `sql.gleam` y `sql/*.sql`. |
-| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` |
-| Styles dead classes | 2.031 lineas de estilos y redisenos acumulados. | Comparar clases usadas en views contra `styles/*`. |
+| Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
+| Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; repetir `rg "fn assert_contains|fn assert_not_contains" apps/client/test`. |
+| Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
+| SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
+| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Pendiente de nuevos pases UI; usar `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features`. |
+| Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; repetir comparacion de clases usadas en views contra `styles/*`. |
