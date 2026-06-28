@@ -95,7 +95,6 @@ fn claimed_task() -> Task {
 
   Task(
     ..domain_fixtures.task(1, "Fix login", 1),
-    description: None,
     state: state,
     card_id: Some(1),
     card_title: Some("Sprint"),
@@ -104,14 +103,9 @@ fn claimed_task() -> Task {
 }
 
 fn available_task() -> Task {
-  let state = task_state.Available
-
   Task(
     ..domain_fixtures.task(2, "Review copy", 1),
-    description: None,
     priority: 2,
-    state: state,
-    version: 2,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),

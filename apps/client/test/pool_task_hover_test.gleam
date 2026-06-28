@@ -11,7 +11,6 @@ import domain/project/id as project_id
 import domain/task.{Task, TaskDependency}
 import domain/task/id as task_id
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import domain/user/id as user_id
 import scrumbringer_client/features/pool/task_hover
 import scrumbringer_client/i18n/locale
@@ -87,14 +86,6 @@ pub fn task_hover_hides_empty_optional_sections_test() {
 fn sample_task() {
   Task(
     ..domain_fixtures.task(42, "Prepare release", 1),
-    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    priority: 2,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
-    card_id: Some(10),
-    card_title: Some("Release card"),
-    card_color: None,
-    blocked_count: 2,
     dependencies: [
       TaskDependency(
         depends_on_task_id: 1,
@@ -123,6 +114,7 @@ fn sample_task() {
         claimed_by: None,
       ),
     ],
+    blocked_count: 2,
   )
 }
 

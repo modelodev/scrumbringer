@@ -1478,7 +1478,12 @@ Estado de ejecucion:
   `now_working_mobile_view` y `right_panel_tasks`). Se retiran descripcion,
   fechas y campos de card no observados, conservando estado, version,
   prioridad o card metadata cuando el render/callback los usa.
-- Delta parcial WP-12: `-3.543` lineas netas mantenidas (`-44` del primer pase
+- Trigesimotercer pase de fixtures de dominio aplicado a vistas de lista,
+  kanban y pool (`grouped_list_task_item`, `kanban_task_item`,
+  `pool_task_row` y `pool_task_hover`). Se sustituyen constructores completos
+  por fixtures de dominio y se conservan solo task type, card color, prioridad
+  o `blocked_count` cuando gobiernan iconos, orden visual o accionabilidad.
+- Delta parcial WP-12: `-3.578` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1533,7 +1538,8 @@ Estado de ejecucion:
   fixtures de dominio compartidas en tests de cliente, `-6` del
   trigesimoprimer pase de fixtures de dominio compartidas en tests de cliente,
   `-13` del trigesimosegundo pase de fixtures de dominio compartidas en tests
-  de cliente).
+  de cliente, `-35` del trigesimotercer pase de fixtures de dominio
+  compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

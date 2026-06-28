@@ -1,10 +1,10 @@
-import domain/card.{type Card, Active, Card}
+import domain/card.{type Card, Card}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
 import gleam/dict
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import lustre/element
 import support/domain_fixtures
 import support/render_assertions
@@ -41,19 +41,9 @@ fn base_config(
 
 fn sample_card() -> Card {
   Card(
-    id: 1,
-    project_id: 1,
-    parent_card_id: None,
-    title: "Sprint",
-    description: "",
+    ..domain_fixtures.card(1, 1, "Sprint"),
     color: Some(card.Blue),
-    state: Active,
     task_count: 1,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    has_new_notes: False,
   )
 }
 
@@ -67,8 +57,6 @@ fn claimed_task() -> Task {
 
   Task(
     ..domain_fixtures.task(1, "Fix login", 1),
-    description: None,
-    priority: 3,
     state: state,
     card_id: Some(1),
     card_title: Some("Sprint"),
@@ -79,9 +67,6 @@ fn claimed_task() -> Task {
 fn available_task() -> Task {
   Task(
     ..domain_fixtures.task(2, "Review copy", 1),
-    description: None,
-    priority: 2,
-    version: 2,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
