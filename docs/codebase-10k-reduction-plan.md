@@ -2690,6 +2690,27 @@ Estado de ejecucion:
   - total Gleam actual: `198.114` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.900` lineas;
   - deficit restante para `-20k`: `4.100` lineas.
+- Vigesimoprimer pase de fixtures parametrizadas para rules/templates:
+  - anadido `require_org_context` como base compartida para tests que necesitan
+    DB, handler y session sin crear proyectos artificiales;
+  - anadido `require_project_with_task_type` y hecho que
+    `require_task_project` delegue en el nuevo helper parametrizado;
+  - migrados `rules_http_test.gleam` y `task_templates_http_test.gleam`,
+    preservando nombres/slugs especificos de task type (`QA`, `Checklist`,
+    `bug-ant`, `bug`, `list`);
+  - conservado explicito el `create_task_type` del test multiproyecto de
+    templates porque compara default project contra Core y ambos tipos forman
+    parte del contrato de filtrado;
+  - delta adicional: `-82` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulos enfocados `rules_http_test` y `task_templates_http_test` via
+      EUnit secuencial (`13 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el vigesimoprimer pase:
+  - total Gleam actual: `198.032` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.982` lineas;
+  - deficit restante para `-20k`: `4.018` lineas.
 
 ## Orden recomendado de ejecucion
 

@@ -5,22 +5,14 @@ import gleam/int
 import gleam/json
 import gleam/string
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp
 import wisp/simulate
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn task_templates_project_crud_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, session, "Core")
-    |> expect.ok
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
-    |> expect.ok
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("Core", "QA", "bug-ant")
 
   let create_res =
     handler(
@@ -114,14 +106,8 @@ pub fn task_templates_project_crud_test() {
 }
 
 pub fn task_template_used_by_rule_cannot_be_deleted_test() {
-  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
-
-  let project_id =
-    fixtures.create_project(handler, session, "Core")
-    |> expect.ok
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
-    |> expect.ok
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("Core", "QA", "bug-ant")
 
   let template_id =
     fixtures.create_template(
@@ -174,15 +160,8 @@ pub fn task_template_used_by_rule_cannot_be_deleted_test() {
 }
 
 pub fn task_template_with_only_execution_history_archives_on_delete_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, session, "TemplateHistory")
-    |> expect.ok
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
-    |> expect.ok
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("TemplateHistory", "QA", "bug-ant")
 
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "History Engine")
@@ -238,21 +217,8 @@ pub fn task_template_with_only_execution_history_archives_on_delete_test() {
 }
 
 pub fn task_templates_project_scope_requires_project_manager_test() {
-  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, admin_session, "Core")
-    |> expect.ok
-  let type_id =
-    fixtures.create_task_type(
-      handler,
-      admin_session,
-      project_id,
-      "QA",
-      "bug-ant",
-    )
-    |> expect.ok
+  let #(db, handler, admin_session, project_id, type_id) =
+    fixtures.require_project_with_task_type("Core", "QA", "bug-ant")
 
   let member_id =
     fixtures.create_member_user(handler, db, "member@example.com", "inv_member")
@@ -297,14 +263,9 @@ pub fn task_templates_project_scope_requires_project_manager_test() {
 }
 
 pub fn task_templates_project_list_filters_scope_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
+  let #(db, handler, session, core_project_id, core_type_id) =
+    fixtures.require_project_with_task_type("Core", "QA", "bug-ant")
   let default_project_id = fixtures.default_project_id(db) |> expect.ok
-
-  let core_project_id =
-    fixtures.create_project(handler, session, "Core")
-    |> expect.ok
 
   // Create task type in each project
   let default_type_id =
@@ -316,16 +277,6 @@ pub fn task_templates_project_list_filters_scope_test() {
       "bug-ant",
     )
     |> expect.ok
-  let core_type_id =
-    fixtures.create_task_type(
-      handler,
-      session,
-      core_project_id,
-      "QA",
-      "bug-ant",
-    )
-    |> expect.ok
-
   // Create template in default project
   fixtures.create_template_full(
     handler,
@@ -368,9 +319,7 @@ pub fn task_templates_project_list_filters_scope_test() {
 }
 
 pub fn task_templates_invalid_type_id_returns_422_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
+  let #(db, handler, session) = fixtures.require_org_context()
   let project_id = fixtures.default_project_id(db) |> expect.ok
 
   let create_res =

@@ -278,20 +278,34 @@ pub fn require_project(handler: Handler, session: Session, name: String) -> Int 
   create_project(handler, session, name) |> expect.ok
 }
 
-pub fn require_project_context(name: String) {
+pub fn require_org_context() {
   let app = require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
   let session = require_login_session(handler, "admin@example.com")
+
+  #(db, handler, session)
+}
+
+pub fn require_project_context(name: String) {
+  let #(db, handler, session) = require_org_context()
   let project_id = require_project(handler, session, name)
 
   #(db, handler, session, project_id)
 }
 
 pub fn require_task_project(name: String) {
+  require_project_with_task_type(name, "Bug", "bug-ant")
+}
+
+pub fn require_project_with_task_type(
+  name: String,
+  type_name: String,
+  type_slug: String,
+) {
   let #(db, handler, session, project_id) = require_project_context(name)
   let type_id =
-    require_task_type(handler, session, project_id, "Bug", "bug-ant")
+    require_task_type(handler, session, project_id, type_name, type_slug)
 
   #(db, handler, session, project_id, type_id)
 }

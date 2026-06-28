@@ -6,21 +6,13 @@ import gleam/json
 import gleam/option.{Some}
 import gleam/string
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn rules_crud_with_selected_template_test() {
-  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
-
-  let project_id =
-    fixtures.create_project(handler, session, "Core")
-    |> expect.ok
-
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
-    |> expect.ok
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("Core", "QA", "bug-ant")
 
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "Rule Workflow")
@@ -93,16 +85,8 @@ pub fn rules_crud_with_selected_template_test() {
 }
 
 pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, session, "RuleHistory")
-    |> expect.ok
-
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
-    |> expect.ok
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("RuleHistory", "QA", "bug-ant")
 
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "History Workflow")
@@ -159,16 +143,8 @@ pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
 }
 
 pub fn rule_delete_with_created_task_pauses_and_preserves_origin_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, session, "RuleOrigin")
-    |> expect.ok
-
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
-    |> expect.ok
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("RuleOrigin", "QA", "bug-ant")
 
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "Origin Workflow")
@@ -222,12 +198,8 @@ pub fn rule_delete_with_created_task_pauses_and_preserves_origin_test() {
 }
 
 pub fn rules_invalid_payload_returns_400_test() {
-  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
-
-  // Create a valid project and workflow first
-  let project_id =
-    fixtures.create_project(handler, session, "InvalidPayloadTest")
-    |> expect.ok
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("InvalidPayloadTest")
 
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "Test Workflow")
@@ -248,14 +220,8 @@ pub fn rules_invalid_payload_returns_400_test() {
 }
 
 pub fn rule_create_without_template_returns_400_test() {
-  let #(_, handler, session) = fixtures.bootstrap() |> expect.ok
-
-  let project_id =
-    fixtures.create_project(handler, session, "MissingTemplateTest")
-    |> expect.ok
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
-    |> expect.ok
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("MissingTemplateTest")
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "Missing Template")
     |> expect.ok
@@ -287,15 +253,12 @@ pub fn rule_create_without_template_returns_400_test() {
 }
 
 pub fn rule_create_rejects_missing_card_depth_scope_test() {
-  let #(app, handler, session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, session, "MissingCardDepthRule")
-    |> expect.ok
-  let type_id =
-    fixtures.create_task_type(handler, session, project_id, "Checklist", "list")
-    |> expect.ok
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type(
+      "MissingCardDepthRule",
+      "Checklist",
+      "list",
+    )
   let workflow_id =
     fixtures.create_workflow(handler, session, project_id, "Card Depth Rule")
     |> expect.ok
@@ -353,16 +316,8 @@ pub fn rule_create_rejects_missing_card_depth_scope_test() {
 }
 
 pub fn rules_project_scope_requires_project_manager_test() {
-  let #(app, handler, admin_session) = fixtures.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let project_id =
-    fixtures.create_project(handler, admin_session, "Rule Permissions")
-    |> expect.ok
-
-  let type_id =
-    fixtures.create_task_type(handler, admin_session, project_id, "QA", "bug")
-    |> expect.ok
+  let #(db, handler, admin_session, project_id, type_id) =
+    fixtures.require_project_with_task_type("Rule Permissions", "QA", "bug")
   let workflow_id =
     fixtures.create_workflow(handler, admin_session, project_id, "Rules")
     |> expect.ok
