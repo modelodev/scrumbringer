@@ -1960,7 +1960,13 @@ Estado de ejecucion:
   parseo local a `Dynamic` en tests de presenters y se reemplaza por helpers
   locales estrechos `decode_json`/`decode_json_field`. Las expectativas siguen
   nombrando campo y decoder de forma explicita.
-- Delta parcial WP-12: `-4.137` lineas netas mantenidas (`-44` del primer pase
+- Quincuagesimo pase aplicado a parseos HTTP de test: `activity_http_test`,
+  `projects_http_test`, `password_resets_http_test`,
+  `seed_operational_model_test` y `api_tokens_http_test` reutilizan
+  `fixtures.require_data`/`require_data_list` para envelopes `data`. En
+  `api_tokens_http_test` se conserva un helper local con retorno `Result` para
+  mantener la semantica de los helpers de token.
+- Delta parcial WP-12: `-4.159` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -2034,13 +2040,15 @@ Estado de ejecucion:
   pase de fixtures HTTP de task/work-session en tests de servidor, `-53` del
   pase de eventos locales tipados en `rules_engine_test`, `-45` del pase de
   decoders locales de contrato task en `tasks_http_test` y `-21` del pase de
-  parseo JSON tipado en `unit/presenters_test`).
+  parseo JSON tipado en `unit/presenters_test`, `-22` del pase de envelopes
+  HTTP `data` en tests de servidor).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`).
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`) tras el pase de decoders locales de contrato task.
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`) tras el pase de parseo JSON tipado en presenters.
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`) y `cd apps/server && gleam build` tras el pase de envelopes HTTP `data`.
   - `cd apps/client && gleam format --check src test && gleam build`;
   - `cd apps/client && gleam test` (`1887 passed`).
 

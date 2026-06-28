@@ -2,7 +2,6 @@ import fixtures
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
-import gleam/json
 import gleam/list
 import gleeunit
 import pog
@@ -165,8 +164,10 @@ fn compact_seed_config() -> seed_builder.SeedConfig {
 }
 
 fn decode_task_count(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let decoder = decode.at(["data", "tasks"], decode.list(decode.dynamic))
-  let assert Ok(tasks) = decode.run(dynamic, decoder)
+  let tasks =
+    fixtures.require_data(
+      body,
+      decode.field("tasks", decode.list(decode.dynamic), decode.success),
+    )
   list.length(tasks)
 }

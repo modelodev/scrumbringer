@@ -869,21 +869,15 @@ fn decode_project_names(body: String) -> List(String) {
 }
 
 fn decode_token(body: String) -> Result(String, String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
   let data_decoder = {
     use token <- decode.field("token", decode.string)
     decode.success(token)
   }
-  let decoder = {
-    use token <- decode.field("data", data_decoder)
-    decode.success(token)
-  }
-  decode.run(dynamic, decoder)
+  decode_data(body, data_decoder)
   |> result.map_error(fn(_) { "invalid token response" })
 }
 
 fn decode_created_token(body: String) -> Result(#(Int, String), String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
   let token_decoder = {
     use id <- decode.field("id", decode.int)
     decode.success(id)
@@ -893,12 +887,12 @@ fn decode_created_token(body: String) -> Result(#(Int, String), String) {
     use token <- decode.field("token", decode.string)
     decode.success(#(id, token))
   }
-  let decoder = {
-    use created <- decode.field("data", data_decoder)
-    decode.success(created)
-  }
-  decode.run(dynamic, decoder)
+  decode_data(body, data_decoder)
   |> result.map_error(fn(_) { "invalid created token response" })
+}
+
+fn decode_data(body: String, decoder: decode.Decoder(a)) {
+  json.parse(from: body, using: decode.field("data", decoder, decode.success))
 }
 
 fn decode_nested_id(body: String, field: String) -> Result(Int, String) {

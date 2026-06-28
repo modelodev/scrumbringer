@@ -211,14 +211,9 @@ pub fn validate_rejects_expired_tokens_test() {
 }
 
 fn decode_reset_token(body: String) -> String {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let token_decoder = decode.field("token", decode.string, decode.success)
   let reset_decoder = decode.field("reset", token_decoder, decode.success)
-  let decoder = decode.field("data", reset_decoder, decode.success)
-
-  let assert Ok(token) = decode.run(dynamic, decoder)
-  token
+  fixtures.require_data(body, reset_decoder)
 }
 
 fn insert_reset_expired(db: pog.Connection, token: String, email: String) {

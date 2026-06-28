@@ -317,25 +317,13 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
 
   let body = simulate.read_body(res)
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let project_decoder = {
     use name <- decode.field("name", decode.string)
     use my_role <- decode.field("my_role", decode.string)
     decode.success(#(name, my_role))
   }
 
-  let data_decoder = {
-    use projects <- decode.field("projects", decode.list(project_decoder))
-    decode.success(projects)
-  }
-
-  let response_decoder = {
-    use projects <- decode.field("data", data_decoder)
-    decode.success(projects)
-  }
-
-  let assert Ok(projects) = decode.run(dynamic, response_decoder)
+  let projects = fx.require_data_list(body, "projects", project_decoder)
 
   projects
   |> expect.equal([#("Alpha", "manager"), #("Zulu", "member")])

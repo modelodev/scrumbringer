@@ -504,12 +504,12 @@ fn decode_note_id(body: String) -> Int {
 }
 
 fn decode_activity(body: String) -> List(ActivityEvent) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let decoder =
-    decode.at(
-      ["data", "activity"],
+  fixtures.require_data(
+    body,
+    decode.field(
+      "activity",
       decode.list(activity_codec.activity_decoder()),
-    )
-  let assert Ok(activity) = decode.run(dynamic, decoder)
-  activity
+      decode.success,
+    ),
+  )
 }
