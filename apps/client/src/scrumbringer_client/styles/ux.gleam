@@ -504,11 +504,10 @@ pub fn css() -> List(String) {
     ".note-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }",
     // Task notes section (Story 5.4 UX unification)
     ".task-notes-section { position: relative; }",
-    // Shared detail shell (used by hierarchy detail)
+    // Shared detail shell
     ".detail-modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }",
     ".detail-modal-overlay .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
     ".detail-modal-overlay .modal-content.detail-modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 760px; width: 92%; height: min(84vh, 760px); max-height: 84vh; min-height: 60vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
-    ".hierarchy-detail-body { padding: 14px 20px 18px; }",
     // Task Show panel
     ".task-show { position: fixed; inset: 0; z-index: 870; display: flex; align-items: stretch; justify-content: flex-end; padding: 12px; overflow: hidden; overscroll-behavior: contain; pointer-events: none; }",
     ".task-show-content { pointer-events: auto; position: relative; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; max-width: 860px; width: min(860px, calc(100vw - 48px)); height: 100%; max-height: none; min-height: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--sb-shadow-modal); }",
@@ -579,10 +578,7 @@ pub fn css() -> List(String) {
     ".detail-label { font-weight: var(--sb-weight-medium); color: var(--sb-muted-strong); }",
     ".detail-value { color: var(--sb-text-strong); }",
     ".detail-value.muted { color: var(--sb-muted); }",
-    ".hierarchy-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: var(--sb-space-lg) 14px; border: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); border-radius: var(--sb-radius-lg); background: color-mix(in oklab, var(--sb-elevated) 92%, transparent); }",
-    "@media (max-width: 640px) { .hierarchy-metrics-grid { grid-template-columns: 1fr; } .detail-row { grid-template-columns: 1fr; gap: 6px; } }",
-    ".hierarchy-metrics-loading, .hierarchy-metrics-empty { color: color-mix(in oklab, var(--sb-text) 64%, var(--sb-muted)); padding: 10px 12px; border: 1px dashed var(--sb-border); border-radius: 10px; background: var(--sb-surface-2); }",
-    ".hierarchy-metrics-error { color: var(--sb-error-text); padding: 8px 0; }",
+    "@media (max-width: 640px) { .detail-row { grid-template-columns: 1fr; gap: 6px; } }",
     ".metrics-workflow-list { margin-top: 8px; }",
     ".metrics-workflow-items { display: flex; flex-direction: column; gap: 8px; }",
     ".metrics-workflow-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-surface-3); }",
@@ -692,7 +688,7 @@ pub fn css() -> List(String) {
     "@media (max-width: 640px) { html:has(.card-show), body:has(.card-show), html:has(.task-show), body:has(.task-show) { overflow: hidden; } .card-show, .task-show { padding: 0; align-items: stretch; justify-content: stretch; pointer-events: auto; } .card-show-panel.card-show-surface, .task-show-content { width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; min-height: 0; border-radius: 0; padding: 0; box-shadow: none; } .card-show .card-show-header-block, .task-show .task-show-header-block { position: sticky; top: 0; z-index: 2; } .modal-body, .card-show-body, .task-show-body { padding: 12px 14px 18px; overflow-y: auto; flex: 1 1 auto; min-height: 0; } }",
     "@media (max-width: 640px) { .detail-header-block { padding: 14px 14px 10px; } .inspector-title-row { gap: 8px; } .detail-title { font-size: var(--sb-font-xl); } .inspector-actions, .task-inspector-actions { align-items: stretch; gap: 8px; } .inspector-primary-action, .task-inspector-actions > .btn:first-child, .task-inspector-edit-actions { flex: 1 1 100%; } .inspector-primary-action .btn, .task-inspector-actions > .btn:first-child, .task-inspector-edit-actions .btn { width: 100%; min-height: 44px; } .inspector-action-menu { flex: 0 0 auto; } .inspector-action-trigger { min-height: 44px; min-width: 44px; } .inspector-action-panel:popover-open { position: fixed; left: 12px !important; right: 12px !important; top: auto !important; bottom: 12px !important; width: auto; max-width: none; margin: 0 !important; box-shadow: var(--sb-shadow-modal); } .inspector-action-item { min-height: 44px; } }",
     "@media (max-width: 640px) { .detail-tabs { overflow-x: visible; } .detail-tab, .card-show-tab.detail-tab, .task-show-tab.detail-tab { flex: 1 1 0; min-width: 0; padding-inline: 6px; overflow: hidden; text-overflow: ellipsis; font-size: var(--sb-font-sm); } .task-show .task-show-tabs.detail-tabs { margin-top: 2px; min-height: 40px; padding-bottom: 0; } .task-inspector-facts { grid-template-columns: 1fr; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-show-edit-grid { grid-template-columns: 1fr; } }",
-    "@media (max-width: 640px) { .card-move-dialog-shell { align-items: flex-end; padding: 8px; } .card-move-dialog { width: 100%; max-height: 82vh; border-radius: 12px; } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .hierarchy-detail-body { padding: 12px 16px 16px; } .task-parent-context { align-items: stretch; flex-direction: column; } .task-parent-context-actions { justify-content: stretch; } .task-parent-context-actions .btn { flex: 1 1 160px; min-height: 44px; } }",
+    "@media (max-width: 640px) { .card-move-dialog-shell { align-items: flex-end; padding: 8px; } .card-move-dialog { width: 100%; max-height: 82vh; border-radius: 12px; } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .task-parent-context { align-items: stretch; flex-direction: column; } .task-parent-context-actions { justify-content: stretch; } .task-parent-context-actions .btn { flex: 1 1 160px; min-height: 44px; } }",
     // =====================================================
   ]
 }

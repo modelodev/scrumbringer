@@ -928,14 +928,18 @@ Estado de ejecucion:
   produccion, sus ramas de traduccion `en/es` y aserciones de tests que solo
   protegian copy muerta. El barrido excluyo `i18n/text.gleam`, `i18n/en.gleam`
   e `i18n/es.gleam` para no contar las propias definiciones como uso real.
-- Delta parcial WP-11: `-720` lineas netas mantenidas (`-20` estilos,
-  `-700` i18n/tests).
+- Tercer pase de estilos: retirado bloque legacy `hierarchies-*` /
+  `hierarchy-*` del antiguo modulo plural de jerarquias, preservando las clases
+  vivas `hierarchy-scope-*`, `card-surface`, `kanban-card` y `move-menu`.
+- Delta parcial WP-11: `-859` lineas netas mantenidas (`-20` estilos iniciales,
+  `-700` i18n/tests, `-139` estilos legacy de jerarquias).
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
   - `cd apps/client && gleam test` (`1912 passed`);
   - `rg "ficha-detail|ficha-task|ficha-add-task" apps/client/src apps/client/test`.
   - `rg "i18n_text\\.<clave>|text\\.<clave>" apps/client/src --glob '!**/i18n/text.gleam' --glob '!**/i18n/en.gleam' --glob '!**/i18n/es.gleam'` para las claves retiradas.
+  - `rg "hierarchies-|hierarchy-" apps/client/src/scrumbringer_client/styles/layout.gleam apps/client/src/scrumbringer_client/styles/ux.gleam` solo muestra `hierarchy-scope-*`.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 
