@@ -34,14 +34,8 @@ pub fn main() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member1_id =
     fx.require_member_user(handler, db, "member1@example.com", "inv_member1")
@@ -105,14 +99,8 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_list_requires_task_membership_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -147,14 +135,8 @@ pub fn task_notes_list_requires_task_membership_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -223,14 +205,8 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
 }
 
 pub fn task_notes_create_requires_csrf_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -256,12 +232,8 @@ pub fn task_notes_create_requires_csrf_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn card_notes_list_requires_card_membership_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
+  let #(db, handler, admin_session, project_id) =
+    fx.require_project_context("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -294,12 +266,8 @@ pub fn card_notes_list_requires_card_membership_test() {
 }
 
 pub fn card_notes_list_orders_by_created_at_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
+  let #(db, handler, admin_session, project_id) =
+    fx.require_project_context("Core")
 
   let card_id = fx.require_card(handler, admin_session, project_id, "Card")
 
@@ -335,12 +303,8 @@ pub fn card_notes_list_orders_by_created_at_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn card_notes_create_and_delete_permissions_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
+  let #(db, handler, admin_session, project_id) =
+    fx.require_project_context("Core")
 
   let member1_id =
     fx.require_member_user(handler, db, "member1@example.com", "inv_member1")
@@ -418,12 +382,8 @@ pub fn card_notes_create_and_delete_permissions_test() {
 }
 
 pub fn card_notes_create_requires_csrf_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
+  let #(db, handler, admin_session, project_id) =
+    fx.require_project_context("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -448,12 +408,8 @@ pub fn card_notes_create_requires_csrf_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn card_notes_indicator_updates_after_view_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
+  let #(db, handler, admin_session, project_id) =
+    fx.require_project_context("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -495,14 +451,8 @@ pub fn card_notes_indicator_updates_after_view_test() {
 
 // Justification: large function kept intact to mirror the card view contract.
 pub fn task_notes_indicator_updates_after_view_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -592,14 +542,8 @@ pub fn resource_views_hide_resources_from_non_project_members_test() {
 }
 
 pub fn task_positions_upsert_requires_csrf_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")
@@ -721,14 +665,8 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
 }
 
 pub fn task_positions_reject_non_member_task_and_project_filter_test() {
-  let app = fx.require_app()
-  let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
-
-  let admin_session = fx.require_login_session(handler, "admin@example.com")
-  let project_id = fx.require_project(handler, admin_session, "Core")
-  let type_id =
-    fx.require_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
+  let #(db, handler, admin_session, project_id, type_id) =
+    fx.require_task_project("Core")
 
   let member_id =
     fx.require_member_user(handler, db, "member@example.com", "inv_member")

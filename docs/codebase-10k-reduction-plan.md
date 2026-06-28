@@ -2928,6 +2928,27 @@ Estado de ejecucion:
   - total Gleam actual: `197.248` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.766` lineas;
   - deficit restante para `-20k`: `3.234` lineas.
+- Trigesimosegundo pase de fixtures compartidas en notas/posiciones HTTP:
+  - migrados en `notes_and_positions_http_test.gleam` los escenarios simples de
+    task notes, card notes, indicadores de notas y posiciones al uso de
+    `fixtures.require_task_project` y `fixtures.require_project_context`;
+  - se conservan explicitos los escenarios multi-proyecto, requests con CSRF
+    invalido, metodos no soportados y asserts de permisos/not found;
+  - no se anaden helpers nuevos: se reutilizan fixtures ya validadas en
+    `tasks_http_test.gleam`, reduciendo bootstrap duplicado sin ampliar API;
+  - delta adicional: `-62` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reusa infraestructura
+    existente y mantiene los contratos HTTP locales visibles;
+  - verificacion:
+    - `cd apps/server && gleam format test/notes_and_positions_http_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el trigesimosegundo pase:
+  - total Gleam actual: `197.186` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.828` lineas;
+  - deficit restante para `-20k`: `3.172` lineas.
 
 ## Orden recomendado de ejecucion
 
