@@ -992,6 +992,11 @@ pub fn query_string(
   }
 }
 
+/// Return the default project created by bootstrap for organization 1.
+pub fn default_project_id(db: pog.Connection) -> Result(Int, String) {
+  query_int(db, "select id from projects where org_id = 1 limit 1", [])
+}
+
 /// Query a nullable integer value from the database.
 pub fn query_nullable_int(
   db: pog.Connection,
