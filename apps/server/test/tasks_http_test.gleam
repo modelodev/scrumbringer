@@ -25,14 +25,10 @@ fn login_session(
 
 pub fn task_types_list_sorted_by_name_test() {
   let app = bootstrap_app()
-  let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Zulu", "bug-ant", 0)
   create_task_type(handler, session, csrf, project_id, "Alpha", "bolt", 0)
@@ -75,10 +71,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
@@ -140,10 +133,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   let cap1 = insert_capability(db, project_id, "Frontend")
   let cap2 = insert_capability(db, project_id, "Backend")
@@ -273,10 +263,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -359,10 +346,7 @@ pub fn task_get_includes_task_contract_fields_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -431,10 +415,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -514,10 +495,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -664,10 +642,7 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -704,10 +679,7 @@ pub fn delete_task_without_operational_history_removes_task_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -730,10 +702,7 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -760,10 +729,7 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -796,14 +762,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Editable Available")
-  let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'Editable Available'",
-      [],
-    )
+  let project_id = create_project(handler, session, csrf, "Editable Available")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -838,10 +797,7 @@ pub fn release_all_tasks_for_member_success_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Bulk Release")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Bulk Release'", [])
+  let project_id = create_project(handler, session, csrf, "Bulk Release")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
@@ -965,14 +921,8 @@ pub fn release_all_tasks_for_member_forbidden_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Bulk Release Forbidden")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'Bulk Release Forbidden'",
-      [],
-    )
+    create_project(handler, session, csrf, "Bulk Release Forbidden")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
@@ -1012,14 +962,7 @@ pub fn release_all_tasks_for_member_self_release_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Bulk Release Self")
-  let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'Bulk Release Self'",
-      [],
-    )
+  let project_id = create_project(handler, session, csrf, "Bulk Release Self")
 
   let admin_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -1065,10 +1008,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Deps")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Deps'", [])
+  let project_id = create_project(handler, session, csrf, "Deps")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1120,13 +1060,8 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
 
-  create_project(handler, session, csrf, "Deps One")
-  create_project(handler, session, csrf, "Deps Two")
-
-  let project_one_id =
-    single_int(db, "select id from projects where name = 'Deps One'", [])
-  let project_two_id =
-    single_int(db, "select id from projects where name = 'Deps Two'", [])
+  let project_one_id = create_project(handler, session, csrf, "Deps One")
+  let project_two_id = create_project(handler, session, csrf, "Deps Two")
 
   create_task_type(handler, session, csrf, project_one_id, "Bug", "bug-ant", 0)
   create_task_type(handler, session, csrf, project_two_id, "Bug", "bug-ant", 0)
@@ -1190,10 +1125,7 @@ pub fn task_dependencies_reject_closed_dependency_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Deps Closed")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Deps Closed'", [])
+  let project_id = create_project(handler, session, csrf, "Deps Closed")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1269,10 +1201,7 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Blocked Claim")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Blocked Claim'", [])
+  let project_id = create_project(handler, session, csrf, "Blocked Claim")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1312,14 +1241,8 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Blocked Claim Closed")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'Blocked Claim Closed'",
-      [],
-    )
+    create_project(handler, session, csrf, "Blocked Claim Closed")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1369,14 +1292,8 @@ pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Blocked Claim Removed")
   let project_id =
-    single_int(
-      db,
-      "select id from projects where name = 'Blocked Claim Removed'",
-      [],
-    )
+    create_project(handler, session, csrf, "Blocked Claim Removed")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1686,9 +1603,7 @@ pub fn dependency_would_create_cycle_is_rejected_test() {
 pub fn cross_project_dependency_is_rejected_test() {
   let #(db, handler, session, csrf, project_one_id, type_one_id) =
     ht08_project("HT08 Cross One")
-  create_project(handler, session, csrf, "HT08 Cross Two")
-  let project_two_id =
-    single_int(db, "select id from projects where name = 'HT08 Cross Two'", [])
+  let project_two_id = create_project(handler, session, csrf, "HT08 Cross Two")
   create_task_type(handler, session, csrf, project_two_id, "Bug", "bug-ant", 0)
   let type_two_id =
     single_int(
@@ -1814,10 +1729,7 @@ pub fn me_metrics_returns_counts_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -1900,10 +1812,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2096,10 +2005,7 @@ pub fn tasks_list_requires_membership_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_member_user(handler, db, "outsider@example.com", "inv_out")
   let #(outsider_session, outsider_csrf) =
@@ -2123,10 +2029,7 @@ pub fn task_get_requires_membership_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2159,10 +2062,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   create_task_type(handler, session, csrf, project_id, "Chore", "bolt", 0)
@@ -2333,10 +2233,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -2460,10 +2357,7 @@ pub fn patch_rejects_blank_title_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2501,10 +2395,7 @@ pub fn me_work_session_start_pause_and_persist_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2574,10 +2465,7 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2638,10 +2526,7 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2680,10 +2565,7 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -2708,10 +2590,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, session, csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, session, csrf, "Core")
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =
@@ -3122,10 +3001,9 @@ fn create_project(
   session: String,
   csrf: String,
   name: String,
-) {
+) -> Int {
   fixtures.create_project(handler, fixture_session(session, csrf), name)
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn create_task_type(
@@ -3356,9 +3234,7 @@ fn ht08_project(name: String) {
 
   let #(session, csrf) = login_session(handler, "admin@example.com")
 
-  create_project(handler, session, csrf, name)
-  let project_id =
-    single_int(db, "select id from projects where name = $1", [pog.text(name)])
+  let project_id = create_project(handler, session, csrf, name)
 
   create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
   let type_id =

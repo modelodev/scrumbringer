@@ -47,10 +47,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -191,10 +188,7 @@ pub fn task_notes_list_requires_task_membership_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -284,10 +278,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -411,10 +402,7 @@ pub fn task_notes_create_requires_csrf_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -476,10 +464,7 @@ pub fn card_notes_list_requires_card_membership_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
   create_member_user(handler, db, "outsider@example.com", "inv_out")
@@ -544,10 +529,7 @@ pub fn card_notes_list_orders_by_created_at_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   let card_id =
     create_card(handler, admin_session, admin_csrf, project_id, "Card")
@@ -592,10 +574,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_member_user(handler, db, "member1@example.com", "inv_member1")
   create_member_user(handler, db, "member2@example.com", "inv_member2")
@@ -749,10 +728,7 @@ pub fn card_notes_create_requires_csrf_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
 
@@ -790,10 +766,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
   let member_id =
@@ -852,10 +825,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -991,10 +961,7 @@ pub fn task_positions_upsert_requires_csrf_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -1059,13 +1026,8 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
 
-  create_project(handler, admin_session, admin_csrf, "Core")
-  create_project(handler, admin_session, admin_csrf, "Other")
-
-  let core_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
-  let other_id =
-    single_int(db, "select id from projects where name = 'Other'", [])
+  let core_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let other_id = create_project(handler, admin_session, admin_csrf, "Other")
 
   create_task_type(
     handler,
@@ -1197,10 +1159,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
@@ -1570,10 +1529,9 @@ fn create_project(
   session: String,
   csrf: String,
   name: String,
-) {
+) -> Int {
   fixtures.create_project(handler, fixture_session(session, csrf), name)
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn create_task_type(
@@ -1704,10 +1662,7 @@ fn resource_view_fixture() -> ResourceViewFixture {
   let handler = scrumbringer_server.handler(app)
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-
-  create_project(handler, admin_session, admin_csrf, "Core")
-  let project_id =
-    single_int(db, "select id from projects where name = 'Core'", [])
+  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
 
   create_task_type(
     handler,
