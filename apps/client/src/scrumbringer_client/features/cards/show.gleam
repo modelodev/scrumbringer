@@ -34,7 +34,6 @@ import domain/note/entity.{type Note}
 import domain/note/id as note_ids
 import domain/task.{type Task, claimed_by}
 import domain/task/state as task_state
-import domain/user/id as user_ids
 
 import domain/activity/entity as activity_entity
 import domain/api_error.{type ApiError, type ApiResult}
@@ -74,7 +73,6 @@ import scrumbringer_client/ui/task_metric
 import scrumbringer_client/ui/task_metric_chip
 import scrumbringer_client/ui/task_status_indicator
 import scrumbringer_client/ui/task_status_utils
-import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 // =============================================================================
 // Internal Types
@@ -1349,7 +1347,7 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
       loaded: fn(notes) {
         notes_list.view(
           // Reverse to show newest first (descending chronological order)
-          list.map(list.reverse(notes), fn(note) { note_to_view(model, note) }),
+          list.map(list.reverse(notes), fn(note) { note_view(model, note) }),
           t(model.locale, i18n_text.Delete),
           t(model.locale, i18n_text.DeleteAsAdmin),
           t(model.locale, i18n_text.PinNote),
@@ -1386,49 +1384,20 @@ fn view_note_dialog(model: Model) -> Element(Msg) {
   ))
 }
 
-fn note_to_view(model: Model, note: Note) -> notes_list.NoteView {
-  let id = note_ids.to_int(note.id)
-  let user_id = user_ids.to_int(note.user_id)
-  let is_own_note = note_belongs_to_current_user(model.current_user_id, user_id)
-  let author_label = case is_own_note {
-    True -> t(model.locale, i18n_text.You)
-    False -> t(model.locale, i18n_text.UserNumber(user_id))
-  }
-  let can_delete = model.can_manage_notes || is_own_note
-  let delete_context = case is_own_note {
-    True -> notes_list_types.DeleteOwnNote
-    False -> notes_list_types.DeleteAsAdmin
-  }
-
-  notes_list.NoteView(
-    id: id,
-    author: author_label,
-    created_at: note.created_at,
-    content: note.content,
-    url: note.url,
-    pinned: note.pinned,
-    can_pin: can_delete,
-    pin_in_flight: model.note_pin_in_flight == option.Some(id),
-    pin_disabled_reason: case can_delete {
-      True -> option.None
-      False -> option.Some(t(model.locale, i18n_text.CannotPinNote))
-    },
-    can_delete: can_delete,
-    delete_context: delete_context,
-    author_email: note.author_email,
-    author_project_role: note.author_project_role,
-    author_org_role: note.author_org_role,
-  )
+fn note_view(model: Model, note: Note) -> notes_list.NoteView {
+  notes_list.from_note(note, note_view_context(model))
 }
 
-fn note_belongs_to_current_user(
-  current_user_id: Option(Int),
-  note_user_id: Int,
-) -> Bool {
-  case current_user_id {
-    option.Some(user_id) -> user_id == note_user_id
-    option.None -> False
-  }
+fn note_view_context(model: Model) -> notes_list.NoteViewContext {
+  notes_list.NoteViewContext(
+    current_user_id: model.current_user_id,
+    can_manage_notes: model.can_manage_notes,
+    pin_in_flight: model.note_pin_in_flight,
+    delete_in_flight: option.None,
+    you_label: t(model.locale, i18n_text.You),
+    user_label: fn(user_id) { t(model.locale, i18n_text.UserNumber(user_id)) },
+    cannot_pin_label: t(model.locale, i18n_text.CannotPinNote),
+  )
 }
 
 fn view_card_tasks_section(model: Model, card: Card) -> Element(Msg) {

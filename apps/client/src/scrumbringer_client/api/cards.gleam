@@ -25,11 +25,11 @@ import lustre/effect.{type Effect}
 import api/cards/contracts
 import domain/api_error.{type ApiResult}
 import scrumbringer_client/api/core
+import scrumbringer_client/api/notes as note_api
 
 import domain/card.{type Card, type CardColor}
 import domain/card/card_codec
 import domain/note/entity.{type Note}
-import domain/note/note_codec
 
 // =============================================================================
 // API Functions
@@ -205,19 +205,7 @@ pub fn get_card_notes(
   card_id: Int,
   to_msg: fn(ApiResult(List(Note))) -> msg,
 ) -> Effect(msg) {
-  let decoder =
-    decode.field(
-      "notes",
-      decode.list(note_codec.note_decoder()),
-      decode.success,
-    )
-  core.request(
-    core.Get,
-    "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-    option.None,
-    decoder,
-    to_msg,
-  )
+  note_api.list(card_notes_path(card_id), to_msg)
 }
 
 /// Create a note for a card.
@@ -236,20 +224,7 @@ pub fn create_card_note_with_url(
   url: option.Option(String),
   to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
-  let url_json = case url {
-    option.Some(value) -> json.string(value)
-    option.None -> json.null()
-  }
-  let body =
-    json.object([#("content", json.string(content)), #("url", url_json)])
-  let decoder = decode.field("note", note_codec.note_decoder(), decode.success)
-  core.request(
-    core.Post,
-    "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-    option.Some(body),
-    decoder,
-    to_msg,
-  )
+  note_api.create(card_notes_path(card_id), content, url, to_msg)
 }
 
 /// Pin or unpin a card note.
@@ -259,26 +234,7 @@ pub fn set_card_note_pinned(
   pinned: Bool,
   to_msg: fn(ApiResult(Note)) -> msg,
 ) -> Effect(msg) {
-  let method = case pinned {
-    True -> core.Post
-    False -> core.Delete
-  }
-  let body = case pinned {
-    True -> option.Some(json.object([]))
-    False -> option.None
-  }
-  let decoder = decode.field("note", note_codec.note_decoder(), decode.success)
-  core.request(
-    method,
-    "/api/v1/cards/"
-      <> int.to_string(card_id)
-      <> "/notes/"
-      <> int.to_string(note_id)
-      <> "/pin",
-    body,
-    decoder,
-    to_msg,
-  )
+  note_api.set_pinned(card_note_pin_path(card_id, note_id), pinned, to_msg)
 }
 
 /// Delete a note from a card.
@@ -287,15 +243,19 @@ pub fn delete_card_note(
   note_id: Int,
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
-  core.request_nil(
-    core.Delete,
-    "/api/v1/cards/"
-      <> int.to_string(card_id)
-      <> "/notes/"
-      <> int.to_string(note_id),
-    option.None,
-    to_msg,
-  )
+  note_api.delete(card_note_path(card_id, note_id), to_msg)
+}
+
+fn card_notes_path(card_id: Int) -> String {
+  "/api/v1/cards/" <> int.to_string(card_id) <> "/notes"
+}
+
+fn card_note_path(card_id: Int, note_id: Int) -> String {
+  card_notes_path(card_id) <> "/" <> int.to_string(note_id)
+}
+
+fn card_note_pin_path(card_id: Int, note_id: Int) -> String {
+  card_note_path(card_id, note_id) <> "/pin"
 }
 
 fn card_action_response_decoder() -> decode.Decoder(

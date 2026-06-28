@@ -20,8 +20,8 @@ import gleam/option.{None, Some}
 import gleeunit
 import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_presenters
+import scrumbringer_server/http/notes/presenters as note_presenters
 import scrumbringer_server/http/projects/presenters as project_presenters
-import scrumbringer_server/http/task_notes/presenters as task_note_presenters
 import scrumbringer_server/http/tasks/presenters as task_presenters
 import scrumbringer_server/use_case/projects_db
 import support/assertions as expect
@@ -292,7 +292,7 @@ pub fn task_note_presenter_uses_common_note_contract_test() {
 
   let body =
     note
-    |> task_note_presenters.note
+    |> note_presenters.note
     |> json.to_string
 
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)

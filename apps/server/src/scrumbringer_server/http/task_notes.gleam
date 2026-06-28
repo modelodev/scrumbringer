@@ -31,8 +31,8 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/notes/mutations as note_mutations
+import scrumbringer_server/http/notes/presenters as note_presenters
 import scrumbringer_server/http/service_error_response
-import scrumbringer_server/http/task_notes/presenters as note_presenters
 import scrumbringer_server/repository/tasks/queries as tasks_queries
 import scrumbringer_server/use_case/authorization
 import scrumbringer_server/use_case/store_state.{type StoredUser}

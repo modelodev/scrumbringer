@@ -30,9 +30,9 @@ import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
-import scrumbringer_server/http/card_notes/presenters as note_presenters
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/notes/mutations as note_mutations
+import scrumbringer_server/http/notes/presenters as note_presenters
 import scrumbringer_server/http/service_error_response
 import scrumbringer_server/use_case/authorization
 import scrumbringer_server/use_case/card_notes_db

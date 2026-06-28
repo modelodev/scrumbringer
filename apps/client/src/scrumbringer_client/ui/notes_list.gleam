@@ -5,8 +5,11 @@
 //// AC3: Notes with PR links are highlighted (green border)
 
 import domain/link_detection
+import domain/note/entity.{type Note}
+import domain/note/id as note_ids
 import domain/org_role
 import domain/project_role
+import domain/user/id as user_ids
 import gleam/list
 import gleam/option.{type Option}
 import lustre/attribute
@@ -36,6 +39,53 @@ pub type NoteView {
     author_email: String,
     author_project_role: Option(project_role.ProjectRole),
     author_org_role: org_role.OrgRole,
+  )
+}
+
+pub type NoteViewContext {
+  NoteViewContext(
+    current_user_id: Option(Int),
+    can_manage_notes: Bool,
+    pin_in_flight: Option(Int),
+    delete_in_flight: Option(Int),
+    you_label: String,
+    user_label: fn(Int) -> String,
+    cannot_pin_label: String,
+  )
+}
+
+pub fn from_note(note: Note, context: NoteViewContext) -> NoteView {
+  let id = note_ids.to_int(note.id)
+  let user_id = user_ids.to_int(note.user_id)
+  let is_own_note = context.current_user_id == option.Some(user_id)
+  let can_manage_note = context.can_manage_notes || is_own_note
+  let author = case is_own_note {
+    True -> context.you_label
+    False -> context.user_label(user_id)
+  }
+  let delete_context = case is_own_note {
+    True -> DeleteOwnNote
+    False -> DeleteAsAdmin
+  }
+
+  NoteView(
+    id: id,
+    author: author,
+    created_at: note.created_at,
+    content: note.content,
+    url: note.url,
+    pinned: note.pinned,
+    can_pin: can_manage_note,
+    pin_in_flight: context.pin_in_flight == option.Some(id),
+    pin_disabled_reason: case can_manage_note {
+      True -> option.None
+      False -> option.Some(context.cannot_pin_label)
+    },
+    can_delete: can_manage_note && context.delete_in_flight != option.Some(id),
+    delete_context: delete_context,
+    author_email: note.author_email,
+    author_project_role: note.author_project_role,
+    author_org_role: note.author_org_role,
   )
 }
 

@@ -8,9 +8,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
 import domain/note/entity.{type Note}
-import domain/note/id as note_ids
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/user/id as user_ids
 
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/i18n/i18n
@@ -21,7 +19,6 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/guidance
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
-import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 pub type Config(msg) {
   Config(
@@ -85,7 +82,7 @@ fn notes_content(config: Config(msg)) -> Element(msg) {
           )
         _ ->
           notes_list.view(
-            list.map(notes, fn(note) { task_note_to_view(config, note) }),
+            list.map(notes, fn(note) { note_view(config, note) }),
             t(config, i18n_text.Delete),
             t(config, i18n_text.DeleteAsAdmin),
             t(config, i18n_text.PinNote),
@@ -124,38 +121,18 @@ fn note_dialog(config: Config(msg)) -> Element(msg) {
   ))
 }
 
-fn task_note_to_view(config: Config(msg), note: Note) -> notes_list.NoteView {
-  let id = note_ids.to_int(note.id)
-  let user_id = user_ids.to_int(note.user_id)
+fn note_view(config: Config(msg), note: Note) -> notes_list.NoteView {
+  notes_list.from_note(note, note_view_context(config))
+}
 
-  let author = case config.current_user_id == opt.Some(user_id) {
-    True -> t(config, i18n_text.You)
-    False -> t(config, i18n_text.UserNumber(user_id))
-  }
-  let is_own_note = config.current_user_id == opt.Some(user_id)
-  let can_delete = config.can_manage_notes || is_own_note
-  let delete_context = case is_own_note {
-    True -> notes_list_types.DeleteOwnNote
-    False -> notes_list_types.DeleteAsAdmin
-  }
-
-  notes_list.NoteView(
-    id: id,
-    author: author,
-    created_at: note.created_at,
-    content: note.content,
-    url: note.url,
-    pinned: note.pinned,
-    can_pin: can_delete,
-    pin_in_flight: config.pin_in_flight == opt.Some(id),
-    pin_disabled_reason: case can_delete {
-      True -> opt.None
-      False -> opt.Some(t(config, i18n_text.CannotPinNote))
-    },
-    can_delete: can_delete && config.delete_in_flight != opt.Some(id),
-    delete_context: delete_context,
-    author_email: note.author_email,
-    author_project_role: note.author_project_role,
-    author_org_role: note.author_org_role,
+fn note_view_context(config: Config(msg)) -> notes_list.NoteViewContext {
+  notes_list.NoteViewContext(
+    current_user_id: config.current_user_id,
+    can_manage_notes: config.can_manage_notes,
+    pin_in_flight: config.pin_in_flight,
+    delete_in_flight: config.delete_in_flight,
+    you_label: t(config, i18n_text.You),
+    user_label: fn(user_id) { t(config, i18n_text.UserNumber(user_id)) },
+    cannot_pin_label: t(config, i18n_text.CannotPinNote),
   )
 }
