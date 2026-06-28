@@ -346,6 +346,12 @@ Estado de ejecucion:
   parsing/FFI locales y usa IDs devueltos por la API para proyectos creados en
   setup, conservando solo inserts SQL especificos de otros orgs, cards,
   workflows, templates y reglas de profundidad.
+- `apps/server/test/tasks_http_test.gleam` primera pasada: helpers locales de
+  proyecto, cards, miembros, usuarios invitados y queries escalares delegan en
+  `fixtures.create_project`, `fixtures.create_card`, `fixtures.add_member`,
+  `fixtures.create_member_user`, `fixtures.query_int` y `fixtures.with_auth`.
+  Se conservan firmas locales para evitar una migracion masiva de escenarios en
+  el mismo paquete y quedan pendientes los requests directos del propio test.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -371,8 +377,9 @@ Estado de ejecucion:
   - `workflows_http_test.gleam`: `-426` lineas netas;
   - `rules_http_test.gleam`: `-535` lineas netas;
   - `projects_http_test.gleam`: `-436` lineas netas;
+  - `tasks_http_test.gleam` primera pasada: `-114` lineas netas;
   - `fixtures.gleam`: `+45` lineas netas;
-  - total parcial WP-01: `-2.939` lineas netas mantenidas.
+  - total parcial WP-01: `-3.053` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
