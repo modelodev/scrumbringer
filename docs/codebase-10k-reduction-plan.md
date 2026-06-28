@@ -1382,7 +1382,12 @@ Estado de ejecucion:
   `tasks_show_edit_form` y `task_show_editor_view`). Se conservan solo
   overrides de descripcion, prioridad, version, fecha de creacion, estado
   reclamado y card asociada cuando forman parte del caso.
-- Delta parcial WP-12: `-2.764` lineas netas mantenidas (`-44` del primer pase
+- Noveno pase de fixtures de dominio aplicado a tests de UI de pool/mobile
+  (`pool_task_row`, `pool_task_hover`, `pool_my_tasks_dropzone` y
+  `now_working_mobile_view`). Se preservan explicitamente los datos visuales
+  del caso: tipo/icono cuando afecta al componente, card, color, bloqueadores,
+  estado reclamado y metadatos de automatizacion.
+- Delta parcial WP-12: `-2.814` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1409,7 +1414,8 @@ Estado de ejecucion:
   quinto pase de fixtures de dominio compartidas en tests de cliente, `-72` del
   sexto pase de fixtures de dominio compartidas en tests de cliente, `-28` del
   septimo pase de fixtures de dominio compartidas en tests de cliente, `-63`
-  del octavo pase de fixtures de dominio compartidas en tests de cliente).
+  del octavo pase de fixtures de dominio compartidas en tests de cliente, `-50`
+  del noveno pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

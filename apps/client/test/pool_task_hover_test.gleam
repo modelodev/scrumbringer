@@ -1,5 +1,6 @@
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/note/entity.{Note}
@@ -85,24 +86,14 @@ pub fn task_hover_hides_empty_optional_sections_test() {
 
 fn sample_task() {
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(42, "Prepare release", 1),
     task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    ongoing_by: None,
-    title: "Prepare release",
-    description: Some("Task description"),
     priority: 2,
-    state: task_state.Available,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
     card_id: Some(10),
     card_title: Some("Release card"),
     card_color: None,
-    has_new_notes: False,
     blocked_count: 2,
     dependencies: [
       TaskDependency(
@@ -132,7 +123,6 @@ fn sample_task() {
         claimed_by: None,
       ),
     ],
-    automation_origin: None,
   )
 }
 

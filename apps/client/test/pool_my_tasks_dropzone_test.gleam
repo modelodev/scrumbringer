@@ -1,12 +1,12 @@
 import gleam/int
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/card
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/pool/my_tasks_dropzone
 import scrumbringer_client/i18n/locale
@@ -79,26 +79,14 @@ fn claimed_task() -> Task {
     )
 
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Prepare release",
+    ..domain_fixtures.task(42, "Prepare release", 1),
     description: None,
     priority: 2,
     state: state,
-    created_by: 1,
     created_at: "2026-03-20T14:00:00Z",
-    due_date: None,
     version: 3,
-    parent_card_id: None,
     card_id: Some(9),
     card_title: Some("Release card"),
     card_color: Some(card.Blue),
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
