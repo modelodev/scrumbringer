@@ -1387,6 +1387,9 @@ Estado de ejecucion:
   `task-blocked-card`, `btn-action-primary`, `theme-switch`, `btn-active`).
   Se conserva `highlight-success` porque `styles_accessibility_test` protege el
   contrato de utilidades `highlight-*` aunque no haya consumidor actual.
+- Decimotercer pase i18n: retiradas las claves `LanguageEs` y `LanguageEn` de
+  `Text`, `en` y `es`; el selector de idioma usa literales deliberados
+  (`Español`, `English`) y no consumia esas claves.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
   adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
@@ -1396,7 +1399,8 @@ Estado de ejecucion:
   mantenidas. Delta adicional del decimo pase: `-12` lineas mantenidas. Delta
   adicional del undecimo pase: `-30` lineas mantenidas. Delta adicional del
   duodecimo pase: `-9` lineas mantenidas. Total parcial WP-11: `-922` lineas
-  mantenidas.
+  mantenidas. Delta adicional del decimotercer pase: `-6` lineas mantenidas.
+  Total parcial WP-11 tras pase i18n: `-928` lineas mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
@@ -1411,6 +1415,7 @@ Estado de ejecucion:
   - `rg "move-menu" apps/client/src apps/client/test` sin consumidores.
   - `rg -n "\\b(nav-item|nav-item-icon|error-banner-text|sortable|table-sort-button|sort-icon|decay-badge|progress-bar-fill)\\b" apps/client/src apps/client/test -g '*.gleam' --glob '!**/styles/*.gleam'` sin consumidores.
   - `rg -n "\\b(admin-card|admin-card-header|btn-action-primary|btn-active|info-callout-link|task-blocked-card|theme-switch)\\b" apps/client/src/scrumbringer_client -g '*.gleam'` sin consumidores.
+  - `rg -n "\\b(LanguageEs|LanguageEn)\\b" apps/client/src apps/client/test -g '*.gleam'` sin consumidores.
   - Barrido de selectores retirados del sexto pase contra `apps/client/src` y
     `apps/client/test` sin consumidores.
   - Barrido de selectores retirados del septimo pase contra `apps/client/src`

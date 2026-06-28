@@ -160,8 +160,6 @@ pub fn translate(text: Text) -> String {
     text.ThemeDefault -> "Light"
     text.ThemeDark -> "Dark"
     text.LanguageLabel -> "Language"
-    text.LanguageEs -> "Spanish"
-    text.LanguageEn -> "English"
 
     // Member sections
     text.Pool -> "Pool"

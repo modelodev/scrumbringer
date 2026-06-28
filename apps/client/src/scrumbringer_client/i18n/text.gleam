@@ -143,8 +143,6 @@ pub type Text {
   ThemeDefault
   ThemeDark
   LanguageLabel
-  LanguageEs
-  LanguageEn
 
   // Member sections
   Pool
