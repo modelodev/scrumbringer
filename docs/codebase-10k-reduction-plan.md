@@ -1421,7 +1421,11 @@ Estado de ejecucion:
   `plan_structure_view`. Se reemplazan builders completos por fixtures
   compartidas manteniendo jerarquia, estado, card asociada, tipo visible y
   bloqueo.
-- Delta parcial WP-12: `-3.171` lineas netas mantenidas (`-44` del primer pase
+- Decimoctavo pase de fixtures de dominio aplicado a
+  `tasks_mutation_update`. Se reduce `sample_task` a fixture compartida y se
+  conservan descripcion, prioridad, fecha, version y estado para los contratos
+  de optimistic update y rollback.
+- Delta parcial WP-12: `-3.186` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1458,7 +1462,8 @@ Estado de ejecucion:
   compartidas en tests de cliente, `-44` del decimoquinto pase de fixtures de
   dominio compartidas en tests de cliente, `-30` del decimosexto pase de
   fixtures de dominio compartidas en tests de cliente, `-24` del decimoseptimo
-  pase de fixtures de dominio compartidas en tests de cliente).
+  pase de fixtures de dominio compartidas en tests de cliente, `-15` del
+  decimoctavo pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
