@@ -87,7 +87,3 @@ pub fn view_checkbox(
 pub fn hint(hint: String) -> lelement.Element(msg) {
   div([attribute.class("hint")], [text(hint)])
 }
-
-pub fn none() -> lelement.Element(msg) {
-  lelement.none()
-}

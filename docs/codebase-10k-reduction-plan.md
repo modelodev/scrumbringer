@@ -1290,6 +1290,13 @@ Estado de ejecucion:
   - la cobertura se desplaza de helpers directos muertos al shell publico de
     borrado, manteniendo validacion de error, boton danger, loading y copy;
   - delta adicional WP-10: `-74` lineas mantenidas y siete exports menos.
+- Micro-pase adicional de helpers UI preventivos:
+  - retirado el builder preventivo de `info_callout`
+    (`InfoCalloutConfig`, `new`, `with_title`, `view`), ya que producto solo
+    consume `simple` y `view_with_content`;
+  - retirados `form_field.none` y `event_decoders.mouse_offset`, sin
+    consumidores reales;
+  - delta adicional WP-10: `-36` lineas mantenidas y seis exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1324,10 +1331,11 @@ Estado de ejecucion:
     `1859 passed` tras retirar API preventiva de `signal_chip`;
     `1857 passed` tras privatizar wrappers internos de `action_buttons`;
     `1857 passed` tras privatizar helpers internos de tabs/iconos;
-    `1849 passed` tras retirar API muerta de `crud_dialog_base`);
+    `1849 passed` tras retirar API muerta de `crud_dialog_base`;
+    `1849 passed` tras retirar helpers UI preventivos);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-3.049` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-3.085` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
