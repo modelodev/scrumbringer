@@ -1,5 +1,4 @@
 import gleam/int
-import gleam/option.{None}
 import lustre/element
 import support/domain_fixtures
 import support/render_assertions
@@ -21,10 +20,7 @@ fn claimed_task() -> Task {
 
   Task(
     ..domain_fixtures.task(42, "Prepare release", 1),
-    description: None,
-    priority: 2,
     state: state,
-    created_at: "2026-03-20T14:00:00Z",
     version: 3,
   )
 }

@@ -1473,7 +1473,12 @@ Estado de ejecucion:
   `task_show_update` y `tasks_show_feedback_update`). Se eliminan fechas y
   versiones no observadas conservando descripcion, prioridad y version donde
   gobiernan dirty-check o concurrencia.
-- Delta parcial WP-12: `-3.530` lineas netas mantenidas (`-44` del primer pase
+- Trigesimosegundo pase de fixtures de dominio aplicado a vistas laterales y
+  moviles de tareas (`my_bar_task_row_view`, `pool_my_tasks_dropzone`,
+  `now_working_mobile_view` y `right_panel_tasks`). Se retiran descripcion,
+  fechas y campos de card no observados, conservando estado, version,
+  prioridad o card metadata cuando el render/callback los usa.
+- Delta parcial WP-12: `-3.543` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1526,7 +1531,9 @@ Estado de ejecucion:
   compartidas en tests de cliente, `-41` del vigesimonoveno pase de fixtures
   de dominio compartidas en tests de cliente, `-30` del trigesimo pase de
   fixtures de dominio compartidas en tests de cliente, `-6` del
-  trigesimoprimer pase de fixtures de dominio compartidas en tests de cliente).
+  trigesimoprimer pase de fixtures de dominio compartidas en tests de cliente,
+  `-13` del trigesimosegundo pase de fixtures de dominio compartidas en tests
+  de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

@@ -45,10 +45,7 @@ fn base_config(
 fn sample_task(state: task_state.TaskExecutionState) -> Task {
   Task(
     ..domain_fixtures.task(1, "Fix login", 1),
-    description: None,
-    priority: 3,
     state: state,
-    card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
   )

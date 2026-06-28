@@ -80,12 +80,8 @@ fn claimed_task() -> Task {
 
   Task(
     ..domain_fixtures.task(42, "Prepare release", 1),
-    description: None,
-    priority: 2,
     state: state,
-    created_at: "2026-03-20T14:00:00Z",
     version: 3,
-    card_id: Some(9),
     card_title: Some("Release card"),
     card_color: Some(card.Blue),
   )
