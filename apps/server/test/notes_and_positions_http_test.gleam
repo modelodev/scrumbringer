@@ -48,20 +48,14 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member1@example.com", "inv_member1")
@@ -189,20 +183,14 @@ pub fn task_notes_list_requires_task_membership_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member@example.com", "inv_member")
@@ -279,20 +267,14 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member@example.com", "inv_member")
@@ -403,20 +385,14 @@ pub fn task_notes_create_requires_csrf_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member@example.com", "inv_member")
@@ -826,20 +802,14 @@ pub fn task_notes_indicator_updates_after_view_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member@example.com", "inv_member")
@@ -962,20 +932,14 @@ pub fn task_positions_upsert_requires_csrf_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member@example.com", "inv_member")
@@ -1029,34 +993,23 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let core_id = create_project(handler, admin_session, admin_csrf, "Core")
   let other_id = create_project(handler, admin_session, admin_csrf, "Other")
 
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    core_id,
-    "Bug",
-    "bug-ant",
-  )
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    other_id,
-    "Bug",
-    "bug-ant",
-  )
-
   let core_type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(core_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      core_id,
+      "Bug",
+      "bug-ant",
     )
   let other_type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(other_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      other_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member1@example.com", "inv_member1")
@@ -1160,20 +1113,14 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   create_member_user(handler, db, "member@example.com", "inv_member")
@@ -1541,7 +1488,7 @@ fn create_task_type(
   project_id: Int,
   name: String,
   icon: String,
-) {
+) -> Int {
   fixtures.create_task_type(
     handler,
     fixture_session(session, csrf),
@@ -1550,7 +1497,6 @@ fn create_task_type(
     icon,
   )
   |> expect.ok
-  |> fn(_) { Nil }
 }
 
 fn create_task(
@@ -1663,20 +1609,14 @@ fn resource_view_fixture() -> ResourceViewFixture {
 
   let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
   let project_id = create_project(handler, admin_session, admin_csrf, "Core")
-
-  create_task_type(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    "Bug",
-    "bug-ant",
-  )
   let type_id =
-    single_int(
-      db,
-      "select id from task_types where project_id = $1 and name = 'Bug'",
-      [pog.int(project_id)],
+    create_task_type(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      "Bug",
+      "bug-ant",
     )
 
   let card_id =
