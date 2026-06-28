@@ -21,6 +21,10 @@ pub fn assert_non_empty(value: String) {
   let assert False = string.is_empty(value)
 }
 
+pub fn assert_non_blank(value: String) {
+  let assert False = value |> string.trim |> string.is_empty
+}
+
 pub fn assert_error(result: Result(a, b)) {
   let assert Error(_) = result
 }

@@ -1,13 +1,9 @@
 import gleam/list
-import gleam/string
 import lustre/element
+import support/assertions.{assert_non_empty}
 import support/render_assertions
 
 import scrumbringer_client/ui/loading
-
-fn assert_non_empty(value: String) {
-  let assert True = string.length(value) > 0
-}
 
 pub fn spinner_small_has_correct_class_test() {
   let rendered = loading.spinner(loading.Small)

@@ -1342,9 +1342,12 @@ Estado de ejecucion:
 - `apps/client/test/support/assertions.gleam` centraliza aserciones triviales
   de tests de cliente (`assert_equal`, `assert_not_equal`, `assert_none`,
   `assert_true`, `assert_error`). Se retiran helpers locales equivalentes en
-  23 tests de cliente, manteniendo helpers locales con semantica distinta
-  como los checks de strings no vacios con trim.
-- Delta parcial WP-12: `-2.268` lineas netas mantenidas (`-44` del primer pase
+  23 tests de cliente.
+- `assert_non_blank` completa las aserciones compartidas de cliente sin perder
+  semantica: los tests de i18n siguen comprobando texto no-blanco tras `trim`,
+  mientras `ui_loading_test.gleam` reutiliza `assert_non_empty` para HTML no
+  vacio.
+- Delta parcial WP-12: `-2.276` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1362,7 +1365,8 @@ Estado de ejecucion:
   envelope HTTP en tests, `-74` del pase de `require_data_list` en
   `tasks_http_test.gleam`, `-141` del pase de `require_data` para payloads
   HTTP no-lista, `-3` del pase de helpers `require_query_string/bool`, `-56`
-  del pase de aserciones compartidas en tests de cliente).
+  del pase de aserciones compartidas en tests de cliente, `-8` del pase de
+  aserciones de strings compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
