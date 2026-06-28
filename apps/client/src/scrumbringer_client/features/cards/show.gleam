@@ -46,7 +46,6 @@ import scrumbringer_client/features/cards/show/headline as card_headline
 import scrumbringer_client/features/cards/show/hierarchy as show_hierarchy
 import scrumbringer_client/features/cards/show/notes as show_notes
 import scrumbringer_client/features/cards/show/summary as show_summary
-import scrumbringer_client/features/tasks/blocking_status
 import scrumbringer_client/features/tasks/rollup as task_rollup
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
@@ -847,7 +846,7 @@ fn append_optional_element(
 
 fn blocked_count(model: Model) -> Int {
   case model.tasks {
-    Loaded(tasks) -> blocking_status.blocked_count(tasks)
+    Loaded(tasks) -> task_rollup.blocked_count(tasks)
     _ -> 0
   }
 }
@@ -1367,7 +1366,7 @@ fn task_group_label(model: Model, group: TaskWorkGroup) -> String {
 fn tasks_for_group(tasks: List(Task), group: TaskWorkGroup) -> List(Task) {
   let predicate = case group {
     AvailableWork -> task_rollup.is_available_unblocked
-    BlockedWork -> blocking_status.is_blocked
+    BlockedWork -> task_rollup.is_blocked
     ClaimedWork -> task_rollup.is_taken_unblocked
     OngoingWork -> task_rollup.is_ongoing_unblocked
     ClosedWork -> task_rollup.is_closed

@@ -21,6 +21,7 @@ pub fn rollup_counts_task_execution_states_test() {
   let assert 1 = summary.ongoing
   let assert 1 = summary.closed
   let assert 1 = summary.blocked
+  let assert 1 = rollup.blocked_count(tasks)
 }
 
 pub fn predicates_use_canonical_task_state_test() {

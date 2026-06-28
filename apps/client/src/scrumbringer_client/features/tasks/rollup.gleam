@@ -70,6 +70,10 @@ pub fn is_blocked(task: domain_task.Task) -> Bool {
   task.blocked_count > 0
 }
 
+pub fn blocked_count(tasks: List(domain_task.Task)) -> Int {
+  list.count(tasks, is_blocked)
+}
+
 pub fn work_rank(task: domain_task.Task) -> Int {
   case is_blocked(task), task.state {
     True, _ -> 0

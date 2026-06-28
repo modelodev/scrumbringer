@@ -687,6 +687,16 @@ Estado de ejecucion:
     gleam test` (`1821 passed`);
   - delta neto adicional: `-2` lineas mantenidas, con `-27` lineas en codigo
     de produccion y tests concentrados en el selector compartido.
+- Cuarto pase de rollups de task:
+  - retirado `features/tasks/blocking_status`, que habia quedado como wrapper
+    sin semantica propia sobre `features/tasks/rollup`;
+  - `cards/show` consume directamente `task_rollup.is_blocked` y
+    `task_rollup.blocked_count`;
+  - el test dedicado de `blocking_status` desaparece y su cobertura queda
+    integrada en `task_rollup_test`;
+  - verificacion: `cd apps/client && gleam format src test && gleam build &&
+    gleam test` (`1819 passed`);
+  - delta neto adicional: `-33` lineas mantenidas y un modulo menos.
 
 ### WP-05. Dialogos CRUD y controles UI sin abstraccion universal
 
@@ -1725,9 +1735,10 @@ Estado de ejecucion:
   tests pasan a declarar solo los campos observables del caso: descripcion,
   prioridad, fecha de creacion, version y card asociada.
 - Septimo pase de fixtures de dominio aplicado a tests de logica pura de task
-  (`tasks_claimability`, `tasks_dependency_list` y `task_blocking_status`). Se
-  retiran constructores e imports locales donde el escenario solo depende de
-  `state`, `blocked_count` o dependencia abierta/cerrada.
+  (`tasks_claimability`, `tasks_dependency_list` y cobertura de bloqueo
+  integrada en `task_rollup`). Se retiran constructores e imports locales donde
+  el escenario solo depende de `state`, `blocked_count` o dependencia
+  abierta/cerrada.
 - Octavo pase de fixtures de dominio aplicado a tests de `tasks/show`
   (`tasks_show_lifecycle_update`, `tasks_show_details`,
   `tasks_show_edit_form` y `task_show_editor_view`). Se conservan solo
@@ -2546,5 +2557,5 @@ anterior:
 | Client render assertions | Decenas de `assert_contains` repetidos. | Ejecutado para serializacion HTML directa; queda solo `support/render_assertions.html` como uso canonico de `element.to_document_string`. Los siguientes pases WP-02 deben centrarse en builders de dominio reales, no en sustituciones cosmeticas. |
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI, `ui/icon_picker`, categoria/busqueda legacy de `ui/icon_catalog` y lista local duplicada de iconos ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
-| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
+| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos, predicados de bloqueo, variantes `*_unblocked` y ranking visual de trabajo para Plan/Kanban/Capability/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
 | Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; retirados restos de `ui/icon_picker`, navegacion antigua, sorting visual no conectado, decay badge legacy y progreso duplicado, preservando reglas responsive vivas. Repetir comparacion de clases usadas en views contra `styles/*`. |
