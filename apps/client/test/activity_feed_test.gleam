@@ -1,6 +1,4 @@
-import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
 import support/render_assertions
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
@@ -12,13 +10,6 @@ import domain/remote.{Loaded}
 import domain/task/id as task_id
 import domain/user/id as user_id
 import scrumbringer_client/ui/activity_feed
-
-fn count_occurrences(haystack: String, needle: String) -> Int {
-  case needle == "" {
-    True -> 0
-    False -> list.length(string.split(haystack, needle)) - 1
-  }
-}
 
 pub fn activity_feed_renders_empty_state_test() {
   let html =
@@ -77,7 +68,7 @@ pub fn activity_feed_groups_loaded_events_by_date_test() {
   render_assertions.contains(html, "Task claimed")
   render_assertions.contains(html, "Task started")
   render_assertions.contains(html, "Task released")
-  let assert 2 = count_occurrences(html, "activity-feed-date")
+  render_assertions.occurs(html, "activity-feed-date", 2)
 }
 
 pub fn activity_feed_renders_load_more_control_when_available_test() {

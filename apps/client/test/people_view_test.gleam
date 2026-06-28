@@ -2,7 +2,6 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/effect
 import support/domain_fixtures
 
@@ -33,22 +32,6 @@ import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/i18n/locale
 import support/render_assertions
-
-fn assert_occurrences(text: String, fragment: String, expected: Int) {
-  let actual = count_occurrences(text, fragment)
-  let assert True = actual == expected
-}
-
-fn count_occurrences(text: String, fragment: String) -> Int {
-  count_occurrences_loop(text, fragment, 0)
-}
-
-fn count_occurrences_loop(text: String, fragment: String, count: Int) -> Int {
-  case string.split_once(text, fragment) {
-    Ok(#(_before, after)) -> count_occurrences_loop(after, fragment, count + 1)
-    Error(_) -> count
-  }
-}
 
 fn make_task(
   id: Int,
@@ -666,7 +649,7 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
   render_assertions.contains(html, "Claimed, not started")
   render_assertions.contains(html, "In progress · Checkout")
   render_assertions.contains(html, "people-task-group")
-  assert_occurrences(html, "Open card", 2)
+  render_assertions.occurs(html, "Open card", 2)
   render_assertions.not_contains(html, "people-task-card-meta")
 }
 
@@ -689,8 +672,8 @@ pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
   render_assertions.contains(html, "people-task-group")
   render_assertions.contains(html, "Observability")
   render_assertions.contains(html, "1 task")
-  assert_occurrences(html, "Open card", 1)
-  assert_occurrences(html, "Open task", 1)
+  render_assertions.occurs(html, "Open card", 1)
+  render_assertions.occurs(html, "Open task", 1)
 }
 
 pub fn people_view_single_reserved_task_without_card_has_no_card_cta_test() {
@@ -707,8 +690,8 @@ pub fn people_view_single_reserved_task_without_card_has_no_card_cta_test() {
 
   render_assertions.contains(html, "people-task-groups")
   render_assertions.contains(html, "No card")
-  assert_occurrences(html, "Open card", 0)
-  assert_occurrences(html, "Open task", 1)
+  render_assertions.occurs(html, "Open card", 0)
+  render_assertions.occurs(html, "Open task", 1)
 }
 
 pub fn people_view_groups_many_reserved_tasks_by_card_test() {
@@ -736,8 +719,8 @@ pub fn people_view_groups_many_reserved_tasks_by_card_test() {
   render_assertions.contains(html, "2 tasks")
   render_assertions.contains(html, "Release")
   render_assertions.contains(html, "1 task")
-  assert_occurrences(html, "Open card", 2)
-  assert_occurrences(html, "Open task", 3)
+  render_assertions.occurs(html, "Open card", 2)
+  render_assertions.occurs(html, "Open task", 3)
   render_assertions.not_contains(
     html,
     "class=\"task-item-content\" type=\"button\"",
@@ -765,8 +748,8 @@ pub fn people_view_grouped_reserved_cta_matrix_test() {
   render_assertions.contains(html, "No card")
   render_assertions.contains(html, "Observability")
   render_assertions.contains(html, "Release")
-  assert_occurrences(html, "Open task", 3)
-  assert_occurrences(html, "Open card", 2)
+  render_assertions.occurs(html, "Open task", 3)
+  render_assertions.occurs(html, "Open card", 2)
 }
 
 pub fn people_view_grouped_reserved_tasks_use_card_header_without_legacy_scope_badge_test() {

@@ -556,18 +556,25 @@ Estado de ejecucion:
   `crud_dialog_base_test` y `plan_scope_bar_test` sustituyen las ultimas
   serializaciones directas de vistas por `render_assertions.html`; queda un
   unico `element.to_document_string`, el del helper compartido.
-- Delta WP-02 hasta este punto: `-491` lineas netas mantenidas (`-17` del pase
+- Septimo pase focalizado: `activity_feed_test`, `people_view_test` y
+  `left_panel_test` dejan de mantener contadores locales de ocurrencias HTML;
+  `support/render_assertions` expone `count_occurrences`/`occurs` con una
+  comparacion explicita y testeable.
+- Delta WP-02 hasta este punto: `-493` lineas netas mantenidas (`-17` del pase
   inicial, `-312` del pase amplio de asserts y `-86` del pase de
   `render_assertions.html`, `-67` del tercer pase focalizado y `-3` del cuarto
-  pase focalizado, `-6` del quinto pase focalizado y `0` del cierre de
-  serializacion directa). La reduccion queda por debajo de la estimacion porque
-  esta iteracion no introdujo builders de dominio agresivos: se priorizo retirar
-  duplicacion exacta sin esconder expectativas.
+  pase focalizado, `-6` del quinto pase focalizado, `0` del cierre de
+  serializacion directa y `-2` del contador de ocurrencias compartido). La
+  reduccion queda por debajo de la estimacion porque esta iteracion no introdujo
+  builders de dominio agresivos: se priorizo retirar duplicacion exacta sin
+  esconder expectativas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam test` (`1873 passed`);
   - `cd apps/client && gleam format src test && gleam test` (`1859 passed`)
-    tras el tercer, cuarto, quinto y sexto pase focalizado.
+    tras el tercer, cuarto, quinto y sexto pase focalizado;
+  - `cd apps/client && gleam test` (`1819 passed`) tras el septimo pase
+    focalizado.
 
 ### WP-03. Reducir roots Lustre por owners reales
 

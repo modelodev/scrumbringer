@@ -13,12 +13,6 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/url_state
 
-fn count_occurrences(haystack: String, needle: String) -> Int {
-  string.split(haystack, needle)
-  |> list.length
-  |> fn(parts) { parts - 1 }
-}
-
 fn base_config(
   current_route: opt.Option(router.Route),
 ) -> left_panel.LeftPanelConfig(String) {
@@ -142,8 +136,10 @@ pub fn left_panel_kanban_route_can_be_active_test() {
     html,
     "class=\"nav-link active\" data-testid=\"nav-cards\"",
   )
-  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
-  count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
+  render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+  |> assert_equal(1)
+  render_assertions.count_occurrences(html, "aria-current=\"page\"")
+  |> assert_equal(1)
 }
 
 pub fn left_panel_does_not_render_removed_hierarchy_nav_test() {
@@ -228,7 +224,8 @@ pub fn left_panel_automation_entry_active_for_all_console_modes_test() {
       html,
       "class=\"nav-link active\" data-testid=\"nav-automations\"",
     )
-    count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+    render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+    |> assert_equal(1)
   })
 }
 
@@ -273,7 +270,8 @@ pub fn left_panel_collapsed_config_route_still_renders_active_item_test() {
     html,
     "class=\"nav-link active\" data-testid=\"nav-automations\"",
   )
-  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+  render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+  |> assert_equal(1)
 }
 
 pub fn left_panel_collapsed_org_items_are_not_rendered_test() {
@@ -302,7 +300,8 @@ pub fn left_panel_collapsed_org_route_still_renders_active_item_test() {
     html,
     "class=\"nav-link active\" data-testid=\"nav-projects\"",
   )
-  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
+  render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+  |> assert_equal(1)
 }
 
 pub fn left_panel_work_nav_order_is_pool_kanban_plan_capabilities_people_en_test() {
@@ -368,8 +367,10 @@ pub fn left_sidebar_cards_route_does_not_activate_depth_links_test() {
     html,
     "class=\"nav-link active\" data-testid=\"nav-cards\"",
   )
-  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
-  count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
+  render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+  |> assert_equal(1)
+  render_assertions.count_occurrences(html, "aria-current=\"page\"")
+  |> assert_equal(1)
   render_assertions.not_contains(
     html,
     "class=\"nav-link active\" data-testid=\"nav-depth-1\"",
@@ -393,8 +394,10 @@ pub fn left_sidebar_kanban_route_does_not_activate_plan_test() {
     html,
     "class=\"nav-link active\" data-testid=\"nav-cards\"",
   )
-  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
-  count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
+  render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+  |> assert_equal(1)
+  render_assertions.count_occurrences(html, "aria-current=\"page\"")
+  |> assert_equal(1)
 }
 
 pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
@@ -407,8 +410,10 @@ pub fn left_sidebar_depth_route_keeps_plan_as_only_active_nav_test() {
     html,
     "class=\"nav-link active\" data-testid=\"nav-cards\"",
   )
-  count_occurrences(html, "class=\"nav-link active\"") |> assert_equal(1)
-  count_occurrences(html, "aria-current=\"page\"") |> assert_equal(1)
+  render_assertions.count_occurrences(html, "class=\"nav-link active\"")
+  |> assert_equal(1)
+  render_assertions.count_occurrences(html, "aria-current=\"page\"")
+  |> assert_equal(1)
 }
 
 pub fn left_panel_work_nav_order_is_pool_kanban_plan_capacidades_personas_es_test() {
