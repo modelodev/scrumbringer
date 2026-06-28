@@ -2487,6 +2487,22 @@ Estado de ejecucion:
   - el objetivo base `-20k` sigue pendiente de mas paquetes seguros o de
     acometer el redisenio separado para sacar `sql.gleam` generado del codigo
     versionado sin romper build/CI.
+- Decimo pase de fixtures HTTP de sesiones de trabajo:
+  - migrados cuatro tests de `work_sessions_http_test.gleam` al helper
+    `require_task_project`, eliminando la repeticion local de
+    `bootstrap -> project -> task type` antes de crear la task concreta de
+    cada escenario;
+  - conservados explicitos los asserts de conflicto, idempotencia, heartbeat y
+    rate limit, porque son el contrato real del modulo;
+  - retirado el import de `scrumbringer_server` que quedo sin uso tras dejar de
+    abrir manualmente el `App`;
+  - delta adicional: `-19` lineas Gleam mantenidas netas;
+  - verificacion: `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+    (`553 passed`).
+- Auditoria de contabilidad tras el decimo pase:
+  - total Gleam actual: `198.540` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.474` lineas;
+  - deficit restante para `-20k`: `4.526` lineas.
 
 ## Orden recomendado de ejecucion
 

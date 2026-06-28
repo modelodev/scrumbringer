@@ -6,7 +6,6 @@ import gleam/json
 import gleam/option as opt
 import gleam/string
 import gleeunit
-import scrumbringer_server
 import scrumbringer_server/seed_db
 import support/assertions as expect
 import wisp/simulate
@@ -16,13 +15,8 @@ pub fn main() {
 }
 
 pub fn start_rejects_unclaimed_task_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: _db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "WS Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("WS Project")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Unclaimed")
 
@@ -33,13 +27,8 @@ pub fn start_rejects_unclaimed_task_test() {
 }
 
 pub fn start_rejects_closed_task_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "WS Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("WS Project")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let assert Ok(task_id) =
@@ -84,12 +73,8 @@ pub fn start_returns_conflict_for_missing_task_test() {
 }
 
 pub fn start_is_idempotent_when_session_exists_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "WS Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("WS Project")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Duplicate")
 
@@ -178,12 +163,8 @@ pub fn pause_without_session_returns_ok_test() {
 }
 
 pub fn heartbeat_rate_limited_on_second_call_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "WS Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("WS Project")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Rate limit")
 
