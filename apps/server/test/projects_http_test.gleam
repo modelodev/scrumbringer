@@ -60,7 +60,7 @@ pub fn project_create_returns_and_persists_card_depth_names_test() {
   let res = handler(req)
   expect.expect_status(res, 200)
 
-  let assert Ok(dynamic) = json.parse(simulate.read_body(res), decode.dynamic)
+  let body = simulate.read_body(res)
 
   let depth_name_decoder = {
     use depth <- decode.field("depth", decode.int)
@@ -76,16 +76,11 @@ pub fn project_create_returns_and_persists_card_depth_names_test() {
     )
     decode.success(depth_names)
   }
-  let data_decoder = {
-    use depth_names <- decode.field("project", project_decoder)
-    decode.success(depth_names)
-  }
-  let response_decoder = {
-    use depth_names <- decode.field("data", data_decoder)
-    decode.success(depth_names)
-  }
-
-  let assert Ok(depth_names) = decode.run(dynamic, response_decoder)
+  let depth_names =
+    fx.require_data(
+      body,
+      decode.field("project", project_decoder, decode.success),
+    )
   depth_names
   |> expect.equal([
     #(1, "Initiative", "Initiatives"),
@@ -210,7 +205,7 @@ pub fn depth_reduction_preview_returns_affected_cards_test() {
   let res = handler(req)
   expect.expect_status(res, 200)
 
-  let assert Ok(dynamic) = json.parse(simulate.read_body(res), decode.dynamic)
+  let body = simulate.read_body(res)
 
   let affected_card_decoder = {
     use title <- decode.field("title", decode.string)
@@ -225,13 +220,8 @@ pub fn depth_reduction_preview_returns_affected_cards_test() {
     )
     decode.success(#(affected_cards_count, affected_cards))
   }
-  let response_decoder = {
-    use data <- decode.field("data", data_decoder)
-    decode.success(data)
-  }
-
-  let assert Ok(#(affected_cards_count, affected_cards)) =
-    decode.run(dynamic, response_decoder)
+  let #(affected_cards_count, affected_cards) =
+    fx.require_data(body, data_decoder)
   affected_cards_count |> expect.equal(2)
   affected_cards |> expect.equal([#("Middle", 2), #("Leaf", 3)])
 }

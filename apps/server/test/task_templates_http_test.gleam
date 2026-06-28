@@ -398,25 +398,14 @@ fn decode_template_id(body: String) -> Int {
 }
 
 fn decode_template_name(body: String) -> String {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let template_decoder = {
     use name <- decode.field("name", decode.string)
     decode.success(name)
   }
-
-  let data_decoder = {
-    use template <- decode.field("template", template_decoder)
-    decode.success(template)
-  }
-
-  let response_decoder = {
-    use name <- decode.field("data", data_decoder)
-    decode.success(name)
-  }
-
-  let assert Ok(name) = decode.run(dynamic, response_decoder)
-  name
+  fixtures.require_data(
+    body,
+    decode.field("template", template_decoder, decode.success),
+  )
 }
 
 fn decode_template_names(body: String) -> List(String) {

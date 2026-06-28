@@ -1332,7 +1332,10 @@ Estado de ejecucion:
   parseo repetido `data.<collection>`. `tasks_http_test.gleam` lo aplica en
   contratos de lista, metricas de proyecto, metricas de usuarios y titulos de
   tasks.
-- Delta parcial WP-12: `-2.068` lineas netas mantenidas (`-44` del primer pase
+- `fixtures.require_data` centraliza el parseo del envelope `data` para
+  payloads no-lista. Se aplica en templates, rules, notes/positions, projects
+  y tasks manteniendo decoders de item/payload especificos en cada test.
+- Delta parcial WP-12: `-2.209` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1348,7 +1351,8 @@ Estado de ejecucion:
   `support` huerfanos, `-26` del pase de wrappers `require_*` compartidos,
   `-9` del pase de `projects_http_test.gleam`, `-202` del pase de decoders de
   envelope HTTP en tests, `-74` del pase de `require_data_list` en
-  `tasks_http_test.gleam`).
+  `tasks_http_test.gleam`, `-141` del pase de `require_data` para payloads
+  HTTP no-lista).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

@@ -479,25 +479,14 @@ fn rule_create_json(name: String, type_id: Int, template_id: Int) -> json.Json {
 }
 
 fn decode_rule_name(body: String) -> String {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let rule_decoder = {
     use name <- decode.field("name", decode.string)
     decode.success(name)
   }
-
-  let data_decoder = {
-    use rule <- decode.field("rule", rule_decoder)
-    decode.success(rule)
-  }
-
-  let response_decoder = {
-    use name <- decode.field("data", data_decoder)
-    decode.success(name)
-  }
-
-  let assert Ok(name) = decode.run(dynamic, response_decoder)
-  name
+  fixtures.require_data(
+    body,
+    decode.field("rule", rule_decoder, decode.success),
+  )
 }
 
 fn decode_rule_names(body: String) -> List(String) {
@@ -505,8 +494,6 @@ fn decode_rule_names(body: String) -> List(String) {
 }
 
 fn decode_first_rule_template_name(body: String) -> String {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let template_decoder = {
     use name <- decode.field("name", decode.string)
     decode.success(name)
@@ -516,18 +503,8 @@ fn decode_first_rule_template_name(body: String) -> String {
     use template <- decode.field("template", template_decoder)
     decode.success(template)
   }
-
-  let data_decoder = {
-    use rules <- decode.field("rules", decode.list(rule_decoder))
-    decode.success(rules)
-  }
-
-  let response_decoder = {
-    use rules <- decode.field("data", data_decoder)
-    decode.success(rules)
-  }
-
-  let assert Ok([name, ..]) = decode.run(dynamic, response_decoder)
+  let assert [name, ..] =
+    fixtures.require_data_list(body, "rules", rule_decoder)
   name
 }
 

@@ -1272,10 +1272,17 @@ pub fn require_data_int_list_field(
 }
 
 pub fn require_data_int_list(body: String, field: String) -> List(Int) {
+  require_data(
+    body,
+    decode.field(field, decode.list(decode.int), decode.success),
+  )
+}
+
+pub fn require_data(body: String, data_decoder: decode.Decoder(a)) -> a {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let assert Ok(values) =
-    decode.run(dynamic, decode.at(["data", field], decode.list(decode.int)))
-  values
+  let assert Ok(value) =
+    decode.run(dynamic, decode.field("data", data_decoder, decode.success))
+  value
 }
 
 pub fn require_data_list(
@@ -1283,13 +1290,10 @@ pub fn require_data_list(
   collection_field: String,
   item_decoder: decode.Decoder(a),
 ) -> List(a) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let assert Ok(items) =
-    decode.run(
-      dynamic,
-      decode.at(["data", collection_field], decode.list(item_decoder)),
-    )
-  items
+  require_data(
+    body,
+    decode.field(collection_field, decode.list(item_decoder), decode.success),
+  )
 }
 
 /// Convert Entity to JSON field name string.

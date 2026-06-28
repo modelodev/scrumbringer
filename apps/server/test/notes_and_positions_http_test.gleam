@@ -916,71 +916,29 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
 }
 
 fn decode_note_content(body: String) -> String {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let note_decoder = {
     use content <- decode.field("content", decode.string)
     decode.success(content)
   }
-
-  let data_decoder = {
-    use note <- decode.field("note", note_decoder)
-    decode.success(note)
-  }
-
-  let response_decoder = {
-    use note <- decode.field("data", data_decoder)
-    decode.success(note)
-  }
-
-  let assert Ok(content) = decode.run(dynamic, response_decoder)
-  content
+  fx.require_data(body, decode.field("note", note_decoder, decode.success))
 }
 
 fn decode_created_note_contract(body: String) -> #(String, Bool, Bool) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let note_decoder = {
     use url <- decode.field("url", decode.string)
     use pinned <- decode.field("pinned", decode.bool)
     use updated_at <- decode.field("updated_at", decode.string)
     decode.success(#(url, pinned, updated_at != ""))
   }
-
-  let data_decoder = {
-    use note <- decode.field("note", note_decoder)
-    decode.success(note)
-  }
-
-  let response_decoder = {
-    use note <- decode.field("data", data_decoder)
-    decode.success(note)
-  }
-
-  let assert Ok(contract) = decode.run(dynamic, response_decoder)
-  contract
+  fx.require_data(body, decode.field("note", note_decoder, decode.success))
 }
 
 fn decode_note_pinned(body: String) -> Bool {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let note_decoder = {
     use pinned <- decode.field("pinned", decode.bool)
     decode.success(pinned)
   }
-
-  let data_decoder = {
-    use note <- decode.field("note", note_decoder)
-    decode.success(note)
-  }
-
-  let response_decoder = {
-    use pinned <- decode.field("data", data_decoder)
-    decode.success(pinned)
-  }
-
-  let assert Ok(pinned) = decode.run(dynamic, response_decoder)
-  pinned
+  fx.require_data(body, decode.field("note", note_decoder, decode.success))
 }
 
 fn decode_note_list_contents(body: String) -> List(String) {
@@ -1031,25 +989,12 @@ fn decode_note_id(body: String) -> Int {
 }
 
 fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let card_decoder = {
     use id <- decode.field("id", decode.int)
     use has_new_notes <- decode.field("has_new_notes", decode.bool)
     decode.success(#(id, has_new_notes))
   }
-
-  let data_decoder = {
-    use cards <- decode.field("cards", decode.list(card_decoder))
-    decode.success(cards)
-  }
-
-  let response_decoder = {
-    use cards <- decode.field("data", data_decoder)
-    decode.success(cards)
-  }
-
-  let assert Ok(cards) = decode.run(dynamic, response_decoder)
+  let cards = fx.require_data_list(body, "cards", card_decoder)
   let assert Ok(#(_, has_new_notes)) =
     list.find(cards, fn(card) { card.0 == card_id })
 
@@ -1057,25 +1002,12 @@ fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {
 }
 
 fn decode_task_has_new_notes(body: String, task_id: Int) -> Bool {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let task_decoder = {
     use id <- decode.field("id", decode.int)
     use has_new_notes <- decode.field("has_new_notes", decode.bool)
     decode.success(#(id, has_new_notes))
   }
-
-  let data_decoder = {
-    use tasks <- decode.field("tasks", decode.list(task_decoder))
-    decode.success(tasks)
-  }
-
-  let response_decoder = {
-    use tasks <- decode.field("data", data_decoder)
-    decode.success(tasks)
-  }
-
-  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
+  let tasks = fx.require_data_list(body, "tasks", task_decoder)
   let assert Ok(#(_, has_new_notes)) =
     list.find(tasks, fn(task) { task.0 == task_id })
 
@@ -1087,26 +1019,13 @@ fn decode_position_task_ids(body: String) -> List(Int) {
 }
 
 fn decode_positions_xy_by_task(body: String, task_id: Int) -> #(Int, Int) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let position_decoder = {
     use tid <- decode.field("task_id", decode.int)
     use x <- decode.field("x", decode.int)
     use y <- decode.field("y", decode.int)
     decode.success(#(tid, x, y))
   }
-
-  let data_decoder = {
-    use positions <- decode.field("positions", decode.list(position_decoder))
-    decode.success(positions)
-  }
-
-  let response_decoder = {
-    use positions <- decode.field("data", data_decoder)
-    decode.success(positions)
-  }
-
-  let assert Ok(positions) = decode.run(dynamic, response_decoder)
+  let positions = fx.require_data_list(body, "positions", position_decoder)
 
   let assert Ok(#(_, x, y)) =
     positions

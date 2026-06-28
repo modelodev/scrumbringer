@@ -704,19 +704,12 @@ pub fn release_all_tasks_for_member_success_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
   let payload_decoder = {
     use released_count <- decode.field("released_count", decode.int)
     use task_ids <- decode.field("task_ids", decode.list(decode.int))
     decode.success(#(released_count, task_ids))
   }
-  let response_decoder = {
-    use payload <- decode.field("data", payload_decoder)
-    decode.success(payload)
-  }
-
-  let assert Ok(#(released_count, task_ids)) =
-    decode.run(dynamic, response_decoder)
+  let #(released_count, task_ids) = fx.require_data(body, payload_decoder)
   released_count |> expect.equal(2)
   list.length(task_ids) |> expect.equal(2)
 
@@ -1375,24 +1368,17 @@ pub fn me_metrics_returns_counts_test() {
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let metrics_decoder = {
     use claimed_count <- decode.field("claimed_count", decode.int)
     use released_count <- decode.field("released_count", decode.int)
     use closed_count <- decode.field("closed_count", decode.int)
     decode.success(#(claimed_count, released_count, closed_count))
   }
-
-  let data_decoder = {
-    use metrics <- decode.field("metrics", metrics_decoder)
-    decode.success(metrics)
-  }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(#(claimed, released, closed)) =
-    decode.run(dynamic, response_decoder)
+  let #(claimed, released, closed) =
+    fx.require_data(
+      body,
+      decode.field("metrics", metrics_decoder, decode.success),
+    )
 
   claimed |> expect.equal(1)
   released |> expect.equal(0)
@@ -2176,8 +2162,6 @@ fn heartbeat_work_session(
 }
 
 fn decode_work_session(body: String) -> #(option.Option(Int), String, Int) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let session_decoder = {
     use task_id <- decode.field("task_id", decode.int)
     use accumulated_s <- decode.field("accumulated_s", decode.int)
@@ -2198,11 +2182,7 @@ fn decode_work_session(body: String) -> #(option.Option(Int), String, Int) {
 
     decode.success(#(active_task_id, as_of, accumulated_s))
   }
-
-  let response_decoder = decode.field("data", data_decoder, decode.success)
-
-  let assert Ok(payload) = decode.run(dynamic, response_decoder)
-  payload
+  fx.require_data(body, data_decoder)
 }
 
 fn decode_work_session_task_id(body: String) -> option.Option(Int) {
