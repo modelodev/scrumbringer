@@ -1,4 +1,5 @@
 import gleam/option
+import support/domain_fixtures
 import support/render_assertions
 
 import lustre/element
@@ -11,19 +12,12 @@ import scrumbringer_client/ui/pinned_context
 
 fn card() -> Card {
   Card(
-    id: 42,
-    project_id: 1,
-    parent_card_id: option.None,
-    title: "Checkout",
+    ..domain_fixtures.card(42, 1, "Checkout"),
     description: "Ship checkout",
-    color: option.None,
     state: Active,
     task_count: 4,
     closed_count: 2,
-    created_by: 1,
     created_at: "2026-01-20T00:00:00Z",
-    due_date: option.None,
-    has_new_notes: False,
   )
 }
 

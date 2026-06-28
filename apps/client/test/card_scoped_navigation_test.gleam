@@ -1,23 +1,15 @@
-import gleam/option as opt
+import support/domain_fixtures
 
 import domain/card.{type Card, Active, Card}
 import scrumbringer_client/features/cards/scoped_navigation
 
 fn sample_card() -> Card {
   Card(
-    id: 42,
-    project_id: 6,
-    parent_card_id: opt.None,
-    title: "API Cleanup",
-    description: "",
-    color: opt.None,
+    ..domain_fixtures.card(42, 6, "API Cleanup"),
     state: Active,
     task_count: 4,
     closed_count: 2,
-    created_by: 1,
     created_at: "2026-06-22T09:00:00Z",
-    due_date: opt.None,
-    has_new_notes: False,
   )
 }
 

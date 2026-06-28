@@ -1,5 +1,5 @@
-import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/card.{Card, Draft}
@@ -8,19 +8,11 @@ import scrumbringer_client/i18n/locale
 
 fn sample_card() {
   Card(
-    id: 3,
-    project_id: 7,
-    parent_card_id: opt.None,
-    title: "Customer Portal",
+    ..domain_fixtures.card(3, 7, "Customer Portal"),
     description: "Visible to members",
-    color: opt.None,
     state: Draft,
     task_count: 4,
     closed_count: 1,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    has_new_notes: False,
   )
 }
 
