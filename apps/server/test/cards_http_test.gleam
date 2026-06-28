@@ -300,10 +300,8 @@ pub fn close_card_blocks_claimed_descendant_task_test() {
     fixtures.activate_card_response(handler, session, root_id),
     200,
   )
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
   let res = fixtures.close_card_response(handler, session, root_id)
 
@@ -565,10 +563,8 @@ pub fn claim_task_rejects_draft_card_task_until_activation_test() {
     fixtures.activate_card_response(handler, session, card_id),
     200,
   )
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 }
 
 pub fn close_task_rolls_up_direct_parent_cards_test() {
@@ -595,14 +591,10 @@ pub fn close_task_rolls_up_direct_parent_cards_test() {
     fixtures.activate_card_response(handler, session, root_id),
     200,
   )
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
-  expect.expect_status(
-    fixtures.close_task_response(handler, session, task_id, 2),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
+  fixtures.close_task_status(handler, session, task_id, 2)
+  |> expect.equal(200)
 
   let assert Ok(child_state) =
     fixtures.query_string(
@@ -674,14 +666,10 @@ pub fn close_task_does_not_roll_up_when_child_card_stays_open_test() {
     fixtures.activate_card_response(handler, session, root_id),
     200,
   )
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
-  expect.expect_status(
-    fixtures.close_task_response(handler, session, task_id, 2),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
+  fixtures.close_task_status(handler, session, task_id, 2)
+  |> expect.equal(200)
 
   let assert Ok(root_state) =
     fixtures.query_string(

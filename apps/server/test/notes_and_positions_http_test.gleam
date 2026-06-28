@@ -519,14 +519,8 @@ pub fn task_notes_indicator_updates_after_view_test() {
     200,
   )
 
-  let list_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
-    |> fx.with_session_cookies(member_session)
-
-  let list_res = handler(list_req)
+  let list_res =
+    fx.list_project_tasks_response(handler, member_session, project_id, "")
   expect.expect_status(list_res, 200)
   decode_task_has_new_notes(simulate.read_body(list_res), task_id)
   |> expect.equal(True)
@@ -537,7 +531,8 @@ pub fn task_notes_indicator_updates_after_view_test() {
 
   expect.expect_status(handler(view_req), 204)
 
-  let list_res_2 = handler(list_req)
+  let list_res_2 =
+    fx.list_project_tasks_response(handler, member_session, project_id, "")
   expect.expect_status(list_res_2, 200)
   decode_task_has_new_notes(simulate.read_body(list_res_2), task_id)
   |> expect.equal(False)

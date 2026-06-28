@@ -1928,7 +1928,16 @@ Estado de ejecucion:
   con capacidad usan `fixtures.require_task_type_with_capability`, eliminando
   el sentinel `0` del test. La construccion opcional del payload queda privada
   dentro de `fixtures.gleam` para no ampliar API publica accidental.
-- Delta parcial WP-12: `-4.011` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimosexto pase de fixtures HTTP aplicado a endpoints task y
+  work-session. `fixtures.gleam` concentra respuestas/status de claim, release,
+  close, delete, listado de tasks, dependencias y sesiones de trabajo; los tests
+  de `tasks_http_test`, `work_sessions_http_test`, `cards_http_test`,
+  `activity_http_test`, `notes_and_positions_http_test` y
+  `unit/http/task_conflict_handlers_test` dejan de construir esos requests
+  repetidos salvo cuando el propio caso valida auth, CSRF, payload invalido o
+  un contrato distinto. Guardarrail: `tasks_http_test` baja de 49 a 25
+  `simulate.request`.
+- Delta parcial WP-12: `-4.018` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1998,11 +2007,12 @@ Estado de ejecucion:
   cuadragesimosegundo pase de fixtures de dominio compartidas en tests de
   cliente, `-35` del cuadragesimotercer pase de fixtures de dominio
   compartidas en tests de cliente, `-5` del cuadragesimocuarto pase de
-  fixtures HTTP compartidas en tests de servidor).
+  fixtures HTTP compartidas en tests de servidor, `-7` del cuadragesimosexto
+  pase de fixtures HTTP de task/work-session en tests de servidor).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
-  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`).
   - `cd apps/client && gleam format --check src test && gleam build`;
   - `cd apps/client && gleam test` (`1887 passed`).
 

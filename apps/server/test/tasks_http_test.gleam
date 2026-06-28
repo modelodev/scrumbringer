@@ -9,7 +9,6 @@ import gleam/string
 import pog
 import scrumbringer_server
 import support/assertions as expect
-import wisp
 import wisp/simulate
 
 pub fn task_types_list_sorted_by_name_test() {
@@ -144,57 +143,38 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   set_task_created_at(db, t3_id, "2000-01-02T00:00:00Z")
 
   let list_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-      )
-      |> fx.with_session_cookies(session),
-    )
+    fx.list_project_tasks_response(handler, session, project_id, "")
 
   expect.expect_status(list_res, 200)
   let list_titles = decode_task_titles(simulate.read_body(list_res))
   list_titles |> expect.equal(["needle in title", "Unrelated", "Old"])
 
   let q_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?q=needle",
-      )
-      |> fx.with_session_cookies(session),
-    )
+    fx.list_project_tasks_response(handler, session, project_id, "q=needle")
 
   expect.expect_status(q_res, 200)
   let q_titles = decode_task_titles(simulate.read_body(q_res))
   q_titles |> expect.equal(["needle in title"])
 
   let cap_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/"
-          <> int.to_string(project_id)
-          <> "/tasks?capability_id="
-          <> int.to_string(cap1),
-      )
-      |> fx.with_session_cookies(session),
+    fx.list_project_tasks_response(
+      handler,
+      session,
+      project_id,
+      "capability_id=" <> int.to_string(cap1),
     )
 
   expect.expect_status(cap_res, 200)
   let cap_titles = decode_task_titles(simulate.read_body(cap_res))
   cap_titles |> expect.equal(["Unrelated"])
 
-  let multi_cap_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/tasks?capability_id=1,2",
+  let multi_cap_res =
+    fx.list_project_tasks_response(
+      handler,
+      session,
+      project_id,
+      "capability_id=1,2",
     )
-    |> fx.with_session_cookies(session)
-
-  let multi_cap_res = handler(multi_cap_req)
   expect.expect_status(multi_cap_res, 422)
   string.contains(simulate.read_body(multi_cap_res), "VALIDATION_ERROR")
   |> expect.is_true
@@ -212,14 +192,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
 
   fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  let req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
-    |> fx.with_session_cookies(session)
-
-  let res = handler(req)
+  let res = fx.list_project_tasks_response(handler, session, project_id, "")
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
@@ -280,11 +253,7 @@ pub fn task_get_includes_task_contract_fields_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  let req =
-    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fx.with_session_cookies(session)
-
-  let res = handler(req)
+  let res = fx.task_response(handler, session, task_id)
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
@@ -343,8 +312,11 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, task_id), 200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(
+    fx.start_work_session_response(handler, session, task_id),
+    200,
+  )
 
   let user_id =
     fx.require_query_int(
@@ -353,11 +325,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
       [],
     )
 
-  let req =
-    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fx.with_session_cookies(session)
-
-  let res = handler(req)
+  let res = fx.task_response(handler, session, task_id)
   expect.expect_status(res, 200)
 
   let body = simulate.read_body(res)
@@ -504,14 +472,14 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
   count_audit_events_for_actor(db, task_id, admin_id, "task_created")
   |> expect.equal(1)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
   count_audit_events(db, task_id, "task_claimed") |> expect.equal(1)
 
-  release_task(handler, session, task_id, 2) |> expect.equal(200)
+  fx.release_task_status(handler, session, task_id, 2) |> expect.equal(200)
   count_audit_events(db, task_id, "task_released") |> expect.equal(1)
 
-  claim_task(handler, session, task_id, 3) |> expect.equal(200)
-  close_task(handler, session, task_id, 4) |> expect.equal(200)
+  fx.claim_task_status(handler, session, task_id, 3) |> expect.equal(200)
+  fx.close_task_status(handler, session, task_id, 4) |> expect.equal(200)
   count_audit_events(db, task_id, "task_closed") |> expect.equal(1)
 }
 
@@ -527,7 +495,7 @@ pub fn delete_task_without_operational_history_removes_task_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Clean", "", 3, type_id)
 
-  delete_task(handler, session, task_id) |> expect.equal(204)
+  fx.delete_task_status(handler, session, task_id) |> expect.equal(204)
   count_task_rows(db, task_id) |> expect.equal(0)
   count_audit_events(db, task_id, "task_created") |> expect.equal(0)
 }
@@ -544,8 +512,8 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Claimed", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
-  let res = delete_task_response(handler, session, task_id)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
+  let res = fx.delete_task_response(handler, session, task_id)
 
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "TASK_HAS_OPERATIONAL_HISTORY")
@@ -569,13 +537,18 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
   let blocker_task =
     fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_task_note(handler, session, noted_task, "Operational context")
+  fx.create_task_note_status(
+    handler,
+    session,
+    noted_task,
+    "Operational context",
+  )
   |> expect.equal(200)
-  create_dependency(handler, session, blocked_task, blocker_task)
+  fx.create_task_dependency_status(handler, session, blocked_task, blocker_task)
   |> expect.equal(200)
 
-  delete_task(handler, session, noted_task) |> expect.equal(409)
-  delete_task(handler, session, blocker_task) |> expect.equal(409)
+  fx.delete_task_status(handler, session, noted_task) |> expect.equal(409)
+  fx.delete_task_status(handler, session, blocker_task) |> expect.equal(409)
   count_task_rows(db, noted_task) |> expect.equal(1)
   count_task_rows(db, blocker_task) |> expect.equal(1)
 }
@@ -631,9 +604,19 @@ pub fn release_all_tasks_for_member_success_test() {
 
   let member_session = fx.require_login_session(handler, "member@example.com")
 
-  claim_task(handler, member_session, task_a, task_version(db, task_a))
+  fx.claim_task_status(
+    handler,
+    member_session,
+    task_a,
+    fx.task_version(db, task_a),
+  )
   |> expect.equal(200)
-  claim_task(handler, member_session, task_b, task_version(db, task_b))
+  fx.claim_task_status(
+    handler,
+    member_session,
+    task_b,
+    fx.task_version(db, task_b),
+  )
   |> expect.equal(200)
 
   let list_req =
@@ -796,30 +779,12 @@ pub fn task_dependencies_reject_circular_dependency_test() {
   let task_b =
     fx.require_task(handler, session, project_id, "Task B", "", 1, type_id)
 
-  let dep_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_a) <> "/dependencies",
-    )
-    |> fx.with_auth(session)
-    |> simulate.json_body(
-      json.object([#("depends_on_task_id", json.int(task_b))]),
-    )
-
-  let dep_res = handler(dep_req)
+  let dep_res =
+    fx.create_task_dependency_response(handler, session, task_a, task_b)
   expect.expect_status(dep_res, 200)
 
-  let circular_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_b) <> "/dependencies",
-    )
-    |> fx.with_auth(session)
-    |> simulate.json_body(
-      json.object([#("depends_on_task_id", json.int(task_a))]),
-    )
-
-  let circular_res = handler(circular_req)
+  let circular_res =
+    fx.create_task_dependency_response(handler, session, task_b, task_a)
   expect.expect_status(circular_res, 422)
   simulate.read_body(circular_res)
   |> string.contains("Circular dependency detected")
@@ -862,17 +827,8 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
       type_two_id,
     )
 
-  let cross_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_one) <> "/dependencies",
-    )
-    |> fx.with_auth(session)
-    |> simulate.json_body(
-      json.object([#("depends_on_task_id", json.int(task_two))]),
-    )
-
-  let cross_res = handler(cross_req)
+  let cross_res =
+    fx.create_task_dependency_response(handler, session, task_one, task_two)
   expect.expect_status(cross_res, 422)
   simulate.read_body(cross_res)
   |> string.contains("Dependency must be in same project")
@@ -903,11 +859,21 @@ pub fn task_dependencies_reject_closed_dependency_test() {
     fx.require_task(handler, session, project_id, "Task Closed", "", 1, type_id)
 
   let claim_status =
-    claim_task(handler, session, task_closed, task_version(db, task_closed))
+    fx.claim_task_status(
+      handler,
+      session,
+      task_closed,
+      fx.task_version(db, task_closed),
+    )
   claim_status |> expect.equal(200)
 
   let close_status =
-    close_task(handler, session, task_closed, task_version(db, task_closed))
+    fx.close_task_status(
+      handler,
+      session,
+      task_closed,
+      fx.task_version(db, task_closed),
+    )
   close_status |> expect.equal(200)
 
   let closed_req =
@@ -942,7 +908,7 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
   let task_blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
-  create_dependency(handler, session, task_blocked, task_blocker)
+  fx.create_task_dependency_status(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
 
   let claim_res =
@@ -950,7 +916,7 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
       handler,
       session,
       task_blocked,
-      task_version(db, task_blocked),
+      fx.task_version(db, task_blocked),
     )
 
   expect.expect_status(claim_res, 409)
@@ -975,14 +941,29 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
   let task_blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
-  create_dependency(handler, session, task_blocked, task_blocker)
+  fx.create_task_dependency_status(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
-  claim_task(handler, session, task_blocker, task_version(db, task_blocker))
+  fx.claim_task_status(
+    handler,
+    session,
+    task_blocker,
+    fx.task_version(db, task_blocker),
+  )
   |> expect.equal(200)
-  close_task(handler, session, task_blocker, task_version(db, task_blocker))
+  fx.close_task_status(
+    handler,
+    session,
+    task_blocker,
+    fx.task_version(db, task_blocker),
+  )
   |> expect.equal(200)
 
-  claim_task(handler, session, task_blocked, task_version(db, task_blocked))
+  fx.claim_task_status(
+    handler,
+    session,
+    task_blocked,
+    fx.task_version(db, task_blocked),
+  )
   |> expect.equal(200)
 }
 
@@ -1001,12 +982,17 @@ pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
   let task_blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
-  create_dependency(handler, session, task_blocked, task_blocker)
+  fx.create_task_dependency_status(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
-  delete_dependency(handler, session, task_blocked, task_blocker)
+  fx.delete_task_dependency_status(handler, session, task_blocked, task_blocker)
   |> expect.equal(204)
 
-  claim_task(handler, session, task_blocked, task_version(db, task_blocked))
+  fx.claim_task_status(
+    handler,
+    session,
+    task_blocked,
+    fx.task_version(db, task_blocked),
+  )
   |> expect.equal(200)
 }
 
@@ -1045,7 +1031,7 @@ pub fn pool_includes_available_active_card_task_test() {
     type_id,
   )
 
-  let res = list_project_tasks(handler, session, project_id, "")
+  let res = fx.list_project_tasks_response(handler, session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res))
   |> expect.equal(["Active card task"])
@@ -1067,7 +1053,7 @@ pub fn pool_excludes_task_under_draft_card_test() {
     draft_card,
   )
 
-  let res = list_project_tasks(handler, session, project_id, "")
+  let res = fx.list_project_tasks_response(handler, session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res)) |> expect.equal([])
 }
@@ -1088,7 +1074,7 @@ pub fn pool_includes_task_under_active_card_test() {
     active_card,
   )
 
-  let res = list_project_tasks(handler, session, project_id, "")
+  let res = fx.list_project_tasks_response(handler, session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res))
   |> expect.equal(["Active-card task"])
@@ -1102,27 +1088,37 @@ pub fn dependency_blocks_available_and_claimed_tasks_test() {
   let blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_dependency(handler, session, blocked, blocker)
+  fx.create_task_dependency_status(handler, session, blocked, blocker)
   |> expect.equal(200)
 
   let blocked_res =
-    list_project_tasks(handler, session, project_id, "blocked=true")
+    fx.list_project_tasks_response(handler, session, project_id, "blocked=true")
   expect.expect_status(blocked_res, 200)
   decode_task_titles(simulate.read_body(blocked_res))
   |> expect.equal(["Blocked"])
 
   let claim_blocked =
-    fx.claim_task_response(handler, session, blocked, task_version(db, blocked))
+    fx.claim_task_response(
+      handler,
+      session,
+      blocked,
+      fx.task_version(db, blocked),
+    )
   expect.expect_status(claim_blocked, 409)
   simulate.read_body(claim_blocked)
   |> string.contains("CONFLICT_BLOCKED")
   |> expect.is_true
 
-  claim_task(handler, session, blocker, task_version(db, blocker))
+  fx.claim_task_status(handler, session, blocker, fx.task_version(db, blocker))
   |> expect.equal(200)
 
   let still_blocked =
-    fx.claim_task_response(handler, session, blocked, task_version(db, blocked))
+    fx.claim_task_response(
+      handler,
+      session,
+      blocked,
+      fx.task_version(db, blocked),
+    )
   expect.expect_status(still_blocked, 409)
 }
 
@@ -1134,20 +1130,30 @@ pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
   let blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  claim_task(handler, session, blocked, task_version(db, blocked))
+  fx.claim_task_status(handler, session, blocked, fx.task_version(db, blocked))
   |> expect.equal(200)
-  create_dependency(handler, session, blocked, blocker)
+  fx.create_task_dependency_status(handler, session, blocked, blocker)
   |> expect.equal(200)
 
   let close_blocked =
-    fx.close_task_response(handler, session, blocked, task_version(db, blocked))
+    fx.close_task_response(
+      handler,
+      session,
+      blocked,
+      fx.task_version(db, blocked),
+    )
   expect.expect_status(close_blocked, 409)
   simulate.read_body(close_blocked)
   |> string.contains("CONFLICT_BLOCKED")
   |> expect.is_true
   task_claimed_by(db, blocked) |> expect.equal(1)
 
-  release_task(handler, session, blocked, task_version(db, blocked))
+  fx.release_task_status(
+    handler,
+    session,
+    blocked,
+    fx.task_version(db, blocked),
+  )
   |> expect.equal(200)
   task_claimed_by(db, blocked) |> expect.equal(0)
 }
@@ -1160,20 +1166,25 @@ pub fn dependency_unblocks_when_dependency_closed_test() {
   let blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_dependency(handler, session, blocked, blocker)
+  fx.create_task_dependency_status(handler, session, blocked, blocker)
   |> expect.equal(200)
-  claim_task(handler, session, blocker, task_version(db, blocker))
+  fx.claim_task_status(handler, session, blocker, fx.task_version(db, blocker))
   |> expect.equal(200)
-  close_task(handler, session, blocker, task_version(db, blocker))
+  fx.close_task_status(handler, session, blocker, fx.task_version(db, blocker))
   |> expect.equal(200)
 
   let unblocked_res =
-    list_project_tasks(handler, session, project_id, "blocked=false")
+    fx.list_project_tasks_response(
+      handler,
+      session,
+      project_id,
+      "blocked=false",
+    )
   expect.expect_status(unblocked_res, 200)
   decode_task_titles(simulate.read_body(unblocked_res))
   |> list.contains("Blocked")
   |> expect.is_true
-  claim_task(handler, session, blocked, task_version(db, blocked))
+  fx.claim_task_status(handler, session, blocked, fx.task_version(db, blocked))
   |> expect.equal(200)
 }
 
@@ -1185,11 +1196,11 @@ pub fn delete_dependency_target_unblocks_task_test() {
   let blocker =
     fx.require_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_dependency(handler, session, blocked, blocker)
+  fx.create_task_dependency_status(handler, session, blocked, blocker)
   |> expect.equal(200)
-  delete_dependency(handler, session, blocked, blocker)
+  fx.delete_task_dependency_status(handler, session, blocked, blocker)
   |> expect.equal(204)
-  claim_task(handler, session, blocked, task_version(db, blocked))
+  fx.claim_task_status(handler, session, blocked, fx.task_version(db, blocked))
   |> expect.equal(200)
 }
 
@@ -1215,7 +1226,12 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
 
   let task_id =
     fx.require_task(handler, admin_session, project_id, "Owned", "", 3, type_id)
-  claim_task(handler, owner_session, task_id, task_version(db, task_id))
+  fx.claim_task_status(
+    handler,
+    owner_session,
+    task_id,
+    fx.task_version(db, task_id),
+  )
   |> expect.equal(200)
 
   let other_close =
@@ -1223,11 +1239,16 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
       handler,
       other_session,
       task_id,
-      task_version(db, task_id),
+      fx.task_version(db, task_id),
     )
   expect.expect_status(other_close, 403)
 
-  close_task(handler, owner_session, task_id, task_version(db, task_id))
+  fx.close_task_status(
+    handler,
+    owner_session,
+    task_id,
+    fx.task_version(db, task_id),
+  )
   |> expect.equal(200)
 }
 
@@ -1238,8 +1259,10 @@ pub fn dependency_would_create_cycle_is_rejected_test() {
   let task_b =
     fx.require_task(handler, session, project_id, "Task B", "", 3, type_id)
 
-  create_dependency(handler, session, task_a, task_b) |> expect.equal(200)
-  create_dependency(handler, session, task_b, task_a) |> expect.equal(422)
+  fx.create_task_dependency_status(handler, session, task_a, task_b)
+  |> expect.equal(200)
+  fx.create_task_dependency_status(handler, session, task_b, task_a)
+  |> expect.equal(422)
 }
 
 pub fn cross_project_dependency_is_rejected_test() {
@@ -1270,7 +1293,7 @@ pub fn cross_project_dependency_is_rejected_test() {
       type_two_id,
     )
 
-  create_dependency(handler, session, task_one, task_two)
+  fx.create_task_dependency_status(handler, session, task_one, task_two)
   |> expect.equal(422)
 }
 
@@ -1324,7 +1347,8 @@ pub fn pool_filters_by_user_capabilities_test() {
 
   let member_session = fx.require_login_session(handler, "cap-user@example.com")
 
-  let res = list_project_tasks(handler, member_session, project_id, "")
+  let res =
+    fx.list_project_tasks_response(handler, member_session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res))
   |> expect.equal(["Visible frontend"])
@@ -1343,8 +1367,8 @@ pub fn me_metrics_returns_counts_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
-  close_task(handler, session, task_id, 2) |> expect.equal(200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
+  fx.close_task_status(handler, session, task_id, 2) |> expect.equal(200)
 
   let req =
     simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
@@ -1412,8 +1436,11 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, task_id), 200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(
+    fx.start_work_session_response(handler, session, task_id),
+    200,
+  )
 
   let user_id =
     fx.require_query_int(
@@ -1582,14 +1609,8 @@ pub fn tasks_list_requires_membership_test() {
   let outsider_session =
     fx.require_login_session(handler, "outsider@example.com")
 
-  let req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
-    |> fx.with_session_cookies(outsider_session)
-
-  let res = handler(req)
+  let res =
+    fx.list_project_tasks_response(handler, outsider_session, project_id, "")
   expect.expect_status(res, 403)
   string.contains(simulate.read_body(res), "FORBIDDEN") |> expect.is_true
 }
@@ -1611,11 +1632,7 @@ pub fn task_get_requires_membership_test() {
   let outsider_session =
     fx.require_login_session(handler, "outsider@example.com")
 
-  let req =
-    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fx.with_session_cookies(outsider_session)
-
-  let res = handler(req)
+  let res = fx.task_response(handler, outsider_session, task_id)
   expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
@@ -1659,9 +1676,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   let closed_id =
     fx.require_task(handler, session, project_id, "Closed", "", 3, bug_type_id)
 
-  claim_task(handler, session, claimed_id, 1) |> expect.equal(200)
-  claim_task(handler, session, closed_id, 1) |> expect.equal(200)
-  close_task(handler, session, closed_id, 2) |> expect.equal(200)
+  fx.claim_task_status(handler, session, claimed_id, 1) |> expect.equal(200)
+  fx.claim_task_status(handler, session, closed_id, 1) |> expect.equal(200)
+  fx.close_task_status(handler, session, closed_id, 2) |> expect.equal(200)
 
   let available_res =
     handler(
@@ -1725,40 +1742,25 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   |> expect.equal(["Closed", "Available"])
 
   let invalid_status_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?status=nope",
-      )
-      |> fx.with_session_cookies(session),
-    )
+    fx.list_project_tasks_response(handler, session, project_id, "status=nope")
 
   expect.expect_status(invalid_status_res, 422)
   string.contains(simulate.read_body(invalid_status_res), "VALIDATION_ERROR")
   |> expect.is_true
 
   let invalid_type_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?type_id=abc",
-      )
-      |> fx.with_session_cookies(session),
-    )
+    fx.list_project_tasks_response(handler, session, project_id, "type_id=abc")
 
   expect.expect_status(invalid_type_res, 422)
   string.contains(simulate.read_body(invalid_type_res), "VALIDATION_ERROR")
   |> expect.is_true
 
   let invalid_cap_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/"
-          <> int.to_string(project_id)
-          <> "/tasks?capability_id=abc",
-      )
-      |> fx.with_session_cookies(session),
+    fx.list_project_tasks_response(
+      handler,
+      session,
+      project_id,
+      "capability_id=abc",
     )
 
   expect.expect_status(invalid_cap_res, 422)
@@ -1794,7 +1796,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let task_id =
     fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, member_session, task_id, 1)
+  fx.claim_task_status(handler, member_session, task_id, 1)
   |> expect.equal(200)
 
   let patch_ok_res =
@@ -1814,7 +1816,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 
   task_claimed_by(db, task_id) |> expect.equal(member_id)
 
-  let version = task_version(db, task_id)
+  let version = fx.task_version(db, task_id)
 
   let patch_other_res =
     handler(
@@ -1854,7 +1856,7 @@ pub fn patch_rejects_blank_title_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
 
   let res =
     handler(
@@ -1886,15 +1888,15 @@ pub fn me_work_session_start_pause_and_persist_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
 
   let start_body =
-    simulate.read_body(start_work_session(handler, session, task_id))
+    simulate.read_body(fx.start_work_session_response(handler, session, task_id))
 
   decode_work_session_task_id(start_body) |> expect.equal(option.Some(task_id))
   is_iso8601_utc(decode_as_of(start_body)) |> expect.equal(True)
 
-  let get_res = get_active_work_sessions(handler, session)
+  let get_res = fx.active_work_sessions_response(handler, session)
   expect.expect_status(get_res, 200)
   decode_work_session_task_id(simulate.read_body(get_res))
   |> expect.equal(option.Some(task_id))
@@ -1915,7 +1917,7 @@ pub fn me_work_session_start_pause_and_persist_test() {
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
-  let pause_res = pause_work_session(handler, session, task_id)
+  let pause_res = fx.pause_work_session_response(handler, session, task_id)
   expect.expect_status(pause_res, 200)
   decode_work_session_task_id(simulate.read_body(pause_res))
   |> expect.equal(option.None)
@@ -1930,12 +1932,12 @@ pub fn me_work_session_start_pause_and_persist_test() {
   let _ = expect.is_true(accumulated_after_pause >= 70)
 
   let resume_body =
-    simulate.read_body(start_work_session(handler, session, task_id))
+    simulate.read_body(fx.start_work_session_response(handler, session, task_id))
 
   decode_work_session_accumulated_s(resume_body)
   |> expect.equal(option.Some(accumulated_after_pause))
 
-  let get_after_pause = get_active_work_sessions(handler, session)
+  let get_after_pause = fx.active_work_sessions_response(handler, session)
   expect.expect_status(get_after_pause, 200)
   decode_work_session_task_id(simulate.read_body(get_after_pause))
   |> expect.equal(option.Some(task_id))
@@ -1954,8 +1956,11 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, task_id), 200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(
+    fx.start_work_session_response(handler, session, task_id),
+    200,
+  )
 
   let user_id =
     fx.require_query_int(
@@ -1981,7 +1986,8 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
       [pog.int(user_id), pog.int(task_id)],
     )
 
-  let heartbeat_res = heartbeat_work_session(handler, session, task_id)
+  let heartbeat_res =
+    fx.heartbeat_work_session_response(handler, session, task_id)
   expect.expect_status(heartbeat_res, 200)
 
   // Get last_heartbeat_at after heartbeat
@@ -2013,12 +2019,15 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let t1 = fx.require_task(handler, session, project_id, "T1", "", 3, type_id)
   let t2 = fx.require_task(handler, session, project_id, "T2", "", 3, type_id)
 
-  claim_task(handler, session, t1, 1) |> expect.equal(200)
-  claim_task(handler, session, t2, 1) |> expect.equal(200)
+  fx.claim_task_status(handler, session, t1, 1) |> expect.equal(200)
+  fx.claim_task_status(handler, session, t2, 1) |> expect.equal(200)
 
   // Start sessions on both tasks - multi-session model supports this
-  expect.expect_status(start_work_session(handler, session, t1), 200)
-  let res = start_work_session(handler, session, t2)
+  expect.expect_status(
+    fx.start_work_session_response(handler, session, t1),
+    200,
+  )
+  let res = fx.start_work_session_response(handler, session, t2)
   expect.expect_status(res, 200)
 
   // Verify both sessions exist
@@ -2050,7 +2059,7 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  let res = start_work_session(handler, session, task_id)
+  let res = fx.start_work_session_response(handler, session, task_id)
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
   |> expect.equal(True)
@@ -2069,74 +2078,35 @@ pub fn me_work_session_clears_before_release_and_close_test() {
   let task_id =
     fx.require_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, task_id), 200)
+  fx.claim_task_status(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(
+    fx.start_work_session_response(handler, session, task_id),
+    200,
+  )
 
-  let version = task_version(db, task_id)
+  let version = fx.task_version(db, task_id)
 
-  release_task(handler, session, task_id, version) |> expect.equal(200)
+  fx.release_task_status(handler, session, task_id, version)
+  |> expect.equal(200)
 
-  let active_after_release = get_active_work_sessions(handler, session)
+  let active_after_release = fx.active_work_sessions_response(handler, session)
   decode_work_session_task_id(simulate.read_body(active_after_release))
   |> expect.equal(option.None)
 
   // Re-claim + start, then close.
-  let version = task_version(db, task_id)
-  claim_task(handler, session, task_id, version) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, task_id), 200)
+  let version = fx.task_version(db, task_id)
+  fx.claim_task_status(handler, session, task_id, version) |> expect.equal(200)
+  expect.expect_status(
+    fx.start_work_session_response(handler, session, task_id),
+    200,
+  )
 
-  let version = task_version(db, task_id)
-  close_task(handler, session, task_id, version) |> expect.equal(200)
+  let version = fx.task_version(db, task_id)
+  fx.close_task_status(handler, session, task_id, version) |> expect.equal(200)
 
-  let active_after_close = get_active_work_sessions(handler, session)
+  let active_after_close = fx.active_work_sessions_response(handler, session)
   decode_work_session_task_id(simulate.read_body(active_after_close))
   |> expect.equal(option.None)
-}
-
-fn get_active_work_sessions(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-) -> wisp.Response {
-  handler(
-    simulate.request(http.Get, "/api/v1/me/work-sessions/active")
-    |> fx.with_session_cookies(session),
-  )
-}
-
-fn start_work_session(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(http.Post, "/api/v1/me/work-sessions/start")
-    |> fx.with_auth(session)
-    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
-  )
-}
-
-fn pause_work_session(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
-    |> fx.with_auth(session)
-    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
-  )
-}
-
-fn heartbeat_work_session(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
-    |> fx.with_auth(session)
-    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
-  )
 }
 
 fn decode_work_session(body: String) -> #(option.Option(Int), String, Int) {
@@ -2196,12 +2166,6 @@ fn task_claimed_by(db: pog.Connection, task_id: Int) -> Int {
   )
 }
 
-fn task_version(db: pog.Connection, task_id: Int) -> Int {
-  fx.require_query_int(db, "select version from tasks where id = $1", [
-    pog.int(task_id),
-  ])
-}
-
 fn count_audit_events(
   db: pog.Connection,
   task_id: Int,
@@ -2243,140 +2207,8 @@ fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
   ])
 }
 
-fn delete_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-) -> Int {
-  let res = delete_task_response(handler, session, task_id)
-  res.status
-}
-
-fn delete_task_response(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-) -> wisp.Response {
-  handler(
-    simulate.request(http.Delete, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fx.with_auth(session),
-  )
-}
-
-fn create_task_note(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  content: String,
-) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-      )
-      |> fx.with_auth(session)
-      |> simulate.json_body(json.object([#("content", json.string(content))])),
-    )
-
-  res.status
-}
-
-fn claim_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  version: Int,
-) -> Int {
-  let res = fx.claim_task_response(handler, session, task_id, version)
-  res.status
-}
-
-fn create_dependency(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  depends_on_task_id: Int,
-) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
-      )
-      |> fx.with_auth(session)
-      |> simulate.json_body(
-        json.object([#("depends_on_task_id", json.int(depends_on_task_id))]),
-      ),
-    )
-
-  res.status
-}
-
-fn delete_dependency(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  depends_on_task_id: Int,
-) -> Int {
-  let res =
-    handler(
-      simulate.request(
-        http.Delete,
-        "/api/v1/tasks/"
-          <> int.to_string(task_id)
-          <> "/dependencies/"
-          <> int.to_string(depends_on_task_id),
-      )
-      |> fx.with_auth(session),
-    )
-
-  res.status
-}
-
-fn release_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  version: Int,
-) -> Int {
-  let res = fx.release_task_response(handler, session, task_id, version)
-  res.status
-}
-
-fn close_task(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  task_id: Int,
-  version: Int,
-) -> Int {
-  let res = fx.close_task_response(handler, session, task_id, version)
-  res.status
-}
-
 fn decode_task_titles(body: String) -> List(String) {
   fx.require_data_string_list_field(body, "tasks", "title")
-}
-
-fn list_project_tasks(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fx.Session,
-  project_id: Int,
-  query: String,
-) -> wisp.Response {
-  let url =
-    "/api/v1/projects/"
-    <> int.to_string(project_id)
-    <> "/tasks"
-    <> case query {
-      "" -> ""
-      value -> "?" <> value
-    }
-
-  handler(
-    simulate.request(http.Get, url)
-    |> fx.with_session_cookies(session),
-  )
 }
 
 fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {

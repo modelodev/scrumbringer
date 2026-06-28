@@ -846,6 +846,15 @@ pub fn claim_task_response(
   task_versioned_action_response(handler, session, task_id, version, "claim")
 }
 
+pub fn claim_task_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+) -> Int {
+  claim_task_response(handler, session, task_id, version).status
+}
+
 pub fn release_task_response(
   handler: Handler,
   session: Session,
@@ -855,6 +864,15 @@ pub fn release_task_response(
   task_versioned_action_response(handler, session, task_id, version, "release")
 }
 
+pub fn release_task_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+) -> Int {
+  release_task_response(handler, session, task_id, version).status
+}
+
 pub fn close_task_response(
   handler: Handler,
   session: Session,
@@ -862,6 +880,15 @@ pub fn close_task_response(
   version: Int,
 ) -> wisp.Response {
   task_versioned_action_response(handler, session, task_id, version, "close")
+}
+
+pub fn close_task_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  version: Int,
+) -> Int {
+  close_task_response(handler, session, task_id, version).status
 }
 
 fn task_versioned_action_response(
@@ -878,6 +905,177 @@ fn task_versioned_action_response(
     )
     |> with_auth(session)
     |> simulate.json_body(json.object([#("version", json.int(version))])),
+  )
+}
+
+pub fn task_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
+    |> with_session_cookies(session),
+  )
+}
+
+pub fn delete_task_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Delete, "/api/v1/tasks/" <> int.to_string(task_id))
+    |> with_auth(session),
+  )
+}
+
+pub fn delete_task_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+) -> Int {
+  delete_task_response(handler, session, task_id).status
+}
+
+pub fn list_project_tasks_response(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  query: String,
+) -> wisp.Response {
+  let url =
+    "/api/v1/projects/"
+    <> int.to_string(project_id)
+    <> "/tasks"
+    <> case query {
+      "" -> ""
+      value -> "?" <> value
+    }
+
+  handler(
+    simulate.request(http.Get, url)
+    |> with_session_cookies(session),
+  )
+}
+
+pub fn create_task_note_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  content: String,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
+      )
+      |> with_auth(session)
+      |> simulate.json_body(json.object([#("content", json.string(content))])),
+    )
+
+  res.status
+}
+
+pub fn create_task_dependency_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
+    )
+    |> with_auth(session)
+    |> simulate.json_body(
+      json.object([#("depends_on_task_id", json.int(depends_on_task_id))]),
+    ),
+  )
+}
+
+pub fn create_task_dependency_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Int {
+  create_task_dependency_response(handler, session, task_id, depends_on_task_id).status
+}
+
+pub fn delete_task_dependency_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(
+      http.Delete,
+      "/api/v1/tasks/"
+        <> int.to_string(task_id)
+        <> "/dependencies/"
+        <> int.to_string(depends_on_task_id),
+    )
+    |> with_auth(session),
+  )
+}
+
+pub fn delete_task_dependency_status(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> Int {
+  delete_task_dependency_response(handler, session, task_id, depends_on_task_id).status
+}
+
+pub fn active_work_sessions_response(
+  handler: Handler,
+  session: Session,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Get, "/api/v1/me/work-sessions/active")
+    |> with_session_cookies(session),
+  )
+}
+
+pub fn start_work_session_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+) -> wisp.Response {
+  work_session_command_response(handler, session, task_id, "start")
+}
+
+pub fn pause_work_session_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+) -> wisp.Response {
+  work_session_command_response(handler, session, task_id, "pause")
+}
+
+pub fn heartbeat_work_session_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+) -> wisp.Response {
+  work_session_command_response(handler, session, task_id, "heartbeat")
+}
+
+fn work_session_command_response(
+  handler: Handler,
+  session: Session,
+  task_id: Int,
+  command: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, "/api/v1/me/work-sessions/" <> command)
+    |> with_auth(session)
+    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
@@ -1216,6 +1414,12 @@ pub fn require_query_int(
   params: List(pog.Value),
 ) -> Int {
   query_int(db, sql, params) |> expect.ok
+}
+
+pub fn task_version(db: pog.Connection, task_id: Int) -> Int {
+  require_query_int(db, "select version from tasks where id = $1", [
+    pog.int(task_id),
+  ])
 }
 
 /// Query a single string value from the database.

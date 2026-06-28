@@ -9,26 +9,10 @@ import gleeunit
 import scrumbringer_server
 import scrumbringer_server/seed_db
 import support/assertions as expect
-import wisp
 import wisp/simulate
 
 pub fn main() {
   gleeunit.main()
-}
-
-fn start_session_request(
-  task_id: Int,
-  session: fixtures.Session,
-) -> wisp.Request {
-  simulate.request(http.Post, "/api/v1/me/work-sessions/start")
-  |> fixtures.with_auth(session)
-  |> simulate.json_body(json.object([#("task_id", json.int(task_id))]))
-}
-
-fn heartbeat_request(task_id: Int, session: fixtures.Session) -> wisp.Request {
-  simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
-  |> fixtures.with_auth(session)
-  |> simulate.json_body(json.object([#("task_id", json.int(task_id))]))
 }
 
 pub fn start_rejects_unclaimed_task_test() {
@@ -42,7 +26,7 @@ pub fn start_rejects_unclaimed_task_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Unclaimed")
 
-  let res = handler(start_session_request(task_id, session))
+  let res = fixtures.start_work_session_response(handler, session, task_id)
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
   |> expect.is_true
@@ -82,7 +66,7 @@ pub fn start_rejects_closed_task_test() {
       ),
     )
 
-  let res = handler(start_session_request(task_id, session))
+  let res = fixtures.start_work_session_response(handler, session, task_id)
   expect.expect_status(res, 409)
   let body = simulate.read_body(res)
   string.contains(body, "CONFLICT_INVALID_STATE") |> expect.is_true
@@ -93,7 +77,7 @@ pub fn start_rejects_closed_task_test() {
 pub fn start_returns_conflict_for_missing_task_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res = handler(start_session_request(999_999, session))
+  let res = fixtures.start_work_session_response(handler, session, 999_999)
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
   |> expect.is_true
@@ -109,20 +93,22 @@ pub fn start_is_idempotent_when_session_exists_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Duplicate")
 
-  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
-  expect.expect_status(claim_res, 200)
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
-  let first_start = handler(start_session_request(task_id, session))
+  let first_start =
+    fixtures.start_work_session_response(handler, session, task_id)
   expect.expect_status(first_start, 200)
 
-  let second_start = handler(start_session_request(task_id, session))
+  let second_start =
+    fixtures.start_work_session_response(handler, session, task_id)
   expect.expect_status(second_start, 200)
 }
 
 pub fn heartbeat_returns_not_found_without_session_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res = handler(heartbeat_request(999_999, session))
+  let res = fixtures.heartbeat_work_session_response(handler, session, 999_999)
   expect.expect_status(res, 404)
   string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
@@ -186,12 +172,7 @@ pub fn heartbeat_rejects_invalid_json_test() {
 pub fn pause_without_session_returns_ok_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res =
-    handler(
-      simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
-      |> fixtures.with_auth(session)
-      |> simulate.json_body(json.object([#("task_id", json.int(999_999))])),
-    )
+  let res = fixtures.pause_work_session_response(handler, session, 999_999)
 
   expect.expect_status(res, 200)
 }
@@ -206,16 +187,17 @@ pub fn heartbeat_rate_limited_on_second_call_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Rate limit")
 
-  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
-  expect.expect_status(claim_res, 200)
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
-  let start_res = handler(start_session_request(task_id, session))
+  let start_res =
+    fixtures.start_work_session_response(handler, session, task_id)
   expect.expect_status(start_res, 200)
 
-  let hb1 = handler(heartbeat_request(task_id, session))
+  let hb1 = fixtures.heartbeat_work_session_response(handler, session, task_id)
   expect.expect_status(hb1, 200)
 
-  let hb2 = handler(heartbeat_request(task_id, session))
+  let hb2 = fixtures.heartbeat_work_session_response(handler, session, task_id)
   expect.expect_status(hb2, 429)
   string.contains(simulate.read_body(hb2), "RATE_LIMITED")
   |> expect.is_true

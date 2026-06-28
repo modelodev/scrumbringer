@@ -24,8 +24,8 @@ pub fn task_activity_lists_real_audit_events_with_limit_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
-  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
-  expect.expect_status(claim_res, 200)
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
   let res =
     handler(
@@ -62,8 +62,8 @@ pub fn task_activity_paginates_with_offset_and_metadata_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
-  let claim_res = fixtures.claim_task_response(handler, session, task_id, 1)
-  expect.expect_status(claim_res, 200)
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
   let res =
     handler(

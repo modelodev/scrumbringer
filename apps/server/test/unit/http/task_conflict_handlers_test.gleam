@@ -73,10 +73,8 @@ pub fn handle_claim_conflict_returns_claimed_conflict_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Claimed")
 
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
   let res = conflict_handlers.handle_claim_conflict(db, task_id, user_id)
   expect.expect_status(res, 409)
@@ -94,14 +92,10 @@ pub fn handle_claim_conflict_returns_validation_for_closed_task_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Closed")
 
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
-  expect.expect_status(
-    fixtures.close_task_response(handler, session, task_id, 2),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
+  fixtures.close_task_status(handler, session, task_id, 2)
+  |> expect.equal(200)
 
   let res = conflict_handlers.handle_claim_conflict(db, task_id, user_id)
   expect.expect_status(res, 422)
@@ -118,10 +112,8 @@ pub fn handle_version_or_claim_conflict_forbidden_when_claimed_by_other_test() {
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Claimed")
 
-  expect.expect_status(
-    fixtures.claim_task_response(handler, session, task_id, 1),
-    200,
-  )
+  fixtures.claim_task_status(handler, session, task_id, 1)
+  |> expect.equal(200)
 
   let assert Ok(other_user_id) =
     fixtures.insert_user_db(db, 1, "member@example.com", org_role.Member)
