@@ -1308,6 +1308,17 @@ Estado de ejecucion:
   - `modal_header_test` pasa de proteger API preventiva a cubrir solo los
     headers vivos, incluyendo titulo, icono, rol, clases y label localizado;
   - delta adicional WP-10: `-808` lineas mantenidas y trece exports menos.
+- Micro-pase adicional de headers/chips UI preventivos:
+  - retirados `card_section_header.ExtendedConfig` y
+    `card_section_header.view_extended`, ya que producto solo consume
+    `view`/`view_with_class` y el test existente preservaba una variante sin
+    consumidor real;
+  - simplificado el render interno de `card_section_header` eliminando el
+    override preventivo de clase de boton;
+  - retirado `task_metric_chip.full`, redundante con
+    `task_metric_chip.view(Config(..., variant: Full, ...))`, que ya es la
+    entrada canónica cubierta por tests;
+  - delta adicional WP-10: `-78` lineas mantenidas y tres exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1344,10 +1355,11 @@ Estado de ejecucion:
     `1857 passed` tras privatizar helpers internos de tabs/iconos;
     `1849 passed` tras retirar API muerta de `crud_dialog_base`;
     `1849 passed` tras retirar helpers UI preventivos;
-    `1822 passed` tras retirar API preventiva de `modal_header`);
+    `1822 passed` tras retirar API preventiva de `modal_header`;
+    `1821 passed` tras retirar API preventiva de headers/chips UI);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-3.893` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-3.971` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

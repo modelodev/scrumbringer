@@ -131,25 +131,6 @@ pub fn card_section_header_uses_shared_button_classes_test() {
   render_assertions.not_contains(html, "btn btn-sm btn-primary")
 }
 
-pub fn card_section_header_extended_keeps_extra_button_class_test() {
-  let html =
-    card_section_header.view_extended(card_section_header.ExtendedConfig(
-      title: "Tasks",
-      button_label: "Add task",
-      button_disabled: True,
-      on_button_click: "msg",
-      container_class: Some("detail-section-header"),
-      button_class: Some("task-section-action"),
-    ))
-    |> render_assertions.html
-
-  render_assertions.contains(html, "detail-section-header")
-  render_assertions.contains(html, "task-section-action")
-  render_assertions.contains(html, "btn-primary")
-  render_assertions.contains(html, "disabled")
-  render_assertions.not_contains(html, "btn btn-sm btn-primary")
-}
-
 pub fn copyable_input_uses_shared_button_test() {
   let html =
     copyable_input.view(

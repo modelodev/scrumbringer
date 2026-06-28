@@ -34,16 +34,6 @@ pub fn view(config: Config) -> Element(msg) {
   span(attrs(config, title), children(config.variant, config.metric, label))
 }
 
-pub fn full(locale: Locale, metric: TaskMetric) -> Element(msg) {
-  view(Config(
-    locale: locale,
-    metric: metric,
-    variant: Full,
-    extra_class: None,
-    testid: None,
-  ))
-}
-
 pub fn compact(locale: Locale, metric: TaskMetric) -> Element(msg) {
   view(Config(
     locale: locale,

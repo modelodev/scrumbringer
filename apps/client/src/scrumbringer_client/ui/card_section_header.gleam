@@ -26,7 +26,6 @@
 //// )
 //// ```
 
-import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
@@ -47,29 +46,10 @@ pub type Config(msg) {
   )
 }
 
-/// Extended configuration with optional class and button style overrides.
-pub type ExtendedConfig(msg) {
-  ExtendedConfig(
-    /// The section title (e.g., "TAREAS", "NOTAS (2)")
-    title: String,
-    /// Button label (e.g., "+ Añadir tarea")
-    button_label: String,
-    /// Whether button is disabled
-    button_disabled: Bool,
-    /// Message to emit when button is clicked
-    on_button_click: msg,
-    /// Optional container CSS class (defaults to "card-section-header")
-    container_class: Option(String),
-    /// Optional extra class appended to the shared button classes.
-    button_class: Option(String),
-  )
-}
-
 /// Render a consistent section header with title and action button.
 pub fn view(config: Config(msg)) -> Element(msg) {
   view_internal(
     "card-section-header",
-    None,
     config.title,
     config.button_label,
     config.button_disabled,
@@ -81,23 +61,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
 pub fn view_with_class(class: String, config: Config(msg)) -> Element(msg) {
   view_internal(
     class,
-    None,
-    config.title,
-    config.button_label,
-    config.button_disabled,
-    config.on_button_click,
-  )
-}
-
-/// Render a section header with full customization.
-pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
-  let container_class = case config.container_class {
-    Some(c) -> c
-    None -> "card-section-header"
-  }
-  view_internal(
-    container_class,
-    config.button_class,
     config.title,
     config.button_label,
     config.button_disabled,
@@ -111,7 +74,6 @@ pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
 
 fn view_internal(
   container_class: String,
-  button_class: Option(String),
   title: String,
   button_label: String,
   button_disabled: Bool,
@@ -126,17 +88,6 @@ fn view_internal(
       button.EntityAction,
     )
       |> button.with_disabled(button_disabled)
-      |> with_optional_class(button_class)
       |> button.view,
   ])
-}
-
-fn with_optional_class(
-  config: button.Config(msg),
-  class_name: Option(String),
-) -> button.Config(msg) {
-  case class_name {
-    Some(class) -> config |> button.with_class(class)
-    None -> config
-  }
 }
