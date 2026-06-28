@@ -2651,6 +2651,26 @@ Estado de ejecucion:
   - total Gleam actual: `198.228` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.786` lineas;
   - deficit restante para `-20k`: `4.214` lineas.
+- Decimonoveno pase de invariant de claim sobre cards activas:
+  - convertido `create_card_task_context` en un contexto completo de test con
+    DB, handler y session, eliminando `bootstrap` y destructuring local de
+    `App` en los escenarios comunes;
+  - migrados los escenarios especiales sin card o con jerarquia a
+    `require_task_project`, manteniendo visibles sus cards, estados y updates
+    directos;
+  - retirado el import local de `scrumbringer_server` y reducido el setup
+    repetido sin ocultar los asserts de invariantes, auditoria y respuestas
+    HTTP;
+  - delta adicional: `-76` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `task_claim_active_card_invariant_test` via EUnit
+      secuencial (`16 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimonoveno pase:
+  - total Gleam actual: `198.152` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.862` lineas;
+  - deficit restante para `-20k`: `4.138` lineas.
 
 ## Orden recomendado de ejecucion
 

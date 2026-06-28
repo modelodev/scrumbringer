@@ -4,50 +4,36 @@ import gleam/int
 import gleam/json
 import gleam/string
 import pog
-import scrumbringer_server
 import scrumbringer_server/repository/tasks/queries as tasks_queries
 import scrumbringer_server/use_case/workflows/claimable_task
 import support/assertions as expect
 import wisp/simulate
 
 pub fn direct_claim_update_active_card_succeeds_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(db, handler, session, "DB active claim", "active")
+  let assert Ok(ctx) = create_card_task_context("DB active claim", "active")
 
-  let assert Ok(_) = direct_claim_update(db, ctx.task_id, ctx.user_id)
+  let assert Ok(_) = direct_claim_update(ctx.db, ctx.task_id, ctx.user_id)
 
   let assert Ok(state) =
-    fixtures.query_string(db, task_state_query(), [pog.int(ctx.task_id)])
+    fixtures.query_string(ctx.db, task_state_query(), [pog.int(ctx.task_id)])
   state |> expect.equal("claimed")
 }
 
 pub fn direct_claim_update_draft_card_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(db, handler, session, "DB draft claim", "draft")
+  let assert Ok(ctx) = create_card_task_context("DB draft claim", "draft")
 
-  let assert Error(_) = direct_claim_update(db, ctx.task_id, ctx.user_id)
+  let assert Error(_) = direct_claim_update(ctx.db, ctx.task_id, ctx.user_id)
 }
 
 pub fn direct_claim_update_closed_card_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(db, handler, session, "DB closed claim", "closed")
+  let assert Ok(ctx) = create_card_task_context("DB closed claim", "closed")
 
-  let assert Error(_) = direct_claim_update(db, ctx.task_id, ctx.user_id)
+  let assert Error(_) = direct_claim_update(ctx.db, ctx.task_id, ctx.user_id)
 }
 
 pub fn direct_claim_update_closed_ancestor_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "DB closed ancestor")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("DB closed ancestor")
   let assert Ok(root_card_id) =
     fixtures.create_card(handler, session, project_id, "Closed root")
   let assert Ok(child_card_id) =
@@ -75,12 +61,8 @@ pub fn direct_claim_update_closed_ancestor_fails_test() {
 }
 
 pub fn direct_claim_update_without_card_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "DB no card claim")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, _handler, _session, project_id, type_id) =
+    fixtures.require_task_project("DB no card claim")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
   let assert Ok(task_id) =
     insert_no_card_task(db, project_id, type_id, user_id, "No card task")
@@ -89,37 +71,21 @@ pub fn direct_claim_update_without_card_fails_test() {
 }
 
 pub fn direct_claim_update_missing_claim_fields_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(
-      db,
-      handler,
-      session,
-      "DB incomplete claim",
-      "active",
-    )
+  let assert Ok(ctx) = create_card_task_context("DB incomplete claim", "active")
 
-  let assert Error(_) = direct_claim_update_without_owner(db, ctx.task_id)
+  let assert Error(_) = direct_claim_update_without_owner(ctx.db, ctx.task_id)
 }
 
 pub fn closing_card_with_claimed_descendant_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(db, handler, session, "DB close claimed", "active")
-  let assert Ok(_) = direct_claim_update(db, ctx.task_id, ctx.user_id)
+  let assert Ok(ctx) = create_card_task_context("DB close claimed", "active")
+  let assert Ok(_) = direct_claim_update(ctx.db, ctx.task_id, ctx.user_id)
 
-  let assert Error(_) = set_card_state_result(db, ctx.card_id, "closed")
+  let assert Error(_) = set_card_state_result(ctx.db, ctx.card_id, "closed")
 }
 
 pub fn moving_claimed_card_under_closed_ancestor_fails_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "DB move claimed")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("DB move claimed")
   let assert Ok(closed_parent_id) =
     fixtures.create_card(handler, session, project_id, "Closed parent")
   let assert Ok(work_card_id) =
@@ -142,52 +108,32 @@ pub fn moving_claimed_card_under_closed_ancestor_fails_test() {
 }
 
 pub fn claimable_task_constructor_rejects_draft_card_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(ctx) =
-    create_card_task_context(
-      db,
-      handler,
-      session,
-      "Repository draft claim",
-      "draft",
-    )
+    create_card_task_context("Repository draft claim", "draft")
 
   let assert Ok(task) =
-    tasks_queries.get_task_for_user(db, ctx.task_id, ctx.user_id)
+    tasks_queries.get_task_for_user(ctx.db, ctx.task_id, ctx.user_id)
   let assert Error(claimable_task.InactiveCardLineage) =
-    claimable_task.from_task(db, task)
-  assert_task_still_available(db, ctx.task_id)
-  assert_task_claim_audit_count(db, ctx.task_id, 0)
+    claimable_task.from_task(ctx.db, task)
+  assert_task_still_available(ctx.db, ctx.task_id)
+  assert_task_claim_audit_count(ctx.db, ctx.task_id, 0)
 }
 
 pub fn claimable_task_constructor_rejects_closed_card_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(ctx) =
-    create_card_task_context(
-      db,
-      handler,
-      session,
-      "Repository closed claim",
-      "closed",
-    )
+    create_card_task_context("Repository closed claim", "closed")
 
   let assert Ok(task) =
-    tasks_queries.get_task_for_user(db, ctx.task_id, ctx.user_id)
+    tasks_queries.get_task_for_user(ctx.db, ctx.task_id, ctx.user_id)
   let assert Error(claimable_task.InactiveCardLineage) =
-    claimable_task.from_task(db, task)
-  assert_task_still_available(db, ctx.task_id)
-  assert_task_claim_audit_count(db, ctx.task_id, 0)
+    claimable_task.from_task(ctx.db, task)
+  assert_task_still_available(ctx.db, ctx.task_id)
+  assert_task_claim_audit_count(ctx.db, ctx.task_id, 0)
 }
 
 pub fn claimable_task_constructor_rejects_closed_ancestor_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Repository closed ancestor")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Repository closed ancestor")
   let assert Ok(root_card_id) =
     fixtures.create_card(handler, session, project_id, "Closed root")
   let assert Ok(child_card_id) =
@@ -219,68 +165,44 @@ pub fn claimable_task_constructor_rejects_closed_ancestor_test() {
 }
 
 pub fn repository_claim_active_card_task_inserts_one_audit_event_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(ctx) =
-    create_card_task_context(
-      db,
-      handler,
-      session,
-      "Repository active claim",
-      "active",
-    )
+    create_card_task_context("Repository active claim", "active")
 
   let assert Ok(task) =
-    tasks_queries.get_task_for_user(db, ctx.task_id, ctx.user_id)
-  let assert Ok(claimable) = claimable_task.from_task(db, task)
+    tasks_queries.get_task_for_user(ctx.db, ctx.task_id, ctx.user_id)
+  let assert Ok(claimable) = claimable_task.from_task(ctx.db, task)
   let assert Ok(_) =
-    tasks_queries.claim_task(db, ctx.org_id, claimable, ctx.user_id, 1)
+    tasks_queries.claim_task(ctx.db, ctx.org_id, claimable, ctx.user_id, 1)
 
   let assert Ok(state) =
-    fixtures.query_string(db, task_state_query(), [pog.int(ctx.task_id)])
+    fixtures.query_string(ctx.db, task_state_query(), [pog.int(ctx.task_id)])
   state |> expect.equal("claimed")
-  assert_task_claim_audit_count(db, ctx.task_id, 1)
+  assert_task_claim_audit_count(ctx.db, ctx.task_id, 1)
 }
 
 pub fn http_claim_draft_card_task_is_rejected_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(db, handler, session, "HTTP draft claim", "draft")
+  let assert Ok(ctx) = create_card_task_context("HTTP draft claim", "draft")
 
-  let res = claim_request(handler, session, ctx.task_id, 1)
+  let res = claim_request(ctx.handler, ctx.session, ctx.task_id, 1)
 
   assert_card_not_active_response(res)
-  assert_task_still_available(db, ctx.task_id)
-  assert_task_claim_audit_count(db, ctx.task_id, 0)
+  assert_task_still_available(ctx.db, ctx.task_id)
+  assert_task_claim_audit_count(ctx.db, ctx.task_id, 0)
 }
 
 pub fn http_claim_closed_card_task_is_rejected_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(ctx) =
-    create_card_task_context(
-      db,
-      handler,
-      session,
-      "HTTP closed claim",
-      "closed",
-    )
+  let assert Ok(ctx) = create_card_task_context("HTTP closed claim", "closed")
 
-  let res = claim_request(handler, session, ctx.task_id, 1)
+  let res = claim_request(ctx.handler, ctx.session, ctx.task_id, 1)
 
   assert_card_not_active_response(res)
-  assert_task_still_available(db, ctx.task_id)
-  assert_task_claim_audit_count(db, ctx.task_id, 0)
+  assert_task_still_available(ctx.db, ctx.task_id)
+  assert_task_claim_audit_count(ctx.db, ctx.task_id, 0)
 }
 
 pub fn http_claim_closed_ancestor_task_is_rejected_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "HTTP closed ancestor")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("HTTP closed ancestor")
   let assert Ok(root_card_id) =
     fixtures.create_card(handler, session, project_id, "Closed root")
   let assert Ok(child_card_id) =
@@ -311,12 +233,8 @@ pub fn http_claim_closed_ancestor_task_is_rejected_test() {
 }
 
 pub fn http_claim_without_card_task_is_rejected_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "HTTP no card claim")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("HTTP no card claim")
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
   let assert Ok(task_id) =
     insert_no_card_task(db, project_id, type_id, user_id, "HTTP no card task")
@@ -329,23 +247,26 @@ pub fn http_claim_without_card_task_is_rejected_test() {
 }
 
 type CardTaskContext {
-  CardTaskContext(card_id: Int, task_id: Int, user_id: Int, org_id: Int)
+  CardTaskContext(
+    db: pog.Connection,
+    handler: fixtures.Handler,
+    session: fixtures.Session,
+    card_id: Int,
+    task_id: Int,
+    user_id: Int,
+    org_id: Int,
+  )
 }
 
 fn create_card_task_context(
-  db: pog.Connection,
-  handler: fixtures.Handler,
-  session: fixtures.Session,
   title: String,
   card_state: String,
 ) -> Result(CardTaskContext, String) {
   let project_name = title <> " project"
   let card_title = title <> " card"
   let task_title = title <> " task"
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, project_name)
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project(project_name)
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, card_title)
   let assert Ok(task_id) =
@@ -364,6 +285,9 @@ fn create_card_task_context(
     ])
   set_card_state(db, card_id, card_state)
   Ok(CardTaskContext(
+    db: db,
+    handler: handler,
+    session: session,
     card_id: card_id,
     task_id: task_id,
     user_id: user_id,
