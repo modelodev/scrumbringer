@@ -974,10 +974,15 @@ Estado de ejecucion:
 - Sexto pase de estilos: eliminados restos sin consumidores de topbar legacy,
   filtros antiguos, previews de icono, badges preview de task, skills legacy,
   reglas de tablas/radio obsoletas y remates mobile asociados.
+- Septimo pase de estilos: eliminadas variantes legacy sin consumidores en
+  `styles/ux.gleam` para admin/sidebar antiguos, acciones de error/banner,
+  acciones de tabla, skeleton subvariantes, detail/modal antiguo, contexto
+  padre de task, grids de task show, metricas workflow y `form-input`.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
   adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
-  Delta adicional del sexto pase: `-53` lineas mantenidas.
+  Delta adicional del sexto pase: `-53` lineas mantenidas. Delta adicional del
+  septimo pase: `-47` lineas mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
@@ -991,6 +996,8 @@ Estado de ejecucion:
   - `rg "move-menu" apps/client/src apps/client/test` sin consumidores.
   - Barrido de selectores retirados del sexto pase contra `apps/client/src` y
     `apps/client/test` sin consumidores.
+  - Barrido de selectores retirados del septimo pase contra `apps/client/src`
+    y `apps/client/test` sin consumidores.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 
