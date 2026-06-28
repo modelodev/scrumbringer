@@ -393,7 +393,7 @@ pub fn record_bearer_audit(
   }
 }
 
-pub fn auth_required_response() -> wisp.Response {
+fn auth_required_response() -> wisp.Response {
   api.error(401, "AUTH_REQUIRED", "Authentication required")
 }
 

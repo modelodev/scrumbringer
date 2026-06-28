@@ -1085,6 +1085,14 @@ Estado de ejecucion:
     `show_editor.view_intro`, `cards/policy.move_destinations_with_tasks`,
     `locale.detect` y `router.format_team`;
   - delta adicional: `-15` lineas mantenidas y once exports menos.
+- Micro-pase adicional de helpers internos app-specific:
+  - pasan a privados `api/core.decode_success`,
+    `api/core.decode_failure`, `app/effects.toast_effect`,
+    `three_panel_layout.render_with_labels`,
+    `plan_move_update.clear_drag`, `modal_header.view_extended_with_close_label`,
+    `http/api.session_cookie_attributes`, `http/api.csrf_cookie_attributes`,
+    `http/auth.auth_required_response` y `cards/presenters.card_metrics`;
+  - delta adicional: `0` lineas mantenidas y diez exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1100,9 +1108,11 @@ Estado de ejecucion:
     `1887 passed` tras retirar wrappers de notas con URL y privatizar decoders
     de `api_tokens`;
     `1887 passed` tras retirar wrappers triviales y privatizar helpers cliente
-    sin consumidores externos);
+    sin consumidores externos;
+    `1887 passed` tras privatizar helpers app-specific sin consumidores
+    externos);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
-    (`560 passed`).
+    (`560 passed`; `gleam build` tras privatizar helpers app-specific).
 - Delta acumulado WP-10 tras micro-pases: `-1.457` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas

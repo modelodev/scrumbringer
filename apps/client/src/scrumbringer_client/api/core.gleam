@@ -133,7 +133,7 @@ pub fn envelope(payload: decode.Decoder(a)) -> decode.Decoder(a) {
 }
 
 /// Decode a successful JSON response.
-pub fn decode_success(
+fn decode_success(
   status: Int,
   text: String,
   decoder: decode.Decoder(a),
@@ -149,7 +149,7 @@ pub fn decode_success(
 }
 
 /// Decode an error response.
-pub fn decode_failure(status: Int, text: String) -> ApiError {
+fn decode_failure(status: Int, text: String) -> ApiError {
   case
     json.parse(from: text, using: api_error_codec.api_error_decoder(status))
   {

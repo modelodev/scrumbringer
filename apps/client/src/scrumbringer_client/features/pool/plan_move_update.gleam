@@ -297,7 +297,7 @@ fn cancel(model: member_pool.Model) -> member_pool.Model {
   )
 }
 
-pub fn clear_drag(model: member_pool.Model) -> member_pool.Model {
+fn clear_drag(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(
     ..model,
     member_plan_move_drag: member_pool.PlanMoveNotDragging,

@@ -90,7 +90,7 @@ pub fn parse_cookie_secure_value(value: String) -> Bool {
 }
 
 /// Cookie attributes for the session cookie (HttpOnly, Secure, Strict).
-pub fn session_cookie_attributes() -> cookie.Attributes {
+fn session_cookie_attributes() -> cookie.Attributes {
   cookie.Attributes(
     max_age: option.None,
     domain: option.None,
@@ -102,7 +102,7 @@ pub fn session_cookie_attributes() -> cookie.Attributes {
 }
 
 /// Cookie attributes for CSRF token (readable by JS, Secure, Strict).
-pub fn csrf_cookie_attributes() -> cookie.Attributes {
+fn csrf_cookie_attributes() -> cookie.Attributes {
   cookie.Attributes(
     max_age: option.None,
     domain: option.None,

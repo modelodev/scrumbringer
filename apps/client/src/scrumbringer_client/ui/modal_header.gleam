@@ -186,7 +186,7 @@ pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
 }
 
 /// Render a modal header with custom CSS classes and close button label.
-pub fn view_extended_with_close_label(
+fn view_extended_with_close_label(
   config: ExtendedConfig(msg),
   close_label: String,
 ) -> Element(msg) {

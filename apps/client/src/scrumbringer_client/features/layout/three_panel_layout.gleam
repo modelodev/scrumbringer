@@ -98,8 +98,8 @@ pub fn render(config: LayoutConfig(msg)) -> Element(msg) {
   render_with_labels(config, "Main navigation", "My activity")
 }
 
-/// Renders with custom ARIA labels (for i18n support)
-pub fn render_with_labels(
+/// Renders with custom ARIA labels.
+fn render_with_labels(
   config: LayoutConfig(msg),
   nav_label: String,
   aside_label: String,

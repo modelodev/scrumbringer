@@ -47,7 +47,7 @@ pub fn card_metrics_response(
   ])
 }
 
-pub fn card_metrics(metrics: metrics_db.CardMetrics) -> json.Json {
+fn card_metrics(metrics: metrics_db.CardMetrics) -> json.Json {
   let metrics_db.CardMetrics(
     tasks_total: tasks_total,
     tasks_closed: tasks_closed,

@@ -89,7 +89,7 @@ pub fn schedule_timeout(ms: Int, make_msg: fn() -> msg) -> Effect(msg) {
 // =============================================================================
 
 /// Build a toast effect to show a message with a variant.
-pub fn toast_effect(message: String, variant: toast.ToastVariant) -> Effect(Msg) {
+fn toast_effect(message: String, variant: toast.ToastVariant) -> Effect(Msg) {
   effect.from(fn(dispatch) { dispatch(ToastShow(message, variant)) })
 }
 
