@@ -19,9 +19,7 @@ pub type Item(msg) {
 }
 
 pub type Trigger {
-  TextTrigger(label: String, aria_label: Option(String))
   IconTrigger(label: String, icon: icons.NavIcon)
-  IconTextTrigger(label: String, icon: icons.NavIcon)
 }
 
 pub fn item(label: String, testid: String, on_click: msg) -> Item(msg) {
@@ -39,29 +37,6 @@ pub fn disabled_item(
 
 pub fn link_item(label: String, testid: String, href: String) -> Item(msg) {
   LinkItem(label, testid, href)
-}
-
-pub fn view(
-  trigger_label: String,
-  trigger_testid: String,
-  menu_id: String,
-  trigger_aria_label: Option(String),
-  menu_class: String,
-  trigger_class: String,
-  items_class: String,
-  item_class: String,
-  items: List(Item(msg)),
-) -> Element(msg) {
-  view_with_trigger(
-    TextTrigger(label: trigger_label, aria_label: trigger_aria_label),
-    trigger_testid,
-    menu_id,
-    menu_class,
-    trigger_class,
-    items_class,
-    item_class,
-    items,
-  )
 }
 
 pub fn view_with_trigger(
@@ -160,26 +135,15 @@ fn anchor_position(menu_id: String) -> String {
 
 fn trigger_label(trigger: Trigger) -> String {
   case trigger {
-    TextTrigger(label:, aria_label:) ->
-      case aria_label {
-        Some(value) -> value
-        None -> label
-      }
     IconTrigger(label:, ..) -> label
-    IconTextTrigger(label:, ..) -> label
   }
 }
 
 fn trigger_children(trigger: Trigger) -> List(Element(msg)) {
   case trigger {
-    TextTrigger(label:, ..) -> [text(label)]
     IconTrigger(label:, icon:) -> [
       icons.nav_icon(icon, icons.Small),
       element.element("span", [attribute.class("sr-only")], [text(label)]),
-    ]
-    IconTextTrigger(label:, icon:) -> [
-      icons.nav_icon(icon, icons.Small),
-      text(label),
     ]
   }
 }

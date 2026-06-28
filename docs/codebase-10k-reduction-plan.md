@@ -1319,6 +1319,14 @@ Estado de ejecucion:
     `task_metric_chip.view(Config(..., variant: Full, ...))`, que ya es la
     entrada canónica cubierta por tests;
   - delta adicional WP-10: `-78` lineas mantenidas y tres exports menos.
+- Micro-pase adicional de `action_menu` textual preventivo:
+  - retirado `action_menu.view`, wrapper textual sin consumidores de producto;
+  - retirados los constructores `TextTrigger` e `IconTextTrigger`; el contrato
+    vivo queda alineado con `inspector_actions`, que usa `IconTrigger`;
+  - el test de links/menu se mantiene sobre `view_with_trigger`, cubriendo la
+    ruta viva de popover, roles y enlaces;
+  - delta adicional WP-10: `-36` lineas mantenidas y tres entradas publicas
+    menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1356,10 +1364,11 @@ Estado de ejecucion:
     `1849 passed` tras retirar API muerta de `crud_dialog_base`;
     `1849 passed` tras retirar helpers UI preventivos;
     `1822 passed` tras retirar API preventiva de `modal_header`;
-    `1821 passed` tras retirar API preventiva de headers/chips UI);
+    `1821 passed` tras retirar API preventiva de headers/chips UI;
+    `1821 passed` tras retirar API textual preventiva de `action_menu`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-3.971` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.007` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

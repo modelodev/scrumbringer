@@ -7,6 +7,7 @@ import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/icons
 import support/render_assertions
 
 pub fn attribute_value_boolean_serializes_html_booleans_test() {
@@ -55,11 +56,10 @@ pub fn empty_state_action_uses_semantic_button_test() {
 
 pub fn action_menu_renders_links_as_menu_items_test() {
   let html =
-    action_menu.view(
-      "Open in",
+    action_menu.view_with_trigger(
+      action_menu.IconTrigger("Open in", icons.MoreHorizontal),
       "open-trigger",
       "open-menu",
-      Some("Open in"),
       "open-menu",
       "open-trigger",
       "open-panel",
