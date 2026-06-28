@@ -339,6 +339,13 @@ Estado de ejecucion:
   `fixtures.add_member`, `fixtures.login`, `fixtures.with_auth`,
   `fixtures.query_int` y `fixtures.query_bool`; conserva payloads, decoders de
   reglas e inserts SQL especificos para historial/origen de automatizaciones.
+- `apps/server/test/projects_http_test.gleam` migrado a `fixtures.bootstrap`,
+  `fixtures.create_project`, `fixtures.create_member_user`,
+  `fixtures.add_member`, `fixtures.login`, `fixtures.with_auth`,
+  `fixtures.query_int` y `fixtures.query_string`; elimina bootstrap/login/cookie
+  parsing/FFI locales y usa IDs devueltos por la API para proyectos creados en
+  setup, conservando solo inserts SQL especificos de otros orgs, cards,
+  workflows, templates y reglas de profundidad.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -363,8 +370,9 @@ Estado de ejecucion:
   - `task_templates_http_test.gleam`: `-458` lineas netas;
   - `workflows_http_test.gleam`: `-426` lineas netas;
   - `rules_http_test.gleam`: `-535` lineas netas;
+  - `projects_http_test.gleam`: `-436` lineas netas;
   - `fixtures.gleam`: `+45` lineas netas;
-  - total parcial WP-01: `-2.503` lineas netas mantenidas.
+  - total parcial WP-01: `-2.939` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
