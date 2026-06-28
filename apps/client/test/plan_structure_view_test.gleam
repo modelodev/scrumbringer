@@ -8,6 +8,7 @@ import domain/task_type.{TaskTypeInline}
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -596,19 +597,9 @@ fn card(
   state: CardPhase,
 ) -> Card {
   Card(
-    id: id,
-    project_id: 1,
+    ..domain_fixtures.card(id, 1, title),
     parent_card_id: parent_card_id,
-    title: title,
-    description: "",
-    color: None,
     state: state,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    has_new_notes: False,
   )
 }
 
@@ -633,30 +624,15 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
       task_state.Closed(task_state.ClosedByClaimant, "2026-01-02T00:00:00Z", 7)
   }
   Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(id, title, 1),
     task_type: TaskTypeInline(id: 1, name: "Backend", icon: "code-bracket"),
-    ongoing_by: None,
-    title: title,
     description: None,
-    priority: 3,
     state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
     card_id: card_id,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
     blocked_count: case id {
       2 -> 1
       _ -> 0
     },
-    dependencies: [],
-    automation_origin: None,
   )
 }
 
