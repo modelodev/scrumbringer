@@ -6,7 +6,6 @@ import gleam/json
 import gleam/option
 import gleam/string
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp
 import wisp/simulate
@@ -96,16 +95,16 @@ fn create_task_with_card_response(
 }
 
 pub fn create_card_requires_auth_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, _session, project_id) =
+    fixtures.require_project_context("Core")
 
   let res = handler(create_card_req(project_id, "Card", "red"))
   expect.expect_status(res, 401)
 }
 
 pub fn create_card_requires_csrf_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
 
   let res =
     handler(
@@ -118,8 +117,8 @@ pub fn create_card_requires_csrf_test() {
 }
 
 pub fn create_card_rejects_invalid_color_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
 
   let res =
     handler(
@@ -132,8 +131,8 @@ pub fn create_card_rejects_invalid_color_test() {
 }
 
 pub fn create_card_rejects_missing_title_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
 
   let res =
     handler(
@@ -150,8 +149,8 @@ pub fn create_card_rejects_missing_title_test() {
 }
 
 pub fn create_card_rejects_invalid_content_type_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
 
   let res =
     handler(
@@ -167,10 +166,8 @@ pub fn create_card_rejects_invalid_content_type_test() {
 }
 
 pub fn create_card_requires_project_admin_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
 
   let assert Ok(member_id) =
     fixtures.create_member_user(handler, db, "member@example.com", "il_member")
@@ -232,11 +229,8 @@ pub fn retired_hierarchy_routes_return_not_found_test() {
 }
 
 pub fn activate_card_cascades_and_reports_descendant_pool_impact_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -276,10 +270,8 @@ pub fn activate_card_cascades_and_reports_descendant_pool_impact_test() {
 }
 
 pub fn close_card_blocks_claimed_descendant_task_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -311,11 +303,8 @@ pub fn close_card_blocks_claimed_descendant_task_test() {
 }
 
 pub fn close_card_closes_available_descendant_tasks_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -369,8 +358,8 @@ pub fn close_card_closes_available_descendant_tasks_test() {
 }
 
 pub fn activate_card_rejects_closed_card_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Closed card")
 
@@ -385,8 +374,8 @@ pub fn activate_card_rejects_closed_card_test() {
 }
 
 pub fn activate_empty_card_exposes_persisted_active_state_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Empty active card")
 
@@ -406,10 +395,8 @@ pub fn activate_empty_card_exposes_persisted_active_state_test() {
 }
 
 pub fn create_task_rejects_closed_card_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Closed card")
 
@@ -434,10 +421,8 @@ pub fn create_task_rejects_closed_card_test() {
 }
 
 pub fn create_card_rejects_parent_with_tasks_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(parent_id) =
     fixtures.create_card(handler, session, project_id, "Task group")
   let assert Ok(_task_id) =
@@ -471,10 +456,8 @@ pub fn create_card_rejects_parent_with_tasks_test() {
 }
 
 pub fn create_task_rejects_card_with_child_cards_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(parent_id) =
     fixtures.create_card(handler, session, project_id, "Card group")
   let assert Ok(_child_id) =
@@ -498,11 +481,8 @@ pub fn create_task_rejects_card_with_child_cards_test() {
 }
 
 pub fn draft_card_task_enters_pool_when_card_activates_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Draft task group")
   let assert Ok(task_id) =
@@ -537,10 +517,8 @@ pub fn draft_card_task_enters_pool_when_card_activates_test() {
 }
 
 pub fn claim_task_rejects_draft_card_task_until_activation_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Draft task group")
   let assert Ok(task_id) =
@@ -568,11 +546,8 @@ pub fn claim_task_rejects_draft_card_task_until_activation_test() {
 }
 
 pub fn close_task_rolls_up_direct_parent_cards_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -628,12 +603,8 @@ pub fn close_task_rolls_up_direct_parent_cards_test() {
 }
 
 pub fn close_task_does_not_roll_up_when_child_card_stays_open_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -696,8 +667,8 @@ pub fn close_task_does_not_roll_up_when_child_card_stays_open_test() {
 }
 
 pub fn move_card_rejects_cycle_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -711,10 +682,8 @@ pub fn move_card_rejects_cycle_test() {
 }
 
 pub fn move_card_rejects_destination_with_tasks_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(root_a_id) =
     fixtures.create_card(handler, session, project_id, "Root A")
   let assert Ok(root_b_id) =
@@ -739,8 +708,8 @@ pub fn move_card_rejects_destination_with_tasks_test() {
 }
 
 pub fn move_card_rejects_closed_destination_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(root_a_id) =
     fixtures.create_card(handler, session, project_id, "Root A")
   let assert Ok(root_b_id) =
@@ -760,9 +729,8 @@ pub fn move_card_rejects_closed_destination_test() {
 }
 
 pub fn move_card_allows_depth_change_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(root_a_id) =
     fixtures.create_card(handler, session, project_id, "Root A")
   let assert Ok(root_b_id) =
@@ -792,9 +760,8 @@ pub fn move_card_allows_depth_change_test() {
 }
 
 pub fn move_card_allows_root_card_inside_another_card_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(root_a_id) =
     fixtures.create_card(handler, session, project_id, "Root A")
   let assert Ok(root_b_id) =
@@ -814,9 +781,8 @@ pub fn move_card_allows_root_card_inside_another_card_test() {
 }
 
 pub fn move_card_allows_child_card_to_project_root_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
@@ -855,10 +821,8 @@ pub fn update_card_not_found_test() {
 }
 
 pub fn update_card_rejects_invalid_color_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card")
 
@@ -903,10 +867,8 @@ pub fn delete_card_not_found_test() {
 }
 
 pub fn delete_card_conflict_when_tasks_exist_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card")
 
@@ -932,8 +894,8 @@ pub fn delete_card_conflict_when_tasks_exist_test() {
 }
 
 pub fn delete_card_conflict_when_child_cards_exist_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(parent_id) =
     fixtures.create_card(handler, session, project_id, "Parent")
   let assert Ok(_child_id) =
@@ -954,8 +916,8 @@ pub fn delete_card_conflict_when_child_cards_exist_test() {
 }
 
 pub fn delete_card_conflict_when_operational_history_exists_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Activated card")
 

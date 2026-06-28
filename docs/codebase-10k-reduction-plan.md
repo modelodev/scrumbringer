@@ -2671,6 +2671,25 @@ Estado de ejecucion:
   - total Gleam actual: `198.152` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.862` lineas;
   - deficit restante para `-20k`: `4.138` lineas.
+- Vigesimo pase de fixtures HTTP de cards:
+  - migrado el setup repetido de `cards_http_test.gleam` a
+    `require_project_context` y `require_task_project` segun cada caso
+    necesitara solo proyecto o tambien tipo de task;
+  - mantenidos con `bootstrap` directo los tests sin proyecto real
+    (`not_found` y rutas retiradas), evitando crear fixtures artificiales;
+  - retirado el import local de `scrumbringer_server` y el destructuring local
+    de `App`;
+  - conservados explicitos los contratos de auth/CSRF, validacion, jerarquia,
+    activacion/cierre, rollup, move, update y delete;
+  - delta adicional: `-38` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `cards_http_test` via EUnit secuencial (`32 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el vigesimo pase:
+  - total Gleam actual: `198.114` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.900` lineas;
+  - deficit restante para `-20k`: `4.100` lineas.
 
 ## Orden recomendado de ejecucion
 
