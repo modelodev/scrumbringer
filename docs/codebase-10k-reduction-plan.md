@@ -905,6 +905,21 @@ Criterios de aceptacion:
 - No quedan referencias rotas.
 - No se debilita el modelo tipado de i18n.
 
+Estado de ejecucion:
+
+- Primer pase ejecutado en rama `refactor-cleanup`.
+- Barrido estatico de clases CSS definidas en `styles/*.gleam` frente a
+  consumidores en `apps/client/src` y `apps/client/test`.
+- Eliminado el bloque legacy `ficha-detail-*`, `ficha-task-*` y
+  `ficha-add-task-*` de `styles/ux.gleam`; esas clases no tenian consumidores y
+  fueron sustituidas por las superficies actuales `card-show`/`detail-*`.
+- Delta parcial WP-11: `-20` lineas netas mantenidas.
+- Verificacion:
+  - `cd apps/client && gleam format src test`;
+  - `cd apps/client && gleam build`;
+  - `cd apps/client && gleam test` (`1912 passed`);
+  - `rg "ficha-detail|ficha-task|ficha-add-task" apps/client/src apps/client/test`.
+
 ### WP-12. Fase 2: consolidacion profunda de tests
 
 Objetivo: alcanzar reduccion adicional sin borrar escenarios, convirtiendo
