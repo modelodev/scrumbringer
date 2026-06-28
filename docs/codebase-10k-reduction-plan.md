@@ -2778,6 +2778,23 @@ Estado de ejecucion:
   - total Gleam actual: `197.667` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.347` lineas;
   - deficit restante para `-20k`: `3.653` lineas.
+- Vigesimoquinto pase de tests de Card Show:
+  - retirados tests de `card_show_test.gleam` que solo validaban constructores
+    de `Model`, `Msg`, `Remote` y estados/color de `Card` creados en el propio
+    test;
+  - se conserva la cobertura renderizada del componente: estado de actividad
+    con paginacion y shell de inspector como panel/dialog sin backdrop modal;
+  - delta adicional: `-113` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce tests acoplados
+    a tipos publicos internos sin retirar contratos visuales ni flujos
+    navegables;
+  - verificacion:
+    - `cd apps/client && gleam format test/card_show_test.gleam && gleam test`
+      (`1781 passed`).
+- Auditoria de contabilidad tras el vigesimoquinto pase:
+  - total Gleam actual: `197.554` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.460` lineas;
+  - deficit restante para `-20k`: `3.540` lineas.
 
 ## Orden recomendado de ejecucion
 
