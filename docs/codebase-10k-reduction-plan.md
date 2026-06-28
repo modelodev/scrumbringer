@@ -319,6 +319,13 @@ Estado de ejecucion:
   `fixtures.user_id_by_email`; conserva inserts locales de organizaciones,
   proyectos e invite links con `org_id` variable porque son setup especifico
   de los contratos multi-org.
+- `apps/server/test/task_templates_http_test.gleam` migrado a
+  `fixtures.bootstrap`, `fixtures.create_project`, `fixtures.create_task_type`,
+  `fixtures.create_template`, `fixtures.create_template_full`,
+  `fixtures.create_workflow`, `fixtures.create_member_user`,
+  `fixtures.add_member`, `fixtures.with_auth`, `fixtures.query_int` y
+  `fixtures.default_project_id`; conserva helpers especificos para reglas,
+  ejecuciones historicas y decoders de templates.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -339,8 +346,9 @@ Estado de ejecucion:
   - `auth_http_test.gleam`: `-105` lineas netas;
   - `capabilities_http_test.gleam`: `-252` lineas netas;
   - `org_users_http_test.gleam`: `-249` lineas netas;
+  - `task_templates_http_test.gleam`: `-458` lineas netas;
   - `fixtures.gleam`: `+21` lineas netas;
-  - total parcial WP-01: `-1.108` lineas netas mantenidas.
+  - total parcial WP-01: `-1.566` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
