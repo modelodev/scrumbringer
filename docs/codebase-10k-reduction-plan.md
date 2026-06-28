@@ -894,6 +894,16 @@ Estado de ejecucion:
     `shared`, `apps/client/src` y `apps/client/test` sin consumidores reales;
   - `cd apps/server && gleam format test && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+- Pase de modulos cliente sin importadores:
+  - retirado `apps/client/src/scrumbringer_client/features/work_scope/queries.gleam`,
+    reemplazado por queries/filtros vivos de cards y plan;
+  - retirado `apps/client/src/scrumbringer_client/ui/move_menu.gleam`,
+    reemplazado por `ui/action_menu`.
+- Delta adicional del pase: `-100` lineas mantenidas.
+- Verificacion:
+  - `rg` de los modulos retirados sin consumidores;
+  - `cd apps/client && gleam format --check src test && gleam build`;
+  - `cd apps/client && gleam test` (`1912 passed`).
 
 ### WP-11. i18n, estilos y clases muertas
 
