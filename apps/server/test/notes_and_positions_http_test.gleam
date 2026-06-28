@@ -2,6 +2,7 @@ import fixtures
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/string
@@ -87,7 +88,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let note_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
     |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
     |> simulate.json_body(
@@ -109,9 +110,9 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
     simulate.request(
       http.Post,
       "/api/v1/tasks/"
-        <> int_to_string(task_id)
+        <> int.to_string(task_id)
         <> "/notes/"
-        <> int_to_string(note_id)
+        <> int.to_string(note_id)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
@@ -122,9 +123,9 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
     simulate.request(
       http.Post,
       "/api/v1/tasks/"
-        <> int_to_string(task_id)
+        <> int.to_string(task_id)
         <> "/notes/"
-        <> int_to_string(note_id)
+        <> int.to_string(note_id)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
@@ -137,9 +138,9 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
     simulate.request(
       http.Delete,
       "/api/v1/tasks/"
-        <> int_to_string(task_id)
+        <> int.to_string(task_id)
         <> "/notes/"
-        <> int_to_string(note_id)
+        <> int.to_string(note_id)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
@@ -149,7 +150,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   decode_note_pinned(simulate.read_body(unpin_res)) |> expect.equal(False)
 
   let patch_req =
-    simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
     |> simulate.json_body(
       json.object([
@@ -210,7 +211,7 @@ pub fn task_notes_list_requires_task_membership_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(json.object([#("content", json.string("One"))])),
@@ -220,7 +221,7 @@ pub fn task_notes_list_requires_task_membership_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> fixtures.with_session_cookies(member_session, member_csrf),
     )
@@ -232,7 +233,7 @@ pub fn task_notes_list_requires_task_membership_test() {
   let outsider_req =
     simulate.request(
       http.Get,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
     |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
 
@@ -284,7 +285,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
     handler(
       simulate.request(
         http.Delete,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> fixtures.with_session_cookies(member_session, member_csrf),
     )
@@ -295,7 +296,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
     handler(
       simulate.request(
         http.Patch,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
     )
@@ -306,7 +307,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(
@@ -321,9 +322,9 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
       simulate.request(
         http.Delete,
         "/api/v1/tasks/"
-          <> int_to_string(task_id)
+          <> int.to_string(task_id)
           <> "/notes/"
-          <> int_to_string(note_id),
+          <> int.to_string(note_id),
       )
       |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
     )
@@ -334,7 +335,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> request.set_cookie("sb_session", member_session),
     )
@@ -347,7 +348,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
     handler(
       simulate.request(
         http.Patch,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes/1",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes/1",
       )
       |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
     )
@@ -395,7 +396,7 @@ pub fn task_notes_create_requires_csrf_test() {
   let note_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
     |> fixtures.with_session_cookies(member_session, member_csrf)
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
@@ -432,7 +433,7 @@ pub fn card_notes_list_requires_card_membership_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
       |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(json.object([#("content", json.string("One"))])),
@@ -442,7 +443,7 @@ pub fn card_notes_list_requires_card_membership_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
       |> fixtures.with_session_cookies(member_session, member_csrf),
     )
@@ -454,7 +455,7 @@ pub fn card_notes_list_requires_card_membership_test() {
   let outsider_req =
     simulate.request(
       http.Get,
-      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
     |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
 
@@ -498,7 +499,7 @@ pub fn card_notes_list_orders_by_created_at_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
       |> fixtures.with_session_cookies(admin_session, admin_csrf),
     )
@@ -537,7 +538,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
   let note_req =
     simulate.request(
       http.Post,
-      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
     |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
     |> simulate.json_body(
@@ -557,9 +558,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Post,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id)
+        <> int.to_string(note_id)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
@@ -570,9 +571,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Post,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id)
+        <> int.to_string(note_id)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
@@ -585,9 +586,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Delete,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id)
+        <> int.to_string(note_id)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
@@ -600,9 +601,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Delete,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id),
+        <> int.to_string(note_id),
     )
     |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
 
@@ -612,9 +613,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Delete,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id),
+        <> int.to_string(note_id),
     )
     |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
 
@@ -628,9 +629,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Post,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id_2)
+        <> int.to_string(note_id_2)
         <> "/pin",
     )
     |> fixtures.with_auth(fixture_session(admin_session, admin_csrf))
@@ -643,9 +644,9 @@ pub fn card_notes_create_and_delete_permissions_test() {
     simulate.request(
       http.Delete,
       "/api/v1/cards/"
-        <> int_to_string(card_id)
+        <> int.to_string(card_id)
         <> "/notes/"
-        <> int_to_string(note_id_2),
+        <> int.to_string(note_id_2),
     )
     |> fixtures.with_auth(fixture_session(admin_session, admin_csrf))
 
@@ -674,7 +675,7 @@ pub fn card_notes_create_requires_csrf_test() {
   let note_req =
     simulate.request(
       http.Post,
-      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
     |> fixtures.with_session_cookies(member_session, member_csrf)
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
@@ -706,7 +707,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
   let note_req =
     simulate.request(
       http.Post,
-      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
@@ -716,7 +717,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
   let list_req =
     simulate.request(
       http.Get,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/cards",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
     )
     |> fixtures.with_session_cookies(member_session, member_csrf)
 
@@ -726,7 +727,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
   |> expect.equal(True)
 
   let view_req =
-    simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
+    simulate.request(http.Put, "/api/v1/views/cards/" <> int.to_string(card_id))
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
 
   expect.expect_status(handler(view_req), 204)
@@ -778,7 +779,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let note_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
@@ -788,7 +789,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let list_req =
     simulate.request(
       http.Get,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
     |> fixtures.with_session_cookies(member_session, member_csrf)
 
@@ -798,7 +799,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
   |> expect.equal(True)
 
   let view_req =
-    simulate.request(http.Put, "/api/v1/views/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Put, "/api/v1/views/tasks/" <> int.to_string(task_id))
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
 
   expect.expect_status(handler(view_req), 204)
@@ -814,13 +815,13 @@ pub fn resource_views_reject_unsupported_methods_test() {
     resource_view_fixture()
 
   let card_req =
-    simulate.request(http.Get, "/api/v1/views/cards/" <> int_to_string(card_id))
+    simulate.request(http.Get, "/api/v1/views/cards/" <> int.to_string(card_id))
     |> fixtures.with_session_cookies(session, csrf)
 
   expect.expect_status(handler(card_req), 405)
 
   let task_req =
-    simulate.request(http.Get, "/api/v1/views/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Get, "/api/v1/views/tasks/" <> int.to_string(task_id))
     |> fixtures.with_session_cookies(session, csrf)
 
   expect.expect_status(handler(task_req), 405)
@@ -851,13 +852,13 @@ pub fn resource_views_hide_resources_from_non_project_members_test() {
     create_logged_in_user(handler, db, "outsider@example.com", "inv_outsider")
 
   let card_req =
-    simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
+    simulate.request(http.Put, "/api/v1/views/cards/" <> int.to_string(card_id))
     |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
 
   expect.expect_status(handler(card_req), 404)
 
   let task_req =
-    simulate.request(http.Put, "/api/v1/views/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Put, "/api/v1/views/tasks/" <> int.to_string(task_id))
     |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
 
   expect.expect_status(handler(task_req), 404)
@@ -903,7 +904,7 @@ pub fn task_positions_upsert_requires_csrf_test() {
   let put_req =
     simulate.request(
       http.Put,
-      "/api/v1/me/task-positions/" <> int_to_string(task_id),
+      "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
     |> fixtures.with_session_cookies(member_session, member_csrf)
     |> simulate.json_body(
@@ -1007,7 +1008,7 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/me/task-positions?project_id=" <> int_to_string(core_id),
+        "/api/v1/me/task-positions?project_id=" <> int.to_string(core_id),
       )
       |> fixtures.with_session_cookies(member1_session, member1_csrf),
     )
@@ -1068,7 +1069,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
   let put_req =
     simulate.request(
       http.Put,
-      "/api/v1/me/task-positions/" <> int_to_string(task_id),
+      "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
     |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
     |> simulate.json_body(
@@ -1081,7 +1082,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
   let filtered_req =
     simulate.request(
       http.Get,
-      "/api/v1/me/task-positions?project_id=" <> int_to_string(project_id),
+      "/api/v1/me/task-positions?project_id=" <> int.to_string(project_id),
     )
     |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
 
@@ -1354,7 +1355,7 @@ fn upsert_position(
   let req =
     simulate.request(
       http.Put,
-      "/api/v1/me/task-positions/" <> int_to_string(task_id),
+      "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
@@ -1556,10 +1557,3 @@ fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
   fixtures.query_int(db, sql, params)
   |> expect.ok
 }
-
-fn int_to_string(value: Int) -> String {
-  value |> int_to_string_unsafe
-}
-
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string_unsafe(value: Int) -> String

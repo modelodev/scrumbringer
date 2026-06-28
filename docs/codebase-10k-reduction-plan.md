@@ -964,14 +964,17 @@ Estado de ejecucion:
   para miembros, candidatos y managers creados por invite.
 - `modal_metrics_http_test.gleam` conserva el ID del miembro creado por
   `fixtures.create_member_user` y elimina la consulta SQL posterior por email.
-- Delta parcial WP-12: `-1.069` lineas netas mantenidas (`-44` del primer pase
+- `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam` sustituyen
+  el FFI local `integer_to_binary` por `gleam/int.to_string`.
+- Delta parcial WP-12: `-1.081` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
   de tarea desde fixtures, `-122` del pase de IDs de usuarios miembro desde
   fixtures, `-32` del pase de creacion de cards desde fixtures, `-40` del pase
   de IDs de usuarios en proyectos desde fixtures, `-6` del pase de ID de
-  usuario en metricas modales).
+  usuario en metricas modales, `-12` del pase de conversion Int->String con
+  API estandar).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

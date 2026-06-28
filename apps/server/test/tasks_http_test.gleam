@@ -1,6 +1,7 @@
 import fixtures
 import gleam/dynamic/decode
 import gleam/http
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -36,7 +37,7 @@ pub fn task_types_list_sorted_by_name_test() {
   let req =
     simulate.request(
       http.Get,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
     |> fixtures.with_session_cookies(session, csrf)
 
@@ -91,7 +92,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let member_req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(
@@ -107,7 +108,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let no_csrf_req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
     |> fixtures.with_session_cookies(admin_session, admin_csrf)
     |> simulate.json_body(
@@ -187,7 +188,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
       )
       |> fixtures.with_session_cookies(session, csrf),
     )
@@ -200,7 +201,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks?q=needle",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?q=needle",
       )
       |> fixtures.with_session_cookies(session, csrf),
     )
@@ -214,9 +215,9 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
       simulate.request(
         http.Get,
         "/api/v1/projects/"
-          <> int_to_string(project_id)
+          <> int.to_string(project_id)
           <> "/tasks?capability_id="
-          <> int_to_string(cap1),
+          <> int.to_string(cap1),
       )
       |> fixtures.with_session_cookies(session, csrf),
     )
@@ -229,7 +230,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     simulate.request(
       http.Get,
       "/api/v1/projects/"
-        <> int_to_string(project_id)
+        <> int.to_string(project_id)
         <> "/tasks?capability_id=1,2",
     )
     |> fixtures.with_session_cookies(session, csrf)
@@ -255,7 +256,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   let req =
     simulate.request(
       http.Get,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
     |> fixtures.with_session_cookies(session, csrf)
 
@@ -331,7 +332,7 @@ pub fn task_get_includes_task_contract_fields_test() {
     create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
 
   let req =
-    simulate.request(http.Get, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_session_cookies(session, csrf)
 
   let res = handler(req)
@@ -400,7 +401,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
     single_int(db, "select id from users where email = 'admin@example.com'", [])
 
   let req =
-    simulate.request(http.Get, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_session_cookies(session, csrf)
 
   let res = handler(req)
@@ -507,7 +508,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let claim_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(1))]))
@@ -519,7 +520,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let claim2_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
     |> fixtures.with_auth(fixture_session(other_session, other_csrf))
     |> simulate.json_body(json.object([#("version", json.int(1))]))
@@ -531,7 +532,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
   let patch_req =
-    simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(
       json.object([
@@ -550,7 +551,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let release_bad_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(1))]))
@@ -564,7 +565,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let release_ok_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(2))]))
@@ -576,7 +577,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let close_bad_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
     |> simulate.json_body(json.object([#("version", json.int(3))]))
@@ -698,7 +699,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
     create_task(handler, session, csrf, project_id, "Editable", "", 3, type_id)
 
   let patch_req =
-    simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
       json.object([
@@ -756,7 +757,7 @@ pub fn release_all_tasks_for_member_success_test() {
   let list_req =
     simulate.request(
       http.Get,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     )
     |> fixtures.with_session_cookies(session, csrf)
 
@@ -790,9 +791,9 @@ pub fn release_all_tasks_for_member_success_test() {
     simulate.request(
       http.Post,
       "/api/v1/projects/"
-        <> int_to_string(project_id)
+        <> int.to_string(project_id)
         <> "/members/"
-        <> int_to_string(member_id)
+        <> int.to_string(member_id)
         <> "/release-all-tasks",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
@@ -850,9 +851,9 @@ pub fn release_all_tasks_for_member_forbidden_test() {
     simulate.request(
       http.Post,
       "/api/v1/projects/"
-        <> int_to_string(project_id)
+        <> int.to_string(project_id)
         <> "/members/"
-        <> int_to_string(admin_id)
+        <> int.to_string(admin_id)
         <> "/release-all-tasks",
     )
     |> fixtures.with_auth(fixture_session(member_session, member_csrf))
@@ -877,9 +878,9 @@ pub fn release_all_tasks_for_member_self_release_test() {
     simulate.request(
       http.Post,
       "/api/v1/projects/"
-        <> int_to_string(project_id)
+        <> int.to_string(project_id)
         <> "/members/"
-        <> int_to_string(admin_id)
+        <> int.to_string(admin_id)
         <> "/release-all-tasks",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
@@ -926,7 +927,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
   let dep_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_a) <> "/dependencies",
+      "/api/v1/tasks/" <> int.to_string(task_a) <> "/dependencies",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
@@ -939,7 +940,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
   let circular_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_b) <> "/dependencies",
+      "/api/v1/tasks/" <> int.to_string(task_b) <> "/dependencies",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
@@ -1010,7 +1011,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
   let cross_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_one) <> "/dependencies",
+      "/api/v1/tasks/" <> int.to_string(task_one) <> "/dependencies",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
@@ -1080,7 +1081,7 @@ pub fn task_dependencies_reject_closed_dependency_test() {
   let closed_req =
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_blocked) <> "/dependencies",
+      "/api/v1/tasks/" <> int.to_string(task_blocked) <> "/dependencies",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(
@@ -1690,7 +1691,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let req =
     simulate.request(
       http.Get,
-      "/api/v1/org/metrics/projects/" <> int_to_string(project_id) <> "/tasks",
+      "/api/v1/org/metrics/projects/" <> int.to_string(project_id) <> "/tasks",
     )
     |> fixtures.with_session_cookies(session, csrf)
 
@@ -1870,7 +1871,7 @@ pub fn tasks_list_requires_membership_test() {
   let req =
     simulate.request(
       http.Get,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
     |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
 
@@ -1897,7 +1898,7 @@ pub fn task_get_requires_membership_test() {
     login_session(handler, "outsider@example.com")
 
   let req =
-    simulate.request(http.Get, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
 
   let res = handler(req)
@@ -1964,7 +1965,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       simulate.request(
         http.Get,
         "/api/v1/projects/"
-          <> int_to_string(project_id)
+          <> int.to_string(project_id)
           <> "/tasks?status=available",
       )
       |> fixtures.with_session_cookies(session, csrf),
@@ -1979,7 +1980,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       simulate.request(
         http.Get,
         "/api/v1/projects/"
-          <> int_to_string(project_id)
+          <> int.to_string(project_id)
           <> "/tasks?status=claimed",
       )
       |> fixtures.with_session_cookies(session, csrf),
@@ -1994,7 +1995,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       simulate.request(
         http.Get,
         "/api/v1/projects/"
-          <> int_to_string(project_id)
+          <> int.to_string(project_id)
           <> "/tasks?status=closed",
       )
       |> fixtures.with_session_cookies(session, csrf),
@@ -2009,9 +2010,9 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       simulate.request(
         http.Get,
         "/api/v1/projects/"
-          <> int_to_string(project_id)
+          <> int.to_string(project_id)
           <> "/tasks?type_id="
-          <> int_to_string(bug_type_id),
+          <> int.to_string(bug_type_id),
       )
       |> fixtures.with_session_cookies(session, csrf),
     )
@@ -2024,7 +2025,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks?status=nope",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?status=nope",
       )
       |> fixtures.with_session_cookies(session, csrf),
     )
@@ -2037,7 +2038,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks?type_id=abc",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?type_id=abc",
       )
       |> fixtures.with_session_cookies(session, csrf),
     )
@@ -2051,7 +2052,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
       simulate.request(
         http.Get,
         "/api/v1/projects/"
-          <> int_to_string(project_id)
+          <> int.to_string(project_id)
           <> "/tasks?capability_id=abc",
       )
       |> fixtures.with_session_cookies(session, csrf),
@@ -2120,7 +2121,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 
   let patch_ok_res =
     handler(
-      simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+      simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
       |> fixtures.with_auth(fixture_session(member_session, member_csrf))
       |> simulate.json_body(
         json.object([
@@ -2139,7 +2140,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 
   let patch_other_res =
     handler(
-      simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+      simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
       |> fixtures.with_auth(fixture_session(other_session, other_csrf))
       |> simulate.json_body(
         json.object([
@@ -2155,7 +2156,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
       |> fixtures.with_auth(fixture_session(other_session, other_csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
@@ -2167,7 +2168,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
       |> fixtures.with_auth(fixture_session(other_session, other_csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
@@ -2193,7 +2194,7 @@ pub fn patch_rejects_blank_title_test() {
 
   let res =
     handler(
-      simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+      simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
       |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(
         json.object([
@@ -2401,7 +2402,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
       |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
@@ -2593,7 +2594,7 @@ fn delete_task_response(
   task_id: Int,
 ) -> wisp.Response {
   handler(
-    simulate.request(http.Delete, "/api/v1/tasks/" <> int_to_string(task_id))
+    simulate.request(http.Delete, "/api/v1/tasks/" <> int.to_string(task_id))
     |> fixtures.with_auth(fixture_session(session, csrf)),
   )
 }
@@ -2609,7 +2610,7 @@ fn create_task_note(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/notes",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
       |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("content", json.string(content))])),
@@ -2639,7 +2640,7 @@ fn claim_task_response(
   handler(
     simulate.request(
       http.Post,
-      "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
+      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(json.object([#("version", json.int(version))])),
@@ -2657,7 +2658,7 @@ fn create_dependency(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/dependencies",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
       )
       |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(
@@ -2680,9 +2681,9 @@ fn delete_dependency(
       simulate.request(
         http.Delete,
         "/api/v1/tasks/"
-          <> int_to_string(task_id)
+          <> int.to_string(task_id)
           <> "/dependencies/"
-          <> int_to_string(depends_on_task_id),
+          <> int.to_string(depends_on_task_id),
       )
       |> fixtures.with_auth(fixture_session(session, csrf)),
     )
@@ -2701,7 +2702,7 @@ fn release_task(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
       |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
@@ -2732,7 +2733,7 @@ fn close_task_response(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/tasks/" <> int_to_string(task_id) <> "/close",
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
       |> fixtures.with_auth(fixture_session(session, csrf))
       |> simulate.json_body(json.object([#("version", json.int(version))])),
@@ -2772,7 +2773,7 @@ fn list_project_tasks(
 ) -> wisp.Response {
   let url =
     "/api/v1/projects/"
-    <> int_to_string(project_id)
+    <> int.to_string(project_id)
     <> "/tasks"
     <> case query {
       "" -> ""
@@ -2821,7 +2822,7 @@ fn create_task_type(
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(body)
@@ -2894,7 +2895,7 @@ fn try_activate_card(
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/cards/" <> int_to_string(card_id) <> "/activate",
+      "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
     )
     |> fixtures.with_auth(fixture_session(session, csrf))
     |> simulate.json_body(json.object([]))
@@ -3051,10 +3052,3 @@ fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
   fixtures.query_int(db, sql, params)
   |> expect.ok
 }
-
-fn int_to_string(value: Int) -> String {
-  value |> int_to_string_unsafe
-}
-
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string_unsafe(value: Int) -> String
