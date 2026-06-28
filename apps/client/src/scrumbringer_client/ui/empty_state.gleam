@@ -11,7 +11,6 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, h2, p, text}
 
 import scrumbringer_client/ui/button
-import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icon_catalog
 
 /// Product meaning represented by an empty or transient state.
@@ -112,7 +111,7 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
   ) = state
 
   div(root_attrs(meaning, extra_class), [
-    div([attribute.class(css.to_string(css.empty_state_icon()))], [
+    div([attribute.class("empty-state-icon")], [
       icon_catalog.render(icon_id, 40),
     ]),
     h2([attribute.class("empty-state-title")], [text(title)]),
@@ -149,13 +148,11 @@ fn view_actions(
 
 /// Simple empty state without title (just icon and text).
 pub fn simple(icon_id: String, description: String) -> Element(msg) {
-  div([attribute.class(css.to_string(css.empty_state()))], [
-    div([attribute.class(css.to_string(css.empty_state_icon()))], [
+  div([attribute.class("empty-state")], [
+    div([attribute.class("empty-state-icon")], [
       icon_catalog.render(icon_id, 40),
     ]),
-    p([attribute.class(css.to_string(css.empty_state_text()))], [
-      text(description),
-    ]),
+    p([attribute.class("empty-state-text")], [text(description)]),
   ])
 }
 
@@ -166,12 +163,10 @@ pub fn notice(
   meaning: Meaning,
 ) -> Element(msg) {
   div(root_attrs(meaning, opt.None), [
-    div([attribute.class(css.to_string(css.empty_state_icon()))], [
+    div([attribute.class("empty-state-icon")], [
       icon_catalog.render(icon_id, 40),
     ]),
-    p([attribute.class(css.to_string(css.empty_state_text()))], [
-      text(description),
-    ]),
+    p([attribute.class("empty-state-text")], [text(description)]),
   ])
 }
 
@@ -183,12 +178,10 @@ pub fn notice_with_class(
   extra_class: String,
 ) -> Element(msg) {
   div(root_attrs(meaning, opt.Some(extra_class)), [
-    div([attribute.class(css.to_string(css.empty_state_icon()))], [
+    div([attribute.class("empty-state-icon")], [
       icon_catalog.render(icon_id, 40),
     ]),
-    p([attribute.class(css.to_string(css.empty_state_text()))], [
-      text(description),
-    ]),
+    p([attribute.class("empty-state-text")], [text(description)]),
   ])
 }
 
@@ -221,13 +214,8 @@ fn root_attrs(meaning: Meaning, extra_class: opt.Option(String)) {
 fn root_class(meaning: Meaning, extra_class: opt.Option(String)) -> String {
   case extra_class {
     opt.Some(class_name) ->
-      css.to_string(css.empty_state())
-      <> " "
-      <> class_name
-      <> " "
-      <> meaning_class(meaning)
-    opt.None ->
-      css.to_string(css.empty_state()) <> " " <> meaning_class(meaning)
+      "empty-state " <> class_name <> " " <> meaning_class(meaning)
+    opt.None -> "empty-state " <> meaning_class(meaning)
   }
 }
 

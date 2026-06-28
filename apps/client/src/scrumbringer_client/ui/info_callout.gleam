@@ -9,7 +9,6 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
-import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icon_catalog
 
 /// Info callout configuration.
@@ -44,19 +43,16 @@ pub fn view_with_content(
   title: opt.Option(String),
   content: Element(msg),
 ) -> Element(msg) {
-  div([attribute.class(css.to_string(css.info_callout()))], [
-    div([attribute.class(css.to_string(css.info_callout_icon()))], [
+  div([attribute.class("info-callout")], [
+    div([attribute.class("info-callout-icon")], [
       icon_catalog.render("light-bulb", 24),
     ]),
-    div([attribute.class(css.to_string(css.info_callout_content()))], [
+    div([attribute.class("info-callout-content")], [
       case title {
-        opt.Some(t) ->
-          div([attribute.class(css.to_string(css.info_callout_title()))], [
-            text(t),
-          ])
+        opt.Some(t) -> div([attribute.class("info-callout-title")], [text(t)])
         opt.None -> element.none()
       },
-      div([attribute.class(css.to_string(css.info_callout_text()))], [content]),
+      div([attribute.class("info-callout-text")], [content]),
     ]),
   ])
 }

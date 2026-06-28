@@ -1135,6 +1135,15 @@ Estado de ejecucion:
     contratos UI vivos de tabla, filtros, skeleton line/list/table y layout
     section/empty;
   - delta adicional WP-10: `-212` lineas mantenidas.
+- Micro-pase adicional de abstraccion CSS no adoptada:
+  - retirado `ui/css_class`, wrapper publico de clases CSS usado solo por
+    `empty_state`, `info_callout` y tests directos del propio wrapper;
+  - `empty_state` e `info_callout` declaran sus clases visuales de forma
+    explicita, manteniendo el contrato renderizado y evitando una capa publica
+    que no reducia duplicacion real;
+  - retirados tests de implementacion de `css_class`, conservando los tests de
+    iconos, section header y componentes UI consumidores;
+  - delta adicional WP-10: `-322` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1158,10 +1167,11 @@ Estado de ejecucion:
     `1886 passed` tras retirar `helpers/options.empty_to_opt`;
     `1886 passed` tras retirar accessors de `ui/badge`;
     `1884 passed` tras retirar API preventiva de `ui/button`;
-    `1879 passed` tras retirar primitivas UI preventivas sin consumidores);
+    `1879 passed` tras retirar primitivas UI preventivas sin consumidores;
+    `1871 passed` tras retirar `ui/css_class`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-1.792` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.114` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

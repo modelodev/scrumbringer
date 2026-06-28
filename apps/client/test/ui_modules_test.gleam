@@ -1,4 +1,4 @@
-//// Tests for UI modules: css_class, icons, empty_state, info_callout.
+//// Tests for shared UI modules.
 
 import support/assertions.{assert_equal}
 
@@ -6,61 +6,8 @@ import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/permissions
-import scrumbringer_client/ui/css_class as css
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
-
-// =============================================================================
-// css_class Tests
-// =============================================================================
-
-pub fn css_to_string_returns_class_name_test() {
-  css.nav_item()
-  |> css.to_string
-  |> assert_equal("nav-item")
-}
-
-pub fn css_join_single_class_test() {
-  [css.nav_item()]
-  |> css.join
-  |> assert_equal("nav-item")
-}
-
-pub fn css_join_multiple_classes_test() {
-  [css.nav_item(), css.active()]
-  |> css.join
-  |> assert_equal("nav-item active")
-}
-
-pub fn css_join_empty_list_test() {
-  []
-  |> css.join
-  |> assert_equal("")
-}
-
-pub fn css_when_true_includes_class_test() {
-  css.when(css.active(), True)
-  |> assert_equal([css.active()])
-}
-
-pub fn css_when_false_excludes_class_test() {
-  css.when(css.active(), False)
-  |> assert_equal([])
-}
-
-pub fn css_join_with_conditional_test() {
-  let is_active = True
-  [css.nav_item(), ..css.when(css.active(), is_active)]
-  |> css.join
-  |> assert_equal("nav-item active")
-}
-
-pub fn css_join_with_conditional_false_test() {
-  let is_active = False
-  [css.nav_item(), ..css.when(css.active(), is_active)]
-  |> css.join
-  |> assert_equal("nav-item")
-}
 
 // =============================================================================
 // icons Tests
