@@ -32,7 +32,11 @@ pub fn task_templates_project_crud_test() {
     )
 
   expect.expect_status(create_res, 200)
-  let template_id = decode_template_id(simulate.read_body(create_res))
+  let template_id =
+    fixtures.require_entity_id(
+      simulate.read_body(create_res),
+      fixtures.Template,
+    )
   let created_version =
     fixtures.require_query_int(
       db,
@@ -340,10 +344,6 @@ pub fn task_templates_invalid_type_id_returns_422_test() {
     )
 
   expect.expect_status(create_res, 422)
-}
-
-fn decode_template_id(body: String) -> Int {
-  fixtures.require_entity_id(body, fixtures.Template)
 }
 
 fn decode_template_name(body: String) -> String {

@@ -278,7 +278,7 @@ pub fn bearer_can_operate_cards_and_notes_test() {
   expect.expect_status(create_card_res, 200)
 
   let assert Ok(created_card_id) =
-    decode_nested_id(simulate.read_body(create_card_res), "card")
+    fixtures.decode_data_entity_id(simulate.read_body(create_card_res), "card")
 
   handler(
     simulate.request(
@@ -325,7 +325,7 @@ pub fn bearer_can_operate_cards_and_notes_test() {
     )
   expect.expect_status(card_note_res, 200)
   let assert Ok(card_note_id) =
-    decode_nested_id(simulate.read_body(card_note_res), "note")
+    fixtures.decode_data_entity_id(simulate.read_body(card_note_res), "note")
 
   handler(
     simulate.request(
@@ -764,7 +764,11 @@ fn create_integration_user(
     )
 
   case res.status {
-    200 -> decode_integration_user_id(simulate.read_body(res))
+    200 ->
+      fixtures.decode_data_entity_id(
+        simulate.read_body(res),
+        "integration_user",
+      )
     status -> Error("create_integration_user failed: " <> int.to_string(status))
   }
 }
@@ -860,10 +864,6 @@ fn create_api_token_response(
   res
 }
 
-fn decode_integration_user_id(body: String) -> Result(Int, String) {
-  fixtures.decode_data_entity_id(body, "integration_user")
-}
-
 fn decode_project_names(body: String) -> List(String) {
   fixtures.require_data_string_list_field(body, "projects", "name")
 }
@@ -893,10 +893,6 @@ fn decode_created_token(body: String) -> Result(#(Int, String), String) {
 
 fn decode_data(body: String, decoder: decode.Decoder(a)) {
   json.parse(from: body, using: decode.field("data", decoder, decode.success))
-}
-
-fn decode_nested_id(body: String, field: String) -> Result(Int, String) {
-  fixtures.decode_data_entity_id(body, field)
 }
 
 fn option_int_json(value: Option(Int)) -> json.Json {

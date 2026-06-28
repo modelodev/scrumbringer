@@ -2731,6 +2731,33 @@ Estado de ejecucion:
   - total Gleam actual: `197.998` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.016` lineas;
   - deficit restante para `-20k`: `3.984` lineas.
+- Vigesimotercer pase de API publica accidental y decoders HTTP:
+  - retirados los wrappers publicos `*_focus_target_for_test` de
+    `features/pool/admin_route.gleam`; solo existian para exponer funciones
+    privadas a `automation_focus_target_test.gleam`;
+  - retirado `automation_focus_target_test.gleam`, que cubria un detalle de
+    implementacion ya no expuesto como contrato publico; se mantiene cobertura
+    de ids de trigger en las vistas de engines/rules/templates y cobertura de
+    emision de efectos en los tests de update/routing;
+  - eliminados wrappers locales triviales de decodificacion HTTP en
+    `activity_http_test.gleam`, `api_tokens_http_test.gleam` y
+    `task_templates_http_test.gleam`, delegando directamente en los helpers de
+    `fixtures`;
+  - se conserva `decode_note_id` en `notes_and_positions_http_test.gleam`
+    porque tiene varios consumidores y mantiene llamadas mas legibles que el
+    helper generico completo;
+  - delta adicional: `-139` lineas Gleam mantenidas netas;
+  - verificacion:
+    - `cd apps/client && gleam format src test && gleam test`
+      (`1816 passed`);
+    - modulos enfocados `activity_http_test`, `api_tokens_http_test` y
+      `task_templates_http_test` via EUnit secuencial (`30 passed`);
+    - `rg "focus_target_for_test|automation_focus_target_test|decode_nested_id|decode_integration_user_id|decode_template_id" apps/client/src apps/client/test apps/server/test -g '*.gleam'`
+      sin consumidores.
+- Auditoria de contabilidad tras el vigesimotercer pase:
+  - total Gleam actual: `197.859` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.155` lineas;
+  - deficit restante para `-20k`: `3.845` lineas.
 
 ## Orden recomendado de ejecucion
 

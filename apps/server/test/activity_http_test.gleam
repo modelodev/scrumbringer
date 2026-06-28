@@ -138,7 +138,11 @@ pub fn task_activity_includes_note_create_pin_and_unpin_events_test() {
 
   let note_res = create_task_note(handler, session, task_id, "OAuth decision")
   expect.expect_status(note_res, 200)
-  let note_id = decode_note_id(simulate.read_body(note_res))
+  let note_id =
+    fixtures.require_entity_id(
+      simulate.read_body(note_res),
+      fixtures.NoteEntity,
+    )
 
   expect.expect_status(pin_task_note(handler, session, task_id, note_id), 200)
   expect.expect_status(unpin_task_note(handler, session, task_id, note_id), 200)
@@ -169,7 +173,11 @@ pub fn card_activity_includes_note_create_pin_and_unpin_events_test() {
 
   let note_res = create_card_note(handler, session, card_id, "Scope decision")
   expect.expect_status(note_res, 200)
-  let note_id = decode_note_id(simulate.read_body(note_res))
+  let note_id =
+    fixtures.require_entity_id(
+      simulate.read_body(note_res),
+      fixtures.NoteEntity,
+    )
 
   expect.expect_status(pin_card_note(handler, session, card_id, note_id), 200)
   expect.expect_status(unpin_card_note(handler, session, card_id, note_id), 200)
@@ -479,10 +487,6 @@ fn has_event(
   |> list.any(fn(event) {
     event.subject == expected_subject && event.kind == expected_kind
   })
-}
-
-fn decode_note_id(body: String) -> Int {
-  fixtures.require_entity_id(body, fixtures.NoteEntity)
 }
 
 fn decode_activity(body: String) -> List(ActivityEvent) {

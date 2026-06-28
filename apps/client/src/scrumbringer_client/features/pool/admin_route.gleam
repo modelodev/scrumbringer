@@ -283,12 +283,6 @@ fn automation_panel_focus_target(
   }
 }
 
-pub fn engine_dialog_focus_target_for_test(
-  mode: opt.Option(admin_workflows.EngineDialogMode),
-) -> opt.Option(String) {
-  engine_dialog_focus_target(mode)
-}
-
 fn engine_dialog_focus_target(
   mode: opt.Option(admin_workflows.EngineDialogMode),
 ) -> opt.Option(String) {
@@ -303,12 +297,6 @@ fn engine_dialog_focus_target(
   }
 }
 
-pub fn rule_dialog_focus_target_for_test(
-  mode: opt.Option(admin_rules.RuleDialogMode),
-) -> opt.Option(String) {
-  rule_dialog_focus_target(mode)
-}
-
 fn rule_dialog_focus_target(
   mode: opt.Option(admin_rules.RuleDialogMode),
 ) -> opt.Option(String) {
@@ -321,12 +309,6 @@ fn rule_dialog_focus_target(
       opt.Some(automation_focus.rule_delete_trigger_id(rule.id))
     opt.None -> opt.None
   }
-}
-
-pub fn task_template_dialog_focus_target_for_test(
-  mode: opt.Option(admin_task_templates.TaskTemplateDialogMode),
-) -> opt.Option(String) {
-  task_template_dialog_focus_target(mode)
 }
 
 fn task_template_dialog_focus_target(
