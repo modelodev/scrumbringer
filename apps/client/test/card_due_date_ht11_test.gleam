@@ -1,6 +1,7 @@
 import domain/card.{type Card, Active, Card, Closed}
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/i18n/locale
@@ -70,18 +71,11 @@ fn config(card: Card) {
 
 fn sample_card() {
   Card(
-    id: 10,
-    project_id: 1,
-    parent_card_id: None,
-    title: "Release train",
+    ..domain_fixtures.card(10, 1, "Release train"),
     description: "Cut the next release",
-    color: None,
     state: Active,
     task_count: 2,
-    closed_count: 0,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
-    has_new_notes: False,
   )
 }

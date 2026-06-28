@@ -8,22 +8,13 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/cards/move_target
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/plan_move_update
+import support/domain_fixtures
 
 fn card(id: Int, parent_card_id: opt.Option(Int), title: String) -> Card {
   Card(
-    id: id,
-    project_id: 1,
+    ..domain_fixtures.card(id, 1, title),
     parent_card_id: parent_card_id,
-    title: title,
-    description: "",
-    color: opt.None,
     state: Draft,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    has_new_notes: False,
   )
 }
 

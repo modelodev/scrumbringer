@@ -1,6 +1,7 @@
 import domain/card.{type Card, Active, Card}
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -9,21 +10,7 @@ import scrumbringer_client/features/plan/scope_bar
 import scrumbringer_client/i18n/locale
 
 fn card(id: Int, title: String) -> Card {
-  Card(
-    id: id,
-    project_id: 1,
-    parent_card_id: None,
-    title: title,
-    description: "",
-    color: None,
-    state: Active,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    has_new_notes: False,
-  )
+  Card(..domain_fixtures.card(id, 1, title), state: Active)
 }
 
 pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {

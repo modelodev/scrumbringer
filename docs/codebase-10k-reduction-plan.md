@@ -1438,7 +1438,11 @@ Estado de ejecucion:
   card (`card_scoped_navigation`, `cards_list_view` y `card_show_summary`).
   Se conservan solo los campos observables: scope/id, descripcion, metricas,
   estado y fecha cuando el render o la URL los usan.
-- Delta parcial WP-12: `-3.277` lineas netas mantenidas (`-44` del primer pase
+- Vigesimotercer pase de fixtures de dominio aplicado a builders pequenos de
+  card (`card_due_date_ht11`, `plan_scope_bar` y `plan_move_update`). Se
+  conserva la intencion visible de cada escenario: vencimiento, scope,
+  jerarquia y estado de destino.
+- Delta parcial WP-12: `-3.305` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1481,7 +1485,8 @@ Estado de ejecucion:
   cliente, `-11` del vigesimo pase de fixtures de dominio compartidas en tests
   de cliente, `-13` del vigesimoprimer pase de fixtures de dominio compartidas
   en tests de cliente, `-22` del vigesimosegundo pase de fixtures de dominio
-  compartidas en tests de cliente).
+  compartidas en tests de cliente, `-28` del vigesimotercer pase de fixtures
+  de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
