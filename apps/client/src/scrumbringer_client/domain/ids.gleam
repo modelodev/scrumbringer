@@ -59,16 +59,3 @@ pub fn toast_id_to_int(id: ToastId) -> Int {
   let ToastId(value) = id
   value
 }
-
-/// Compare two ToastIds for equality.
-///
-/// ## Example
-///
-/// ```gleam
-/// let id1 = new_toast_id(1)
-/// let id2 = new_toast_id(1)
-/// toast_id_eq(id1, id2)  // True
-/// ```
-pub fn toast_id_eq(a: ToastId, b: ToastId) -> Bool {
-  toast_id_to_int(a) == toast_id_to_int(b)
-}

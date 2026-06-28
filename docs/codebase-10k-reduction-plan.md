@@ -1352,6 +1352,12 @@ Estado de ejecucion:
     es la entrada real consumida por `work_surface`;
   - delta adicional WP-10: `-37` lineas mantenidas y dos funciones publicas
     menos.
+- Micro-pase adicional de helper de igualdad de `ToastId`:
+  - retirado `ids.toast_id_eq`, wrapper publico con un unico consumidor;
+  - `toast.dismiss` compara mediante `toast_id_to_int`, accessor que ya era
+    necesario para renderizar identificadores de toast;
+  - delta adicional WP-10: `-11` lineas mantenidas y una funcion publica
+    menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1393,10 +1399,11 @@ Estado de ejecucion:
     `1821 passed` tras retirar API textual preventiva de `action_menu`;
     `1821 passed` tras encapsular `toast`;
     `1820 passed` tras retirar la variante textual de `task_metric_chip`;
-    `1819 passed` tras retirar helpers preventivos de `signal_chip`);
+    `1819 passed` tras retirar helpers preventivos de `signal_chip`;
+    `1819 passed` tras retirar `ids.toast_id_eq`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.111` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.122` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

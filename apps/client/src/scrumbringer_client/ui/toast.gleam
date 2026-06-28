@@ -38,7 +38,7 @@ import lustre/element/html.{button, div, span, text}
 import lustre/event
 
 import scrumbringer_client/domain/ids.{
-  type ToastId, new_toast_id, toast_id_eq, toast_id_to_int,
+  type ToastId, new_toast_id, toast_id_to_int,
 }
 
 // =============================================================================
@@ -113,7 +113,9 @@ pub fn show_with_action(
 
 /// Dismiss a toast by ID, returning the updated state.
 pub fn dismiss(state: ToastState, id: ToastId) -> ToastState {
-  let new_toasts = list.filter(state.toasts, fn(t) { !toast_id_eq(t.id, id) })
+  let target_id = toast_id_to_int(id)
+  let new_toasts =
+    list.filter(state.toasts, fn(t) { toast_id_to_int(t.id) != target_id })
   ToastState(..state, toasts: new_toasts)
 }
 
