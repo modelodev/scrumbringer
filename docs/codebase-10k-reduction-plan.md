@@ -431,6 +431,13 @@ Estado de ejecucion:
   `tasks_http_test` dejan de duplicar los requests de `claim`, `release` y
   `close`; `tasks_http_test` conserva wrappers locales de status porque reducen
   ruido en el test grande sin reabrir la duplicacion HTTP.
+- Segundo pase de acciones HTTP de task aplicado a `tasks_http_test`: los
+  escenarios que necesitaban inspeccionar `Response` reutilizan directamente
+  `fixtures.claim_task_response`, `fixtures.release_task_response` y
+  `fixtures.close_task_response`. El barrido
+  `rg "/claim|/release|/close" apps/server/test/tasks_http_test.gleam` ya solo
+  encuentra endpoints distintos (`release-all-tasks`) o comentarios, no
+  construccion manual de requests de acciones basicas.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -464,12 +471,14 @@ Estado de ejecucion:
   - `cards_http_test.gleam` pase child-card fixture: `-18` lineas netas;
   - acciones HTTP compartidas de card en tests: `-13` lineas netas;
   - acciones HTTP compartidas de task en tests: `-74` lineas netas;
+  - segundo pase de acciones HTTP de task en `tasks_http_test.gleam`: `-64`
+    lineas netas;
   - `fixtures.gleam` en migraciones base: `+45` lineas netas; los incrementos
     posteriores quedan incluidos en los micro-pases compartidos;
-  - total parcial WP-01: `-3.377` lineas netas mantenidas.
+  - total parcial WP-01: `-3.441` lineas netas mantenidas.
 - Verificacion:
-  - `cd apps/server && gleam format src test`;
-  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+  - `cd apps/server && gleam format src test && gleam build`;
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`).
 
 ### WP-02. Consolidar helpers de render/assert en cliente
 

@@ -433,27 +433,11 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let task_id =
     fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
-  let claim_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
-    )
-    |> fx.with_auth(member_session)
-    |> simulate.json_body(json.object([#("version", json.int(1))]))
-
-  let claim_res = handler(claim_req)
+  let claim_res = fx.claim_task_response(handler, member_session, task_id, 1)
   expect.expect_status(claim_res, 200)
   count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
-  let claim2_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
-    )
-    |> fx.with_auth(other_session)
-    |> simulate.json_body(json.object([#("version", json.int(1))]))
-
-  let claim2_res = handler(claim2_req)
+  let claim2_res = fx.claim_task_response(handler, other_session, task_id, 1)
   expect.expect_status(claim2_res, 409)
   string.contains(simulate.read_body(claim2_res), "CONFLICT_CLAIMED")
   |> expect.is_true
@@ -476,41 +460,20 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   |> expect.is_true
   count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
-  let release_bad_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
-    )
-    |> fx.with_auth(member_session)
-    |> simulate.json_body(json.object([#("version", json.int(1))]))
-
-  let release_bad_res = handler(release_bad_req)
+  let release_bad_res =
+    fx.release_task_response(handler, member_session, task_id, 1)
   expect.expect_status(release_bad_res, 409)
   string.contains(simulate.read_body(release_bad_res), "CONFLICT_VERSION")
   |> expect.is_true
   count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
-  let release_ok_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
-    )
-    |> fx.with_auth(member_session)
-    |> simulate.json_body(json.object([#("version", json.int(2))]))
-
-  let release_ok_res = handler(release_ok_req)
+  let release_ok_res =
+    fx.release_task_response(handler, member_session, task_id, 2)
   expect.expect_status(release_ok_res, 200)
   count_audit_events_for_task(db, task_id) |> expect.equal(3)
 
-  let close_bad_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
-    )
-    |> fx.with_auth(member_session)
-    |> simulate.json_body(json.object([#("version", json.int(3))]))
-
-  let close_bad_res = handler(close_bad_req)
+  let close_bad_res =
+    fx.close_task_response(handler, member_session, task_id, 3)
   expect.expect_status(close_bad_res, 422)
   string.contains(simulate.read_body(close_bad_res), "VALIDATION_ERROR")
   |> expect.is_true
@@ -1868,26 +1831,12 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   expect.expect_status(patch_other_res, 403)
 
   let release_other_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
-      )
-      |> fx.with_auth(other_session)
-      |> simulate.json_body(json.object([#("version", json.int(version))])),
-    )
+    fx.release_task_response(handler, other_session, task_id, version)
 
   expect.expect_status(release_other_res, 403)
 
   let close_other_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
-      )
-      |> fx.with_auth(other_session)
-      |> simulate.json_body(json.object([#("version", json.int(version))])),
-    )
+    fx.close_task_response(handler, other_session, task_id, version)
 
   expect.expect_status(close_other_res, 403)
 }
@@ -2125,17 +2074,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
 
   let version = task_version(db, task_id)
 
-  let release_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
-      )
-      |> fx.with_auth(session)
-      |> simulate.json_body(json.object([#("version", json.int(version))])),
-    )
-
-  expect.expect_status(release_res, 200)
+  release_task(handler, session, task_id, version) |> expect.equal(200)
 
   let active_after_release = get_active_work_sessions(handler, session)
   decode_work_session_task_id(simulate.read_body(active_after_release))
