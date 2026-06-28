@@ -1,14 +1,12 @@
 import gleam/option
 import gleam/string
-import lustre/element
 import support/render_assertions
 
 import scrumbringer_client/ui/note_content
 
 fn render(content: String) -> String {
   note_content.view(content, option.None)
-  |> element.fragment
-  |> element.to_document_string
+  |> render_assertions.fragment_html
 }
 
 pub fn note_content_escapes_user_html_test() {
@@ -28,8 +26,7 @@ pub fn note_content_renders_detected_link_test() {
 pub fn note_content_renders_explicit_url_test() {
   let html =
     note_content.view("Spec", option.Some("https://example.com/spec"))
-    |> element.fragment
-    |> element.to_document_string
+    |> render_assertions.fragment_html
 
   render_assertions.contains(html, "Spec")
   render_assertions.contains(html, "href=\"https://example.com/spec\"")
@@ -41,8 +38,7 @@ pub fn note_content_does_not_duplicate_explicit_url_already_in_content_test() {
       "Spec https://example.com/spec",
       option.Some("https://example.com/spec"),
     )
-    |> element.fragment
-    |> element.to_document_string
+    |> render_assertions.fragment_html
 
   render_assertions.contains(html, "href=\"https://example.com/spec\"")
   let without_href =

@@ -46,7 +46,7 @@ pub fn topbar_drawer_buttons_use_semantic_icon_buttons_test() {
   let html =
     shell_config()
     |> member_mobile_shell.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"mobile-menu-btn\"")
   render_assertions.contains(html, "data-testid=\"mobile-user-btn\"")

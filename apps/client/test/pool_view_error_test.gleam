@@ -1,8 +1,7 @@
 import gleam/list
 import gleam/option as opt
-import gleam/string
-import lustre/element
 import support/domain_fixtures
+import support/render_assertions
 
 import domain/api_error as domain_api_error
 import domain/remote.{Failed, Loaded}
@@ -80,9 +79,9 @@ fn test_user() -> User {
 pub fn view_pool_main_shows_no_projects_empty_state_test() {
   let html =
     pool_view.view_pool_main(pool_context(base_model()), test_user())
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "No projects yet")
+  render_assertions.contains(html, "No projects yet")
 }
 
 pub fn view_pool_main_shows_tasks_error_test() {
@@ -109,8 +108,8 @@ pub fn view_pool_main_shows_tasks_error_test() {
 
   let html =
     pool_view.view_pool_main(pool_context(model), test_user())
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "class=\"error\"")
-  let assert True = string.contains(html, "Boom")
+  render_assertions.contains(html, "class=\"error\"")
+  render_assertions.contains(html, "Boom")
 }

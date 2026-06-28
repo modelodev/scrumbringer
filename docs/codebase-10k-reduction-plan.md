@@ -508,17 +508,20 @@ Estado de ejecucion:
 - Cuarto pase focalizado: `ui_misc_test`, `task_create_feedback_test` y tests
   de assignments usan `render_assertions.html`/`fragment_html`; los usos
   directos de `element.to_document_string` en tests cliente bajan de 65 a 49.
-- Delta WP-02 hasta este punto: `-485` lineas netas mantenidas (`-17` del pase
+- Quinto pase focalizado: `note_content_test`, `pool_view_error_test`,
+  `card_show_test` y `member_mobile_shell_test` retiran serializacion directa
+  donde solo se validaban fragmentos HTML; los usos directos bajan de 49 a 41.
+- Delta WP-02 hasta este punto: `-491` lineas netas mantenidas (`-17` del pase
   inicial, `-312` del pase amplio de asserts y `-86` del pase de
   `render_assertions.html`, `-67` del tercer pase focalizado y `-3` del cuarto
-  pase focalizado). La reduccion queda por debajo de la estimacion porque esta
-  iteracion no introdujo builders de dominio agresivos: se priorizo retirar
-  duplicacion exacta sin esconder expectativas.
+  pase focalizado, `-6` del quinto pase focalizado). La reduccion queda por
+  debajo de la estimacion porque esta iteracion no introdujo builders de dominio
+  agresivos: se priorizo retirar duplicacion exacta sin esconder expectativas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam test` (`1873 passed`);
   - `cd apps/client && gleam format src test && gleam test` (`1859 passed`)
-    tras el tercer y cuarto pase focalizado.
+    tras el tercer, cuarto y quinto pase focalizado.
 
 ### WP-03. Reducir roots Lustre por owners reales
 
@@ -2195,7 +2198,7 @@ anterior:
 | Candidato | Motivo | Estado / guardarrail |
 | --- | --- | --- |
 | Server HTTP test helpers | Duplicacion visible de login/cookies/fixtures. | Parcialmente ejecutado; `tasks_http_test` ya no mantiene helper local de task type; repetir `rg "fn login_as|fn find_cookie_value|fn create_project|fn create_task_type|fn create_task\\(" apps/server/test` antes de nuevos pases. |
-| Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; helpers locales ya migrados, `render_assertions.html` aplicado y primer pase con `view_contains`/`fragment_html` en tests UI/layout. Quedan 49 usos directos de `element.to_document_string`; repetir `rg "element\\.to_document_string" apps/client/test` para detectar usos que aun deban pasar por soporte compartido. |
+| Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; helpers locales ya migrados, `render_assertions.html` aplicado y primer pase con `view_contains`/`fragment_html` en tests UI/layout. Quedan 41 usos directos de `element.to_document_string`; repetir `rg "element\\.to_document_string" apps/client/test` para detectar usos que aun deban pasar por soporte compartido. |
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI e `ui/icon_picker` sin consumidores ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
 | Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |

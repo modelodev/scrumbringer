@@ -4,10 +4,9 @@
 //// Card Show component.
 
 import gleam/option
-import gleam/string
 
-import lustre/element
 import support/domain_fixtures
+import support/render_assertions
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/id as activity_id
@@ -135,23 +134,23 @@ pub fn card_activity_tab_renders_load_more_when_more_events_exist_test() {
       activity_total: 2,
     )
     |> view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "activity-feed-more")
-  let assert True = string.contains(html, "Load more (1)")
+  render_assertions.contains(html, "activity-feed-more")
+  render_assertions.contains(html, "Load more (1)")
 }
 
 pub fn card_show_renders_as_panel_not_modal_test() {
   let html =
     Model(..make_model(), card: option.Some(make_card(42)))
     |> view
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "card-show-panel")
-  let assert True = string.contains(html, "inspector-shell")
-  let assert True = string.contains(html, "role=\"dialog\"")
-  let assert True = string.contains(html, "aria-modal=\"true\"")
-  let assert False = string.contains(html, "modal-backdrop")
+  render_assertions.contains(html, "card-show-panel")
+  render_assertions.contains(html, "inspector-shell")
+  render_assertions.contains(html, "role=\"dialog\"")
+  render_assertions.contains(html, "aria-modal=\"true\"")
+  render_assertions.not_contains(html, "modal-backdrop")
 }
 
 // =============================================================================
