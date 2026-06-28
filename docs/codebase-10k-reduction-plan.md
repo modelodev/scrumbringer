@@ -946,7 +946,17 @@ Estado de ejecucion:
   - retirado `add_button_with_size_and_testid`, ultimo helper publico de UI con
     una sola aparicion global;
   - delta adicional: `-16` lineas mantenidas.
-- Delta acumulado WP-10 tras micro-pases: `-777` lineas mantenidas.
+- Micro-pase de tipos huerfanos:
+  - retirados `ToastMsg`, `ConsumeError`, `TaskCreationSource` y
+    `RuleTriggerSource`; no tenian constructores ni firmas consumidoras;
+  - delta adicional: `-19` lineas mantenidas.
+- Verificacion de micro-pases:
+  - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
+  - `cd apps/client && gleam format --check src test && gleam test`
+    (`1912 passed`);
+  - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
+    (`560 passed`).
+- Delta acumulado WP-10 tras micro-pases: `-796` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

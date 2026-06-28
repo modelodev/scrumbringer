@@ -82,13 +82,6 @@ pub type ToastState {
   ToastState(toasts: List(Toast), next_id: Int)
 }
 
-/// Messages for the toast system.
-pub type ToastMsg {
-  Show(message: String, variant: ToastVariant)
-  Dismiss(id: ToastId)
-  Tick(now: Int)
-}
-
 // =============================================================================
 // State Management
 // =============================================================================

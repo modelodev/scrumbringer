@@ -229,15 +229,6 @@ pub type RuleSuppressionReason {
   UnknownSuppressionReason(raw: String)
 }
 
-pub type TaskCreationSource {
-  Manual(user_id: Int)
-  Automation(execution_id: Int)
-}
-
-pub type RuleTriggerSource {
-  UserAction(user_id: Int)
-}
-
 pub type EventId {
   EventId(value: String)
 }

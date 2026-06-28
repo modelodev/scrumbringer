@@ -24,14 +24,6 @@ pub type TokenStatus {
   TokenActive(email: String)
 }
 
-/// Errors that can occur when consuming a reset token.
-pub type ConsumeError {
-  Invalid
-  Used
-  PasswordError
-  DbError(pog.QueryError)
-}
-
 /// Generates a cryptographically secure reset token.
 pub fn new_reset_token() -> String {
   "pr_"
