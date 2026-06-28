@@ -1,12 +1,12 @@
 import gleam/int
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/remote
 import domain/task.{type Task, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/task_dependencies
 import scrumbringer_client/i18n/locale
@@ -156,27 +156,5 @@ fn sample_task(
   title: String,
   state: task_state.TaskExecutionState,
 ) -> Task {
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Task", icon: "check"),
-    ongoing_by: None,
-    title: title,
-    description: None,
-    priority: 1,
-    state: state,
-    created_by: 1,
-    created_at: "2026-06-08T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, title, 1), state: state)
 }

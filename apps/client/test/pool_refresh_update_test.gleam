@@ -4,8 +4,7 @@ import lustre/effect
 import support/domain_fixtures
 
 import domain/remote.{Loading}
-import domain/task.{type Task, Task}
-import domain/task_type.{TaskTypeInline}
+import domain/task.{type Task}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -48,10 +47,5 @@ pub fn task_fetch_preserves_existing_positions_test() {
 }
 
 fn task(id: Int) -> Task {
-  Task(
-    ..domain_fixtures.task(id, "Task", 1),
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug"),
-    description: opt.None,
-    priority: 1,
-  )
+  domain_fixtures.task(id, "Task", 1)
 }

@@ -4,7 +4,6 @@ import support/domain_fixtures
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type TaskDependency, Task, TaskDependency}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/pool/blocking
 
 pub fn open_dependencies_excludes_closed_dependencies_test() {
@@ -48,13 +47,5 @@ fn closed_done_state() -> task_state.TaskExecutionState {
 }
 
 fn sample_task(id: Int, dependencies: List(TaskDependency)) {
-  Task(
-    ..domain_fixtures.task(id, "Task", 1),
-    task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    description: None,
-    priority: 2,
-    created_by: 7,
-    created_at: "2026-06-01T10:00:00Z",
-    dependencies: dependencies,
-  )
+  Task(..domain_fixtures.task(id, "Task", 1), dependencies: dependencies)
 }

@@ -5,7 +5,7 @@ import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/remote.{Loaded}
-import domain/task.{type Task, type TaskPosition, Task, TaskPosition}
+import domain/task.{type Task, type TaskPosition, TaskPosition}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -126,11 +126,7 @@ pub fn try_update_ignores_non_position_messages_test() {
 }
 
 fn task(id: Int) -> Task {
-  Task(
-    ..domain_fixtures.task(id, "Task", 1),
-    description: opt.None,
-    priority: 1,
-  )
+  domain_fixtures.task(id, "Task", 1)
 }
 
 fn position(task_id: Int, x: Int, y: Int) -> TaskPosition {

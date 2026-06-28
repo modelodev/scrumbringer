@@ -1459,7 +1459,11 @@ Estado de ejecucion:
   refresh y dependencias (`update_helpers`, `pool_project_refresh`,
   `tasks_dependency_list` y `tasks_dependency_state`). Se retiran descripcion,
   prioridad y fechas que no participan en la igualdad ni en las transiciones.
-- Delta parcial WP-12: `-3.453` lineas netas mantenidas (`-44` del primer pase
+- Vigesimonoveno pase de fixtures de dominio aplicado a rutas/helpers de pool
+  (`pool_blocking`, `pool_positions_route`, `pool_refresh_update` y
+  `pool_task_dependencies`). Se sustituyen builders completos por fixtures
+  conservando solo dependencias, posiciones e ids/estado observados.
+- Delta parcial WP-12: `-3.494` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1509,7 +1513,8 @@ Estado de ejecucion:
   `-37` del vigesimosexto pase de fixtures de dominio compartidas en tests de
   cliente, `-19` del vigesimoseptimo pase de fixtures de dominio compartidas
   en tests de cliente, `-11` del vigesimoctavo pase de fixtures de dominio
-  compartidas en tests de cliente).
+  compartidas en tests de cliente, `-41` del vigesimonoveno pase de fixtures
+  de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
