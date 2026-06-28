@@ -931,8 +931,13 @@ Estado de ejecucion:
 - Tercer pase de estilos: retirado bloque legacy `hierarchies-*` /
   `hierarchy-*` del antiguo modulo plural de jerarquias, preservando las clases
   vivas `hierarchy-scope-*`, `card-surface`, `kanban-card` y `move-menu`.
-- Delta parcial WP-11: `-859` lineas netas mantenidas (`-20` estilos iniciales,
-  `-700` i18n/tests, `-139` estilos legacy de jerarquias).
+- Cuarto pase de estilos: retiradas clases legacy sin consumidores de
+  formularios antiguos, settings menu, confirm modal, priority dots, hamburger
+  admin y restos de card/task dialogs ya reemplazados por los componentes
+  actuales.
+- Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
+  `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
+  adicionales).
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
@@ -940,6 +945,9 @@ Estado de ejecucion:
   - `rg "ficha-detail|ficha-task|ficha-add-task" apps/client/src apps/client/test`.
   - `rg "i18n_text\\.<clave>|text\\.<clave>" apps/client/src --glob '!**/i18n/text.gleam' --glob '!**/i18n/en.gleam' --glob '!**/i18n/es.gleam'` para las claves retiradas.
   - `rg "hierarchies-|hierarchy-" apps/client/src/scrumbringer_client/styles/layout.gleam apps/client/src/scrumbringer_client/styles/ux.gleam` solo muestra `hierarchy-scope-*`.
+  - Barrido de selectores legacy retirados contra `apps/client/src` y
+    `apps/client/test`, excluyendo `styles/*.gleam`; solo queda una asercion
+    negativa de `card-empty-work-decision`.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 
