@@ -13,6 +13,11 @@ pub fn html(view: Element(msg)) -> String {
   element.to_document_string(view)
 }
 
+pub fn fragment_html(elements: List(Element(msg))) -> String {
+  element.fragment(elements)
+  |> html
+}
+
 pub fn view_contains(view: Element(msg), fragment: String) {
   contains(html(view), fragment)
 }

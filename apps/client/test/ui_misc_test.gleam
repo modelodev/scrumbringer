@@ -1,6 +1,4 @@
 import gleam/option.{Some}
-import gleam/string
-import lustre/element
 import scrumbringer_client/features/admin/org_user_fallback
 import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/attribute_value
@@ -9,6 +7,7 @@ import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/error_notice
+import support/render_assertions
 
 pub fn attribute_value_boolean_serializes_html_booleans_test() {
   let assert "true" = attribute_value.boolean(True)
@@ -31,12 +30,12 @@ pub fn empty_state_view_renders_title_description_and_action_test() {
 
   let html =
     empty_state.view(state)
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "No results")
-  let assert True = string.contains(html, "Try again")
-  let assert True = string.contains(html, "Retry")
-  let assert True = string.contains(html, "empty-state-no-results")
+  render_assertions.contains(html, "No results")
+  render_assertions.contains(html, "Try again")
+  render_assertions.contains(html, "Retry")
+  render_assertions.contains(html, "empty-state-no-results")
 }
 
 pub fn empty_state_action_uses_semantic_button_test() {
@@ -46,12 +45,12 @@ pub fn empty_state_action_uses_semantic_button_test() {
 
   let html =
     empty_state.view(state)
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "btn-primary")
-  let assert True = string.contains(html, "btn-entity-action")
-  let assert True = string.contains(html, "type=\"button\"")
-  let assert False = string.contains(html, "type=\"submit\"")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "type=\"button\"")
+  render_assertions.not_contains(html, "type=\"submit\"")
 }
 
 pub fn action_menu_renders_links_as_menu_items_test() {
@@ -67,22 +66,22 @@ pub fn action_menu_renders_links_as_menu_items_test() {
       "open-item",
       [action_menu.link_item("Plan", "open-plan", "/app?view=cards")],
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "href=\"/app?view=cards\"")
-  let assert True = string.contains(html, "role=\"menuitem\"")
-  let assert True = string.contains(html, "data-testid=\"open-plan\"")
-  let assert True = string.contains(html, "popover=\"auto\"")
-  let assert True = string.contains(html, "popovertarget=\"open-menu-panel\"")
-  let assert False = string.contains(html, "<details")
+  render_assertions.contains(html, "href=\"/app?view=cards\"")
+  render_assertions.contains(html, "role=\"menuitem\"")
+  render_assertions.contains(html, "data-testid=\"open-plan\"")
+  render_assertions.contains(html, "popover=\"auto\"")
+  render_assertions.contains(html, "popovertarget=\"open-menu-panel\"")
+  render_assertions.not_contains(html, "<details")
 }
 
 pub fn empty_state_simple_renders_description_test() {
   let html =
     empty_state.simple("hand-raised", "Nothing here")
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "Nothing here")
+  render_assertions.contains(html, "Nothing here")
 }
 
 pub fn empty_state_notice_preserves_local_class_and_loading_role_test() {
@@ -93,12 +92,12 @@ pub fn empty_state_notice_preserves_local_class_and_loading_role_test() {
       empty_state.Loading,
       "people-state people-loading",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "people-state people-loading")
-  let assert True = string.contains(html, "empty-state-loading")
-  let assert True = string.contains(html, "role=\"status\"")
-  let assert True = string.contains(html, "aria-live=\"polite\"")
+  render_assertions.contains(html, "people-state people-loading")
+  render_assertions.contains(html, "empty-state-loading")
+  render_assertions.contains(html, "role=\"status\"")
+  render_assertions.contains(html, "aria-live=\"polite\"")
 }
 
 pub fn empty_state_error_notice_renders_alert_role_test() {
@@ -108,11 +107,11 @@ pub fn empty_state_error_notice_renders_alert_role_test() {
       "Could not load data",
       empty_state.Error,
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "empty-state-error")
-  let assert True = string.contains(html, "role=\"alert\"")
-  let assert True = string.contains(html, "Could not load data")
+  render_assertions.contains(html, "empty-state-error")
+  render_assertions.contains(html, "role=\"alert\"")
+  render_assertions.contains(html, "Could not load data")
 }
 
 pub fn card_section_header_uses_shared_button_classes_test() {
@@ -123,13 +122,13 @@ pub fn card_section_header_uses_shared_button_classes_test() {
       button_disabled: False,
       on_button_click: "msg",
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "card-section-header")
-  let assert True = string.contains(html, "btn-primary")
-  let assert True = string.contains(html, "btn-entity-action")
-  let assert True = string.contains(html, "btn-sm")
-  let assert False = string.contains(html, "btn btn-sm btn-primary")
+  render_assertions.contains(html, "card-section-header")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "btn-sm")
+  render_assertions.not_contains(html, "btn btn-sm btn-primary")
 }
 
 pub fn card_section_header_extended_keeps_extra_button_class_test() {
@@ -142,13 +141,13 @@ pub fn card_section_header_extended_keeps_extra_button_class_test() {
       container_class: Some("detail-section-header"),
       button_class: Some("task-section-action"),
     ))
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "detail-section-header")
-  let assert True = string.contains(html, "task-section-action")
-  let assert True = string.contains(html, "btn-primary")
-  let assert True = string.contains(html, "disabled")
-  let assert False = string.contains(html, "btn btn-sm btn-primary")
+  render_assertions.contains(html, "detail-section-header")
+  render_assertions.contains(html, "task-section-action")
+  render_assertions.contains(html, "btn-primary")
+  render_assertions.contains(html, "disabled")
+  render_assertions.not_contains(html, "btn btn-sm btn-primary")
 }
 
 pub fn copyable_input_uses_shared_button_test() {
@@ -160,25 +159,25 @@ pub fn copyable_input_uses_shared_button_test() {
       "Copy",
       Some("Copied"),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "Invite link")
-  let assert True = string.contains(html, "readonly")
-  let assert True = string.contains(html, "btn-secondary")
-  let assert True = string.contains(html, "btn-entity-action")
-  let assert True = string.contains(html, "type=\"button\"")
+  render_assertions.contains(html, "Invite link")
+  render_assertions.contains(html, "readonly")
+  render_assertions.contains(html, "btn-secondary")
+  render_assertions.contains(html, "btn-entity-action")
+  render_assertions.contains(html, "type=\"button\"")
 }
 
 pub fn error_notice_renders_error_text_test() {
   let error_html =
     error_notice.view("Boom")
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(error_html, "Boom")
+  render_assertions.contains(error_html, "Boom")
 }
 
 pub fn error_banner_renders_message_test() {
-  let html = error_banner.view("Oops") |> element.to_document_string
-  let assert True = string.contains(html, "Oops")
-  let assert True = string.contains(html, "error-banner")
+  let html = error_banner.view("Oops") |> render_assertions.html
+  render_assertions.contains(html, "Oops")
+  render_assertions.contains(html, "error-banner")
 }

@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/option as opt
-import lustre/element
 import support/domain_fixtures
 import support/render_assertions
 
@@ -77,8 +76,7 @@ fn config() -> project_card.Config(String) {
 pub fn project_card_renders_expanded_members_from_config_test() {
   let html =
     project_card.view_rows(config(), project(), remote.Loaded([member()]), True)
-    |> element.fragment
-    |> element.to_document_string
+    |> render_assertions.fragment_html
 
   render_assertions.contains(html, "Platform")
   render_assertions.contains(html, "1 person")
@@ -98,8 +96,7 @@ pub fn project_card_confirm_remove_uses_semantic_accessible_buttons_test() {
 
   let html =
     project_card.view_rows(cfg, project(), remote.Loaded([member()]), True)
-    |> element.fragment
-    |> element.to_document_string
+    |> render_assertions.fragment_html
 
   render_assertions.contains(html, "btn-danger")
   render_assertions.contains(html, "btn-secondary")

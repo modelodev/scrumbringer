@@ -1,8 +1,7 @@
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/effect
-import lustre/element
 import support/domain_fixtures
+import support/render_assertions
 
 import domain/remote.{Loaded}
 import domain/task.{type Task}
@@ -53,11 +52,11 @@ pub fn toast_view_container_renders_action_button_and_aria_live_test() {
 
   let html =
     toast.view_container(state, fn(_) { 0 }, fn(_) { 1 })
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert True = string.contains(html, "toast-action")
-  let assert True = string.contains(html, "aria-live=\"polite\"")
-  let assert True = string.contains(html, ">View<")
+  render_assertions.contains(html, "toast-action")
+  render_assertions.contains(html, "aria-live=\"polite\"")
+  render_assertions.contains(html, ">View<")
 }
 
 pub fn post_create_effects_emit_feedback_timeout_and_toast_test() {
