@@ -1109,6 +1109,14 @@ pub fn query_string(
   }
 }
 
+pub fn require_query_string(
+  db: pog.Connection,
+  sql: String,
+  params: List(pog.Value),
+) -> String {
+  query_string(db, sql, params) |> expect.ok
+}
+
 /// Query a single boolean value from the database.
 pub fn query_bool(
   db: pog.Connection,
@@ -1131,6 +1139,14 @@ pub fn query_bool(
     Ok(pog.Returned(rows: [], ..)) -> Error("No rows returned")
     Error(e) -> Error("Query error: " <> string.inspect(e))
   }
+}
+
+pub fn require_query_bool(
+  db: pog.Connection,
+  sql: String,
+  params: List(pog.Value),
+) -> Bool {
+  query_bool(db, sql, params) |> expect.ok
 }
 
 /// Return the default project created by bootstrap for organization 1.

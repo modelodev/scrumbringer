@@ -962,8 +962,7 @@ fn single_string(
   sql: String,
   params: List(pog.Value),
 ) -> String {
-  fx.query_string(db, sql, params)
-  |> expect.ok
+  fx.require_query_string(db, sql, params)
 }
 
 fn insert_card(

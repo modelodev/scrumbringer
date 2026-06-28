@@ -21,35 +21,35 @@ pub fn bootstrap_happy_path_creates_org_default_project_and_membership_test() {
   expect.expect_status(res, 200)
 
   let org_name =
-    fixtures.query_string(db, "select name from organizations where id = 1", [])
-    |> expect.ok
+    fixtures.require_query_string(
+      db,
+      "select name from organizations where id = 1",
+      [],
+    )
   org_name |> expect.equal("Acme")
 
   let default_projects =
-    fixtures.query_int(
+    fixtures.require_query_int(
       db,
       "select count(*) from projects where org_id = 1 and name = 'Default'",
       [],
     )
-    |> expect.ok
   default_projects |> expect.equal(1)
 
   let admin_user_count =
-    fixtures.query_int(
+    fixtures.require_query_int(
       db,
       "select count(*) from users where org_id = 1 and org_role = 'admin'",
       [],
     )
-    |> expect.ok
   admin_user_count |> expect.equal(1)
 
   let admin_memberships =
-    fixtures.query_int(
+    fixtures.require_query_int(
       db,
       "select count(*) from project_members where user_id = 1 and role = 'manager'",
       [],
     )
-    |> expect.ok
   admin_memberships |> expect.equal(1)
 }
 

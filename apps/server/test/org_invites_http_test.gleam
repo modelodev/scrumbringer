@@ -56,20 +56,18 @@ pub fn create_invite_defaults_expiry_to_168_hours_test() {
   expect.expect_status(res, 200)
 
   let invite_code =
-    fixtures.query_string(
+    fixtures.require_query_string(
       db,
       "select code from org_invites order by created_at desc limit 1",
       [],
     )
-    |> expect.ok
 
   let hours =
-    fixtures.query_int(
+    fixtures.require_query_int(
       db,
       "select round(extract(epoch from (expires_at - created_at)) / 3600)::int from org_invites where code = $1",
       [pog.text(invite_code)],
     )
-    |> expect.ok
 
   hours |> expect.equal(168)
 

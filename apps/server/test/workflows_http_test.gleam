@@ -86,19 +86,19 @@ pub fn workflow_delete_with_execution_pauses_and_preserves_history_test() {
     )
 
   expect.expect_status(delete_res, 204)
-  fixtures.query_int(db, "select count(*)::int from workflows where id = $1", [
-    pog.int(workflow_id),
-  ])
-  |> expect.ok
+  fixtures.require_query_int(
+    db,
+    "select count(*)::int from workflows where id = $1",
+    [pog.int(workflow_id)],
+  )
   |> expect.equal(1)
   workflow_active(db, workflow_id) |> expect.equal(False)
   rule_active(db, workflow_id) |> expect.equal(False)
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from rule_executions where rule_id = $1",
     [pog.int(rule_id)],
   )
-  |> expect.ok
   |> expect.equal(1)
 }
 
@@ -126,19 +126,19 @@ pub fn workflow_delete_with_created_task_pauses_and_preserves_origin_test() {
     )
 
   expect.expect_status(delete_res, 204)
-  fixtures.query_int(db, "select count(*)::int from workflows where id = $1", [
-    pog.int(workflow_id),
-  ])
-  |> expect.ok
+  fixtures.require_query_int(
+    db,
+    "select count(*)::int from workflows where id = $1",
+    [pog.int(workflow_id)],
+  )
   |> expect.equal(1)
   workflow_active(db, workflow_id) |> expect.equal(False)
   rule_active(db, workflow_id) |> expect.equal(False)
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from tasks where id = $1 and created_from_rule_id = $2",
     [pog.int(created_task_id), pog.int(rule_id)],
   )
-  |> expect.ok
   |> expect.equal(1)
 }
 
@@ -279,12 +279,11 @@ fn decode_workflow_names(body: String) -> List(String) {
 }
 
 fn insert_rule(db: pog.Connection, workflow_id: Int) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active) values ($1, 'Rule', 'Goal', 'task', 'task_closed', null, 'closed', true) returning id",
     [pog.int(workflow_id)],
   )
-  |> expect.ok
 }
 
 fn rule_active(db: pog.Connection, workflow_id: Int) -> Bool {
@@ -318,22 +317,20 @@ fn workflow_active(db: pog.Connection, workflow_id: Int) -> Bool {
 }
 
 fn insert_task_type(db: pog.Connection, project_id: Int) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into task_types (project_id, name, icon) values ($1, 'Workflow QA', 'bug-ant') returning id",
     [pog.int(project_id)],
   )
-  |> expect.ok
 }
 
 fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
   let card_id = insert_active_card(db, project_id, "Automation origin card")
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, $3, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id)],
   )
-  |> expect.ok
 }
 
 fn insert_created_task_from_rule(
@@ -343,21 +340,19 @@ fn insert_created_task_from_rule(
   rule_id: Int,
 ) -> Int {
   let card_id = insert_active_card(db, project_id, "Generated task card")
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, $4, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id), pog.int(rule_id)],
   )
-  |> expect.ok
 }
 
 fn insert_active_card(db: pog.Connection, project_id: Int, title: String) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, 'active') returning id",
     [pog.int(project_id), pog.text(title)],
   )
-  |> expect.ok
 }
 
 fn insert_rule_execution(

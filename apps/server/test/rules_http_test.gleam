@@ -140,22 +140,21 @@ pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
     )
 
   expect.expect_status(delete_res, 204)
-  fixtures.query_int(db, "select count(*)::int from rules where id = $1", [
-    pog.int(rule_id),
-  ])
-  |> expect.ok
+  fixtures.require_query_int(
+    db,
+    "select count(*)::int from rules where id = $1",
+    [pog.int(rule_id)],
+  )
   |> expect.equal(1)
-  fixtures.query_bool(db, "select active from rules where id = $1", [
+  fixtures.require_query_bool(db, "select active from rules where id = $1", [
     pog.int(rule_id),
   ])
-  |> expect.ok
   |> expect.equal(False)
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from rule_executions where rule_id = $1",
     [pog.int(rule_id)],
   )
-  |> expect.ok
   |> expect.equal(1)
 }
 
@@ -204,22 +203,21 @@ pub fn rule_delete_with_created_task_pauses_and_preserves_origin_test() {
     )
 
   expect.expect_status(delete_res, 204)
-  fixtures.query_int(db, "select count(*)::int from rules where id = $1", [
-    pog.int(rule_id),
-  ])
-  |> expect.ok
+  fixtures.require_query_int(
+    db,
+    "select count(*)::int from rules where id = $1",
+    [pog.int(rule_id)],
+  )
   |> expect.equal(1)
-  fixtures.query_bool(db, "select active from rules where id = $1", [
+  fixtures.require_query_bool(db, "select active from rules where id = $1", [
     pog.int(rule_id),
   ])
-  |> expect.ok
   |> expect.equal(False)
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from tasks where id = $1 and created_from_rule_id = $2",
     [pog.int(created_task_id), pog.int(rule_id)],
   )
-  |> expect.ok
   |> expect.equal(1)
 }
 
@@ -344,14 +342,13 @@ pub fn rule_create_rejects_missing_card_depth_scope_test() {
   expect.expect_status(res, 422)
   let body = simulate.read_body(res)
   let assert True = string.contains(body, "Card level is no longer available")
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from rules where workflow_id = $1",
     [
       pog.int(workflow_id),
     ],
   )
-  |> expect.ok
   |> expect.equal(0)
 }
 
@@ -449,10 +446,9 @@ pub fn rules_project_scope_requires_project_manager_test() {
       |> fixtures.with_auth(member_session),
     )
   expect.expect_status(delete_res, 403)
-  fixtures.query_bool(db, "select active from rules where id = $1", [
+  fixtures.require_query_bool(db, "select active from rules where id = $1", [
     pog.int(rule_id),
   ])
-  |> expect.ok
   |> expect.equal(True)
 }
 
@@ -510,12 +506,11 @@ fn decode_first_rule_template_name(body: String) -> String {
 
 fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
   let card_id = insert_active_card(db, project_id, "Automation origin card")
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, last_entered_pool_at) values ($1, $2, 'Automation origin', 3, 'closed', 1, $3, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id)],
   )
-  |> expect.ok
 }
 
 fn insert_created_task_from_rule(
@@ -525,21 +520,19 @@ fn insert_created_task_from_rule(
   rule_id: Int,
 ) -> Int {
   let card_id = insert_active_card(db, project_id, "Generated task card")
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into tasks (project_id, type_id, title, priority, execution_state, created_by, card_id, created_from_rule_id, last_entered_pool_at) values ($1, $2, 'Generated task', 3, 'available', 1, $3, $4, now()) returning id",
     [pog.int(project_id), pog.int(type_id), pog.int(card_id), pog.int(rule_id)],
   )
-  |> expect.ok
 }
 
 fn insert_active_card(db: pog.Connection, project_id: Int, title: String) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, 'active') returning id",
     [pog.int(project_id), pog.text(title)],
   )
-  |> expect.ok
 }
 
 fn insert_rule_execution(

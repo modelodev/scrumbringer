@@ -74,12 +74,11 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
   expect.expect_status(res1, 200)
 
   let token1 =
-    fixtures.query_string(
+    fixtures.require_query_string(
       db,
       "select token from org_invite_links where email = $1 order by created_at desc limit 1",
       [pog.text("user@example.com")],
     )
-    |> expect.ok
 
   let req2 =
     simulate.request(http.Post, "/api/v1/org/invite-links")
@@ -90,23 +89,21 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
   expect.expect_status(res2, 200)
 
   let token2 =
-    fixtures.query_string(
+    fixtures.require_query_string(
       db,
       "select token from org_invite_links where email = $1 and invalidated_at is null and used_at is null order by created_at desc limit 1",
       [pog.text("user@example.com")],
     )
-    |> expect.ok
 
   let same = token1 == token2
   same |> expect.is_false
 
   let invalidated =
-    fixtures.query_int(
+    fixtures.require_query_int(
       db,
       "select (invalidated_at is not null)::int from org_invite_links where token = $1",
       [pog.text(token1)],
     )
-    |> expect.ok
 
   invalidated |> expect.equal(1)
 }
@@ -164,12 +161,11 @@ pub fn no_time_expiry_links_stay_active_test() {
   expect.expect_status(res, 200)
 
   let token =
-    fixtures.query_string(
+    fixtures.require_query_string(
       db,
       "select token from org_invite_links where email = $1 and invalidated_at is null and used_at is null order by created_at desc limit 1",
       [pog.text(email)],
     )
-    |> expect.ok
 
   // Simulate a very old invite; it should still be active because we do not enforce expires_at.
   let assert Ok(_) =
@@ -204,12 +200,11 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
   expect.expect_status(handler(create_req), 200)
 
   let token1 =
-    fixtures.query_string(
+    fixtures.require_query_string(
       db,
       "select token from org_invite_links where email = $1 and invalidated_at is null and used_at is null order by created_at desc limit 1",
       [pog.text(email)],
     )
-    |> expect.ok
 
   let regen_req =
     simulate.request(http.Post, "/api/v1/org/invite-links/regenerate")
@@ -219,22 +214,20 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
   expect.expect_status(handler(regen_req), 200)
 
   let token2 =
-    fixtures.query_string(
+    fixtures.require_query_string(
       db,
       "select token from org_invite_links where email = $1 and invalidated_at is null and used_at is null order by created_at desc limit 1",
       [pog.text(email)],
     )
-    |> expect.ok
 
   let same = token1 == token2
   same |> expect.is_false
 
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select (invalidated_at is not null)::int from org_invite_links where token = $1",
     [pog.text(token1)],
   )
-  |> expect.ok
   |> expect.equal(1)
 }
 

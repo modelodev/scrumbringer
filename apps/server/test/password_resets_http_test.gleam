@@ -55,12 +55,11 @@ pub fn request_reset_does_not_leak_unknown_email_test() {
   |> expect.is_true
 
   // Unknown token should not be persisted
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*) from password_resets where token = $1",
     [pog.text(unknown_token)],
   )
-  |> expect.ok
   |> expect.equal(0)
 }
 

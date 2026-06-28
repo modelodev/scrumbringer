@@ -487,21 +487,19 @@ fn insert_invite_link_active(
 }
 
 fn insert_org(db: pog.Connection, name: String) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into organizations (name) values ($1) returning id",
     [pog.text(name)],
   )
-  |> expect.ok
 }
 
 fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into projects (org_id, name) values ($1, $2) returning id",
     [pog.int(org_id), pog.text(name)],
   )
-  |> expect.ok
 }
 
 fn insert_project_member(

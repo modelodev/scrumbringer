@@ -1335,7 +1335,11 @@ Estado de ejecucion:
 - `fixtures.require_data` centraliza el parseo del envelope `data` para
   payloads no-lista. Se aplica en templates, rules, notes/positions, projects
   y tasks manteniendo decoders de item/payload especificos en cada test.
-- Delta parcial WP-12: `-2.209` lineas netas mantenidas (`-44` del primer pase
+- `fixtures.gleam` anade `require_query_string` y `require_query_bool` para
+  completar la familia de helpers `require_query_*`. Se retiran pipelines
+  directos `query_* |> expect.ok` en auth, capabilities, invite links,
+  invites, org users, password resets, projects, rules, templates y workflows.
+- Delta parcial WP-12: `-2.212` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1352,7 +1356,7 @@ Estado de ejecucion:
   `-9` del pase de `projects_http_test.gleam`, `-202` del pase de decoders de
   envelope HTTP en tests, `-74` del pase de `require_data_list` en
   `tasks_http_test.gleam`, `-141` del pase de `require_data` para payloads
-  HTTP no-lista).
+  HTTP no-lista, `-3` del pase de helpers `require_query_string/bool`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

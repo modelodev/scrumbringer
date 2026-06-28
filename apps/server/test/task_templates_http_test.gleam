@@ -42,10 +42,11 @@ pub fn task_templates_project_crud_test() {
   expect.expect_status(create_res, 200)
   let template_id = decode_template_id(simulate.read_body(create_res))
   let created_version =
-    fixtures.query_int(db, "select version from task_templates where id = $1", [
-      pog.int(template_id),
-    ])
-    |> expect.ok
+    fixtures.require_query_int(
+      db,
+      "select version from task_templates where id = $1",
+      [pog.int(template_id)],
+    )
   created_version |> expect.equal(1)
 
   let list_res =
@@ -80,10 +81,11 @@ pub fn task_templates_project_crud_test() {
   decode_template_name(simulate.read_body(patch_res))
   |> expect.equal("Project Updated")
   let updated_version =
-    fixtures.query_int(db, "select version from task_templates where id = $1", [
-      pog.int(template_id),
-    ])
-    |> expect.ok
+    fixtures.require_query_int(
+      db,
+      "select version from task_templates where id = $1",
+      [pog.int(template_id)],
+    )
   updated_version |> expect.equal(2)
 
   let delete_res =
@@ -208,19 +210,17 @@ pub fn task_template_with_only_execution_history_archives_on_delete_test() {
     )
 
   expect.expect_status(delete_res, 204)
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from task_templates where id = $1 and archived_at is not null",
     [pog.int(template_id)],
   )
-  |> expect.ok
   |> expect.equal(1)
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "select count(*)::int from automation_config_events where entity_type = 'template' and entity_id = $1 and change_type = 'archived'",
     [pog.int(template_id)],
   )
-  |> expect.ok
   |> expect.equal(1)
 
   let list_res =
@@ -458,25 +458,23 @@ fn insert_rule_without_template(
   workflow_id: Int,
   type_id: Int,
 ) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into rules (workflow_id, name, goal, resource_type, trigger_kind, task_type_id, to_state, active)
      values ($1, 'Historical rule', 'Historical execution only', 'task', 'task_closed', $2, 'closed', false)
      returning id",
     [pog.int(workflow_id), pog.int(type_id)],
   )
-  |> expect.ok
 }
 
 fn insert_origin_task(db: pog.Connection, project_id: Int, type_id: Int) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into tasks (title, description, priority, type_id, project_id, created_by, execution_state)
      values ('Origin task', '', 3, $1, $2, 1, 'closed')
      returning id",
     [pog.int(type_id), pog.int(project_id)],
   )
-  |> expect.ok
 }
 
 fn insert_template_execution(

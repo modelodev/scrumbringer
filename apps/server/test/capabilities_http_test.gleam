@@ -102,11 +102,17 @@ pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
   create_capability(handler, admin_session, project_id, "PM")
 
   let dev_id =
-    fixtures.query_int(db, "select id from capabilities where name = 'Dev'", [])
-    |> expect.ok
+    fixtures.require_query_int(
+      db,
+      "select id from capabilities where name = 'Dev'",
+      [],
+    )
   let pm_id =
-    fixtures.query_int(db, "select id from capabilities where name = 'PM'", [])
-    |> expect.ok
+    fixtures.require_query_int(
+      db,
+      "select id from capabilities where name = 'PM'",
+      [],
+    )
 
   let member_id =
     fixtures.create_member_user(handler, db, "member@example.com", "il_member")
@@ -144,8 +150,11 @@ pub fn member_capabilities_cannot_select_capability_from_other_project_test() {
 
   create_capability(handler, admin_session, project_id, "Dev")
   let dev_id =
-    fixtures.query_int(db, "select id from capabilities where name = 'Dev'", [])
-    |> expect.ok
+    fixtures.require_query_int(
+      db,
+      "select id from capabilities where name = 'Dev'",
+      [],
+    )
 
   let member_id =
     fixtures.create_member_user(handler, db, "member@example.com", "il_member")
@@ -265,12 +274,11 @@ fn decode_member_capabilities(body: String) -> List(Int) {
 }
 
 fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Int {
-  fixtures.query_int(
+  fixtures.require_query_int(
     db,
     "insert into projects (org_id, name) values ($1, $2) returning id",
     [pog.int(org_id), pog.text(name)],
   )
-  |> expect.ok
 }
 
 fn insert_capability_direct(
