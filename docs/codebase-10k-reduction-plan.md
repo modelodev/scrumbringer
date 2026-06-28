@@ -2884,6 +2884,28 @@ Estado de ejecucion:
   - total Gleam actual: `197.350` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.664` lineas;
   - deficit restante para `-20k`: `3.336` lineas.
+- Trigesimo pase de helpers locales de URL state:
+  - extraidos en `url_state_test.gleam` helpers privados para parseo member,
+    redirects esperados, parseo por contexto y aserciones de serializacion
+    `to_query_string`/`to_app_url`;
+  - se mantiene visible en cada test el input URL/query, el contexto relevante
+    y el valor esperado; los helpers solo eliminan boilerplate de `uri.parse`,
+    `Parsed`/`Redirect` y pipelines de serializacion;
+  - no se introducen fixtures compartidas fuera del modulo porque el contrato es
+    especifico de `url_state` y no hay segundo consumidor;
+  - delta adicional: `-43` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce ruido repetido en
+    tests puros sin perder cobertura de redirects, contexto ni orden de query;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el trigesimo pase:
+  - total Gleam actual: `197.307` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.707` lineas;
+  - deficit restante para `-20k`: `3.293` lineas.
 
 ## Orden recomendado de ejecucion
 
