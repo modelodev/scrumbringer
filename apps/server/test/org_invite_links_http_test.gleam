@@ -138,10 +138,7 @@ pub fn list_sorted_by_email_asc_test() {
     decode.success(invite_links)
   }
 
-  let parsed =
-    json.parse(from: body, using: decode.field("data", decoder, decode.success))
-
-  let assert Ok(emails) = parsed
+  let emails = fixtures.require_data(body, decoder)
 
   emails |> expect.equal(["a@example.com", "b@example.com"])
 }
@@ -278,9 +275,7 @@ pub fn list_includes_invalidated_links_test() {
     decode.success(pairs)
   }
 
-  let parsed =
-    json.parse(from: body, using: decode.field("data", decoder, decode.success))
-  let assert Ok(pairs) = parsed
+  let pairs = fixtures.require_data(body, decoder)
 
   let invalidated_count =
     pairs
