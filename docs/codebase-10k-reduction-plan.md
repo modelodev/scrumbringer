@@ -673,6 +673,20 @@ Estado de ejecucion:
   - verificacion: `cd apps/client && gleam format --check src test &&
     gleam test` (`1873 passed`);
   - delta neto adicional: `-5` lineas mantenidas.
+- Tercer pase de rollups de task:
+  - `features/tasks/rollup` expone predicados `*_unblocked` para superficies
+    que agrupan primero tareas bloqueadas y despues separan por estado;
+  - `cards/show` retira predicados locales equivalentes y consume los
+    selectores compartidos;
+  - `features/tasks/rollup.work_rank` centraliza el ranking visual de trabajo
+    usado por `views/kanban_board` y `capability_board/view`, retirando dos
+    implementaciones locales identicas;
+  - `task_rollup_test` cubre la semantica compartida de tareas bloqueadas y el
+    orden canonico de trabajo visible;
+  - verificacion: `cd apps/client && gleam format src test && gleam build &&
+    gleam test` (`1821 passed`);
+  - delta neto adicional: `-2` lineas mantenidas, con `-27` lineas en codigo
+    de produccion y tests concentrados en el selector compartido.
 
 ### WP-05. Dialogos CRUD y controles UI sin abstraccion universal
 

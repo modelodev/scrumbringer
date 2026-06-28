@@ -32,6 +32,31 @@ pub fn predicates_use_canonical_task_state_test() {
     rollup.is_blocked(Task(..available_task(5), blocked_count: 1))
 }
 
+pub fn unblocked_predicates_exclude_blocked_tasks_test() {
+  let assert [True, False, True, False, True, False] = [
+    rollup.is_available_unblocked(available_task(1)),
+    rollup.is_available_unblocked(Task(..available_task(2), blocked_count: 1)),
+    rollup.is_taken_unblocked(claimed_task(3, task_state.Taken)),
+    rollup.is_taken_unblocked(
+      Task(..claimed_task(4, task_state.Taken), blocked_count: 1),
+    ),
+    rollup.is_ongoing_unblocked(claimed_task(5, task_state.Ongoing)),
+    rollup.is_ongoing_unblocked(
+      Task(..claimed_task(6, task_state.Ongoing), blocked_count: 1),
+    ),
+  ]
+}
+
+pub fn work_rank_prioritizes_visible_work_order_test() {
+  let assert [0, 1, 2, 3, 4] = [
+    rollup.work_rank(Task(..closed_task(1), blocked_count: 1)),
+    rollup.work_rank(available_task(2)),
+    rollup.work_rank(claimed_task(3, task_state.Ongoing)),
+    rollup.work_rank(claimed_task(4, task_state.Taken)),
+    rollup.work_rank(closed_task(5)),
+  ]
+}
+
 fn available_task(id: Int) -> Task {
   domain_fixtures.task(id, "Task", 1)
 }

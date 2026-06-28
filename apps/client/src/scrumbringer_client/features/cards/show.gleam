@@ -47,6 +47,7 @@ import scrumbringer_client/features/cards/show/hierarchy as show_hierarchy
 import scrumbringer_client/features/cards/show/notes as show_notes
 import scrumbringer_client/features/cards/show/summary as show_summary
 import scrumbringer_client/features/tasks/blocking_status
+import scrumbringer_client/features/tasks/rollup as task_rollup
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -1365,11 +1366,11 @@ fn task_group_label(model: Model, group: TaskWorkGroup) -> String {
 
 fn tasks_for_group(tasks: List(Task), group: TaskWorkGroup) -> List(Task) {
   let predicate = case group {
-    AvailableWork -> is_available_unblocked
+    AvailableWork -> task_rollup.is_available_unblocked
     BlockedWork -> blocking_status.is_blocked
-    ClaimedWork -> is_claimed_taken
-    OngoingWork -> is_ongoing
-    ClosedWork -> is_closed
+    ClaimedWork -> task_rollup.is_taken_unblocked
+    OngoingWork -> task_rollup.is_ongoing_unblocked
+    ClosedWork -> task_rollup.is_closed
   }
 
   list.filter(tasks, predicate)
@@ -1411,34 +1412,6 @@ fn view_task_secondary(locale: Locale, task: Task) -> Element(Msg) {
   span([attribute.class("card-work-task-secondary")], [
     text(status_label <> owner),
   ])
-}
-
-fn is_available_unblocked(task: Task) -> Bool {
-  case task.state, task.blocked_count {
-    task_state.Available, 0 -> True
-    _, _ -> False
-  }
-}
-
-fn is_claimed_taken(task: Task) -> Bool {
-  case task.state, task.blocked_count {
-    task_state.Claimed(mode: task_state.Taken, ..), 0 -> True
-    _, _ -> False
-  }
-}
-
-fn is_ongoing(task: Task) -> Bool {
-  case task.state, task.blocked_count {
-    task_state.Claimed(mode: task_state.Ongoing, ..), 0 -> True
-    _, _ -> False
-  }
-}
-
-fn is_closed(task: Task) -> Bool {
-  case task.state {
-    task_state.Closed(..) -> True
-    _ -> False
-  }
 }
 
 fn view_task_status(locale: Locale, task: Task) -> Element(Msg) {

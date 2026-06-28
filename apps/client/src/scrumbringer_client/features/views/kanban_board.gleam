@@ -678,7 +678,7 @@ fn compare_relevant_tasks(
   a: domain_task.Task,
   b: domain_task.Task,
 ) -> order.Order {
-  case int.compare(task_rank(a), task_rank(b)) {
+  case int.compare(task_rollup.work_rank(a), task_rollup.work_rank(b)) {
     order.Eq ->
       case int.compare(b.priority, a.priority) {
         order.Eq ->
@@ -689,17 +689,5 @@ fn compare_relevant_tasks(
         other -> other
       }
     other -> other
-  }
-}
-
-fn task_rank(task: domain_task.Task) -> Int {
-  case task.blocked_count > 0, task.state {
-    True, _ -> 0
-    False, task_execution_state.Available -> 1
-    False, task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) ->
-      2
-    False, task_execution_state.Claimed(mode: task_execution_state.Taken, ..) ->
-      3
-    False, task_execution_state.Closed(..) -> 4
   }
 }
