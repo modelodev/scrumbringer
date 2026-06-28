@@ -957,12 +957,14 @@ Estado de ejecucion:
   usuarios creados en `tasks_http_test.gleam` y
   `notes_and_positions_http_test.gleam`. Las consultas al admin creado por
   bootstrap quedan fuera de este pase.
-- Delta parcial WP-12: `-991` lineas netas mantenidas (`-44` del primer pase
+- `notes_and_positions_http_test.gleam` reutiliza `fixtures.create_card` y
+  elimina el POST/decoder local de card ID.
+- Delta parcial WP-12: `-1.023` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
   de tarea desde fixtures, `-122` del pase de IDs de usuarios miembro desde
-  fixtures).
+  fixtures, `-32` del pase de creacion de cards desde fixtures).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

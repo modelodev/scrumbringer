@@ -1240,28 +1240,6 @@ fn decode_note_id(body: String) -> Int {
   note_id
 }
 
-fn decode_card_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let card_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use card <- decode.field("card", card_decoder)
-    decode.success(card)
-  }
-
-  let response_decoder = {
-    use id <- decode.field("data", data_decoder)
-    decode.success(id)
-  }
-
-  let assert Ok(id) = decode.run(dynamic, response_decoder)
-  id
-}
-
 fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
@@ -1471,23 +1449,13 @@ fn create_card(
   project_id: Int,
   title: String,
 ) -> Int {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/cards",
-    )
-    |> fixtures.with_auth(fixture_session(session, csrf))
-    |> simulate.json_body(
-      json.object([
-        #("title", json.string(title)),
-        #("description", json.string("")),
-      ]),
-    )
-
-  let res = handler(req)
-  expect.expect_status(res, 200)
-
-  decode_card_id(simulate.read_body(res))
+  fixtures.create_card(
+    handler,
+    fixture_session(session, csrf),
+    project_id,
+    title,
+  )
+  |> expect.ok
 }
 
 fn activate_card(
