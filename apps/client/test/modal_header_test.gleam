@@ -1,499 +1,74 @@
-//// Tests for modal_header UI component.
+//// Tests for live modal_header UI contracts.
 
 import gleam/option.{None, Some}
-import gleam/string
 import lustre/element
 import lustre/element/html.{span, text}
 import support/render_assertions
 
-import scrumbringer_client/ui/modal_header.{
-  type Config, type ExtendedConfig, Config, ExtendedConfig,
-}
+import scrumbringer_client/ui/modal_header
 
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
-fn render_to_string(config: Config(Nil)) -> String {
-  modal_header.view(config) |> element.to_string()
-}
-
-fn default_config() -> Config(Nil) {
-  Config(
-    title: "Test Modal",
-    icon: None,
-    badges: [],
-    meta: None,
-    progress: None,
-    on_close: Nil,
-  )
-}
-
-// =============================================================================
-// Tests
-// =============================================================================
-
-pub fn renders_title_test() {
-  // Given: Config with title
-  let config = Config(..default_config(), title: "My Modal Title")
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Title is present
-  render_assertions.contains(html, "My Modal Title")
-}
-
-pub fn has_modal_header_class_test() {
-  // Given: Default config
-  let config = default_config()
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Has modal-header class
-  render_assertions.contains(html, "modal-header")
-}
-
-pub fn includes_close_button_test() {
-  // Given: Default config
-  let config = default_config()
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Has close button with ARIA label
-  render_assertions.contains(html, "aria-label=\"Close\"")
-  render_assertions.contains(html, "modal-close")
-}
-
-pub fn renders_icon_when_provided_test() {
-  // Given: Config with icon
-  let icon = span([], [text("🎯")])
-  let config = Config(..default_config(), icon: Some(icon))
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Icon is rendered
-  render_assertions.contains(html, "modal-header-icon")
-}
-
-pub fn renders_badges_when_provided_test() {
-  // Given: Config with badges
-  let badge = span([], [text("Review")])
-  let config = Config(..default_config(), badges: [badge])
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Badges container is present
-  render_assertions.contains(html, "modal-header-badges")
-  render_assertions.contains(html, "Review")
-}
-
-pub fn hides_badges_when_empty_test() {
-  // Given: Config with no badges
-  let config = Config(..default_config(), badges: [])
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: No badges container
-  render_assertions.not_contains(html, "modal-header-badges")
-}
-
-pub fn renders_meta_when_provided_test() {
-  // Given: Config with meta
-  let meta = text("2 of 10 items")
-  let config = Config(..default_config(), meta: Some(meta))
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Meta is rendered
-  render_assertions.contains(html, "modal-header-meta")
-  render_assertions.contains(html, "2 of 10 items")
-}
-
-pub fn renders_progress_when_provided_test() {
-  // Given: Config with progress
-  let progress = span([], [text("50%")])
-  let config = Config(..default_config(), progress: Some(progress))
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Progress is rendered
-  render_assertions.contains(html, "modal-header-progress")
-  render_assertions.contains(html, "50%")
-}
-
-pub fn hides_meta_row_when_both_empty_test() {
-  // Given: Config with no meta and no progress
-  let config = Config(..default_config(), meta: None, progress: None)
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: No meta row
-  render_assertions.not_contains(html, "modal-header-meta")
-}
-
-pub fn view_simple_renders_minimal_header_test() {
-  // Given/When: Use view_simple
+pub fn dialog_header_renders_title_and_banner_role_test() {
   let html =
-    modal_header.view_simple("Simple Title", Nil)
+    modal_header.view_dialog_with_close_label("Create Task", None, Nil, "Close")
     |> element.to_string()
 
-  // Then: Has title and close button, no extras
-  render_assertions.contains(html, "Simple Title")
-  render_assertions.contains(html, "modal-close")
-  render_assertions.not_contains(html, "modal-header-badges")
-  render_assertions.not_contains(html, "modal-header-meta")
-}
-
-pub fn has_accessibility_attributes_test() {
-  // Given: Default config
-  let config = default_config()
-
-  // When: Render
-  let html = render_to_string(config)
-
-  // Then: Has ARIA attributes
+  render_assertions.contains(html, "dialog-header")
   render_assertions.contains(html, "role=\"banner\"")
-  render_assertions.contains(html, "id=\"modal-title\"")
-}
-
-// =============================================================================
-// Extended Config Tests
-// =============================================================================
-
-fn default_extended_config() -> ExtendedConfig(Nil) {
-  ExtendedConfig(
-    title: "Extended Modal",
-    title_element: modal_header.TitleH2,
-    close_position: modal_header.CloseAfterTitle,
-    icon: None,
-    badges: [],
-    meta: None,
-    progress: None,
-    on_close: Nil,
-    header_class: "custom-header",
-    title_row_class: "custom-title-row",
-    title_class: "custom-title",
-    title_id: "custom-modal-title",
-    close_button_class: "custom-close-btn",
-    close_button_testid: None,
-  )
-}
-
-pub fn view_extended_can_render_stable_close_target_test() {
-  let config =
-    ExtendedConfig(
-      ..default_extended_config(),
-      close_button_testid: Some("entity-show-close"),
-    )
-
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  render_assertions.contains(html, "data-testid=\"entity-show-close\"")
-}
-
-pub fn view_extended_uses_custom_header_class_test() {
-  // Given: Extended config with custom header class
-  let config = default_extended_config()
-
-  // When: Render with view_extended
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  // Then: Uses custom header class
-  render_assertions.contains(html, "custom-header")
-}
-
-pub fn view_extended_uses_custom_title_id_test() {
-  // Given: Extended config with custom title ID
-  let config = default_extended_config()
-
-  // When: Render with view_extended
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  // Then: Uses custom title ID for aria-labelledby
-  render_assertions.contains(html, "id=\"custom-modal-title\"")
-}
-
-pub fn view_extended_uses_custom_close_button_class_test() {
-  // Given: Extended config with custom close button class
-  let config = default_extended_config()
-
-  // When: Render with view_extended
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  // Then: Close button uses custom class
-  render_assertions.contains(html, "custom-close-btn")
-}
-
-pub fn extend_preserves_title_test() {
-  // Given: Basic config
-  let basic = default_config()
-
-  // When: Extend it
-  let extended = modal_header.extend(basic)
-
-  // Then: Title is preserved
-  let assert "Test Modal" = extended.title
-}
-
-pub fn extend_sets_default_classes_test() {
-  // Given: Basic config
-  let basic = default_config()
-
-  // When: Extend it
-  let extended = modal_header.extend(basic)
-
-  // Then: Default classes are set
-  let assert "modal-header" = extended.header_class
-  let assert "modal-title" = extended.title_id
-  let assert "btn-icon modal-close" = extended.close_button_class
-  let assert modal_header.TitleH2 = extended.title_element
-  let assert modal_header.CloseAfterTitle = extended.close_position
-}
-
-// =============================================================================
-// view_dialog Tests
-// =============================================================================
-
-pub fn view_dialog_renders_h3_title_test() {
-  // Given/When: Render dialog header
-  let html =
-    modal_header.view_dialog("Create Task", None, Nil)
-    |> element.to_string()
-
-  // Then: Uses h3 instead of h2
   render_assertions.contains(html, "<h3")
   render_assertions.contains(html, "Create Task")
 }
 
-pub fn view_dialog_uses_dialog_classes_test() {
-  // Given/When: Render dialog header
+pub fn dialog_header_renders_localized_close_label_test() {
   let html =
-    modal_header.view_dialog("Edit Task", None, Nil)
+    modal_header.view_dialog_with_close_label("Crear", None, Nil, "Cerrar")
     |> element.to_string()
 
-  // Then: Uses dialog- prefixed classes
-  render_assertions.contains(html, "dialog-header")
   render_assertions.contains(html, "dialog-close")
+  render_assertions.contains(html, "aria-label=\"Cerrar\"")
 }
 
-pub fn view_dialog_close_button_after_title_test() {
-  // Given/When: Render dialog header
-  let html =
-    modal_header.view_dialog("Test", None, Nil)
-    |> element.to_string()
-
-  // Then: Both elements exist and h3 comes before close button
-  render_assertions.contains(html, "<h3")
-  render_assertions.contains(html, "dialog-close")
-
-  // Verify order: find position of h3 and close button
-  let assert Ok(#(before_h3, _)) = string.split_once(html, "<h3")
-  let assert Ok(#(before_close, _)) = string.split_once(html, "dialog-close")
-
-  // h3 should come before dialog-close (shorter prefix = earlier in string)
-  let assert True = string.length(before_h3) < string.length(before_close)
-}
-
-pub fn view_dialog_with_icon_test() {
-  // Given: Dialog with icon
-  let icon = span([], [text("📝")])
-
-  // When: Render
-  let html =
-    modal_header.view_dialog("With Icon", Some(icon), Nil)
-    |> element.to_string()
-
-  // Then: Icon is rendered
-  render_assertions.contains(html, "📝")
-  render_assertions.contains(html, "modal-header-icon")
-}
-
-pub fn view_dialog_with_icon_accepts_close_label_test() {
+pub fn dialog_header_renders_optional_icon_test() {
   let icon = span([], [text("icon")])
+
+  let html =
+    modal_header.view_dialog_with_close_label(
+      "With Icon",
+      Some(icon),
+      Nil,
+      "Close",
+    )
+    |> element.to_string()
+
+  render_assertions.contains(html, "modal-header-icon")
+  render_assertions.contains(html, "icon")
+}
+
+pub fn icon_dialog_header_renders_title_wrapper_test() {
+  let html =
+    modal_header.view_dialog_with_icon_and_close_label(
+      "Create Task",
+      text("icon"),
+      Nil,
+      "Close",
+    )
+    |> element.to_string()
+
+  render_assertions.contains(html, "dialog-title")
+  render_assertions.contains(html, "dialog-icon")
+  render_assertions.contains(html, "<h3")
+  render_assertions.contains(html, "Create Task")
+}
+
+pub fn icon_dialog_header_uses_icon_close_class_and_label_test() {
   let html =
     modal_header.view_dialog_with_icon_and_close_label(
       "Crear",
-      icon,
+      text("icon"),
       Nil,
       "Cerrar",
     )
     |> element.to_string()
 
-  render_assertions.contains(html, "aria-label=\"Cerrar\"")
-}
-
-// =============================================================================
-// view_detail Tests
-// =============================================================================
-
-pub fn view_detail_renders_span_title_test() {
-  // Given: Detail config
-  let config =
-    modal_header.DetailConfig(
-      title: "Task Title",
-      icon: None,
-      meta: None,
-      progress: None,
-      on_close: Nil,
-      class_prefix: "task-show",
-    )
-
-  // When: Render
-  let html = modal_header.view_detail(config) |> element.to_string()
-
-  // Then: Uses span for title
-  render_assertions.contains(html, "<span")
-  render_assertions.contains(html, "Task Title")
-}
-
-pub fn view_detail_uses_class_prefix_test() {
-  // Given: Detail config with custom prefix
-  let config =
-    modal_header.DetailConfig(
-      title: "Card Title",
-      icon: None,
-      meta: None,
-      progress: None,
-      on_close: Nil,
-      class_prefix: "card-show",
-    )
-
-  // When: Render
-  let html = modal_header.view_detail(config) |> element.to_string()
-
-  // Then: Uses prefix for all classes
-  render_assertions.contains(html, "card-show-header")
-  render_assertions.contains(html, "card-show-title")
-}
-
-pub fn view_detail_with_meta_and_progress_test() {
-  // Given: Detail config with meta and progress
-  let config =
-    modal_header.DetailConfig(
-      title: "With Meta",
-      icon: None,
-      meta: Some(text("2 of 5 items")),
-      progress: Some(span([], [text("40%")])),
-      on_close: Nil,
-      class_prefix: "task-show",
-    )
-
-  // When: Render
-  let html = modal_header.view_detail(config) |> element.to_string()
-
-  // Then: Meta and progress are rendered
-  render_assertions.contains(html, "2 of 5 items")
-  render_assertions.contains(html, "40%")
-  render_assertions.contains(html, "modal-header-meta")
-}
-
-// =============================================================================
-// TitleElement Type Tests
-// =============================================================================
-
-pub fn title_h3_renders_h3_tag_test() {
-  // Given: Extended config with TitleH3
-  let config =
-    ExtendedConfig(
-      ..default_extended_config(),
-      title_element: modal_header.TitleH3,
-    )
-
-  // When: Render
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  // Then: Uses h3 tag
-  render_assertions.contains(html, "<h3")
-}
-
-pub fn title_span_renders_span_tag_test() {
-  // Given: Extended config with TitleSpan
-  let config =
-    ExtendedConfig(
-      ..default_extended_config(),
-      title_element: modal_header.TitleSpan,
-    )
-
-  // When: Render
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  // Then: Uses span tag (not h2 or h3)
-  render_assertions.contains(html, "<span")
-}
-
-// =============================================================================
-// ClosePosition Type Tests
-// =============================================================================
-
-pub fn close_before_title_order_test() {
-  // Given: Extended config with CloseBeforeTitle
-  let config =
-    ExtendedConfig(
-      ..default_extended_config(),
-      close_position: modal_header.CloseBeforeTitle,
-    )
-
-  // When: Render
-  let html = modal_header.view_extended(config) |> element.to_string()
-
-  // Then: Both close button and title class exist
-  render_assertions.contains(html, "custom-close-btn")
-  render_assertions.contains(html, "custom-title\"")
-}
-
-// =============================================================================
-// view_dialog_with_icon Tests
-// =============================================================================
-
-pub fn view_dialog_with_icon_renders_dialog_title_wrapper_test() {
-  // Given/When: Render dialog with icon
-  let html =
-    modal_header.view_dialog_with_icon("Create Task", text("📝"), Nil)
-    |> element.to_string()
-
-  // Then: Has dialog-title wrapper containing icon
-  render_assertions.contains(html, "dialog-title")
-  render_assertions.contains(html, "dialog-icon")
-  render_assertions.contains(html, "📝")
-}
-
-pub fn view_dialog_with_icon_uses_h3_test() {
-  // Given/When: Render dialog with icon
-  let html =
-    modal_header.view_dialog_with_icon("Task Title", text("⚙"), Nil)
-    |> element.to_string()
-
-  // Then: Uses h3 for title
-  render_assertions.contains(html, "<h3")
-  render_assertions.contains(html, "Task Title")
-}
-
-pub fn view_dialog_with_icon_has_close_button_test() {
-  // Given/When: Render dialog with icon
-  let html =
-    modal_header.view_dialog_with_icon("Test", text("🔧"), Nil)
-    |> element.to_string()
-
-  // Then: Has close button with correct class
   render_assertions.contains(html, "btn-icon dialog-close")
-  render_assertions.contains(html, "aria-label=\"Close\"")
-}
-
-pub fn view_dialog_with_icon_has_aria_role_test() {
-  // Given/When: Render dialog with icon
-  let html =
-    modal_header.view_dialog_with_icon("Test", text("📋"), Nil)
-    |> element.to_string()
-
-  // Then: Has role="banner" for accessibility
-  render_assertions.contains(html, "role=\"banner\"")
+  render_assertions.contains(html, "aria-label=\"Cerrar\"")
 }

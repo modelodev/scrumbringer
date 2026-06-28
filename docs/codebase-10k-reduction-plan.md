@@ -1297,6 +1297,17 @@ Estado de ejecucion:
   - retirados `form_field.none` y `event_decoders.mouse_offset`, sin
     consumidores reales;
   - delta adicional WP-10: `-36` lineas mantenidas y seis exports menos.
+- Micro-pase adicional de API preventiva en `modal_header`:
+  - retiradas las APIs genericas sin consumidores de produccion:
+    `Config`, `ExtendedConfig`, `TitleElement`, `ClosePosition`,
+    `DetailConfig`, `view`, `view_simple`, `view_extended`, `extend`,
+    `view_dialog`, `view_dialog_with_icon`, `view_detail` y
+    `view_detail_with_close_label`;
+  - el modulo conserva solo los dos contratos vivos usados por CRUD dialogs:
+    `view_dialog_with_close_label` y `view_dialog_with_icon_and_close_label`;
+  - `modal_header_test` pasa de proteger API preventiva a cubrir solo los
+    headers vivos, incluyendo titulo, icono, rol, clases y label localizado;
+  - delta adicional WP-10: `-808` lineas mantenidas y trece exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1332,10 +1343,11 @@ Estado de ejecucion:
     `1857 passed` tras privatizar wrappers internos de `action_buttons`;
     `1857 passed` tras privatizar helpers internos de tabs/iconos;
     `1849 passed` tras retirar API muerta de `crud_dialog_base`;
-    `1849 passed` tras retirar helpers UI preventivos);
+    `1849 passed` tras retirar helpers UI preventivos;
+    `1822 passed` tras retirar API preventiva de `modal_header`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-3.085` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-3.893` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
