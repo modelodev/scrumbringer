@@ -74,7 +74,7 @@ pub fn project_member_response(
   ])
 }
 
-pub fn project_role_update(
+fn project_role_update(
   project_id: Int,
   project_name: String,
   result: projects_db.UpdateMemberRoleResult,

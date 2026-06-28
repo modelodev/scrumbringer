@@ -114,15 +114,7 @@ fn parse_capability_id(value: String) -> Result(Option(Int), wisp.Response) {
   }
 }
 
-/// Parse integer filter from query parameter.
-///
-/// ## Example
-///
-/// ```gleam
-/// parse_int_filter([#("type_id", "5")], "type_id")  // Ok(Some(5))
-/// parse_int_filter([], "type_id")                   // Ok(None)
-/// ```
-pub fn parse_int_filter(
+fn parse_int_filter(
   query: List(#(String, String)),
   key: String,
 ) -> Result(Option(Int), wisp.Response) {
@@ -139,15 +131,7 @@ pub fn parse_int_filter(
   }
 }
 
-/// Parse string filter from query parameter.
-///
-/// ## Example
-///
-/// ```gleam
-/// parse_string_filter([#("q", "search")], "q")  // Ok(Some("search"))
-/// parse_string_filter([], "q")                   // Ok(None)
-/// ```
-pub fn parse_string_filter(
+fn parse_string_filter(
   query: List(#(String, String)),
   key: String,
 ) -> Result(Option(String), wisp.Response) {
@@ -180,18 +164,7 @@ fn parse_blocked_filter(
 // Helper Functions
 // =============================================================================
 
-/// Extract single value from query parameters.
-///
-/// Returns Error if key appears multiple times.
-///
-/// ## Example
-///
-/// ```gleam
-/// single_query_value([#("a", "1")], "a")        // Ok(Some("1"))
-/// single_query_value([], "a")                   // Ok(None)
-/// single_query_value([#("a", "1"), #("a", "2")], "a")  // Error(Nil)
-/// ```
-pub fn single_query_value(
+fn single_query_value(
   query: List(#(String, String)),
   key: String,
 ) -> Result(Option(String), Nil) {

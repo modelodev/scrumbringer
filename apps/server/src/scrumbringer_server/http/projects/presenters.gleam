@@ -121,9 +121,7 @@ pub fn member_response(value: projects_db.ProjectMemberRecord) -> json.Json {
   json.object([#("member", member(value))])
 }
 
-pub fn role_update_result(
-  result: projects_db.UpdateMemberRoleResult,
-) -> json.Json {
+fn role_update_result(result: projects_db.UpdateMemberRoleResult) -> json.Json {
   let projects_db.RoleUpdated(
     user_id: user_id,
     email: email,

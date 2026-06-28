@@ -2216,6 +2216,22 @@ Estado de ejecucion:
   - `cd apps/client && gleam format src test && gleam test` (`1819 passed`);
   - barrido de referencias externas de los nueve helpers privatizados sin
     consumidores.
+- Segundo pase de encapsulacion HTTP server:
+  - privatizados `tasks/filters.parse_int_filter`, `parse_string_filter` y
+    `single_query_value`; el contrato publico queda en `parse_task_filters` y
+    el comportamiento de duplicados ya esta cubierto por
+    `parse_filters_rejects_duplicate_q_values_test` y por
+    `http/query.single_value`;
+  - privatizados `projects/presenters.role_update_result` y
+    `org_users/presenters.project_role_update`, manteniendo como API publica
+    las respuestas envelope `role_update_response` y
+    `project_role_update_response`;
+  - eliminado el test de implementacion del wrapper duplicado
+    `single_query_value_public_wrapper_rejects_duplicates_test`;
+  - delta adicional: `-34` lineas mantenidas y cinco funciones publicas menos;
+  - verificacion: `cd apps/server && gleam format src test && gleam build &&
+    DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+    (`559 passed`).
 
 ## Orden recomendado de ejecucion
 

@@ -94,8 +94,3 @@ pub fn parse_filters_accepts_blocked_false_test() {
     Error(_) -> expect.fail()
   }
 }
-
-pub fn single_query_value_public_wrapper_rejects_duplicates_test() {
-  let assert Error(Nil) =
-    filters.single_query_value([#("q", "one"), #("q", "two")], "q")
-}
