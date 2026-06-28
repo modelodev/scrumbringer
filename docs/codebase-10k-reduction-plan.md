@@ -963,14 +963,17 @@ Estado de ejecucion:
   e `i18n/es.gleam` para no contar las propias definiciones como uso real.
 - Tercer pase de estilos: retirado bloque legacy `hierarchies-*` /
   `hierarchy-*` del antiguo modulo plural de jerarquias, preservando las clases
-  vivas `hierarchy-scope-*`, `card-surface`, `kanban-card` y `move-menu`.
+  vivas `hierarchy-scope-*`, `card-surface` y `kanban-card`.
 - Cuarto pase de estilos: retiradas clases legacy sin consumidores de
   formularios antiguos, settings menu, confirm modal, priority dots, hamburger
   admin y restos de card/task dialogs ya reemplazados por los componentes
   actuales.
+- Quinto pase de estilos: tras retirar el modulo muerto `ui/move_menu`,
+  eliminadas reglas `move-menu`, `move-menu-trigger`, `move-menu-actions` y
+  `move-menu-option` de `styles/layout.gleam`.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
-  adicionales).
+  adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
@@ -981,6 +984,7 @@ Estado de ejecucion:
   - Barrido de selectores legacy retirados contra `apps/client/src` y
     `apps/client/test`, excluyendo `styles/*.gleam`; solo queda una asercion
     negativa de `card-empty-work-decision`.
+  - `rg "move-menu" apps/client/src apps/client/test` sin consumidores.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 
