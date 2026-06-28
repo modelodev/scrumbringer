@@ -825,7 +825,15 @@ Estado de ejecucion:
   (`days_ago_timestamp` y `list_at`), eliminando copias en
   `seed_task_scenarios.gleam`, `seed_card_scenarios.gleam`,
   `seed_capability_scenarios.gleam` y `seed_workspace_scenarios.gleam`.
-- Delta parcial WP-09: `-27` lineas netas mantenidas.
+- Segundo pase en `seed_db.gleam`: retiradas operaciones atomicas sin
+  consumidores de escenarios ni tests (`insert_root_card`,
+  `assign_cards_to_parent_card`, workflows/rules/templates legacy, notes,
+  task positions, rule executions diagnosticos, `query_int` y
+  `reset_workflow_tables`) junto con sus option records. Se mantienen las
+  operaciones usadas por escenarios vivos y fixtures (`insert_task`,
+  `insert_card`, `insert_work_session`, `insert_audit_event_simple`, etc.).
+- Delta parcial WP-09: `-784` lineas netas mantenidas (`-27` del primer pase,
+  `-757` del pase de operaciones seed sin consumidores).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
