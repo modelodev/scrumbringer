@@ -1,5 +1,4 @@
-import gleam/dynamic/decode
-import gleam/erlang/charlist
+import fixtures
 import gleam/http
 import gleam/http/request
 import gleam/json
@@ -10,50 +9,56 @@ import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
-const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
 pub fn bootstrap_happy_path_creates_org_default_project_and_membership_test() {
-  let app = new_test_app()
+  let app = fixtures.new_app() |> expect.ok
   let handler = scrumbringer_server.handler(app)
   let scrumbringer_server.App(db: db, ..) = app
 
-  reset_db(db)
+  fixtures.reset_database(db) |> expect.ok
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
   expect.expect_status(res, 200)
 
-  let org_name = single_text(db, "select name from organizations where id = 1")
+  let org_name =
+    fixtures.query_string(db, "select name from organizations where id = 1", [])
+    |> expect.ok
   org_name |> expect.equal("Acme")
 
   let default_projects =
-    single_int(
+    fixtures.query_int(
       db,
       "select count(*) from projects where org_id = 1 and name = 'Default'",
+      [],
     )
+    |> expect.ok
   default_projects |> expect.equal(1)
 
   let admin_user_count =
-    single_int(
+    fixtures.query_int(
       db,
       "select count(*) from users where org_id = 1 and org_role = 'admin'",
+      [],
     )
+    |> expect.ok
   admin_user_count |> expect.equal(1)
 
   let admin_memberships =
-    single_int(
+    fixtures.query_int(
       db,
       "select count(*) from project_members where user_id = 1 and role = 'manager'",
+      [],
     )
+    |> expect.ok
   admin_memberships |> expect.equal(1)
 }
 
 pub fn register_sets_session_and_csrf_cookies_test() {
-  let app = new_test_app()
+  let app = fixtures.new_app() |> expect.ok
   let handler = scrumbringer_server.handler(app)
   let scrumbringer_server.App(db: db, ..) = app
 
-  reset_db(db)
+  fixtures.reset_database(db) |> expect.ok
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
@@ -88,8 +93,7 @@ pub fn register_sets_session_and_csrf_cookies_test() {
 }
 
 pub fn register_after_bootstrap_requires_invite_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, _) = fixtures.bootstrap() |> expect.ok
 
   let req =
     simulate.request(http.Post, "/api/v1/auth/register")
@@ -104,9 +108,8 @@ pub fn register_after_bootstrap_requires_invite_test() {
 }
 
 pub fn register_rejects_short_password_test() {
-  let app = bootstrap_app()
+  let #(app, handler, _) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
   insert_invite_link_active(db, "il_short", "short@example.com")
 
@@ -126,9 +129,8 @@ pub fn register_rejects_short_password_test() {
 }
 
 pub fn validate_invite_link_returns_email_when_active_test() {
-  let app = bootstrap_app()
+  let #(app, handler, _) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
   insert_invite_link_active(db, "il_active", "member@example.com")
 
@@ -141,9 +143,8 @@ pub fn validate_invite_link_returns_email_when_active_test() {
 }
 
 pub fn validate_invite_link_rejects_missing_invalidated_and_used_test() {
-  let app = bootstrap_app()
+  let #(app, handler, _) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
   insert_invite_link_invalidated(db, "il_invalidated", "inv@example.com")
   insert_invite_link_used(db, "il_used", "used@example.com")
@@ -174,9 +175,8 @@ pub fn validate_invite_link_rejects_missing_invalidated_and_used_test() {
 }
 
 pub fn register_consumes_invite_once_test() {
-  let app = bootstrap_app()
+  let #(app, handler, _) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
   insert_invite_link_active(db, "il_once", "first@example.com")
 
@@ -208,9 +208,8 @@ pub fn register_consumes_invite_once_test() {
 }
 
 pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
-  let app = bootstrap_app()
+  let #(app, handler, _) = fixtures.bootstrap() |> expect.ok
   let scrumbringer_server.App(db: db, ..) = app
-  let handler = scrumbringer_server.handler(app)
 
   insert_invite_link_invalidated(
     db,
@@ -263,10 +262,9 @@ pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
 }
 
 pub fn login_sets_session_and_csrf_cookies_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, _) = fixtures.bootstrap() |> expect.ok
 
-  let res = login(handler)
+  let res = login_response(handler)
   expect.expect_status(res, 200)
 
   let cookies = set_cookie_headers(res.headers)
@@ -298,8 +296,7 @@ pub fn login_sets_session_and_csrf_cookies_test() {
 }
 
 pub fn login_rejects_invalid_credentials_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, _) = fixtures.bootstrap() |> expect.ok
 
   let res =
     handler(
@@ -317,8 +314,7 @@ pub fn login_rejects_invalid_credentials_test() {
 }
 
 pub fn login_rejects_unknown_email_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, _) = fixtures.bootstrap() |> expect.ok
 
   let res =
     handler(
@@ -336,22 +332,20 @@ pub fn login_rejects_unknown_email_test() {
 }
 
 pub fn me_requires_auth_and_returns_user_when_authenticated_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, _) = fixtures.bootstrap() |> expect.ok
 
   let unauth_res = handler(simulate.request(http.Get, "/api/v1/auth/me"))
   expect.expect_status(unauth_res, 401)
   string.contains(simulate.read_body(unauth_res), "AUTH_REQUIRED")
   |> expect.is_true
 
-  let login_res = login(handler)
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let session =
+    fixtures.login(handler, "admin@example.com", "passwordpassword")
+    |> expect.ok
 
   let authed_req =
     simulate.request(http.Get, "/api/v1/auth/me")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
+    |> fixtures.with_auth(session)
 
   let authed_res = handler(authed_req)
   expect.expect_status(authed_res, 200)
@@ -360,17 +354,16 @@ pub fn me_requires_auth_and_returns_user_when_authenticated_test() {
 }
 
 pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
-  let app = bootstrap_app()
-  let handler = scrumbringer_server.handler(app)
+  let #(_, handler, _) = fixtures.bootstrap() |> expect.ok
 
-  let login_res = login(handler)
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let session =
+    fixtures.login(handler, "admin@example.com", "passwordpassword")
+    |> expect.ok
 
   let bad_req =
     simulate.request(http.Post, "/api/v1/auth/logout")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_cookie("sb_session", session.token)
+    |> request.set_cookie("sb_csrf", session.csrf)
 
   let bad_res = handler(bad_req)
   expect.expect_status(bad_res, 403)
@@ -378,9 +371,7 @@ pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
 
   let ok_req =
     simulate.request(http.Post, "/api/v1/auth/logout")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    |> fixtures.with_auth(session)
 
   let ok_res = handler(ok_req)
   expect.expect_status(ok_res, 204)
@@ -409,27 +400,6 @@ pub fn logout_clears_cookies_and_csrf_is_required_for_logout_mutation_test() {
   clears_csrf |> expect.is_true
 }
 
-fn new_test_app() -> scrumbringer_server.App {
-  let database_url = require_database_url()
-
-  let assert Ok(app) = scrumbringer_server.new_app(secret, database_url)
-  app
-}
-
-fn bootstrap_app() -> scrumbringer_server.App {
-  let app = new_test_app()
-  let handler = scrumbringer_server.handler(app)
-  let scrumbringer_server.App(db: db, ..) = app
-
-  reset_db(db)
-
-  let res =
-    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
-  expect.expect_status(res, 200)
-
-  app
-}
-
 fn bootstrap_request(email: String, password: String, org_name: String) {
   simulate.request(http.Post, "/api/v1/auth/register")
   |> simulate.json_body(
@@ -441,7 +411,7 @@ fn bootstrap_request(email: String, password: String, org_name: String) {
   )
 }
 
-fn login(handler) {
+fn login_response(handler) {
   let req =
     simulate.request(http.Post, "/api/v1/auth/login")
     |> simulate.json_body(
@@ -462,42 +432,6 @@ fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
       _ -> Error(Nil)
     }
   })
-}
-
-fn find_cookie_value(headers: List(#(String, String)), name: String) -> String {
-  let target = name <> "="
-
-  let assert Ok(header) =
-    set_cookie_headers(headers)
-    |> list.find(fn(h) { string.starts_with(h, target) })
-
-  let assert Ok(#(value, _)) =
-    header
-    |> string.drop_start(string.length(target))
-    |> string.split_once(";")
-
-  value
-}
-
-fn require_database_url() -> String {
-  case getenv("DATABASE_URL", "") {
-    "" -> {
-      expect.fail()
-      ""
-    }
-
-    url -> url
-  }
-}
-
-fn reset_db(db: pog.Connection) {
-  let assert Ok(_) =
-    pog.query(
-      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
-    )
-    |> pog.execute(db)
-
-  Nil
 }
 
 fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
@@ -539,42 +473,3 @@ fn insert_invite_link_used(db: pog.Connection, token: String, email: String) {
 
   Nil
 }
-
-fn single_text(db: pog.Connection, sql: String) -> String {
-  let decoder = {
-    use value <- decode.field(0, decode.string)
-    decode.success(value)
-  }
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    pog.query(sql)
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
-}
-
-fn single_int(db: pog.Connection, sql: String) -> Int {
-  let decoder = {
-    use value <- decode.field(0, decode.int)
-    decode.success(value)
-  }
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    pog.query(sql)
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
-}
-
-fn getenv(key: String, default: String) -> String {
-  getenv_charlist(charlist.from_string(key), charlist.from_string(default))
-  |> charlist.to_string
-}
-
-@external(erlang, "os", "getenv")
-fn getenv_charlist(
-  key: charlist.Charlist,
-  default: charlist.Charlist,
-) -> charlist.Charlist

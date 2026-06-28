@@ -97,18 +97,13 @@ pub fn bootstrap() -> Result(
   #(scrumbringer_server.App, Handler, Session),
   String,
 ) {
-  use database_url <- result.try(require_database_url())
-  use app <- result.try(
-    scrumbringer_server.new_app(secret, database_url)
-    |> result.map_error(fn(_) { "Failed to create app" }),
-  )
+  use app <- result.try(new_app())
 
   let handler = scrumbringer_server.handler(app)
   let scrumbringer_server.App(db: db, ..) = app
 
   let _ = rate_limit.reset_for_tests()
-  use _ <- result.try(reset_db(db))
-  use _ <- result.try(reset_workflow_tables(db))
+  use _ <- result.try(reset_database(db))
 
   let res =
     handler(
@@ -135,6 +130,19 @@ pub fn bootstrap() -> Result(
         <> simulate.read_body(res),
       )
   }
+}
+
+/// Create a test app without registering users or resetting the database.
+pub fn new_app() -> Result(scrumbringer_server.App, String) {
+  use database_url <- result.try(require_database_url())
+  scrumbringer_server.new_app(secret, database_url)
+  |> result.map_error(fn(_) { "Failed to create app" })
+}
+
+/// Reset all tables used by HTTP integration tests.
+pub fn reset_database(db: pog.Connection) -> Result(Nil, String) {
+  use _ <- result.try(reset_db(db))
+  reset_workflow_tables(db)
 }
 
 /// Extract session and CSRF tokens from response headers.
@@ -1533,7 +1541,7 @@ fn require_database_url() -> Result(String, String) {
 
 fn reset_db(db: pog.Connection) -> Result(Nil, String) {
   pog.query(
-    "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+    "TRUNCATE password_resets, project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
   )
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })

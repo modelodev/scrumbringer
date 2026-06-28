@@ -99,7 +99,6 @@ frontera con `DueDate` validado.
 - `apps/server/src/scrumbringer_server/sql/tasks_create.sql`
 - `apps/server/src/scrumbringer_server/sql/tasks_update.sql`
 - `apps/server/src/scrumbringer_server/sql/tasks_get_for_user.sql`
-- `apps/server/src/scrumbringer_server/sql/tasks_list_by_card.sql`
 - `apps/server/src/scrumbringer_server/sql/tasks_claim.sql`
 - `apps/server/src/scrumbringer_server/sql/tasks_release.sql`
 - `apps/server/src/scrumbringer_server/sql/tasks_complete.sql`

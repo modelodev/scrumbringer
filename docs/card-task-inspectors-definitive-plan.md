@@ -640,7 +640,9 @@ No eliminar backend existente salvo evidencia de no uso. Revisar:
 - endpoints de notas siguen necesarios;
 - dependencies siguen necesarios;
 - task transitions siguen necesarios;
-- `cards_task_count.sql` y counts de cards siguen necesarios fuera del inspector.
+- Los counts de cards siguen necesarios fuera del inspector, pero se obtienen
+  desde las queries vivas de cards; no mantener queries SQL dedicadas sin
+  consumidor.
 
 Ampliar solo si el frontend no puede derivar datos con coste razonable:
 
