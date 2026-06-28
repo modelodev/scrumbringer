@@ -20,14 +20,6 @@ pub fn css() -> List(String) {
     ".not-permitted p { margin: 0; color: var(--sb-muted); line-height: var(--sb-line-body); max-width: var(--sb-measure-prose); }",
     ".section-description { display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; color: var(--sb-muted); font-size: var(--sb-font-base); line-height: var(--sb-line-body); max-width: var(--sb-measure-prose); }",
     // =====================================================
-    // UX IMPROVEMENTS - Sidebar Groups (SA01-SA05)
-    // =====================================================
-    ".nav-item-icon { width: 18px; height: 18px; opacity: 0.7; flex-shrink: 0; }",
-    ".nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid transparent; transition: background 0.15s, border-color 0.15s; }",
-    ".nav-item:hover { background: var(--sb-hover); }",
-    ".nav-item.active { background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-surface)); border-color: var(--sb-primary); color: var(--sb-primary); }",
-    ".nav-item.active .nav-item-icon { opacity: 1; }",
-    // =====================================================
     // UX IMPROVEMENTS - Form States (FG01-FG04, L01-L03)
     // =====================================================
     "input:focus, select:focus, textarea:focus { outline: none; border-color: var(--sb-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--sb-primary) 15%, transparent); }",
@@ -61,7 +53,6 @@ pub fn css() -> List(String) {
     ".automation-template-panel__warning { font-size: var(--sb-font-md); line-height: var(--sb-line-body); color: var(--sb-warning-text); background: color-mix(in oklab, var(--sb-warning) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-warning) 34%, var(--sb-border)); border-radius: 8px; padding: 10px 12px; }",
     ".error-banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin-bottom: 12px; }",
     ".error-banner-icon { width: 20px; height: 20px; flex-shrink: 0; color: var(--sb-error-text); }",
-    ".error-banner-text { flex: 1; font-size: var(--sb-font-md); line-height: var(--sb-line-body); color: var(--sb-error-text); }",
     // =====================================================
     // UX IMPROVEMENTS - Table Actions (AC02, E06)
     // =====================================================
@@ -76,12 +67,6 @@ pub fn css() -> List(String) {
     ".data-table td { padding: 10px 12px; border-bottom: 1px solid var(--sb-border); vertical-align: middle; }",
     ".data-table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--sb-surface) 50%, var(--sb-bg)); }",
     ".data-table tbody tr:hover { background: var(--sb-elevated); }",
-    ".data-table th.sortable { cursor: pointer; user-select: none; }",
-    ".data-table th.sortable:hover { background: var(--sb-hover); }",
-    ".table-sort-button { appearance: none; border: 0; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; width: 100%; min-height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: flex-start; gap: 4px; cursor: pointer; text-align: left; }",
-    ".table-sort-button:focus-visible { outline: 2px solid var(--sb-primary); outline-offset: 2px; border-radius: 4px; }",
-    ".data-table th .sort-icon { opacity: 0.4; font-size: 10px; }",
-    ".data-table th.sortable:hover .sort-icon { opacity: 1; }",
     ".data-table-state { overflow-wrap: anywhere; }",
     ".api-token-list-card { overflow-x: auto; }",
     "@media (min-width: 641px) { .api-token-table { table-layout: fixed; min-width: 0; } .api-token-table th, .api-token-table td { padding-left: 8px; padding-right: 8px; overflow-wrap: normal; } .api-token-table th { white-space: normal; } .api-token-table .token-col-name { width: 15%; } .api-token-table .token-col-integration { width: 22%; } .api-token-table .token-col-project { width: 14%; } .api-token-table .token-col-scopes { width: 18%; } .api-token-table .token-col-last-used { width: 8%; } .api-token-table .token-col-state { width: 10%; } .api-token-table .token-col-actions { width: 13%; text-align: right; } .api-token-table .token-cell-name { overflow-wrap: anywhere; } .api-token-table .token-cell-integration { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .api-token-table .token-cell-project .api-token-project-badge { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; } .api-token-table .token-cell-last-used, .api-token-table .token-cell-state, .api-token-table .token-cell-actions { white-space: nowrap; } .api-token-table .token-cell-actions { text-align: right; } .api-token-table .token-cell-actions .action-buttons { justify-content: flex-end; } }",
@@ -103,16 +88,6 @@ pub fn css() -> List(String) {
     "@media (max-width: 640px) { .scope-matrix-head, .scope-matrix-row { grid-template-columns: minmax(82px, 1fr) 78px 96px; } .scope-matrix-head > div, .scope-matrix-row > div, .scope-matrix-row > label { padding: 8px 6px; } .scope-checkbox { gap: 4px; font-size: var(--sb-font-md); } .api-token-scope-badges { justify-content: flex-end; max-width: 180px; } }",
     // DataTable responsive collapse (card view on mobile)
     "@media (max-width: 640px) { .data-table-scroll { overflow-x: visible; } .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr { display: block; } .data-table thead { position: absolute; top: -9999px; left: -9999px; } .data-table tr { margin-bottom: 12px; border: 1px solid var(--sb-border); border-radius: 8px; padding: 12px; background: var(--sb-surface); } .data-table td { display: grid; grid-template-columns: minmax(7rem, 0.42fr) minmax(0, 1fr); gap: 12px; align-items: start; padding: 8px 0; border: none; border-bottom: 1px solid var(--sb-border); } .data-table td:last-child { border-bottom: none; } .data-table td::before { content: attr(data-label); min-width: 0; overflow-wrap: anywhere; font-weight: var(--sb-weight-semibold); color: var(--sb-muted-strong); font-size: var(--sb-font-sm); text-transform: uppercase; letter-spacing: var(--sb-letter-label); } }",
-    // =====================================================
-    // UX IMPROVEMENTS - Form Sections (E07)
-    // =====================================================
-    // =====================================================
-    // UX IMPROVEMENTS - Decay Badge (P02)
-    // =====================================================
-    ".decay-badge { position: absolute; top: 6px; right: 6px; font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); padding: 2px 6px; border-radius: 6px; background: var(--sb-elevated); border: 1px solid var(--sb-border); color: var(--sb-muted); z-index: 3; }",
-    ".decay-badge.decay-low { background: color-mix(in oklab, var(--sb-info) 15%, var(--sb-elevated)); border-color: color-mix(in oklab, var(--sb-info) 40%, var(--sb-border)); color: var(--sb-info-text); }",
-    ".decay-badge.decay-medium { background: color-mix(in oklab, var(--sb-warning) 15%, var(--sb-elevated)); border-color: color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); color: var(--sb-warning-text); }",
-    ".decay-badge.decay-high { background: color-mix(in oklab, var(--sb-danger) 15%, var(--sb-elevated)); border-color: color-mix(in oklab, var(--sb-danger) 40%, var(--sb-border)); color: var(--sb-error-text); }",
     // =====================================================
     // DECAY SHAKE ANIMATIONS - Visual indicator for stale tasks
     // Shake intensity increases with age. Colors remain intact.
@@ -161,7 +136,8 @@ pub fn css() -> List(String) {
     // UX IMPROVEMENTS - Responsive Mobile (RM01-RM04)
     // AC38: All interactive elements must have min 44px touch targets on mobile
     // =====================================================
-    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon, .nav-item { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: var(--sb-font-lg); } input { min-height: 44px; padding: 10px 12px; font-size: var(--sb-font-lg); } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .pagination { justify-content: center; } }",
+    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: var(--sb-font-lg); } input { min-height: 44px; padding: 10px 12px; font-size: var(--sb-font-lg); } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .pagination { justify-content: center; } }",
+    "@media (min-width: 769px) and (max-width: 1024px) { .nav { width: 200px; padding: 8px; } .pool-right { width: 280px; } }",
     ".member-mobile { min-height: 100dvh; background: var(--sb-bg); padding: 0; }",
     ".member-content-mobile { min-height: calc(100dvh - 56px); }",
     ".mobile-topbar { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; min-height: calc(56px + env(safe-area-inset-top)); padding: max(8px, env(safe-area-inset-top)) 12px 8px; border-bottom: 1px solid var(--sb-border); background: color-mix(in oklab, var(--sb-surface) 96%, transparent); }",
@@ -217,15 +193,9 @@ pub fn css() -> List(String) {
     // Content padding when mini-bar is visible
     "@media (max-width: 768px), (max-height: 480px) and (max-width: 1024px) { .member-content-mobile { padding-bottom: calc(76px + env(safe-area-inset-bottom)); } }",
     // =====================================================
-    // UX IMPROVEMENTS - Responsive Tablet (RT01-RT02)
-    // =====================================================
-    "@media (min-width: 769px) and (max-width: 1024px) { .nav { width: 200px; padding: 8px; } .nav-item { padding: 8px; font-size: var(--sb-font-base); } .pool-right { width: 280px; } }",
-    // =====================================================
     // UX IMPROVEMENTS - Progress Bar (AF04)
     // =====================================================
     ".progress-bar { height: 8px; background: var(--sb-border); border-radius: var(--sb-radius-sm); overflow: hidden; }",
-    ".progress-bar-fill { width: 100%; height: 100%; background: var(--sb-primary); border-radius: var(--sb-radius-sm); clip-path: inset(0 calc(100% - var(--progress-width, 0%)) 0 0); transition: clip-path var(--sb-transition-slow); }",
-    ".progress-text { font-size: var(--sb-font-sm); color: var(--sb-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }",
     // =====================================================
     // UX IMPROVEMENTS - Card Task List (AF02)
     // =====================================================

@@ -1330,17 +1330,25 @@ Estado de ejecucion:
   preventivo (`icon-picker-search`, tabs, item/label/empty states) tras borrar
   el modulo sin consumidores; se preservan las clases usadas por el picker real
   conectado en `task_type_crud_dialog`.
+- Undecimo pase de estilos: retiradas reglas legacy sin consumidores de
+  navegacion antigua (`nav-item`, `nav-item-icon`), texto auxiliar de
+  `error-banner`, sorting visual de `DataTable` aun no implementado en markup,
+  badges legacy de decay y restos de progreso duplicados en `styles/ux.gleam`.
+  Se conserva la regla responsive viva de `.nav` y `.pool-right` sin
+  reintroducir el selector obsoleto `.nav-item`.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
   adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
   Delta adicional del sexto pase: `-53` lineas mantenidas. Delta adicional del
   septimo pase: `-47` lineas mantenidas. Delta adicional del octavo pase:
   `-28` lineas mantenidas. Delta adicional del noveno pase: `-5` lineas
-  mantenidas. Delta adicional del decimo pase: `-12` lineas mantenidas.
+  mantenidas. Delta adicional del decimo pase: `-12` lineas mantenidas. Delta
+  adicional del undecimo pase: `-30` lineas mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
-  - `cd apps/client && gleam test` (`1912 passed`);
+  - `cd apps/client && gleam test` (`1912 passed`; `1859 passed` tras los
+    pases posteriores de componentes y estilos);
   - `rg "ficha-detail|ficha-task|ficha-add-task" apps/client/src apps/client/test`.
   - `rg "i18n_text\\.<clave>|text\\.<clave>" apps/client/src --glob '!**/i18n/text.gleam' --glob '!**/i18n/en.gleam' --glob '!**/i18n/es.gleam'` para las claves retiradas.
   - `rg "hierarchies-|hierarchy-" apps/client/src/scrumbringer_client/styles/layout.gleam apps/client/src/scrumbringer_client/styles/ux.gleam` solo muestra `hierarchy-scope-*`.
@@ -1348,6 +1356,7 @@ Estado de ejecucion:
     `apps/client/test`, excluyendo `styles/*.gleam`; solo queda una asercion
     negativa de `card-empty-work-decision`.
   - `rg "move-menu" apps/client/src apps/client/test` sin consumidores.
+  - `rg -n "\\b(nav-item|nav-item-icon|error-banner-text|sortable|table-sort-button|sort-icon|decay-badge|progress-bar-fill)\\b" apps/client/src apps/client/test -g '*.gleam' --glob '!**/styles/*.gleam'` sin consumidores.
   - Barrido de selectores retirados del sexto pase contra `apps/client/src` y
     `apps/client/test` sin consumidores.
   - Barrido de selectores retirados del septimo pase contra `apps/client/src`
@@ -2208,4 +2217,4 @@ anterior:
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI e `ui/icon_picker` sin consumidores ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
 | Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
-| Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; restos del antiguo `ui/icon_picker` ya retirados preservando el picker real conectado. Repetir comparacion de clases usadas en views contra `styles/*`. |
+| Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; retirados restos de `ui/icon_picker`, navegacion antigua, sorting visual no conectado, decay badge legacy y progreso duplicado, preservando reglas responsive vivas. Repetir comparacion de clases usadas en views contra `styles/*`. |
