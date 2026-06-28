@@ -2,12 +2,12 @@
 
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
-import gleam/result
 
 import domain/org_role.{type OrgRole}
 import domain/org_role/org_role_codec
 import domain/project_role.{type ProjectRole, Member}
 import domain/project_role/project_role_codec
+import scrumbringer_server/http/payload_decode
 
 pub type OrgRolePayload {
   OrgRolePayload(org_role: OrgRole)
@@ -27,8 +27,7 @@ pub fn decode_org_role(data: Dynamic) -> Result(OrgRolePayload, Nil) {
     decode.success(OrgRolePayload(org_role: role))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 pub fn decode_user_project(data: Dynamic) -> Result(UserProjectPayload, Nil) {
@@ -42,8 +41,7 @@ pub fn decode_user_project(data: Dynamic) -> Result(UserProjectPayload, Nil) {
     decode.success(UserProjectPayload(project_id: project_id, role: role))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 pub fn decode_role(data: Dynamic) -> Result(RolePayload, Nil) {
@@ -52,6 +50,5 @@ pub fn decode_role(data: Dynamic) -> Result(RolePayload, Nil) {
     decode.success(RolePayload(role: role))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }

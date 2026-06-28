@@ -4,6 +4,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/result
 import gleam/string
+import scrumbringer_server/http/payload_decode
 
 pub type ResetRequestPayload {
   ResetRequestPayload(email: String)
@@ -27,10 +28,7 @@ pub fn decode_reset_request(
     decode.success(email)
   }
 
-  use email <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use email <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
 
   let email = string.trim(email)
   case email {
@@ -46,10 +44,7 @@ pub fn decode_consume(data: Dynamic) -> Result(ConsumePayload, DecodeError) {
     decode.success(#(token, password))
   }
 
-  use payload <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use payload <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
 
   let #(token, password) = payload
   case string.length(password) < 12 {

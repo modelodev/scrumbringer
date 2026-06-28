@@ -3,6 +3,7 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/result
+import scrumbringer_server/http/payload_decode
 
 const default_expires_in_hours = 168
 
@@ -24,7 +25,6 @@ pub fn decode_create(data: Dynamic) -> Result(CreateInvitePayload, DecodeError) 
     decode.success(hours)
   }
 
-  decode.run(data, decoder)
+  payload_decode.run_error(data, decoder, InvalidJson)
   |> result.map(CreateInvitePayload)
-  |> result.map_error(fn(_) { InvalidJson })
 }

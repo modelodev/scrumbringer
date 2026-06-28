@@ -1227,6 +1227,28 @@ Criterios de aceptacion:
 - Tests HTTP/task/card cubren claim, release, close, update, blocked deps,
   created-from-rule y reload de cliente.
 
+Estado de ejecucion:
+
+- Primer pase de auditoria ejecutado en rama `refactor-cleanup`.
+- Revisadas `tasks_list`, `tasks_claim`, `tasks_close`,
+  `tasks_get_for_user`, `tasks_update`, `tasks_release` y `tasks_create`
+  junto a sus consumidores en `repository/tasks/queries.gleam` y mappers.
+- Hallazgo: `tasks_claim`, `tasks_release`, `tasks_close` y `tasks_update`
+  repiten una proyeccion grande de task enriquecida, pero esa duplicacion esta
+  acoplada al tipo generado por Squirrel y al contrato HTTP que devuelve la
+  task completa tras cada mutacion.
+- Decision: no se consolida en este pase. Las alternativas disponibles
+  aumentaban riesgo o complejidad:
+  - una query universal de task con parametros sentinela, descartada por el
+    propio plan;
+  - mutaciones que devuelven solo ID y hacen una segunda query para reconstruir
+    la task, descartadas por anadir roundtrip y cambiar atomicidad/transaccion;
+  - mover la proyeccion a una abstraccion SQL no soportada directamente por el
+    flujo actual de Squirrel.
+- WP-13 queda documentado como auditado y parcialmente descartado hasta que
+  exista una mejora de Squirrel/SQL que permita compartir proyecciones sin
+  perder type safety ni claridad de contrato.
+
 ### WP-14. Fase 2: use cases y presenters de segundo pase
 
 Objetivo: reducir coordinacion duplicada en backend una vez estabilizados tests
@@ -1265,6 +1287,26 @@ Criterios de aceptacion:
 - Auth/autorizacion no queda escondida en helpers genericos.
 - Errores esperados siguen como `Result`.
 - Presenters no filtran strings internos de DB/dominio.
+
+Estado de ejecucion:
+
+- Primer pase ejecutado en rama `refactor-cleanup`.
+- Extraido `http/payload_decode.gleam` como helper estrecho para ejecutar
+  decoders de payload y mapear errores de JSON a `Nil` o a un error de payload
+  explicito, sin tocar handlers ni autorizacion.
+- Migrados payload decoders de `api_tokens`, `auth`, `capabilities`,
+  `integration_users`, `notes`, `org_invite_links`, `org_invites`,
+  `org_users`, `password_resets`, `projects`, `rules`, `task_positions`,
+  `task_templates`, `tasks`, `work_sessions` y `workflows`.
+- Se descarto consolidar wrappers HTTP de `projects`, `workflows` y `rules`
+  porque el formateo de llamadas largas aumentaba lineas y no mejoraba la
+  frontera de responsabilidades.
+- Delta del pase: `-20` lineas mantenidas netas.
+- Verificacion:
+  - `cd apps/server && gleam format src test`;
+  - `cd apps/server && gleam build`;
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`);
+  - barrido de `decode.run(data, decoder)` y `result.map_error(fn(_) { Nil | InvalidJson })` en payloads HTTP para confirmar que solo quedan casos locales no equivalentes.
 
 ### WP-15. Fase 2: estilos, i18n y seeds de segundo pase
 

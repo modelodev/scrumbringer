@@ -4,6 +4,7 @@ import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None}
 import gleam/result
+import scrumbringer_server/http/payload_decode
 import scrumbringer_server/use_case/api_tokens as token_service
 
 pub type CreateApiTokenPayload {
@@ -45,10 +46,7 @@ pub fn decode_create(
     decode.success(#(name, integration, project_id, scopes, expires_at))
   }
 
-  use raw <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use raw <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
   let #(name, integration, project_id, raw_scopes, expires_at) = raw
   use scopes <- result.try(
     raw_scopes
@@ -75,6 +73,5 @@ pub fn decode_rename(
     decode.success(RenameApiTokenPayload(name: name))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }

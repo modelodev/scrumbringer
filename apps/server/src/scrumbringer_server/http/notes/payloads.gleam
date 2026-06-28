@@ -3,7 +3,7 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
-import gleam/result
+import scrumbringer_server/http/payload_decode
 
 pub type NotePayload {
   NotePayload(content: String, url: Option(String))
@@ -24,6 +24,5 @@ pub fn decode_note(data: Dynamic) -> Result(NotePayload, DecodeError) {
     decode.success(NotePayload(content: content, url: url))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }

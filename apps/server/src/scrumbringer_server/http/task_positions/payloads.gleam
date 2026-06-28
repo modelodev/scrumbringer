@@ -5,6 +5,7 @@ import gleam/dynamic/decode
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/result
+import scrumbringer_server/http/payload_decode
 import scrumbringer_server/http/query as query_params
 
 pub type PositionPayload {
@@ -26,8 +27,7 @@ pub fn decode_position(data: Dynamic) -> Result(PositionPayload, DecodeError) {
     decode.success(PositionPayload(x: x, y: y))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }
 
 pub fn parse_project_id_filter(

@@ -2,7 +2,7 @@
 
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
-import gleam/result
+import scrumbringer_server/http/payload_decode
 
 pub type TaskIdPayload {
   TaskIdPayload(task_id: Int)
@@ -18,6 +18,5 @@ pub fn decode_task_id(data: Dynamic) -> Result(TaskIdPayload, DecodeError) {
     decode.success(TaskIdPayload(task_id: task_id))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }

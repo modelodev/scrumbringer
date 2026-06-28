@@ -2,11 +2,11 @@
 
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
-import gleam/result
 
 import domain/project.{type ProjectDepthName, ProjectDepthName}
 import domain/project_role.{type ProjectRole}
 import domain/project_role/project_role_codec
+import scrumbringer_server/http/payload_decode
 
 pub type ProjectCreatePayload {
   ProjectCreatePayload(
@@ -51,8 +51,7 @@ pub fn decode_project_create(data: Dynamic) -> Result(ProjectCreatePayload, Nil)
     ))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 pub fn decode_project_update(data: Dynamic) -> Result(ProjectUpdatePayload, Nil) {
@@ -70,8 +69,7 @@ pub fn decode_project_update(data: Dynamic) -> Result(ProjectUpdatePayload, Nil)
     ))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 pub fn decode_depth_reduction_preview(
@@ -82,8 +80,7 @@ pub fn decode_depth_reduction_preview(
     decode.success(DepthReductionPreviewPayload(new_max_depth: new_max_depth))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 fn project_depth_name_decoder() -> decode.Decoder(ProjectDepthName) {
@@ -104,8 +101,7 @@ pub fn decode_member(data: Dynamic) -> Result(MemberPayload, Nil) {
     decode.success(MemberPayload(user_id: user_id, role: role))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 pub fn decode_role(data: Dynamic) -> Result(RolePayload, Nil) {
@@ -114,6 +110,5 @@ pub fn decode_role(data: Dynamic) -> Result(RolePayload, Nil) {
     decode.success(RolePayload(role: role))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }

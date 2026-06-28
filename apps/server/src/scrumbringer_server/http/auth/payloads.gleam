@@ -5,6 +5,7 @@ import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import scrumbringer_server/http/payload_decode
 
 pub type RegistrationPayload {
   RegistrationPayload(
@@ -35,10 +36,7 @@ pub fn decode_registration(
     decode.success(#(email, password, org_name, invite_token))
   }
 
-  use payload <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use payload <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
 
   let #(email, password, org_name, invite_token) = payload
   case string.length(password) < 12 {
@@ -60,8 +58,7 @@ pub fn decode_login(data: Dynamic) -> Result(LoginPayload, DecodeError) {
     decode.success(LoginPayload(email: email, password: password))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }
 
 fn empty_to_option(value: String) -> Option(String) {

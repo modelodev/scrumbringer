@@ -6,6 +6,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import scrumbringer_server/http/payload_decode
 import scrumbringer_server/use_case/workflows/types as workflow_types
 
 pub type CreateTaskPayload {
@@ -68,8 +69,7 @@ pub fn decode_create_task(
     ))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }
 
 pub fn decode_update_task(
@@ -100,10 +100,7 @@ pub fn decode_update_task(
     decode.success(#(version, title, description, priority, type_id))
   }
 
-  use payload <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use payload <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
   use parent_card_update <- result.try(decode_parent_card_update(data))
   use card_update <- result.try(decode_card_update(data))
   use due_date_update <- result.try(decode_due_date_update(data))
@@ -129,8 +126,7 @@ pub fn decode_version(data: Dynamic) -> Result(VersionPayload, DecodeError) {
     decode.success(VersionPayload(version: version))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }
 
 pub fn decode_dependency(
@@ -141,8 +137,7 @@ pub fn decode_dependency(
     decode.success(DependencyPayload(depends_on_task_id: depends_on_task_id))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { InvalidJson })
+  payload_decode.run_error(data, decoder, InvalidJson)
 }
 
 pub fn decode_task_type(data: Dynamic) -> Result(TaskTypePayload, DecodeError) {
@@ -153,10 +148,7 @@ pub fn decode_task_type(data: Dynamic) -> Result(TaskTypePayload, DecodeError) {
     decode.success(#(name, icon, capability_id))
   }
 
-  use payload <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use payload <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
   let #(name, icon, capability_id) = payload
 
   Ok(

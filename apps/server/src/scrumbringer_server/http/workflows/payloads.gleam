@@ -3,7 +3,7 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/option.{type Option, None}
-import gleam/result
+import scrumbringer_server/http/payload_decode
 
 pub type CreatePayload {
   CreatePayload(name: String, description: String, active: Bool)
@@ -29,8 +29,7 @@ pub fn decode_create(data: Dynamic) -> Result(CreatePayload, Nil) {
     ))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }
 
 pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
@@ -57,6 +56,5 @@ pub fn decode_update(data: Dynamic) -> Result(UpdatePayload, Nil) {
     ))
   }
 
-  decode.run(data, decoder)
-  |> result.map_error(fn(_) { Nil })
+  payload_decode.run(data, decoder)
 }

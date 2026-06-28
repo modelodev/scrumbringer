@@ -4,6 +4,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/result
 import gleam/string
+import scrumbringer_server/http/payload_decode
 
 pub type EmailPayload {
   EmailPayload(email: String)
@@ -20,10 +21,7 @@ pub fn decode_email(data: Dynamic) -> Result(EmailPayload, DecodeError) {
     decode.success(email)
   }
 
-  use email <- result.try(
-    decode.run(data, decoder)
-    |> result.map_error(fn(_) { InvalidJson }),
-  )
+  use email <- result.try(payload_decode.run_error(data, decoder, InvalidJson))
 
   let email = normalize_email(email)
   case validate_email(email) {
