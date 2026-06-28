@@ -1,5 +1,6 @@
 import gleam/option as opt
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/api_error.{ApiError}
@@ -39,19 +40,10 @@ fn card_with(
   state: CardPhase,
 ) -> Card {
   Card(
-    id: id,
-    project_id: 3,
+    ..domain_fixtures.card(id, 3, title),
     parent_card_id: parent_card_id,
-    title: title,
-    description: "",
     color: opt.Some(Blue),
     state: state,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    has_new_notes: False,
   )
 }
 

@@ -7,6 +7,7 @@ import gleam/option
 import gleam/string
 
 import lustre/element
+import support/domain_fixtures
 
 import domain/activity/entity.{type ActivityEvent, ActivityEvent}
 import domain/activity/id as activity_id
@@ -56,19 +57,13 @@ fn make_model() -> Model {
 
 fn make_card(id: Int) -> Card {
   Card(
-    id: id,
-    project_id: 1,
-    parent_card_id: option.None,
-    title: "Test Card",
+    ..domain_fixtures.card(id, 1, "Test Card"),
     description: "A test card",
     color: option.Some(card.Blue),
     state: Draft,
     task_count: 3,
     closed_count: 1,
-    created_by: 1,
     created_at: "2026-01-20T00:00:00Z",
-    due_date: option.None,
-    has_new_notes: False,
   )
 }
 

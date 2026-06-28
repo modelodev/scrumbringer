@@ -1,29 +1,16 @@
 import gleam/option
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/card.{type Card, Active, Card, Draft}
+import domain/card.{type Card, Active, Card}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/features/admin/cards
 import scrumbringer_client/features/pool/msg as pool_messages
 
 fn sample_card(id: Int) -> Card {
-  Card(
-    id: id,
-    project_id: 1,
-    parent_card_id: option.None,
-    title: "Card",
-    description: "",
-    color: option.None,
-    state: Draft,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: option.None,
-    has_new_notes: False,
-  )
+  domain_fixtures.card(id, 1, "Card")
 }
 
 fn crud_feedback_context() -> cards.CrudFeedbackContext(Nil) {
