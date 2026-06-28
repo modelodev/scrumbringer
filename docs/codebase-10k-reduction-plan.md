@@ -1076,7 +1076,13 @@ Estado de ejecucion:
   `fixtures.create_member_user` y elimina la consulta SQL posterior por email.
 - `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam` sustituyen
   el FFI local `integer_to_binary` por `gleam/int.to_string`.
-- Delta parcial WP-12: `-1.081` lineas netas mantenidas (`-44` del primer pase
+- `notes_and_positions_http_test.gleam` deja de convertir `fixtures.Session`
+  a tuplas `#(session, csrf)` para reconstruirlas despues. Los helpers locales
+  de creacion y las requests directas reciben ahora el tipo compartido
+  `fixtures.Session`; se elimina `fixture_session`, el campo `csrf` duplicado
+  de `ResourceViewFixture` y los parametros `csrf` paralelos en helpers de
+  proyecto, task type, card, task, member y posiciones.
+- Delta parcial WP-12: `-1.294` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1084,7 +1090,8 @@ Estado de ejecucion:
   fixtures, `-32` del pase de creacion de cards desde fixtures, `-40` del pase
   de IDs de usuarios en proyectos desde fixtures, `-6` del pase de ID de
   usuario en metricas modales, `-12` del pase de conversion Int->String con
-  API estandar).
+  API estandar, `-213` del pase de `fixtures.Session` tipado en
+  `notes_and_positions_http_test.gleam`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

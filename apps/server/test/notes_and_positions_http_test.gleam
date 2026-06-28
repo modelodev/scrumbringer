@@ -14,24 +14,18 @@ import support/assertions as expect
 import wisp
 import wisp/simulate
 
-fn fixture_session(token: String, csrf: String) -> fixtures.Session {
-  fixtures.Session(token: token, csrf: csrf)
-}
-
 fn login_session(
   handler: fn(wisp.Request) -> wisp.Response,
   email: String,
-) -> #(String, String) {
-  let session = fixtures.login(handler, email, "passwordpassword") |> expect.ok
-  #(session.token, session.csrf)
+) -> fixtures.Session {
+  fixtures.login(handler, email, "passwordpassword") |> expect.ok
 }
 
 type ResourceViewFixture {
   ResourceViewFixture(
     handler: fn(wisp.Request) -> wisp.Response,
     db: pog.Connection,
-    session: String,
-    csrf: String,
+    session: fixtures.Session,
     card_id: Int,
     task_id: Int,
   )
@@ -47,50 +41,32 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member1_id =
     create_member_user(handler, db, "member1@example.com", "inv_member1")
   let member2_id =
     create_member_user(handler, db, "member2@example.com", "inv_member2")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member1_id)
-  add_member(handler, admin_session, admin_csrf, project_id, member2_id)
+  add_member(handler, admin_session, project_id, member1_id)
+  add_member(handler, admin_session, project_id, member2_id)
 
-  let #(member1_session, member1_csrf) =
-    login_session(handler, "member1@example.com")
+  let member1_session = login_session(handler, "member1@example.com")
 
-  let #(member2_session, member2_csrf) =
-    login_session(handler, "member2@example.com")
+  let member2_session = login_session(handler, "member2@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let note_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
-    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
+    |> fixtures.with_auth(member2_session)
     |> simulate.json_body(
       json.object([
         #("content", json.string("Investigating")),
@@ -115,7 +91,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
         <> int.to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
+    |> fixtures.with_auth(member1_session)
 
   expect.expect_status(handler(pin_by_non_author), 403)
 
@@ -128,7 +104,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
         <> int.to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
+    |> fixtures.with_auth(member2_session)
 
   let pin_res = handler(pin_by_author)
   expect.expect_status(pin_res, 200)
@@ -143,7 +119,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
         <> int.to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
+    |> fixtures.with_auth(member2_session)
 
   let unpin_res = handler(unpin_by_author)
   expect.expect_status(unpin_res, 200)
@@ -151,7 +127,7 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
+    |> fixtures.with_auth(member2_session)
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -161,8 +137,6 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
 
   let patch_res = handler(patch_req)
   expect.expect_status(patch_res, 200)
-
-  let _ = member1_csrf
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -171,41 +145,23 @@ pub fn task_notes_list_requires_task_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
   create_member_user(handler, db, "outsider@example.com", "inv_out")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  let #(outsider_session, outsider_csrf) =
-    login_session(handler, "outsider@example.com")
+  let outsider_session = login_session(handler, "outsider@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let _ =
     handler(
@@ -213,7 +169,7 @@ pub fn task_notes_list_requires_task_membership_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(json.object([#("content", json.string("One"))])),
     )
 
@@ -223,7 +179,7 @@ pub fn task_notes_list_requires_task_membership_test() {
         http.Get,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf),
+      |> with_session_cookies(member_session),
     )
 
   expect.expect_status(member_list_res, 200)
@@ -235,7 +191,7 @@ pub fn task_notes_list_requires_task_membership_test() {
       http.Get,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
+    |> with_session_cookies(outsider_session)
 
   let outsider_res = handler(outsider_req)
   expect.expect_status(outsider_res, 404)
@@ -249,37 +205,20 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let delete_collection_res =
     handler(
@@ -287,7 +226,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Delete,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf),
+      |> with_session_cookies(member_session),
     )
 
   expect.expect_status(delete_collection_res, 405)
@@ -298,7 +237,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Patch,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
+      |> fixtures.with_auth(member_session),
     )
 
   expect.expect_status(patch_collection_res, 405)
@@ -309,7 +248,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(
         json.object([#("content", json.string("Remove me"))]),
       ),
@@ -326,7 +265,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
           <> "/notes/"
           <> int.to_string(note_id),
       )
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
+      |> fixtures.with_auth(member_session),
     )
 
   expect.expect_status(delete_item_res, 204)
@@ -337,7 +276,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Get,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> request.set_cookie("sb_session", member_session),
+      |> request.set_cookie("sb_session", member_session.token),
     )
 
   expect.expect_status(list_res, 200)
@@ -350,7 +289,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Patch,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes/1",
       )
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf)),
+      |> fixtures.with_auth(member_session),
     )
 
   expect.expect_status(patch_item_res, 405)
@@ -361,44 +300,27 @@ pub fn task_notes_create_requires_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let note_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
 
   let note_res = handler(note_req)
@@ -411,23 +333,20 @@ pub fn card_notes_list_requires_card_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
   create_member_user(handler, db, "outsider@example.com", "inv_out")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  let #(outsider_session, outsider_csrf) =
-    login_session(handler, "outsider@example.com")
+  let outsider_session = login_session(handler, "outsider@example.com")
 
-  let card_id =
-    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+  let card_id = create_card(handler, admin_session, project_id, "Card")
 
   let _ =
     handler(
@@ -435,7 +354,7 @@ pub fn card_notes_list_requires_card_membership_test() {
         http.Post,
         "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(json.object([#("content", json.string("One"))])),
     )
 
@@ -445,7 +364,7 @@ pub fn card_notes_list_requires_card_membership_test() {
         http.Get,
         "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(member_session, member_csrf),
+      |> with_session_cookies(member_session),
     )
 
   expect.expect_status(member_list_res, 200)
@@ -457,7 +376,7 @@ pub fn card_notes_list_requires_card_membership_test() {
       http.Get,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
+    |> with_session_cookies(outsider_session)
 
   let outsider_res = handler(outsider_req)
   expect.expect_status(outsider_res, 404)
@@ -470,11 +389,10 @@ pub fn card_notes_list_orders_by_created_at_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
-  let card_id =
-    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+  let card_id = create_card(handler, admin_session, project_id, "Card")
 
   let admin_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -501,7 +419,7 @@ pub fn card_notes_list_orders_by_created_at_test() {
         http.Get,
         "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
-      |> fixtures.with_session_cookies(admin_session, admin_csrf),
+      |> with_session_cookies(admin_session),
     )
 
   expect.expect_status(list_res, 200)
@@ -515,32 +433,29 @@ pub fn card_notes_create_and_delete_permissions_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
   let member1_id =
     create_member_user(handler, db, "member1@example.com", "inv_member1")
   let member2_id =
     create_member_user(handler, db, "member2@example.com", "inv_member2")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member1_id)
-  add_member(handler, admin_session, admin_csrf, project_id, member2_id)
+  add_member(handler, admin_session, project_id, member1_id)
+  add_member(handler, admin_session, project_id, member2_id)
 
-  let #(member1_session, member1_csrf) =
-    login_session(handler, "member1@example.com")
+  let member1_session = login_session(handler, "member1@example.com")
 
-  let #(member2_session, member2_csrf) =
-    login_session(handler, "member2@example.com")
+  let member2_session = login_session(handler, "member2@example.com")
 
-  let card_id =
-    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+  let card_id = create_card(handler, admin_session, project_id, "Card")
 
   let note_req =
     simulate.request(
       http.Post,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
-    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
+    |> fixtures.with_auth(member1_session)
     |> simulate.json_body(
       json.object([
         #("content", json.string("Note")),
@@ -563,7 +478,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int.to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
+    |> fixtures.with_auth(member2_session)
 
   expect.expect_status(handler(pin_forbidden), 403)
 
@@ -576,7 +491,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int.to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
+    |> fixtures.with_auth(member1_session)
 
   let pin_res = handler(pin_by_author)
   expect.expect_status(pin_res, 200)
@@ -591,7 +506,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int.to_string(note_id)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
+    |> fixtures.with_auth(member1_session)
 
   let unpin_res = handler(unpin_by_author)
   expect.expect_status(unpin_res, 200)
@@ -605,7 +520,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> "/notes/"
         <> int.to_string(note_id),
     )
-    |> fixtures.with_auth(fixture_session(member2_session, member2_csrf))
+    |> fixtures.with_auth(member2_session)
 
   expect.expect_status(handler(delete_forbidden), 403)
 
@@ -617,7 +532,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> "/notes/"
         <> int.to_string(note_id),
     )
-    |> fixtures.with_auth(fixture_session(member1_session, member1_csrf))
+    |> fixtures.with_auth(member1_session)
 
   expect.expect_status(handler(delete_author), 204)
 
@@ -634,7 +549,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> int.to_string(note_id_2)
         <> "/pin",
     )
-    |> fixtures.with_auth(fixture_session(admin_session, admin_csrf))
+    |> fixtures.with_auth(admin_session)
 
   let admin_pin_res = handler(pin_by_admin)
   expect.expect_status(admin_pin_res, 200)
@@ -648,7 +563,7 @@ pub fn card_notes_create_and_delete_permissions_test() {
         <> "/notes/"
         <> int.to_string(note_id_2),
     )
-    |> fixtures.with_auth(fixture_session(admin_session, admin_csrf))
+    |> fixtures.with_auth(admin_session)
 
   expect.expect_status(handler(delete_admin), 204)
 }
@@ -658,26 +573,24 @@ pub fn card_notes_create_requires_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  let card_id =
-    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+  let card_id = create_card(handler, admin_session, project_id, "Card")
 
   let note_req =
     simulate.request(
       http.Post,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
 
   let note_res = handler(note_req)
@@ -690,26 +603,24 @@ pub fn card_notes_indicator_updates_after_view_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  let card_id =
-    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+  let card_id = create_card(handler, admin_session, project_id, "Card")
 
   let note_req =
     simulate.request(
       http.Post,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
 
   expect.expect_status(handler(note_req), 200)
@@ -719,7 +630,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -728,7 +639,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
 
   let view_req =
     simulate.request(http.Put, "/api/v1/views/cards/" <> int.to_string(card_id))
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
 
   expect.expect_status(handler(view_req), 204)
 
@@ -744,44 +655,27 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Task",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Task", "", 3, type_id)
 
   let note_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("content", json.string("Note"))]))
 
   expect.expect_status(handler(note_req), 200)
@@ -791,7 +685,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -800,7 +694,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
 
   let view_req =
     simulate.request(http.Put, "/api/v1/views/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
 
   expect.expect_status(handler(view_req), 204)
 
@@ -811,35 +705,34 @@ pub fn task_notes_indicator_updates_after_view_test() {
 }
 
 pub fn resource_views_reject_unsupported_methods_test() {
-  let ResourceViewFixture(handler:, session:, csrf:, card_id:, task_id:, ..) =
+  let ResourceViewFixture(handler:, session:, card_id:, task_id:, ..) =
     resource_view_fixture()
 
   let card_req =
     simulate.request(http.Get, "/api/v1/views/cards/" <> int.to_string(card_id))
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   expect.expect_status(handler(card_req), 405)
 
   let task_req =
     simulate.request(http.Get, "/api/v1/views/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   expect.expect_status(handler(task_req), 405)
 }
 
 pub fn resource_views_reject_invalid_ids_test() {
-  let ResourceViewFixture(handler:, session:, csrf:, ..) =
-    resource_view_fixture()
+  let ResourceViewFixture(handler:, session:, ..) = resource_view_fixture()
 
   let card_req =
     simulate.request(http.Put, "/api/v1/views/cards/not-a-card-id")
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
 
   expect.expect_status(handler(card_req), 404)
 
   let task_req =
     simulate.request(http.Put, "/api/v1/views/tasks/not-a-task-id")
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
 
   expect.expect_status(handler(task_req), 404)
 }
@@ -848,18 +741,18 @@ pub fn resource_views_hide_resources_from_non_project_members_test() {
   let ResourceViewFixture(handler:, db:, card_id:, task_id:, ..) =
     resource_view_fixture()
 
-  let #(outsider_session, outsider_csrf) =
+  let outsider_session =
     create_logged_in_user(handler, db, "outsider@example.com", "inv_outsider")
 
   let card_req =
     simulate.request(http.Put, "/api/v1/views/cards/" <> int.to_string(card_id))
-    |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
+    |> fixtures.with_auth(outsider_session)
 
   expect.expect_status(handler(card_req), 404)
 
   let task_req =
     simulate.request(http.Put, "/api/v1/views/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
+    |> fixtures.with_auth(outsider_session)
 
   expect.expect_status(handler(task_req), 404)
 }
@@ -869,44 +762,27 @@ pub fn task_positions_upsert_requires_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let put_req =
     simulate.request(
       http.Put,
       "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
     |> simulate.json_body(
       json.object([#("x", json.int(1)), #("y", json.int(2))]),
     )
@@ -921,82 +797,48 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
+  let admin_session = login_session(handler, "admin@example.com")
 
-  let core_id = create_project(handler, admin_session, admin_csrf, "Core")
-  let other_id = create_project(handler, admin_session, admin_csrf, "Other")
+  let core_id = create_project(handler, admin_session, "Core")
+  let other_id = create_project(handler, admin_session, "Other")
 
   let core_type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      core_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, core_id, "Bug", "bug-ant")
   let other_type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      other_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, other_id, "Bug", "bug-ant")
 
   let member1_id =
     create_member_user(handler, db, "member1@example.com", "inv_member1")
   let member2_id =
     create_member_user(handler, db, "member2@example.com", "inv_member2")
 
-  add_member(handler, admin_session, admin_csrf, core_id, member1_id)
-  add_member(handler, admin_session, admin_csrf, core_id, member2_id)
-  add_member(handler, admin_session, admin_csrf, other_id, member1_id)
-  add_member(handler, admin_session, admin_csrf, other_id, member2_id)
+  add_member(handler, admin_session, core_id, member1_id)
+  add_member(handler, admin_session, core_id, member2_id)
+  add_member(handler, admin_session, other_id, member1_id)
+  add_member(handler, admin_session, other_id, member2_id)
 
-  let #(member1_session, member1_csrf) =
-    login_session(handler, "member1@example.com")
+  let member1_session = login_session(handler, "member1@example.com")
 
-  let #(member2_session, member2_csrf) =
-    login_session(handler, "member2@example.com")
+  let member2_session = login_session(handler, "member2@example.com")
 
   let core_task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      core_id,
-      "Core",
-      "",
-      3,
-      core_type_id,
-    )
+    create_task(handler, admin_session, core_id, "Core", "", 3, core_type_id)
   let other_task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      other_id,
-      "Other",
-      "",
-      3,
-      other_type_id,
-    )
+    create_task(handler, admin_session, other_id, "Other", "", 3, other_type_id)
 
-  upsert_position(handler, member1_session, member1_csrf, core_task_id, 10, 20)
+  upsert_position(handler, member1_session, core_task_id, 10, 20)
   |> expect.equal(200)
 
-  upsert_position(handler, member1_session, member1_csrf, other_task_id, 1, 2)
+  upsert_position(handler, member1_session, other_task_id, 1, 2)
   |> expect.equal(200)
 
-  upsert_position(handler, member2_session, member2_csrf, core_task_id, 30, 40)
+  upsert_position(handler, member2_session, core_task_id, 30, 40)
   |> expect.equal(200)
 
   let member1_all_res =
     handler(
       simulate.request(http.Get, "/api/v1/me/task-positions")
-      |> fixtures.with_session_cookies(member1_session, member1_csrf),
+      |> with_session_cookies(member1_session),
     )
 
   expect.expect_status(member1_all_res, 200)
@@ -1010,7 +852,7 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
         http.Get,
         "/api/v1/me/task-positions?project_id=" <> int.to_string(core_id),
       )
-      |> fixtures.with_session_cookies(member1_session, member1_csrf),
+      |> with_session_cookies(member1_session),
     )
 
   expect.expect_status(member1_core_res, 200)
@@ -1020,7 +862,7 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let member2_all_res =
     handler(
       simulate.request(http.Get, "/api/v1/me/task-positions")
-      |> fixtures.with_session_cookies(member2_session, member2_csrf),
+      |> with_session_cookies(member2_session),
     )
 
   expect.expect_status(member2_all_res, 200)
@@ -1033,45 +875,28 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
   create_member_user(handler, db, "outsider@example.com", "inv_out")
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+  add_member(handler, admin_session, project_id, member_id)
 
-  let #(outsider_session, outsider_csrf) =
-    login_session(handler, "outsider@example.com")
+  let outsider_session = login_session(handler, "outsider@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let put_req =
     simulate.request(
       http.Put,
       "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
-    |> fixtures.with_auth(fixture_session(outsider_session, outsider_csrf))
+    |> fixtures.with_auth(outsider_session)
     |> simulate.json_body(
       json.object([#("x", json.int(1)), #("y", json.int(2))]),
     )
@@ -1084,7 +909,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
       http.Get,
       "/api/v1/me/task-positions?project_id=" <> int.to_string(project_id),
     )
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
+    |> with_session_cookies(outsider_session)
 
   let filtered_res = handler(filtered_req)
   expect.expect_status(filtered_res, 403)
@@ -1346,8 +1171,7 @@ fn decode_positions_xy_by_task(body: String, task_id: Int) -> #(Int, Int) {
 
 fn upsert_position(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   x: Int,
   y: Int,
@@ -1357,7 +1181,7 @@ fn upsert_position(
       http.Put,
       "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([#("x", json.int(x)), #("y", json.int(y))]),
     )
@@ -1367,49 +1191,38 @@ fn upsert_position(
 
 fn create_project(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   name: String,
 ) -> Int {
-  fixtures.create_project(handler, fixture_session(session, csrf), name)
+  fixtures.create_project(handler, session, name)
   |> expect.ok
 }
 
 fn create_task_type(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   name: String,
   icon: String,
 ) -> Int {
-  fixtures.create_task_type(
-    handler,
-    fixture_session(session, csrf),
-    project_id,
-    name,
-    icon,
-  )
+  fixtures.create_task_type(handler, session, project_id, name, icon)
   |> expect.ok
 }
 
 fn create_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
   description: String,
   priority: Int,
   type_id: Int,
 ) -> Int {
-  let card_id =
-    create_card(handler, session, csrf, project_id, title <> " card")
-  activate_card(handler, session, csrf, card_id)
+  let card_id = create_card(handler, session, project_id, title <> " card")
+  activate_card(handler, session, card_id)
   create_task_with_card(
     handler,
     session,
-    csrf,
     project_id,
     title,
     description,
@@ -1421,8 +1234,7 @@ fn create_task(
 
 fn create_task_with_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
   description: String,
@@ -1432,7 +1244,7 @@ fn create_task_with_card(
 ) -> Int {
   fixtures.create_task_with_card_full(
     handler,
-    fixture_session(session, csrf),
+    session,
     project_id,
     title,
     description,
@@ -1445,44 +1257,30 @@ fn create_task_with_card(
 
 fn create_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
 ) -> Int {
-  fixtures.create_card(
-    handler,
-    fixture_session(session, csrf),
-    project_id,
-    title,
-  )
+  fixtures.create_card(handler, session, project_id, title)
   |> expect.ok
 }
 
 fn activate_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   card_id: Int,
 ) {
-  fixtures.activate_card(handler, fixture_session(session, csrf), card_id)
+  fixtures.activate_card(handler, session, card_id)
   |> expect.ok
 }
 
 fn add_member(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   user_id: Int,
 ) {
-  fixtures.add_member(
-    handler,
-    fixture_session(session, csrf),
-    project_id,
-    user_id,
-    "member",
-  )
+  fixtures.add_member(handler, session, project_id, user_id, "member")
   |> expect.ok
 }
 
@@ -1491,38 +1289,20 @@ fn resource_view_fixture() -> ResourceViewFixture {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant")
 
-  let card_id =
-    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+  let card_id = create_card(handler, admin_session, project_id, "Card")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Task",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Task", "", 3, type_id)
 
   ResourceViewFixture(
     handler: handler,
     db: db,
     session: admin_session,
-    csrf: admin_csrf,
     card_id: card_id,
     task_id: task_id,
   )
@@ -1533,9 +1313,16 @@ fn create_logged_in_user(
   db: pog.Connection,
   email: String,
   invite_code: String,
-) -> #(String, String) {
+) -> fixtures.Session {
   create_member_user(handler, db, email, invite_code)
   login_session(handler, email)
+}
+
+fn with_session_cookies(
+  request: wisp.Request,
+  session: fixtures.Session,
+) -> wisp.Request {
+  fixtures.with_session_cookies(request, session.token, session.csrf)
 }
 
 fn create_member_user(
