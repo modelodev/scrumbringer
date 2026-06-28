@@ -179,7 +179,7 @@ pub fn task_notes_list_requires_task_membership_test() {
         http.Get,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> with_session_cookies(member_session),
+      |> fixtures.with_session_cookies(member_session),
     )
 
   expect.expect_status(member_list_res, 200)
@@ -191,7 +191,7 @@ pub fn task_notes_list_requires_task_membership_test() {
       http.Get,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
-    |> with_session_cookies(outsider_session)
+    |> fixtures.with_session_cookies(outsider_session)
 
   let outsider_res = handler(outsider_req)
   expect.expect_status(outsider_res, 404)
@@ -226,7 +226,7 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
         http.Delete,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> with_session_cookies(member_session),
+      |> fixtures.with_session_cookies(member_session),
     )
 
   expect.expect_status(delete_collection_res, 405)
@@ -320,7 +320,7 @@ pub fn task_notes_create_requires_csrf_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     )
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
 
   let note_res = handler(note_req)
@@ -364,7 +364,7 @@ pub fn card_notes_list_requires_card_membership_test() {
         http.Get,
         "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
-      |> with_session_cookies(member_session),
+      |> fixtures.with_session_cookies(member_session),
     )
 
   expect.expect_status(member_list_res, 200)
@@ -376,7 +376,7 @@ pub fn card_notes_list_requires_card_membership_test() {
       http.Get,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
-    |> with_session_cookies(outsider_session)
+    |> fixtures.with_session_cookies(outsider_session)
 
   let outsider_res = handler(outsider_req)
   expect.expect_status(outsider_res, 404)
@@ -419,7 +419,7 @@ pub fn card_notes_list_orders_by_created_at_test() {
         http.Get,
         "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
       )
-      |> with_session_cookies(admin_session),
+      |> fixtures.with_session_cookies(admin_session),
     )
 
   expect.expect_status(list_res, 200)
@@ -590,7 +590,7 @@ pub fn card_notes_create_requires_csrf_test() {
       http.Post,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
     )
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
     |> simulate.json_body(json.object([#("content", json.string("One"))]))
 
   let note_res = handler(note_req)
@@ -630,7 +630,7 @@ pub fn card_notes_indicator_updates_after_view_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
     )
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -685,7 +685,7 @@ pub fn task_notes_indicator_updates_after_view_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -710,13 +710,13 @@ pub fn resource_views_reject_unsupported_methods_test() {
 
   let card_req =
     simulate.request(http.Get, "/api/v1/views/cards/" <> int.to_string(card_id))
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   expect.expect_status(handler(card_req), 405)
 
   let task_req =
     simulate.request(http.Get, "/api/v1/views/tasks/" <> int.to_string(task_id))
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   expect.expect_status(handler(task_req), 405)
 }
@@ -782,7 +782,7 @@ pub fn task_positions_upsert_requires_csrf_test() {
       http.Put,
       "/api/v1/me/task-positions/" <> int.to_string(task_id),
     )
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
     |> simulate.json_body(
       json.object([#("x", json.int(1)), #("y", json.int(2))]),
     )
@@ -838,7 +838,7 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let member1_all_res =
     handler(
       simulate.request(http.Get, "/api/v1/me/task-positions")
-      |> with_session_cookies(member1_session),
+      |> fixtures.with_session_cookies(member1_session),
     )
 
   expect.expect_status(member1_all_res, 200)
@@ -852,7 +852,7 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
         http.Get,
         "/api/v1/me/task-positions?project_id=" <> int.to_string(core_id),
       )
-      |> with_session_cookies(member1_session),
+      |> fixtures.with_session_cookies(member1_session),
     )
 
   expect.expect_status(member1_core_res, 200)
@@ -862,7 +862,7 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let member2_all_res =
     handler(
       simulate.request(http.Get, "/api/v1/me/task-positions")
-      |> with_session_cookies(member2_session),
+      |> fixtures.with_session_cookies(member2_session),
     )
 
   expect.expect_status(member2_all_res, 200)
@@ -909,7 +909,7 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
       http.Get,
       "/api/v1/me/task-positions?project_id=" <> int.to_string(project_id),
     )
-    |> with_session_cookies(outsider_session)
+    |> fixtures.with_session_cookies(outsider_session)
 
   let filtered_res = handler(filtered_req)
   expect.expect_status(filtered_res, 403)
@@ -1316,13 +1316,6 @@ fn create_logged_in_user(
 ) -> fixtures.Session {
   create_member_user(handler, db, email, invite_code)
   login_session(handler, email)
-}
-
-fn with_session_cookies(
-  request: wisp.Request,
-  session: fixtures.Session,
-) -> wisp.Request {
-  fixtures.with_session_cookies(request, session.token, session.csrf)
 }
 
 fn create_member_user(

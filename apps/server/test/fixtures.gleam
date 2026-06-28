@@ -1179,14 +1179,10 @@ pub fn with_auth(req: wisp.Request, session: Session) -> wisp.Request {
 }
 
 /// Add session cookies without the CSRF header.
-pub fn with_session_cookies(
-  req: wisp.Request,
-  token: String,
-  csrf: String,
-) -> wisp.Request {
+pub fn with_session_cookies(req: wisp.Request, session: Session) -> wisp.Request {
   req
-  |> request.set_cookie("sb_session", token)
-  |> request.set_cookie("sb_csrf", csrf)
+  |> request.set_cookie("sb_session", session.token)
+  |> request.set_cookie("sb_csrf", session.csrf)
 }
 
 /// Add Bearer token authorization to a request.

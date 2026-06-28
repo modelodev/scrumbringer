@@ -34,7 +34,7 @@ pub fn task_types_list_sorted_by_name_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -97,7 +97,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> with_session_cookies(admin_session)
+    |> fixtures.with_session_cookies(admin_session)
     |> simulate.json_body(
       json.object([
         #("name", json.string("Bug")),
@@ -166,7 +166,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(list_res, 200)
@@ -179,7 +179,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?q=needle",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(q_res, 200)
@@ -195,7 +195,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
           <> "/tasks?capability_id="
           <> int.to_string(cap1),
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(cap_res, 200)
@@ -209,7 +209,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         <> int.to_string(project_id)
         <> "/tasks?capability_id=1,2",
     )
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let multi_cap_res = handler(multi_cap_req)
   expect.expect_status(multi_cap_res, 422)
@@ -234,7 +234,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -309,7 +309,7 @@ pub fn task_get_includes_task_contract_fields_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -378,7 +378,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -697,7 +697,7 @@ pub fn release_all_tasks_for_member_success_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     )
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -1395,7 +1395,7 @@ pub fn me_metrics_returns_counts_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1439,7 +1439,7 @@ pub fn org_metrics_overview_requires_org_admin_test() {
   // member is authenticated but not org admin
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/overview")
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1447,7 +1447,7 @@ pub fn org_metrics_overview_requires_org_admin_test() {
   // admin succeeds
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/overview")
-    |> with_session_cookies(admin_session)
+    |> fixtures.with_session_cookies(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
@@ -1477,7 +1477,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
       http.Get,
       "/api/v1/org/metrics/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1570,14 +1570,14 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
 
   let member_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
-    |> with_session_cookies(member_session)
+    |> fixtures.with_session_cookies(member_session)
 
   let member_res = handler(member_req)
   expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
-    |> with_session_cookies(admin_session)
+    |> fixtures.with_session_cookies(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
@@ -1633,7 +1633,7 @@ pub fn org_metrics_users_invalid_window_days_returns_422_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/users?window_days=999")
-    |> with_session_cookies(session)
+    |> fixtures.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 422)
@@ -1655,7 +1655,7 @@ pub fn tasks_list_requires_membership_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> with_session_cookies(outsider_session)
+    |> fixtures.with_session_cookies(outsider_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1680,7 +1680,7 @@ pub fn task_get_requires_membership_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> with_session_cookies(outsider_session)
+    |> fixtures.with_session_cookies(outsider_session)
 
   let res = handler(req)
   expect.expect_status(res, 404)
@@ -1722,7 +1722,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=available",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(available_res, 200)
@@ -1737,7 +1737,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=claimed",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(claimed_res, 200)
@@ -1752,7 +1752,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=closed",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(closed_filter_res, 200)
@@ -1768,7 +1768,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> "/tasks?type_id="
           <> int.to_string(bug_type_id),
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(type_res, 200)
@@ -1781,7 +1781,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?status=nope",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(invalid_status_res, 422)
@@ -1794,7 +1794,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?type_id=abc",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(invalid_type_res, 422)
@@ -1809,7 +1809,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?capability_id=abc",
       )
-      |> with_session_cookies(session),
+      |> fixtures.with_session_cookies(session),
     )
 
   expect.expect_status(invalid_cap_res, 422)
@@ -2162,7 +2162,7 @@ fn get_active_work_sessions(
 ) -> wisp.Response {
   handler(
     simulate.request(http.Get, "/api/v1/me/work-sessions/active")
-    |> with_session_cookies(session),
+    |> fixtures.with_session_cookies(session),
   )
 }
 
@@ -2496,7 +2496,7 @@ fn list_project_tasks(
 
   handler(
     simulate.request(http.Get, url)
-    |> with_session_cookies(session),
+    |> fixtures.with_session_cookies(session),
   )
 }
 
@@ -2734,13 +2734,6 @@ fn create_member_user(
 ) -> Int {
   fixtures.create_member_user(handler, db, email, invite_code)
   |> expect.ok
-}
-
-fn with_session_cookies(
-  request: wisp.Request,
-  session: fixtures.Session,
-) -> wisp.Request {
-  fixtures.with_session_cookies(request, session.token, session.csrf)
 }
 
 fn bootstrap_app() -> scrumbringer_server.App {
