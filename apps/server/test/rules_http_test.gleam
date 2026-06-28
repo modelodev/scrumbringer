@@ -52,7 +52,7 @@ pub fn rules_crud_with_selected_template_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
       )
       |> fixtures.with_auth(session),
     )
@@ -67,7 +67,7 @@ pub fn rules_crud_with_selected_template_test() {
 
   let patch_res =
     handler(
-      simulate.request(http.Patch, "/api/v1/rules/" <> int_to_string(rule_id))
+      simulate.request(http.Patch, "/api/v1/rules/" <> int.to_string(rule_id))
       |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
@@ -85,7 +85,7 @@ pub fn rules_crud_with_selected_template_test() {
 
   let delete_res =
     handler(
-      simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
+      simulate.request(http.Delete, "/api/v1/rules/" <> int.to_string(rule_id))
       |> fixtures.with_auth(session),
     )
 
@@ -135,7 +135,7 @@ pub fn rule_delete_with_execution_pauses_and_preserves_history_test() {
 
   let delete_res =
     handler(
-      simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
+      simulate.request(http.Delete, "/api/v1/rules/" <> int.to_string(rule_id))
       |> fixtures.with_auth(session),
     )
 
@@ -199,7 +199,7 @@ pub fn rule_delete_with_created_task_pauses_and_preserves_origin_test() {
 
   let delete_res =
     handler(
-      simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
+      simulate.request(http.Delete, "/api/v1/rules/" <> int.to_string(rule_id))
       |> fixtures.with_auth(session),
     )
 
@@ -240,7 +240,7 @@ pub fn rules_invalid_payload_returns_400_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("name", json.int(1))])),
@@ -266,7 +266,7 @@ pub fn rule_create_without_template_returns_400_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(
@@ -309,7 +309,7 @@ pub fn rule_create_rejects_missing_card_depth_scope_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
       )
       |> fixtures.with_auth(session)
       |> simulate.json_body(
@@ -409,7 +409,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
       )
       |> fixtures.with_auth(member_session),
     )
@@ -419,7 +419,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/workflows/" <> int_to_string(workflow_id) <> "/rules",
+        "/api/v1/workflows/" <> int.to_string(workflow_id) <> "/rules",
       )
       |> fixtures.with_auth(member_session)
       |> simulate.json_body(rule_create_json(
@@ -432,7 +432,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
 
   let update_res =
     handler(
-      simulate.request(http.Patch, "/api/v1/rules/" <> int_to_string(rule_id))
+      simulate.request(http.Patch, "/api/v1/rules/" <> int.to_string(rule_id))
       |> fixtures.with_auth(member_session)
       |> simulate.json_body(
         json.object([
@@ -445,7 +445,7 @@ pub fn rules_project_scope_requires_project_manager_test() {
 
   let delete_res =
     handler(
-      simulate.request(http.Delete, "/api/v1/rules/" <> int_to_string(rule_id))
+      simulate.request(http.Delete, "/api/v1/rules/" <> int.to_string(rule_id))
       |> fixtures.with_auth(member_session),
     )
   expect.expect_status(delete_res, 403)
@@ -595,14 +595,10 @@ fn insert_rule_execution(
     )
     |> pog.parameter(pog.int(rule_id))
     |> pog.parameter(pog.text(
-      "task:" <> int_to_string(task_id) <> ":" <> suffix,
+      "task:" <> int.to_string(task_id) <> ":" <> suffix,
     ))
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
   Nil
-}
-
-fn int_to_string(value: Int) -> String {
-  int.to_string(value)
 }

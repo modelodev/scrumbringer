@@ -1264,7 +1264,10 @@ Estado de ejecucion:
   los wrappers locales duplicados de `tasks_http_test.gleam` y
   `notes_and_positions_http_test.gleam` sin perder los tests que validan
   ausencia de header `X-CSRF`.
-- Delta parcial WP-12: `-1.612` lineas netas mantenidas (`-44` del primer pase
+- `rules_http_test.gleam` deja de usar el helper local `int_to_string` y llama
+  directamente a `gleam/int.to_string`, igual que el pase previo aplicado en
+  `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam`.
+- Delta parcial WP-12: `-1.616` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1275,7 +1278,8 @@ Estado de ejecucion:
   API estandar, `-213` del pase de `fixtures.Session` tipado en
   `notes_and_positions_http_test.gleam`, `-300` del pase de
   `fixtures.Session` tipado en `tasks_http_test.gleam`, `-18` del pase de
-  `with_session_cookies` tipado en `fixtures.gleam`).
+  `with_session_cookies` tipado en `fixtures.gleam`, `-4` del pase de
+  `int.to_string` en `rules_http_test.gleam`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
