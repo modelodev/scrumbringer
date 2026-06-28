@@ -58,7 +58,7 @@ pub fn css() -> List(String) {
     ".capabilities-checklist .checkbox-label, .members-checklist .checkbox-label { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; transition: all 0.15s ease; }",
     ".capabilities-checklist .checkbox-label:hover, .members-checklist .checkbox-label:hover { background: var(--sb-hover); border-color: var(--sb-primary); }",
     ".capabilities-checklist input[type='checkbox'], .members-checklist input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--sb-primary); cursor: pointer; }",
-    ".capabilities-checklist .capability-name, .members-checklist .member-name, .members-checklist .member-email { font-size: var(--sb-font-md); font-weight: var(--sb-weight-medium); }",
+    ".capabilities-checklist .capability-name, .members-checklist .member-email { font-size: var(--sb-font-md); font-weight: var(--sb-weight-medium); }",
     // Story 4.8 UX: Table column alignment
     // Note: Never use display:flex on td elements - it breaks table-cell borders
     ".col-number, .cell-number { text-align: right; width: 80px; }",

@@ -74,7 +74,7 @@ pub fn css() -> List(String) {
     ".project-create-wizard__review-group ul { margin: 0; padding-left: 18px; color: var(--sb-text); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
     ".project-structure-settings { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sb-border); }",
     ".project-structure-settings__title { margin: 0; color: var(--sb-text); font-size: var(--sb-font-base); font-weight: var(--sb-weight-semibold); }",
-    ".project-structure-settings__hint, .project-structure-settings__summary { margin: 0; color: var(--sb-muted-strong); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
+    ".project-structure-settings__hint { margin: 0; color: var(--sb-muted-strong); font-size: var(--sb-font-sm); line-height: var(--sb-line-body); }",
     ".project-structure-settings__levels { display: grid; gap: 6px; }",
     ".project-structure-settings__level { min-height: 30px; display: grid; grid-template-columns: minmax(58px, auto) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--sb-border); border-radius: 6px; background: var(--sb-surface); color: var(--sb-text); font-size: var(--sb-font-sm); }",
     ".project-structure-settings__level-label { color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); white-space: nowrap; }",

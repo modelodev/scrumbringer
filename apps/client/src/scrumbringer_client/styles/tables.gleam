@@ -39,12 +39,7 @@ pub fn css() -> List(String) {
     ".templates-expansion { padding: 12px 16px; background: color-mix(in oklab, var(--sb-primary) 4%, var(--sb-surface)); border-radius: 8px; margin: 8px 0 0; border: 1px solid color-mix(in oklab, var(--sb-primary) 28%, var(--sb-border)); }",
     ".templates-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
     ".templates-title { font-weight: var(--sb-weight-semibold); font-size: var(--sb-font-base); color: var(--sb-text); }",
-    ".templates-empty { color: var(--sb-muted); font-size: var(--sb-font-base); font-style: italic; padding: 8px 0; }",
     ".templates-list { display: flex; flex-direction: column; gap: 6px; }",
-    ".template-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
-    ".template-name { font-size: var(--sb-font-base); font-weight: var(--sb-weight-medium); }",
-    ".template-item .btn-danger { padding: 2px 8px; font-size: var(--sb-font-md); line-height: 1; border-radius: 4px; }",
-    ".template-item .detaching { font-size: var(--sb-font-sm); color: var(--sb-muted); font-style: italic; }",
     // Story 4.10: AC2 - Clickable rule rows
     ".rule-row-expandable { cursor: pointer; transition: background 0.1s ease, border-color 0.1s ease; }",
     ".rule-row-expandable:hover { background: var(--sb-elevated); border-color: color-mix(in oklab, var(--sb-primary) 28%, var(--sb-border)); }",
