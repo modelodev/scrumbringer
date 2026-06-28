@@ -22,6 +22,4 @@ pub fn activity_page_decoder_reads_activity_and_pagination_test() {
   let assert [event] = events
   let assert "Task claimed" = event.summary
   let assert activity.Pagination(limit: 30, offset: 0, total: 45) = pagination
-  let assert True = activity.has_more(events, pagination)
-  let assert 1 = activity.next_offset(events, pagination)
 }

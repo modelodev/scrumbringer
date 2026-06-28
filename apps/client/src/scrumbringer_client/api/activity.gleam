@@ -5,7 +5,6 @@ import domain/activity/entity.{type ActivityEvent}
 import domain/api_error.{type ApiResult}
 import gleam/dynamic/decode
 import gleam/int
-import gleam/list
 import gleam/option
 import lustre/effect.{type Effect}
 import scrumbringer_client/api/core
@@ -93,15 +92,4 @@ fn pagination_decoder() -> decode.Decoder(Pagination) {
   use offset <- decode.field("offset", decode.int)
   use total <- decode.field("total", decode.int)
   decode.success(Pagination(limit: limit, offset: offset, total: total))
-}
-
-pub fn has_more(events: List(ActivityEvent), pagination: Pagination) -> Bool {
-  list.length(events) + pagination.offset < pagination.total
-}
-
-pub fn next_offset(events: List(ActivityEvent), pagination: Pagination) -> Int {
-  case list.length(events) {
-    0 -> pagination.offset + pagination.limit
-    count -> pagination.offset + count
-  }
 }
