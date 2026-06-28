@@ -1023,13 +1023,21 @@ Estado de ejecucion:
   - `people_workload_codec.person_to_json` pasa a ser privado porque solo es
     callback interno de `people_to_json`;
   - delta adicional: `-10` lineas mantenidas.
+- Micro-pase adicional de modulo cliente huerfano:
+  - retirado `apps/client/src/scrumbringer_client/workspace_state.gleam`; no
+    tenia importadores en `apps/client/src` y solo lo cubria
+    `workspace_state_test.gleam`;
+  - retirado `apps/client/test/workspace_state_test.gleam`, que verificaba la
+    API interna del modulo huerfano y no un contrato de producto o flujo
+    visible;
+  - delta adicional: `-487` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
-    (`1912 passed`);
+    (`1912 passed`; `1888 passed` tras retirar `workspace_state_test.gleam`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-852` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.339` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
