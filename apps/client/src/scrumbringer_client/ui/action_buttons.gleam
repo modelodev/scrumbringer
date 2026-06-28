@@ -320,22 +320,6 @@ pub fn delete_button_blocked_with_testid(
   )
 }
 
-pub fn add_button_with_size_and_testid(
-  title: String,
-  on_click: msg,
-  size: ButtonSize,
-  testid: Option(String),
-) -> Element(msg) {
-  add_icon_button_with_size_and_testid(
-    title,
-    on_click,
-    size,
-    icons.Plus,
-    testid,
-    None,
-  )
-}
-
 pub fn add_icon_button_with_size_and_testid(
   title: String,
   on_click: msg,

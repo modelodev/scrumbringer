@@ -942,7 +942,11 @@ Estado de ejecucion:
     `empty_inbox`, todos sin consumidores reales tras el pase de helpers
     publicos;
   - delta adicional: `-27` lineas mantenidas.
-- Delta acumulado WP-10 tras micro-pase: `-761` lineas mantenidas.
+- Micro-pase final UI:
+  - retirado `add_button_with_size_and_testid`, ultimo helper publico de UI con
+    una sola aparicion global;
+  - delta adicional: `-16` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-777` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
