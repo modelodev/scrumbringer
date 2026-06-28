@@ -308,6 +308,17 @@ fn with_member_tasks(
   })
 }
 
+fn person_model(user_id: Int, email: String, tasks: List(Task)) {
+  base_model()
+  |> with_people([workload_email(user_id, email)])
+  |> with_workload_tasks(tasks)
+}
+
+fn expanded_person_model(user_id: Int, email: String, tasks: List(Task)) {
+  person_model(user_id, email, tasks)
+  |> with_people_expanded(user_id)
+}
+
 fn refresh_test_workload(
   people: remote.Remote(List(PersonWorkload)),
   tasks: List(Task),
@@ -442,16 +453,8 @@ pub fn people_view_empty_roster_state_test() {
 
 pub fn people_view_no_results_state_test() {
   let model =
-    base_model()
-    |> with_people([workload_email(10, "alice@example.com")])
-    |> with_workload_tasks([])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(..pool, member_people_search_query: "zzz"),
-      )
-    })
+    person_model(10, "alice@example.com", [])
+    |> with_people_search("zzz")
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
   render_assertions.contains(html, "No people match your search")
@@ -490,10 +493,7 @@ pub fn people_view_availability_rules_test() {
 pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
   let tasks = [make_task(1, "Active task", 10, task_state.Ongoing)]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
+  let model = person_model(10, "ana@example.com", tasks)
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -567,11 +567,7 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
       |> task_on_card(103, "Billing", card.Purple),
   ]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", tasks)
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -595,11 +591,7 @@ pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
     |> task_on_card(101, "Observability", card.Purple),
   ]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", tasks)
 
   let html = render_people(model)
 
@@ -614,11 +606,7 @@ pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
 pub fn people_view_single_reserved_task_without_card_has_no_card_cta_test() {
   let tasks = [make_task(1, "Unscoped follow-up", 10, task_state.Taken)]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", tasks)
 
   let html = render_people(model)
 
@@ -638,11 +626,7 @@ pub fn people_view_groups_many_reserved_tasks_by_card_test() {
       |> task_on_card(102, "Release", card.Blue),
   ]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", tasks)
 
   let html = render_people(model)
 
@@ -669,11 +653,7 @@ pub fn people_view_grouped_reserved_cta_matrix_test() {
       |> task_on_card(102, "Release", card.Blue),
   ]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", tasks)
 
   let html = render_people(model)
 
@@ -723,11 +703,7 @@ pub fn people_view_grouped_reserved_tasks_use_card_header_without_legacy_scope_b
 }
 
 pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([])
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", [])
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -763,10 +739,9 @@ pub fn people_view_reflects_work_session_started_when_task_is_loaded_test() {
 
 pub fn people_view_expanded_row_accessibility_and_sections_test() {
   let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([make_task(1, "Active task", 10, task_state.Ongoing)])
-    |> with_people_expanded(10)
+    expanded_person_model(10, "ana@example.com", [
+      make_task(1, "Active task", 10, task_state.Ongoing),
+    ])
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -779,10 +754,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
 }
 
 pub fn people_view_uses_list_semantics_test() {
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "User #10")])
-    |> with_workload_tasks([])
+  let model = person_model(10, "User #10", [])
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -791,10 +763,7 @@ pub fn people_view_uses_list_semantics_test() {
 }
 
 pub fn people_view_toggle_is_keyboard_accessible_button_test() {
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([])
+  let model = person_model(10, "ana@example.com", [])
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -814,11 +783,7 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
     make_task(3, "Reserved parked", 10, task_state.Taken),
   ]
 
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let model = expanded_person_model(10, "ana@example.com", tasks)
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
 
@@ -831,10 +796,7 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
 }
 
 pub fn people_view_renders_header_scope_controls_and_body_test() {
-  let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([])
+  let model = person_model(10, "ana@example.com", [])
 
   let html = render_people(model)
 
@@ -864,11 +826,7 @@ pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
     make_task(4, "Grand task", 10, task_state.Taken)
       |> task_on_card(4, "Grand Story", card.Yellow),
   ]
-  let base =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks(tasks)
-    |> with_people_expanded(10)
+  let base = expanded_person_model(10, "ana@example.com", tasks)
 
   let project_html =
     base
@@ -1016,13 +974,10 @@ pub fn people_sort_orders_by_attention_name_and_reserved_test() {
 
 pub fn people_view_only_renders_open_action_for_other_people_test() {
   let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([
+    expanded_person_model(10, "ana@example.com", [
       make_task(1, "Ongoing task", 10, task_state.Ongoing),
       make_task(2, "Reserved task", 10, task_state.Taken),
     ])
-    |> with_people_expanded(10)
 
   let html = render_people(model)
 
@@ -1038,14 +993,11 @@ pub fn people_view_only_renders_open_action_for_other_people_test() {
 
 pub fn people_view_renders_contextual_actions_for_current_user_test() {
   let model =
-    base_model()
-    |> with_current_user(10)
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([
+    expanded_person_model(10, "ana@example.com", [
       make_task(1, "Ongoing task", 10, task_state.Ongoing),
       make_task(2, "Reserved task", 10, task_state.Taken),
     ])
-    |> with_people_expanded(10)
+    |> with_current_user(10)
 
   let html = render_people(model)
 
@@ -1061,9 +1013,7 @@ pub fn people_view_renders_contextual_actions_for_current_user_test() {
 pub fn people_view_card_scope_without_work_uses_empty_state_test() {
   let cards = [make_card(1, None, "Empty Initiative")]
   let model =
-    base_model()
-    |> with_people([workload_email(10, "ana@example.com")])
-    |> with_workload_tasks([])
+    person_model(10, "ana@example.com", [])
     |> with_scope(member_pool.PlanScopeCard, None, Some(1))
 
   let html = render_people_with_cards(model, cards)

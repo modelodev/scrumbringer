@@ -2862,6 +2862,28 @@ Estado de ejecucion:
   - total Gleam actual: `197.400` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.614` lineas;
   - deficit restante para `-20k`: `3.386` lineas.
+- Vigesimonoveno pase de fixtures de People View:
+  - extraidos en `people_view_test.gleam` los helpers privados `person_model` y
+    `expanded_person_model` para encapsular el setup repetido de una persona con
+    sus tareas y, cuando aplica, su fila expandida;
+  - migrados solo los escenarios de una persona donde el patron era identico;
+    los escenarios multi-persona siguen explicitos para no ocultar ordenacion,
+    scope ni reglas de ownership;
+  - conservadas todas las aserciones de render, accesibilidad, acciones
+    contextuales, separacion active/reserved y filtros por proyecto/card;
+  - delta adicional: `-50` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce duplicacion de
+    fixtures sin introducir API compartida ni cambiar el contrato visual probado;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el vigesimonoveno pase:
+  - total Gleam actual: `197.350` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.664` lineas;
+  - deficit restante para `-20k`: `3.336` lineas.
 
 ## Orden recomendado de ejecucion
 
