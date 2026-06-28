@@ -29,42 +29,6 @@ fn create_card_req(
   )
 }
 
-fn create_child_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  project_id: Int,
-  parent_card_id: Int,
-  title: String,
-) -> Result(Int, String) {
-  let res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
-      )
-      |> fixtures.with_auth(session)
-      |> simulate.json_body(
-        json.object([
-          #("title", json.string(title)),
-          #("description", json.string("desc")),
-          #("parent_card_id", json.int(parent_card_id)),
-        ]),
-      ),
-    )
-
-  case res.status {
-    200 ->
-      fixtures.decode_entity_id(simulate.read_body(res), fixtures.CardEntity)
-    status ->
-      Error(
-        "create_child_card failed: status="
-        <> int.to_string(status)
-        <> " body="
-        <> simulate.read_body(res),
-      )
-  }
-}
-
 fn activate_card(
   handler: fn(wisp.Request) -> wisp.Response,
   session: fixtures.Session,
@@ -339,9 +303,9 @@ pub fn activate_card_cascades_and_reports_descendant_pool_impact_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_id, "Child")
   let assert Ok(leaf_id) =
-    create_child_card(handler, session, project_id, child_id, "Leaf")
+    fixtures.create_child_card(handler, session, project_id, child_id, "Leaf")
   let assert Ok(_task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -382,9 +346,9 @@ pub fn close_card_blocks_claimed_descendant_task_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_id, "Child")
   let assert Ok(leaf_id) =
-    create_child_card(handler, session, project_id, child_id, "Leaf")
+    fixtures.create_child_card(handler, session, project_id, child_id, "Leaf")
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -414,7 +378,7 @@ pub fn close_card_closes_available_descendant_tasks_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_id, "Child")
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -561,7 +525,7 @@ pub fn create_task_rejects_card_with_child_cards_test() {
   let assert Ok(parent_id) =
     fixtures.create_card(handler, session, project_id, "Card group")
   let assert Ok(_child_id) =
-    create_child_card(handler, session, project_id, parent_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, parent_id, "Child")
 
   let res =
     create_task_with_card_response(
@@ -655,7 +619,7 @@ pub fn close_task_rolls_up_direct_parent_cards_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_id, "Child")
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -711,9 +675,21 @@ pub fn close_task_does_not_roll_up_when_child_card_stays_open_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Open child")
+    fixtures.create_child_card(
+      handler,
+      session,
+      project_id,
+      root_id,
+      "Open child",
+    )
   let assert Ok(task_leaf_id) =
-    create_child_card(handler, session, project_id, root_id, "Task leaf")
+    fixtures.create_child_card(
+      handler,
+      session,
+      project_id,
+      root_id,
+      "Task leaf",
+    )
   let assert Ok(task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -758,7 +734,7 @@ pub fn move_card_rejects_cycle_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_id, "Child")
 
   let res = move_card(handler, session, root_id, child_id)
 
@@ -777,7 +753,7 @@ pub fn move_card_rejects_destination_with_tasks_test() {
   let assert Ok(root_b_id) =
     fixtures.create_card(handler, session, project_id, "Root B")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_a_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_a_id, "Child")
   let assert Ok(_task_id) =
     fixtures.create_task_with_card(
       handler,
@@ -803,7 +779,7 @@ pub fn move_card_rejects_closed_destination_test() {
   let assert Ok(root_b_id) =
     fixtures.create_card(handler, session, project_id, "Root B")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_a_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_a_id, "Child")
 
   expect.expect_status(close_card(handler, session, root_b_id), 200)
   let res = move_card(handler, session, child_id, root_b_id)
@@ -822,9 +798,15 @@ pub fn move_card_allows_depth_change_test() {
   let assert Ok(root_b_id) =
     fixtures.create_card(handler, session, project_id, "Root B")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_a_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_a_id, "Child")
   let assert Ok(grandchild_id) =
-    create_child_card(handler, session, project_id, child_id, "Grandchild")
+    fixtures.create_child_card(
+      handler,
+      session,
+      project_id,
+      child_id,
+      "Grandchild",
+    )
 
   let res = move_card(handler, session, grandchild_id, root_b_id)
 
@@ -868,7 +850,7 @@ pub fn move_card_allows_child_card_to_project_root_test() {
   let assert Ok(root_id) =
     fixtures.create_card(handler, session, project_id, "Root")
   let assert Ok(child_id) =
-    create_child_card(handler, session, project_id, root_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, root_id, "Child")
 
   let res = move_card_to_root(handler, session, child_id)
 
@@ -985,7 +967,7 @@ pub fn delete_card_conflict_when_child_cards_exist_test() {
   let assert Ok(parent_id) =
     fixtures.create_card(handler, session, project_id, "Parent")
   let assert Ok(_child_id) =
-    create_child_card(handler, session, project_id, parent_id, "Child")
+    fixtures.create_child_card(handler, session, project_id, parent_id, "Child")
 
   let res =
     handler(

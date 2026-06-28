@@ -414,6 +414,10 @@ Estado de ejecucion:
   y FFI de entorno locales. Se conservan `create_card` y
   `create_task_with_card` porque sus payloads difieren de los helpers
   compartidos actuales.
+- `apps/server/test/cards_http_test.gleam` reutiliza
+  `fixtures.create_child_card` para setup jerarquico de cards, retirando el
+  helper local duplicado y manteniendo explicitos los nombres que cada escenario
+  necesita para el contrato.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -427,6 +431,7 @@ Estado de ejecucion:
   - reset DB local,
   - invite-link insert local,
   - query helpers locales,
+  - helper local de child card,
   - FFI local de `os.getenv`.
 - Delta por archivo:
   - `org_invites_http_test.gleam`: `-193` lineas netas;
@@ -441,8 +446,9 @@ Estado de ejecucion:
   - `projects_http_test.gleam`: `-436` lineas netas;
   - `tasks_http_test.gleam` primera pasada: `-186` lineas netas;
   - `notes_and_positions_http_test.gleam` primera pasada: `-147` lineas netas;
+  - `cards_http_test.gleam` pase child-card fixture: `-18` lineas netas;
   - `fixtures.gleam`: `+45` lineas netas;
-  - total parcial WP-01: `-3.272` lineas netas mantenidas.
+  - total parcial WP-01: `-3.290` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
