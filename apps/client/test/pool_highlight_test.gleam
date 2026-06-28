@@ -1,9 +1,7 @@
-import gleam/option.{None, Some}
+import support/domain_fixtures
 
 import domain/remote.{Loaded}
-import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
-import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
+import domain/task.{type Task, type TaskDependency, Task}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/highlight
 
@@ -12,40 +10,11 @@ fn default_pool() -> member_pool.Model {
 }
 
 fn make_dependency(depends_on_task_id: Int) -> TaskDependency {
-  TaskDependency(
-    depends_on_task_id: depends_on_task_id,
-    title: "Dependency",
-    state: task_state.Available,
-    claimed_by: None,
-  )
+  domain_fixtures.dependency(depends_on_task_id)
 }
 
 fn make_task(id: Int, dependencies: List(TaskDependency)) -> Task {
-  let state = task_state.Available
-
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Task",
-    description: Some("Task description"),
-    priority: 3,
-    state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: dependencies,
-    automation_origin: None,
-  )
+  Task(..domain_fixtures.task(id, "Task", 1), dependencies: dependencies)
 }
 
 pub fn blocking_for_task_sets_hidden_count_for_missing_blockers_test() {

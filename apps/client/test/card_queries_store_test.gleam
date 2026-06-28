@@ -1,66 +1,35 @@
 import gleam/int
 import gleam/option
+import support/domain_fixtures
 
-import domain/card.{type Card, Card, Draft}
+import domain/card.{type Card}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
-import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/utils/card_queries
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
-  Card(
-    id: id,
-    project_id: project_id,
-    parent_card_id: option.None,
-    title: title,
-    description: "",
-    color: option.None,
-    state: Draft,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-02-01T00:00:00Z",
-    due_date: option.None,
-    has_new_notes: False,
-  )
+  domain_fixtures.card(id, project_id, title)
 }
 
 fn make_child_card(id: Int, parent_id: Int, title: String) -> Card {
-  Card(..make_card(id, 10, title), parent_card_id: option.Some(parent_id))
+  domain_fixtures.child_card(id, 10, parent_id, title)
 }
 
 fn make_task(id: Int, card_id: Int) -> Task {
   Task(
-    id: id,
+    ..domain_fixtures.task(id, "Task " <> int.to_string(id), 1),
     project_id: 10,
-    type_id: 1,
     task_type: TaskTypeInline(id: 1, name: "Work", icon: "bolt"),
-    ongoing_by: option.None,
-    title: "Task " <> int_to_string(id),
     description: option.None,
-    priority: 3,
-    state: task_state.Available,
-    created_by: 1,
-    created_at: "2026-02-01T00:00:00Z",
-    due_date: option.None,
-    version: 1,
-    parent_card_id: option.None,
     card_id: option.Some(card_id),
-    card_title: option.None,
-    card_color: option.None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: option.None,
   )
 }
 
 fn card_id(card: Card) -> Int {
-  let Card(id: id, ..) = card
-  id
+  domain_fixtures.card_id(card)
 }
 
 pub fn find_card_uses_store_by_id_test() {
@@ -154,8 +123,4 @@ pub fn card_scope_defaults_to_closed_for_task_leaf_test() {
       member_pool.PlanScopeCard,
       option.Some(1),
     )
-}
-
-fn int_to_string(value: Int) -> String {
-  value |> int.to_string
 }

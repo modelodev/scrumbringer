@@ -2,11 +2,10 @@ import gleam/option.{None, Some}
 import gleam/string
 import lustre/effect
 import lustre/element
+import support/domain_fixtures
 
 import domain/remote.{Loaded}
-import domain/task.{type Task, Task}
-import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
+import domain/task.{type Task}
 import scrumbringer_client/capability_scope.{AllCapabilities}
 import scrumbringer_client/features/pool/available_tasks
 import scrumbringer_client/features/pool/task_created_feedback
@@ -16,30 +15,7 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/ui/toast
 
 fn make_task(id: Int, title: String, type_id: Int) -> Task {
-  let state = task_state.Available
-  Task(
-    id: id,
-    project_id: 1,
-    type_id: type_id,
-    task_type: TaskTypeInline(id: type_id, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: title,
-    description: Some("Task description"),
-    priority: 3,
-    state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
-  )
+  domain_fixtures.task(id, title, type_id)
 }
 
 pub fn created_task_visible_feedback_uses_view_action_test() {

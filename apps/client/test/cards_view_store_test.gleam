@@ -1,8 +1,9 @@
 import gleam/option
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
-import domain/card.{type Card, Card, Draft}
+import domain/card.{type Card}
 import domain/remote.{Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
@@ -16,26 +17,11 @@ import scrumbringer_client/state/normalized_store
 import scrumbringer_client/utils/card_queries
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
-  Card(
-    id: id,
-    project_id: project_id,
-    parent_card_id: option.None,
-    title: title,
-    description: "",
-    color: option.None,
-    state: Draft,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-02-01T00:00:00Z",
-    due_date: option.None,
-    has_new_notes: False,
-  )
+  domain_fixtures.card(id, project_id, title)
 }
 
 fn card_id(card: Card) -> Int {
-  let Card(id: id, ..) = card
-  id
+  domain_fixtures.card_id(card)
 }
 
 fn cards_config(model: client_state.Model) {

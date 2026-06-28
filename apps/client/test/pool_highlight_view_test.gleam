@@ -1,13 +1,12 @@
 import gleam/int
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import gleam/string
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/remote.{Loaded}
-import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
-import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
+import domain/task.{type Task, type TaskDependency, Task}
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
@@ -62,12 +61,7 @@ fn pool_context(model: client_state.Model) {
 }
 
 fn make_dependency(depends_on_task_id: Int) -> TaskDependency {
-  TaskDependency(
-    depends_on_task_id: depends_on_task_id,
-    title: "Dependency",
-    state: task_state.Available,
-    claimed_by: None,
-  )
+  domain_fixtures.dependency(depends_on_task_id)
 }
 
 fn make_task(
@@ -75,30 +69,10 @@ fn make_task(
   blocked_count: Int,
   dependencies: List(TaskDependency),
 ) -> Task {
-  let state = task_state.Available
-
   Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Task " <> int.to_string(id),
-    description: Some("Task description"),
-    priority: 3,
-    state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
+    ..domain_fixtures.task(id, "Task " <> int.to_string(id), 1),
     blocked_count: blocked_count,
     dependencies: dependencies,
-    automation_origin: None,
   )
 }
 

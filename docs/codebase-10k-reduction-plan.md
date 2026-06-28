@@ -1347,7 +1347,12 @@ Estado de ejecucion:
   semantica: los tests de i18n siguen comprobando texto no-blanco tras `trim`,
   mientras `ui_loading_test.gleam` reutiliza `assert_non_empty` para HTML no
   vacio.
-- Delta parcial WP-12: `-2.276` lineas netas mantenidas (`-44` del primer pase
+- `apps/client/test/support/domain_fixtures.gleam` centraliza fixtures de
+  dominio para tests de cliente (`Card`, `Task`, `TaskDependency` y extractor
+  `card_id`). Se retiran builders locales repetidos en tests de store,
+  cache de cards, feedback de task creada y highlights de bloqueo, manteniendo
+  overrides explicitos para los campos relevantes de cada escenario.
+- Delta parcial WP-12: `-2.361` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1366,7 +1371,8 @@ Estado de ejecucion:
   `tasks_http_test.gleam`, `-141` del pase de `require_data` para payloads
   HTTP no-lista, `-3` del pase de helpers `require_query_string/bool`, `-56`
   del pase de aserciones compartidas en tests de cliente, `-8` del pase de
-  aserciones de strings compartidas en tests de cliente).
+  aserciones de strings compartidas en tests de cliente, `-85` del pase de
+  fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

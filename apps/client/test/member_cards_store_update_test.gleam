@@ -1,5 +1,5 @@
 import domain/api_error.{type ApiError, ApiError}
-import domain/card.{type Card, Active, Card, Draft}
+import domain/card.{type Card, Active, Card}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import gleam/option
 import scrumbringer_client/client_state
@@ -9,28 +9,14 @@ import scrumbringer_client/client_update
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/state/normalized_store
 import support/assertions.{assert_equal, assert_not_equal}
+import support/domain_fixtures
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
-  Card(
-    id: id,
-    project_id: project_id,
-    parent_card_id: option.None,
-    title: title,
-    description: "",
-    color: option.None,
-    state: Draft,
-    task_count: 0,
-    closed_count: 0,
-    created_by: 1,
-    created_at: "2026-02-01T00:00:00Z",
-    due_date: option.None,
-    has_new_notes: False,
-  )
+  domain_fixtures.card(id, project_id, title)
 }
 
 fn card_id(card: Card) -> Int {
-  let Card(id: id, ..) = card
-  id
+  domain_fixtures.card_id(card)
 }
 
 fn api_error() -> ApiError {
