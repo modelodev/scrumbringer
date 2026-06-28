@@ -1307,13 +1307,17 @@ Estado de ejecucion:
   antiguas y selectores compuestos ya sin markup.
 - Noveno pase i18n: retirada la clave `CreateFirstTaskToStartUsingPool` de
   `Text`, `en` y `es` tras eliminar el unico componente que la consumia.
+- Decimo pase de estilos: retiradas reglas del antiguo `ui/icon_picker`
+  preventivo (`icon-picker-search`, tabs, item/label/empty states) tras borrar
+  el modulo sin consumidores; se preservan las clases usadas por el picker real
+  conectado en `task_type_crud_dialog`.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
   adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
   Delta adicional del sexto pase: `-53` lineas mantenidas. Delta adicional del
   septimo pase: `-47` lineas mantenidas. Delta adicional del octavo pase:
   `-28` lineas mantenidas. Delta adicional del noveno pase: `-5` lineas
-  mantenidas.
+  mantenidas. Delta adicional del decimo pase: `-12` lineas mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
@@ -1332,6 +1336,8 @@ Estado de ejecucion:
   - Barrido exacto de clases retiradas del octavo pase dentro de
     `attribute.class(...)` contra `apps/client/src` y `apps/client/test`,
     excluyendo `styles/*.gleam`, sin consumidores.
+  - `cd apps/client && gleam format --check src test && gleam test`
+    (`1859 passed`) tras retirar estilos muertos del icon picker preventivo.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 
@@ -2183,4 +2189,4 @@ anterior:
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; tooltips UI e `ui/icon_picker` sin consumidores ya retirados. Repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
 | Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability y el predicado canonico de bloqueo usado por `blocking_status`/Card Show. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
-| Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; repetir comparacion de clases usadas en views contra `styles/*`. |
+| Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; restos del antiguo `ui/icon_picker` ya retirados preservando el picker real conectado. Repetir comparacion de clases usadas en views contra `styles/*`. |
