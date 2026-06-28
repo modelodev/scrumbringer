@@ -1,7 +1,6 @@
 import fixtures as fx
 import gleam/dynamic/decode
 import gleam/http
-import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
@@ -22,6 +21,11 @@ type ResourceViewFixture {
     card_id: Int,
     task_id: Int,
   )
+}
+
+type NoteTarget {
+  TaskNotes(Int)
+  CardNotes(Int)
 }
 
 pub fn main() {
@@ -54,20 +58,15 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   let task_id =
     fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
-  let note_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-    )
-    |> fx.with_auth(member2_session)
-    |> simulate.json_body(
-      json.object([
-        #("content", json.string("Investigating")),
-        #("url", json.string("https://example.com/task-note")),
-      ]),
+  let note_res =
+    create_note_with_url_response(
+      handler,
+      member2_session,
+      TaskNotes(task_id),
+      "Investigating",
+      "https://example.com/task-note",
     )
 
-  let note_res = handler(note_req)
   expect.expect_status(note_res, 200)
   decode_note_content(simulate.read_body(note_res))
   |> expect.equal("Investigating")
@@ -75,46 +74,18 @@ pub fn task_notes_create_and_available_task_patch_allow_project_member_test() {
   |> expect.equal(#("https://example.com/task-note", False, True))
   let note_id = decode_note_id(simulate.read_body(note_res))
 
-  let pin_by_non_author =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/"
-        <> int.to_string(task_id)
-        <> "/notes/"
-        <> int.to_string(note_id)
-        <> "/pin",
-    )
-    |> fx.with_auth(member1_session)
+  expect.expect_status(
+    pin_note_response(handler, member1_session, TaskNotes(task_id), note_id),
+    403,
+  )
 
-  expect.expect_status(handler(pin_by_non_author), 403)
-
-  let pin_by_author =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/"
-        <> int.to_string(task_id)
-        <> "/notes/"
-        <> int.to_string(note_id)
-        <> "/pin",
-    )
-    |> fx.with_auth(member2_session)
-
-  let pin_res = handler(pin_by_author)
+  let pin_res =
+    pin_note_response(handler, member2_session, TaskNotes(task_id), note_id)
   expect.expect_status(pin_res, 200)
   decode_note_pinned(simulate.read_body(pin_res)) |> expect.equal(True)
 
-  let unpin_by_author =
-    simulate.request(
-      http.Delete,
-      "/api/v1/tasks/"
-        <> int.to_string(task_id)
-        <> "/notes/"
-        <> int.to_string(note_id)
-        <> "/pin",
-    )
-    |> fx.with_auth(member2_session)
-
-  let unpin_res = handler(unpin_by_author)
+  let unpin_res =
+    unpin_note_response(handler, member2_session, TaskNotes(task_id), note_id)
   expect.expect_status(unpin_res, 200)
   decode_note_pinned(simulate.read_body(unpin_res)) |> expect.equal(False)
 
@@ -158,36 +129,17 @@ pub fn task_notes_list_requires_task_membership_test() {
     fx.require_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let _ =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-      )
-      |> fx.with_auth(member_session)
-      |> simulate.json_body(json.object([#("content", json.string("One"))])),
-    )
+    create_note_response(handler, member_session, TaskNotes(task_id), "One")
 
   let member_list_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-      )
-      |> fx.with_session_cookies(member_session),
-    )
+    list_notes_response(handler, member_session, TaskNotes(task_id))
 
   expect.expect_status(member_list_res, 200)
   decode_note_list_contents(simulate.read_body(member_list_res))
   |> expect.equal(["One"])
 
-  let outsider_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-    )
-    |> fx.with_session_cookies(outsider_session)
-
-  let outsider_res = handler(outsider_req)
+  let outsider_res =
+    list_notes_response(handler, outsider_session, TaskNotes(task_id))
   expect.expect_status(outsider_res, 404)
   string.contains(simulate.read_body(outsider_res), "NOT_FOUND")
   |> expect.is_true
@@ -237,41 +189,22 @@ pub fn task_notes_can_be_deleted_by_author_and_patch_item_is_not_allowed_test() 
   expect.expect_status(patch_collection_res, 405)
 
   let note_res =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-      )
-      |> fx.with_auth(member_session)
-      |> simulate.json_body(
-        json.object([#("content", json.string("Remove me"))]),
-      ),
+    create_note_response(
+      handler,
+      member_session,
+      TaskNotes(task_id),
+      "Remove me",
     )
   expect.expect_status(note_res, 200)
   let note_id = decode_note_id(simulate.read_body(note_res))
 
   let delete_item_res =
-    handler(
-      simulate.request(
-        http.Delete,
-        "/api/v1/tasks/"
-          <> int.to_string(task_id)
-          <> "/notes/"
-          <> int.to_string(note_id),
-      )
-      |> fx.with_auth(member_session),
-    )
+    delete_note_response(handler, member_session, TaskNotes(task_id), note_id)
 
   expect.expect_status(delete_item_res, 204)
 
   let list_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-      )
-      |> request.set_cookie("sb_session", member_session.token),
-    )
+    list_notes_response(handler, member_session, TaskNotes(task_id))
 
   expect.expect_status(list_res, 200)
   decode_note_list_contents(simulate.read_body(list_res))
@@ -344,36 +277,17 @@ pub fn card_notes_list_requires_card_membership_test() {
   let card_id = fx.require_card(handler, admin_session, project_id, "Card")
 
   let _ =
-    handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-      )
-      |> fx.with_auth(member_session)
-      |> simulate.json_body(json.object([#("content", json.string("One"))])),
-    )
+    create_note_response(handler, member_session, CardNotes(card_id), "One")
 
   let member_list_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-      )
-      |> fx.with_session_cookies(member_session),
-    )
+    list_notes_response(handler, member_session, CardNotes(card_id))
 
   expect.expect_status(member_list_res, 200)
   decode_note_list_contents(simulate.read_body(member_list_res))
   |> expect.equal(["One"])
 
-  let outsider_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-    )
-    |> fx.with_session_cookies(outsider_session)
-
-  let outsider_res = handler(outsider_req)
+  let outsider_res =
+    list_notes_response(handler, outsider_session, CardNotes(card_id))
   expect.expect_status(outsider_res, 404)
   string.contains(simulate.read_body(outsider_res), "NOT_FOUND")
   |> expect.is_true
@@ -412,14 +326,7 @@ pub fn card_notes_list_orders_by_created_at_test() {
     "2026-02-01T11:00:00Z",
   )
 
-  let list_res =
-    handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-      )
-      |> fx.with_session_cookies(admin_session),
-    )
+  let list_res = list_notes_response(handler, admin_session, CardNotes(card_id))
 
   expect.expect_status(list_res, 200)
   decode_note_list_contents(simulate.read_body(list_res))
@@ -449,122 +356,65 @@ pub fn card_notes_create_and_delete_permissions_test() {
 
   let card_id = fx.require_card(handler, admin_session, project_id, "Card")
 
-  let note_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-    )
-    |> fx.with_auth(member1_session)
-    |> simulate.json_body(
-      json.object([
-        #("content", json.string("Note")),
-        #("url", json.string("https://example.com/card-note")),
-      ]),
+  let note_res =
+    create_note_with_url_response(
+      handler,
+      member1_session,
+      CardNotes(card_id),
+      "Note",
+      "https://example.com/card-note",
     )
 
-  let note_res = handler(note_req)
   expect.expect_status(note_res, 200)
   decode_created_note_contract(simulate.read_body(note_res))
   |> expect.equal(#("https://example.com/card-note", False, True))
   let note_id = decode_note_id(simulate.read_body(note_res))
 
-  let pin_forbidden =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id)
-        <> "/pin",
-    )
-    |> fx.with_auth(member2_session)
+  expect.expect_status(
+    pin_note_response(handler, member2_session, CardNotes(card_id), note_id),
+    403,
+  )
 
-  expect.expect_status(handler(pin_forbidden), 403)
-
-  let pin_by_author =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id)
-        <> "/pin",
-    )
-    |> fx.with_auth(member1_session)
-
-  let pin_res = handler(pin_by_author)
+  let pin_res =
+    pin_note_response(handler, member1_session, CardNotes(card_id), note_id)
   expect.expect_status(pin_res, 200)
   decode_note_pinned(simulate.read_body(pin_res)) |> expect.equal(True)
 
-  let unpin_by_author =
-    simulate.request(
-      http.Delete,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id)
-        <> "/pin",
-    )
-    |> fx.with_auth(member1_session)
-
-  let unpin_res = handler(unpin_by_author)
+  let unpin_res =
+    unpin_note_response(handler, member1_session, CardNotes(card_id), note_id)
   expect.expect_status(unpin_res, 200)
   decode_note_pinned(simulate.read_body(unpin_res)) |> expect.equal(False)
 
-  let delete_forbidden =
-    simulate.request(
-      http.Delete,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id),
+  expect.expect_status(
+    delete_note_response(handler, member2_session, CardNotes(card_id), note_id),
+    403,
+  )
+
+  expect.expect_status(
+    delete_note_response(handler, member1_session, CardNotes(card_id), note_id),
+    204,
+  )
+
+  let note_res_2 =
+    create_note_with_url_response(
+      handler,
+      member1_session,
+      CardNotes(card_id),
+      "Note",
+      "https://example.com/card-note",
     )
-    |> fx.with_auth(member2_session)
-
-  expect.expect_status(handler(delete_forbidden), 403)
-
-  let delete_author =
-    simulate.request(
-      http.Delete,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id),
-    )
-    |> fx.with_auth(member1_session)
-
-  expect.expect_status(handler(delete_author), 204)
-
-  let note_res_2 = handler(note_req)
   expect.expect_status(note_res_2, 200)
   let note_id_2 = decode_note_id(simulate.read_body(note_res_2))
 
-  let pin_by_admin =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id_2)
-        <> "/pin",
-    )
-    |> fx.with_auth(admin_session)
-
-  let admin_pin_res = handler(pin_by_admin)
+  let admin_pin_res =
+    pin_note_response(handler, admin_session, CardNotes(card_id), note_id_2)
   expect.expect_status(admin_pin_res, 200)
   decode_note_pinned(simulate.read_body(admin_pin_res)) |> expect.equal(True)
 
-  let delete_admin =
-    simulate.request(
-      http.Delete,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(note_id_2),
-    )
-    |> fx.with_auth(admin_session)
-
-  expect.expect_status(handler(delete_admin), 204)
+  expect.expect_status(
+    delete_note_response(handler, admin_session, CardNotes(card_id), note_id_2),
+    204,
+  )
 }
 
 pub fn card_notes_create_requires_csrf_test() {
@@ -614,15 +464,10 @@ pub fn card_notes_indicator_updates_after_view_test() {
 
   let card_id = fx.require_card(handler, admin_session, project_id, "Card")
 
-  let note_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-    )
-    |> fx.with_auth(member_session)
-    |> simulate.json_body(json.object([#("content", json.string("Note"))]))
-
-  expect.expect_status(handler(note_req), 200)
+  expect.expect_status(
+    create_note_response(handler, member_session, CardNotes(card_id), "Note"),
+    200,
+  )
 
   let list_req =
     simulate.request(
@@ -669,15 +514,10 @@ pub fn task_notes_indicator_updates_after_view_test() {
   let task_id =
     fx.require_task(handler, admin_session, project_id, "Task", "", 3, type_id)
 
-  let note_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-    )
-    |> fx.with_auth(member_session)
-    |> simulate.json_body(json.object([#("content", json.string("Note"))]))
-
-  expect.expect_status(handler(note_req), 200)
+  expect.expect_status(
+    create_note_response(handler, member_session, TaskNotes(task_id), "Note"),
+    200,
+  )
 
   let list_req =
     simulate.request(
@@ -1002,6 +842,100 @@ fn insert_note_with_created_at(
 
 fn decode_note_id(body: String) -> Int {
   fx.require_entity_id(body, fx.NoteEntity)
+}
+
+fn create_note_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fx.Session,
+  target: NoteTarget,
+  content: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, notes_path(target))
+    |> fx.with_auth(session)
+    |> simulate.json_body(json.object([#("content", json.string(content))])),
+  )
+}
+
+fn create_note_with_url_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fx.Session,
+  target: NoteTarget,
+  content: String,
+  url: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, notes_path(target))
+    |> fx.with_auth(session)
+    |> simulate.json_body(
+      json.object([
+        #("content", json.string(content)),
+        #("url", json.string(url)),
+      ]),
+    ),
+  )
+}
+
+fn list_notes_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fx.Session,
+  target: NoteTarget,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Get, notes_path(target))
+    |> fx.with_session_cookies(session),
+  )
+}
+
+fn pin_note_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fx.Session,
+  target: NoteTarget,
+  note_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, note_pin_path(target, note_id))
+    |> fx.with_auth(session),
+  )
+}
+
+fn unpin_note_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fx.Session,
+  target: NoteTarget,
+  note_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Delete, note_pin_path(target, note_id))
+    |> fx.with_auth(session),
+  )
+}
+
+fn delete_note_response(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: fx.Session,
+  target: NoteTarget,
+  note_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Delete, note_path(target, note_id))
+    |> fx.with_auth(session),
+  )
+}
+
+fn notes_path(target: NoteTarget) -> String {
+  case target {
+    TaskNotes(task_id) -> "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes"
+    CardNotes(card_id) -> "/api/v1/cards/" <> int.to_string(card_id) <> "/notes"
+  }
+}
+
+fn note_path(target: NoteTarget, note_id: Int) -> String {
+  notes_path(target) <> "/" <> int.to_string(note_id)
+}
+
+fn note_pin_path(target: NoteTarget, note_id: Int) -> String {
+  note_path(target, note_id) <> "/pin"
 }
 
 fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {

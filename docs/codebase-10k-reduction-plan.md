@@ -438,6 +438,11 @@ Estado de ejecucion:
   `rg "/claim|/release|/close" apps/server/test/tasks_http_test.gleam` ya solo
   encuentra endpoints distintos (`release-all-tasks`) o comentarios, no
   construccion manual de requests de acciones basicas.
+- Pase local de notas HTTP aplicado a `notes_and_positions_http_test`: se
+  introduce el ADT local `NoteTarget` y helpers privados de `create/list/pin`
+  para notas de task y card. El test conserva requests directos cuando el
+  metodo o CSRF invalido es el contrato observado, y reduce
+  `simulate.request` de 47 a 29 apariciones.
 - `apps/server/test/fixtures.gleam` expone `new_app` y `reset_database` para
   tests que necesitan arrancar antes del registro inicial sin reintroducir FFI
   local ni truncates divergentes. Tambien expone `default_project_id` para
@@ -473,9 +478,11 @@ Estado de ejecucion:
   - acciones HTTP compartidas de task en tests: `-74` lineas netas;
   - segundo pase de acciones HTTP de task en `tasks_http_test.gleam`: `-64`
     lineas netas;
+  - pase local de notas HTTP en `notes_and_positions_http_test.gleam`: `-66`
+    lineas netas;
   - `fixtures.gleam` en migraciones base: `+45` lineas netas; los incrementos
     posteriores quedan incluidos en los micro-pases compartidos;
-  - total parcial WP-01: `-3.441` lineas netas mantenidas.
+  - total parcial WP-01: `-3.507` lineas netas mantenidas.
 - Verificacion:
   - `cd apps/server && gleam format src test && gleam build`;
   - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`559 passed`).
