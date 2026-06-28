@@ -7,7 +7,6 @@ pub fn css() -> List(String) {
     ".toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }",
     ".toast-dismiss { padding: 2px 8px; line-height: 1; }",
     ".icon-row { display: flex; gap: 8px; align-items: center; }",
-    ".icon-preview { width: 32px; height: 32px; border: 1px solid var(--sb-border); border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--sb-elevated); }",
     // Icon picker grid styles
     ".icon-picker { display: flex; flex-direction: column; gap: 12px; margin-top: 0; }",
     ".form-control { min-height: 40px; padding: 8px 12px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-surface); font-size: var(--sb-font-md); }",
@@ -31,9 +30,6 @@ pub fn css() -> List(String) {
     ".icon-picker-icon { display: flex; align-items: center; justify-content: center; }",
     ".icon-picker-label { font-size: var(--sb-font-xs); color: var(--sb-muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }",
     ".icon-picker-empty { padding: 24px; text-align: center; color: var(--sb-muted); font-style: italic; }",
-    // Icon preview for selected icon
-    ".icon-preview-selected { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: color-mix(in oklab, var(--sb-primary) 8%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-primary) 30%, var(--sb-border)); border-radius: 10px; margin-bottom: 12px; }",
-    ".icon-preview-name { font-weight: var(--sb-weight-medium); font-family: var(--sb-font-mono); font-size: var(--sb-font-base); color: var(--sb-text); }",
     // Icon theme class for dark mode
     ".icon-theme-dark { color: var(--sb-text-soft); }",
     ".icon-theme-dark svg { filter: none; }",

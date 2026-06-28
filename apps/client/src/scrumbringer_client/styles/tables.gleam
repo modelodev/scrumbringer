@@ -22,8 +22,6 @@ pub fn css() -> List(String) {
     ".expansion-content .table { background: var(--sb-elevated); border-radius: 8px; overflow: hidden; }",
     ".expansion-content .table th { background: var(--sb-surface); font-size: var(--sb-font-xs); padding: 8px 10px; }",
     ".expansion-content .table td { padding: 8px 10px; font-size: var(--sb-font-md); }",
-    ".col-expand { width: 40px; text-align: center; }",
-    ".cell-expand { text-align: center; }",
     ".btn-expand { background: transparent; border: none; padding: 4px 8px; cursor: pointer; font-size: var(--sb-font-sm); color: var(--sb-muted); border-radius: 4px; }",
     ".btn-expand:hover { background: var(--sb-elevated); color: var(--sb-text); }",
     ".automation-rule-list { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; }",
@@ -57,18 +55,6 @@ pub fn css() -> List(String) {
     ".cell-no-expand * { position: relative; z-index: 1; }",
     // Story 4.10: AC5 - Expand icon (triangles)
     ".rule-expand-icon { display: inline-flex; align-items: center; justify-content: center; font-size: var(--sb-font-sm); color: var(--sb-muted); width: 16px; }",
-    // Story 4.10: AC6-8 - Status indicators
-    ".cell-status { text-align: center; width: 50px; }",
-    ".rule-complete-indicator { color: var(--sb-success-text); }",
-    ".rule-incomplete-indicator { color: var(--sb-warning-text); cursor: help; }",
-    ".rule-inactive-indicator { color: var(--sb-muted); }",
-    // Resource type cell with task type info
-    ".cell-resource-type { white-space: nowrap; }",
-    ".resource-type-task { display: inline-flex; align-items: center; }",
-    ".resource-type-separator { color: var(--sb-muted); margin: 0 2px; }",
-    ".task-type-inline { display: inline-flex; align-items: center; vertical-align: middle; }",
-    ".task-type-inline svg { width: 14px; height: 14px; }",
-    ".cell-rule-sentence { min-width: 260px; }",
     ".automation-rule-sentence { display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: var(--sb-line-body); }",
     ".automation-rule-sentence__when { color: var(--sb-text-strong); font-weight: var(--sb-weight-medium); overflow-wrap: anywhere; }",
     ".automation-rule-sentence__effect { color: var(--sb-muted-strong); font-size: var(--sb-font-sm); overflow-wrap: anywhere; }",
@@ -91,19 +77,8 @@ pub fn css() -> List(String) {
     ".templates-empty-hint { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 12px; text-align: center; color: var(--sb-muted); }",
     ".templates-empty-hint .hint-icon { color: var(--sb-primary); opacity: 0.6; }",
     ".templates-empty-hint p { margin: 0; font-size: var(--sb-font-base); line-height: var(--sb-line-body); }",
-    // Story 4.10: AC12 - Radio buttons in modal
-    ".radio-group { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }",
-    ".template-radio-list { margin-bottom: 12px; }",
-    ".radio-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-surface); cursor: pointer; transition: all 0.1s ease; }",
-    ".radio-option:hover { border-color: var(--sb-primary); background: var(--sb-elevated); }",
-    ".radio-option.selected { border-color: var(--sb-primary); background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); }",
-    ".radio-option input[type=radio] { width: 16px; height: 16px; margin: 0; accent-color: var(--sb-primary); cursor: pointer; }",
-    ".radio-label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }",
-    ".radio-label .template-name { font-size: var(--sb-font-md); font-weight: var(--sb-weight-medium); flex: 1; }",
-    ".radio-label .template-priority { font-size: var(--sb-font-xs); color: var(--sb-muted); background: var(--sb-surface); padding: 2px 6px; border-radius: 4px; }",
     // Form hints
     ".form-hint { font-size: var(--sb-font-base); line-height: var(--sb-line-body); color: var(--sb-muted); margin-bottom: 8px; }",
-    ".form-hint-secondary { display: flex; align-items: center; gap: 4px; font-size: var(--sb-font-sm); line-height: var(--sb-line-body); color: var(--sb-muted); margin-top: 8px; }",
     ".form-group .select { width: 100%; padding: 10px 12px; font-size: var(--sb-font-md); }",
     // Metric cells in tables
     ".metric-cell { text-align: center; }",
@@ -112,7 +87,6 @@ pub fn css() -> List(String) {
     ".metric.suppressed { background: color-mix(in oklab, var(--sb-warning) 15%, transparent); color: var(--sb-warning-text); }",
     "@media (max-width: 640px) { .rule-row { grid-template-columns: minmax(0, 1fr); align-items: stretch; } .rule-row__title { align-items: flex-start; } .rule-row__actions { justify-content: flex-start; } .templates-expansion { padding: 10px 12px; } }",
     // Assignments view patterns (shared table/admin language)
-    ".assignments-toolbar-card { padding: 10px 12px; margin-bottom: 12px; }",
     ".assignments-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }",
     ".assignments-toggle-field { min-width: 260px; }",
     ".assignments-toggle { width: 100%; }",
@@ -144,6 +118,6 @@ pub fn css() -> List(String) {
     ".assignments-card-body > .btn-sm { margin-top: 8px; }",
     ".assignments-inline-add input, .assignments-inline-add select, .assignments-row select { min-height: 32px; }",
     ".assignments-empty { color: var(--sb-muted); font-size: var(--sb-font-base); }",
-    "@media (max-width: 768px) { .assignments-toolbar-card { padding: 8px 10px; } .assignments-toolbar { align-items: stretch; } .assignments-toggle-field, .assignments-search { min-width: 0; width: 100%; } .assignments-table thead { position: absolute; top: -9999px; left: -9999px; } .assignments-table tbody tr.assignments-table-row { display: block; padding: 10px 0; } .assignments-table tbody tr.assignments-table-row td { display: block; width: 100%; border: 0; padding: 4px 0; } .assignments-meta-cell { text-align: left; } .assignments-row { grid-template-columns: 1fr; align-items: stretch; } .assignments-row-title { white-space: normal; } .assignments-row select { width: 100%; } .assignments-row-actions { width: 100%; justify-content: flex-end; } }",
+    "@media (max-width: 768px) { .assignments-toolbar { align-items: stretch; } .assignments-toggle-field, .assignments-search { min-width: 0; width: 100%; } .assignments-table thead { position: absolute; top: -9999px; left: -9999px; } .assignments-table tbody tr.assignments-table-row { display: block; padding: 10px 0; } .assignments-table tbody tr.assignments-table-row td { display: block; width: 100%; border: 0; padding: 4px 0; } .assignments-meta-cell { text-align: left; } .assignments-row { grid-template-columns: 1fr; align-items: stretch; } .assignments-row-title { white-space: normal; } .assignments-row select { width: 100%; } .assignments-row-actions { width: 100%; justify-content: flex-end; } }",
   ]
 }

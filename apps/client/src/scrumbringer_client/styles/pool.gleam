@@ -8,7 +8,6 @@ pub fn css() -> List(String) {
     ".task-card.task-blocked { border-color: color-mix(in oklab, var(--sb-warning) 32%, var(--sb-border)); background: color-mix(in oklab, var(--sb-surface) 92%, var(--sb-warning) 8%); }",
     ".task-card:hover, .task-card:focus-within { z-index: 40; overflow: visible; box-shadow: 0 10px 30px rgba(0,0,0,0.18); }",
     ".task-card-top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; gap: 6px; align-items: center; z-index: 2; }",
-    ".task-card-type-icon { display: none; }",
     ".task-card-actions-left { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }",
     ".task-card-actions-right { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }",
     ".task-card-primary-action { width: 28px; min-width: 28px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--sb-primary-subtle-border); border-radius: 8px; background: var(--sb-primary-subtle-bg); color: var(--sb-primary); font-size: var(--sb-font-sm); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-tight); cursor: pointer; box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
@@ -56,10 +55,6 @@ pub fn css() -> List(String) {
     ".task-preview-note-content { font-size: var(--sb-font-sm); color: var(--sb-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
     ".task-preview-actions { margin-top: 10px; display: flex; justify-content: flex-end; }",
     ".task-preview-btn { font-size: var(--sb-font-sm); }",
-    ".task-preview-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--sb-radius-pill); border: 1px solid var(--sb-border); background: color-mix(in oklab, var(--sb-elevated) 70%, transparent); font-weight: var(--sb-weight-semibold); font-size: var(--sb-font-sm); }",
-    ".task-preview-badge-available { border-color: color-mix(in oklab, var(--sb-primary) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-elevated)); }",
-    ".task-preview-badge-claimed { border-color: color-mix(in oklab, var(--sb-info) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-info) 12%, var(--sb-elevated)); }",
-    ".task-preview-badge-ongoing { border-color: color-mix(in oklab, var(--sb-warning) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 14%, var(--sb-elevated)); }",
     ".task-card-preview::before { content: \"\"; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); border-width: 8px 8px 8px 0; border-style: solid; border-color: transparent var(--sb-elevated) transparent transparent; }",
     ".task-card-preview::after { content: \"\"; position: absolute; left: -9px; top: 50%; transform: translateY(-50%); border-width: 9px 9px 9px 0; border-style: solid; border-color: transparent var(--sb-border) transparent transparent; }",
     ".task-card.preview-left .task-card-preview::before { left: auto; right: -8px; border-width: 8px 0 8px 8px; border-color: transparent transparent transparent var(--sb-elevated); }",
@@ -76,9 +71,6 @@ pub fn css() -> List(String) {
     ".task-row-meta { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--sb-muted); font-size: var(--sb-font-base); }",
     ".task-automation-origin { display: inline-flex; align-items: center; min-height: 20px; padding: 1px 7px; border: 1px solid color-mix(in oklab, var(--sb-primary) 30%, var(--sb-border)); border-radius: var(--sb-radius-pill); background: color-mix(in oklab, var(--sb-primary) 7%, var(--sb-surface)); color: var(--sb-primary); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-tight); }",
     ".task-row-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }",
-    ".skills-list { display: flex; flex-direction: column; gap: 6px; }",
-    ".skill-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 12px; background: var(--sb-elevated); }",
-    ".skill-name { font-weight: var(--sb-weight-semibold); }",
     // Now Working section in right panel (unified layout)
     ".now-working-section { padding: 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 10px; margin-bottom: 12px; }",
     ".now-working-section.now-working-active { background: color-mix(in oklab, var(--sb-primary) 8%, var(--sb-elevated)); border-color: color-mix(in oklab, var(--sb-primary) 30%, var(--sb-border)); position: relative; }",
@@ -89,7 +81,6 @@ pub fn css() -> List(String) {
     ".now-working-section .now-working-timer { font-size: var(--sb-font-3xl); font-weight: var(--sb-weight-semibold); font-family: var(--sb-font-mono); font-variant-numeric: tabular-nums; line-height: var(--sb-line-tight); text-align: center; margin: 8px 0; }",
     ".now-working-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }",
     ".now-working-empty { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 8px 0; color: var(--sb-muted); font-style: italic; }",
-    ".now-working-empty-icon { font-size: 1.2em; opacity: 0.7; }",
     ".now-working-section .now-working-actions { justify-content: center; }",
     // Multi-session support for EN CURSO panel
     ".now-working-multi { padding: 8px; }",
@@ -100,8 +91,6 @@ pub fn css() -> List(String) {
     ".now-working-session-item .now-working-task-title { font-size: var(--sb-font-md); font-weight: var(--sb-weight-semibold); padding-right: 16px; }",
     ".now-working-session-item .now-working-timer { font-size: var(--sb-font-xl); font-weight: var(--sb-weight-semibold); font-family: var(--sb-font-mono); font-variant-numeric: tabular-nums; color: var(--sb-primary); }",
     ".now-working-session-item .now-working-actions { flex-direction: row; justify-content: flex-start; margin-top: 4px; }",
-    // Task row active state
-    ".task-row-active { background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); border-color: var(--sb-primary); }",
     "@media (max-width: 640px) { .body { flex-direction: column; } .nav { width: 100%; } }",
   ]
 }

@@ -971,9 +971,13 @@ Estado de ejecucion:
 - Quinto pase de estilos: tras retirar el modulo muerto `ui/move_menu`,
   eliminadas reglas `move-menu`, `move-menu-trigger`, `move-menu-actions` y
   `move-menu-option` de `styles/layout.gleam`.
+- Sexto pase de estilos: eliminados restos sin consumidores de topbar legacy,
+  filtros antiguos, previews de icono, badges preview de task, skills legacy,
+  reglas de tablas/radio obsoletas y remates mobile asociados.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
   adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
+  Delta adicional del sexto pase: `-53` lineas mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;
@@ -985,6 +989,8 @@ Estado de ejecucion:
     `apps/client/test`, excluyendo `styles/*.gleam`; solo queda una asercion
     negativa de `card-empty-work-decision`.
   - `rg "move-menu" apps/client/src apps/client/test` sin consumidores.
+  - Barrido de selectores retirados del sexto pase contra `apps/client/src` y
+    `apps/client/test` sin consumidores.
 
 ### WP-12. Fase 2: consolidacion profunda de tests
 

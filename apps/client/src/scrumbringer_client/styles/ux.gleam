@@ -119,7 +119,6 @@ pub fn css() -> List(String) {
     // =====================================================
     // UX IMPROVEMENTS - Form Sections (E07)
     // =====================================================
-    ".icon-preview-large { width: 48px; height: 48px; font-size: 28px; border: 1px solid var(--sb-border); border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--sb-elevated); margin: 8px 0; }",
     // =====================================================
     // UX IMPROVEMENTS - Decay Badge (P02)
     // =====================================================
@@ -178,7 +177,7 @@ pub fn css() -> List(String) {
     // UX IMPROVEMENTS - Responsive Mobile (RM01-RM04)
     // AC38: All interactive elements must have min 44px touch targets on mobile
     // =====================================================
-    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon, .nav-item { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: var(--sb-font-lg); } input { min-height: 44px; padding: 10px 12px; font-size: var(--sb-font-lg); } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .topbar { flex-wrap: wrap; gap: 8px; padding: 10px; } .topbar-actions { width: 100%; justify-content: space-between; } .user { display: none; } .user-avatar { display: flex; width: 32px; height: 32px; border-radius: 50%; background: var(--sb-primary); color: var(--sb-inverse); align-items: center; justify-content: center; font-weight: var(--sb-weight-semibold); } .pagination { justify-content: center; } }",
+    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon, .nav-item { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: var(--sb-font-lg); } input { min-height: 44px; padding: 10px 12px; font-size: var(--sb-font-lg); } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .pagination { justify-content: center; } }",
     ".member-mobile { min-height: 100dvh; background: var(--sb-bg); padding: 0; }",
     ".member-content-mobile { min-height: calc(100dvh - 56px); }",
     ".mobile-topbar { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; min-height: calc(56px + env(safe-area-inset-top)); padding: max(8px, env(safe-area-inset-top)) 12px 8px; border-bottom: 1px solid var(--sb-border); background: color-mix(in oklab, var(--sb-surface) 96%, transparent); }",
