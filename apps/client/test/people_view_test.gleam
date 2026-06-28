@@ -1,5 +1,4 @@
 import gleam/dict
-import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/effect
@@ -88,12 +87,23 @@ fn make_card(
   )
 }
 
-fn person(user_id: Int) -> PersonWorkload {
-  available_person(user_id, "User #" <> int.to_string(user_id))
-}
-
 fn workload_email(user_id: Int, email: String) -> #(Int, String) {
   #(user_id, email)
+}
+
+fn with_people(
+  model: client_state.Model,
+  users: List(#(Int, String)),
+) -> client_state.Model {
+  with_people_workload(
+    model,
+    users
+      |> list.map(fn(user) {
+        let #(user_id, email) = user
+        available_person(user_id, email)
+      })
+      |> remote.Loaded,
+  )
 }
 
 fn base_model() -> client_state.Model {
@@ -403,45 +413,6 @@ fn no_refresh_context() -> pool_update.Context {
   pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
 }
 
-fn with_people_emails(
-  model: client_state.Model,
-  users: List(#(Int, String)),
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(
-        ..pool,
-        people_workload: rename_workload_people(pool.people_workload, users),
-      ),
-    )
-  })
-}
-
-fn rename_workload_people(
-  people: remote.Remote(List(PersonWorkload)),
-  users: List(#(Int, String)),
-) -> remote.Remote(List(PersonWorkload)) {
-  case people {
-    remote.Loaded(existing) ->
-      remote.Loaded(
-        list.map(existing, fn(person) {
-          case
-            list.find(users, fn(user) {
-              let #(user_id, _) = user
-              user_id == person.user_id
-            })
-          {
-            Ok(#(_, email)) -> PersonWorkload(..person, email: email)
-            Error(_) -> person
-          }
-        }),
-      )
-    other -> other
-  }
-}
-
 pub fn people_view_loading_state_test() {
   let model = base_model() |> with_people_workload(remote.Loading)
   let html = people_view.view(people_config(model)) |> render_assertions.html
@@ -472,15 +443,8 @@ pub fn people_view_empty_roster_state_test() {
 pub fn people_view_no_results_state_test() {
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
+    |> with_people([workload_email(10, "alice@example.com")])
     |> with_workload_tasks([])
-    |> with_people_emails([
-      workload_email(10, "alice@example.com"),
-    ])
     |> client_state.update_member(fn(member) {
       let pool = member.pool
       member_state.MemberModel(
@@ -501,14 +465,7 @@ pub fn people_view_availability_rules_test() {
 
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-        person(11),
-        person(12),
-      ]),
-    )
-    |> with_people_emails([
+    |> with_people([
       workload_email(10, "ana@example.com"),
       workload_email(11, "bob@example.com"),
       workload_email(12, "cora@example.com"),
@@ -535,14 +492,7 @@ pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
 
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
-    |> with_people_emails([
-      workload_email(10, "ana@example.com"),
-    ])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
@@ -570,14 +520,7 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
 
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-        person(11),
-        person(12),
-      ]),
-    )
-    |> with_people_emails([
+    |> with_people([
       workload_email(10, "ana@example.com"),
       workload_email(11, "bob@example.com"),
       workload_email(12, "cora@example.com"),
@@ -626,14 +569,7 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
 
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
-    |> with_people_emails([
-      workload_email(10, "ana@example.com"),
-    ])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -661,8 +597,7 @@ pub fn people_view_single_reserved_task_with_card_uses_card_group_cta_test() {
 
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -681,8 +616,7 @@ pub fn people_view_single_reserved_task_without_card_has_no_card_cta_test() {
 
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -706,8 +640,7 @@ pub fn people_view_groups_many_reserved_tasks_by_card_test() {
 
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -738,8 +671,7 @@ pub fn people_view_grouped_reserved_cta_matrix_test() {
 
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -793,14 +725,7 @@ pub fn people_view_grouped_reserved_tasks_use_card_header_without_legacy_scope_b
 pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
-    |> with_people_emails([
-      workload_email(10, "ana@example.com"),
-    ])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([])
     |> with_people_expanded(10)
 
@@ -816,8 +741,7 @@ pub fn people_view_reflects_work_session_started_when_task_is_loaded_test() {
   let model =
     base_model()
     |> with_current_user(1)
-    |> with_people_workload(remote.Loaded([person(1)]))
-    |> with_people_emails([workload_email(1, "admin@example.com")])
+    |> with_people([workload_email(1, "admin@example.com")])
     |> with_workload_tasks([task])
     |> with_member_tasks([task])
     |> with_people_expanded(1)
@@ -840,14 +764,7 @@ pub fn people_view_reflects_work_session_started_when_task_is_loaded_test() {
 pub fn people_view_expanded_row_accessibility_and_sections_test() {
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
-    |> with_people_emails([
-      workload_email(10, "ana@example.com"),
-    ])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([make_task(1, "Active task", 10, task_state.Ongoing)])
     |> with_people_expanded(10)
 
@@ -864,11 +781,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
 pub fn people_view_uses_list_semantics_test() {
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
+    |> with_people([workload_email(10, "User #10")])
     |> with_workload_tasks([])
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
@@ -880,14 +793,7 @@ pub fn people_view_uses_list_semantics_test() {
 pub fn people_view_toggle_is_keyboard_accessible_button_test() {
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
-    |> with_people_emails([
-      workload_email(10, "ana@example.com"),
-    ])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([])
 
   let html = people_view.view(people_config(model)) |> render_assertions.html
@@ -910,14 +816,7 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
 
   let model =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-      ]),
-    )
-    |> with_people_emails([
-      workload_email(10, "ana@example.com"),
-    ])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -934,8 +833,7 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
 pub fn people_view_renders_header_scope_controls_and_body_test() {
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([])
 
   let html = render_people(model)
@@ -968,8 +866,7 @@ pub fn people_view_project_level_and_card_scope_filter_tasks_test() {
   ]
   let base =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks(tasks)
     |> with_people_expanded(10)
 
@@ -1053,14 +950,7 @@ pub fn people_view_visibility_filters_work_attention_and_free_test() {
   ]
   let base =
     base_model()
-    |> with_people_workload(
-      remote.Loaded([
-        person(10),
-        person(11),
-        person(12),
-      ]),
-    )
-    |> with_people_emails([
+    |> with_people([
       workload_email(10, "ana@example.com"),
       workload_email(11, "bob@example.com"),
       workload_email(12, "cora@example.com"),
@@ -1127,8 +1017,7 @@ pub fn people_sort_orders_by_attention_name_and_reserved_test() {
 pub fn people_view_only_renders_open_action_for_other_people_test() {
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([
       make_task(1, "Ongoing task", 10, task_state.Ongoing),
       make_task(2, "Reserved task", 10, task_state.Taken),
@@ -1151,8 +1040,7 @@ pub fn people_view_renders_contextual_actions_for_current_user_test() {
   let model =
     base_model()
     |> with_current_user(10)
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([
       make_task(1, "Ongoing task", 10, task_state.Ongoing),
       make_task(2, "Reserved task", 10, task_state.Taken),
@@ -1174,8 +1062,7 @@ pub fn people_view_card_scope_without_work_uses_empty_state_test() {
   let cards = [make_card(1, None, "Empty Initiative")]
   let model =
     base_model()
-    |> with_people_workload(remote.Loaded([person(10)]))
-    |> with_people_emails([workload_email(10, "ana@example.com")])
+    |> with_people([workload_email(10, "ana@example.com")])
     |> with_workload_tasks([])
     |> with_scope(member_pool.PlanScopeCard, None, Some(1))
 

@@ -2460,6 +2460,33 @@ Estado de ejecucion:
   - delta adicional fuera de codigo Gleam: `-56.657` lineas de documentacion
     generada versionada. Cuenta como limpieza de repositorio, no como
     cumplimiento del subobjetivo mantenido no generado de Gleam.
+- Noveno pase de consolidacion de fixtures de tests de personas:
+  - extraido `with_people` en `people_view_test.gleam` para construir de una
+    vez el `people_workload` cargado y sus emails canonicos, eliminando el
+    patron duplicado `with_people_workload(remote.Loaded([...]))` +
+    `with_people_emails([...])`;
+  - retirados los helpers legacy `person`, `with_people_emails` y
+    `rename_workload_people`, que solo existian para reescribir personas ya
+    creadas en vez de construir el fixture final directamente;
+  - mantenidos explicitos los estados `Loading`, `Failed`, lista vacia y los
+    casos con `PersonWorkload` construido a mano, para no esconder estados de
+    UI relevantes en helpers demasiado genericos;
+  - privatizados seis helpers auxiliares de `server/test/fixtures.gleam` que no
+    tienen consumidores fuera del propio modulo, reduciendo superficie publica
+    accidental sin cambiar comportamiento;
+  - delta adicional: `-113` lineas Gleam mantenidas netas;
+  - verificacion:
+    - `cd apps/client && gleam test` (`1819 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el noveno pase:
+  - total Gleam actual en `apps/client/src`, `apps/client/test`,
+    `apps/server/src`, `apps/server/test`, `shared/src` y `shared/test`:
+    `198.559` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.455` lineas;
+  - el objetivo base `-20k` sigue pendiente de mas paquetes seguros o de
+    acometer el redisenio separado para sacar `sql.gleam` generado del codigo
+    versionado sin romper build/CI.
 
 ## Orden recomendado de ejecucion
 

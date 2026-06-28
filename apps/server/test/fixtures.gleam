@@ -830,7 +830,7 @@ pub fn activate_card_response(
   )
 }
 
-pub fn require_activate_card(
+fn require_activate_card(
   handler: Handler,
   session: Session,
   card_id: Int,
@@ -996,7 +996,7 @@ pub fn create_task_note_status(
   res.status
 }
 
-pub fn create_task_dependency_response(
+fn create_task_dependency_response(
   handler: Handler,
   session: Session,
   task_id: Int,
@@ -1023,7 +1023,7 @@ pub fn create_task_dependency_status(
   create_task_dependency_response(handler, session, task_id, depends_on_task_id).status
 }
 
-pub fn delete_task_dependency_response(
+fn delete_task_dependency_response(
   handler: Handler,
   session: Session,
   task_id: Int,
@@ -1139,7 +1139,7 @@ pub fn create_task_with_card(
 }
 
 /// Create a task associated with a card, preserving all payload fields.
-pub fn create_task_with_card_full(
+fn create_task_with_card_full(
   handler: Handler,
   session: Session,
   project_id: Int,
@@ -1473,7 +1473,7 @@ pub fn require_query_string(
 }
 
 /// Query a single boolean value from the database.
-pub fn query_bool(
+fn query_bool(
   db: pog.Connection,
   sql: String,
   params: List(pog.Value),
@@ -1594,7 +1594,7 @@ pub fn get_user_id(db: pog.Connection, email: String) -> Result(Int, String) {
 // =============================================================================
 
 /// Decode an ID from an API response using type-safe Entity.
-pub fn decode_entity_id(body: String, entity: Entity) -> Result(Int, String) {
+fn decode_entity_id(body: String, entity: Entity) -> Result(Int, String) {
   decode_data_entity_id(body, entity_to_string(entity))
 }
 
