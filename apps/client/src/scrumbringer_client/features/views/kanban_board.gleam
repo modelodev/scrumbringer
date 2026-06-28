@@ -37,6 +37,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
+import scrumbringer_client/features/tasks/rollup as task_rollup
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/features/work_filters_bar
 import scrumbringer_client/i18n/i18n
@@ -116,10 +117,6 @@ type CardWithProgress {
     total: Int,
     tasks: List(domain_task.Task),
   )
-}
-
-type TaskHealth {
-  TaskHealth(available: Int, claimed: Int, ongoing: Int, blocked: Int)
 }
 
 type BoardSummary {
@@ -480,7 +477,7 @@ fn task_claim_handler(config: KanbanConfig(msg)) -> fn(Int, Int) -> msg {
 
 fn view_health_items(
   config: KanbanConfig(msg),
-  health: TaskHealth,
+  health: task_rollup.TaskRollup,
 ) -> List(element.Element(msg)) {
   let core_items = [
     view_task_metric_chip(
@@ -589,7 +586,7 @@ fn compute_progress(
       list.filter(tasks, fn(task) {
         card_queries.task_in_card_subtree(task, card.id, all_cards)
       })
-    let closed = list.count(card_tasks, is_closed_task)
+    let closed = list.count(card_tasks, task_rollup.is_closed)
     let total = list.length(card_tasks)
     CardWithProgress(
       card: card,
@@ -662,47 +659,14 @@ fn board_summary(cards: List(CardWithProgress)) -> BoardSummary {
   )
 }
 
-fn task_health(tasks: List(domain_task.Task)) -> TaskHealth {
-  TaskHealth(
-    available: list.count(tasks, is_available_task),
-    claimed: list.count(tasks, is_taken_task),
-    ongoing: list.count(tasks, is_ongoing_task),
-    blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
-  )
-}
-
-fn is_available_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Available -> True
-    _ -> False
-  }
-}
-
-fn is_taken_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
-    _ -> False
-  }
-}
-
-fn is_ongoing_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
-    _ -> False
-  }
-}
-
-fn is_closed_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Closed(..) -> True
-    _ -> False
-  }
+fn task_health(tasks: List(domain_task.Task)) -> task_rollup.TaskRollup {
+  task_rollup.from_tasks(tasks)
 }
 
 fn next_relevant_tasks(tasks: List(domain_task.Task)) -> List(domain_task.Task) {
   let active =
     tasks
-    |> list.filter(fn(task) { !is_closed_task(task) })
+    |> list.filter(fn(task) { !task_rollup.is_closed(task) })
     |> list.sort(by: compare_relevant_tasks)
 
   case active {

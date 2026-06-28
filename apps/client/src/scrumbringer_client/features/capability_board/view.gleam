@@ -25,6 +25,7 @@ import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/plan/scope_bar
+import scrumbringer_client/features/tasks/rollup as task_rollup
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/features/work_filters_bar
 import scrumbringer_client/i18n/i18n
@@ -93,21 +94,11 @@ type CapabilityColumn {
   )
 }
 
-type CapabilityHealth {
-  CapabilityHealth(
-    available: Int,
-    claimed: Int,
-    ongoing: Int,
-    closed: Int,
-    blocked: Int,
-  )
-}
-
 type CapabilityCell {
   CapabilityCell(
     column: CapabilityColumn,
     tasks: List(domain_task.Task),
-    health: CapabilityHealth,
+    health: task_rollup.TaskRollup,
   )
 }
 
@@ -118,7 +109,7 @@ type CapabilityRow {
     card: Card,
     cells: List(CapabilityCell),
     tasks: List(domain_task.Task),
-    health: CapabilityHealth,
+    health: task_rollup.TaskRollup,
   )
 }
 
@@ -126,7 +117,7 @@ type CapabilityData {
   CapabilityData(
     rows: List(CapabilityRow),
     columns: List(CapabilityColumn),
-    health: CapabilityHealth,
+    health: task_rollup.TaskRollup,
   )
 }
 
@@ -928,14 +919,14 @@ fn view_empty_matrix_cell(config: Config(msg)) -> element.Element(msg) {
 
 fn view_matrix_total_cell(
   config: Config(msg),
-  health: CapabilityHealth,
+  health: task_rollup.TaskRollup,
 ) -> element.Element(msg) {
   view_matrix_health_cell(config, health, True)
 }
 
 fn view_matrix_health_cell(
   config: Config(msg),
-  health: CapabilityHealth,
+  health: task_rollup.TaskRollup,
   total: Bool,
 ) -> element.Element(msg) {
   let class = case total {
@@ -1157,51 +1148,17 @@ fn loaded_tasks(tasks: Remote(List(domain_task.Task))) -> List(domain_task.Task)
   }
 }
 
-fn health_for_tasks(tasks: List(domain_task.Task)) -> CapabilityHealth {
-  CapabilityHealth(
-    available: list.count(tasks, is_available_task),
-    claimed: list.count(tasks, is_taken_task),
-    ongoing: list.count(tasks, is_ongoing_task),
-    closed: list.count(tasks, is_closed_task),
-    blocked: list.count(tasks, fn(task) { task.blocked_count > 0 }),
-  )
+fn health_for_tasks(tasks: List(domain_task.Task)) -> task_rollup.TaskRollup {
+  task_rollup.from_tasks(tasks)
 }
 
-fn is_available_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Available -> True
-    _ -> False
-  }
-}
-
-fn is_taken_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
-    _ -> False
-  }
-}
-
-fn is_ongoing_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
-    _ -> False
-  }
-}
-
-fn is_closed_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Closed(..) -> True
-    _ -> False
-  }
-}
-
-fn health_total(health: CapabilityHealth) -> Int {
+fn health_total(health: task_rollup.TaskRollup) -> Int {
   health.available + health.claimed + health.ongoing + health.closed
 }
 
 fn view_task_metric_breakdown(
   locale: Locale,
-  health: CapabilityHealth,
+  health: task_rollup.TaskRollup,
 ) -> element.Element(msg) {
   span(
     [
@@ -1227,7 +1184,9 @@ fn view_task_metric_breakdown(
   )
 }
 
-fn compact_metrics(health: CapabilityHealth) -> List(task_metric.TaskMetric) {
+fn compact_metrics(
+  health: task_rollup.TaskRollup,
+) -> List(task_metric.TaskMetric) {
   [
     task_metric.metric(task_metric.Available, health.available),
     task_metric.metric(task_metric.Claimed, health.claimed),

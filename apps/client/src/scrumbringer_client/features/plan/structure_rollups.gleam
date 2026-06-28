@@ -2,10 +2,10 @@
 
 import domain/card.{type Card, Active, Closed, Draft}
 import domain/task as domain_task
-import domain/task/state as task_execution_state
 import gleam/list
 
 import scrumbringer_client/features/plan/types
+import scrumbringer_client/features/tasks/rollup as task_rollup
 import scrumbringer_client/utils/card_queries
 
 pub fn summary_for_rows(
@@ -32,7 +32,7 @@ pub fn summary_for_rows(
   types.CardRollup(
     ..rollup,
     pool_impact: list.count(scoped_tasks, fn(task) {
-      is_available_task(task)
+      task_rollup.is_available(task)
       && list.any(row_cards, fn(card) {
         card.state == Draft
         && card_queries.task_in_card_subtree(task, card.id, cards)
@@ -42,13 +42,15 @@ pub fn summary_for_rows(
 }
 
 pub fn for_tasks(tasks: List(domain_task.Task)) -> types.CardRollup {
+  let rollup = task_rollup.from_tasks(tasks)
+
   types.CardRollup(
-    total_tasks: list.length(tasks),
-    closed_tasks: list.count(tasks, is_closed_task),
-    available_tasks: list.count(tasks, is_available_task),
-    claimed_tasks: list.count(tasks, is_taken_task),
-    ongoing_tasks: list.count(tasks, is_ongoing_task),
-    blocked_tasks: list.count(tasks, fn(task) { task.blocked_count > 0 }),
+    total_tasks: rollup.total,
+    closed_tasks: rollup.closed,
+    available_tasks: rollup.available,
+    claimed_tasks: rollup.claimed,
+    ongoing_tasks: rollup.ongoing,
+    blocked_tasks: rollup.blocked,
     pool_impact: 0,
   )
 }
@@ -70,35 +72,7 @@ pub fn for_card(
 
 pub fn pool_impact(card: Card, tasks: List(domain_task.Task)) -> Int {
   case card.state {
-    Draft -> list.count(tasks, is_available_task)
+    Draft -> list.count(tasks, task_rollup.is_available)
     Active | Closed -> 0
-  }
-}
-
-pub fn is_available_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Available -> True
-    _ -> False
-  }
-}
-
-pub fn is_taken_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Taken, ..) -> True
-    _ -> False
-  }
-}
-
-pub fn is_ongoing_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Claimed(mode: task_execution_state.Ongoing, ..) -> True
-    _ -> False
-  }
-}
-
-pub fn is_closed_task(task: domain_task.Task) -> Bool {
-  case task.state {
-    task_execution_state.Closed(..) -> True
-    _ -> False
   }
 }

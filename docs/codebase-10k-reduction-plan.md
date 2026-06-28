@@ -592,6 +592,22 @@ Criterios de aceptacion:
 - Los selectores viven cerca del dominio de UI, no en `ui/` si contienen
   decisiones de producto.
 
+Estado de ejecucion:
+
+- Primer pase de rollups de task:
+  - creado `features/tasks/rollup` como selector puro compartido para
+    `total`, `available`, `claimed`, `ongoing`, `closed` y `blocked`;
+  - `plan/structure_rollups`, `views/kanban_board` y
+    `capability_board/view` dejan de mantener predicados locales duplicados
+    para estados `Available`, `Claimed(Taken)`, `Claimed(Ongoing)` y
+    `Closed`;
+  - añadido `task_rollup_test` para validar el contrato del selector con
+    tareas reales de dominio;
+  - verificacion: `cd apps/client && gleam format --check src test &&
+    gleam build && gleam test` (`1873 passed`);
+  - delta neto: `+15` lineas mantenidas, aceptado por mejora de DRY,
+    frontera de tipos y testeabilidad.
+
 ### WP-05. Dialogos CRUD y controles UI sin abstraccion universal
 
 Objetivo: reducir dialogos y controles repetidos usando primitivas existentes.
@@ -2121,5 +2137,5 @@ anterior:
 | Client render assertions | Decenas de `assert_contains` repetidos. | Parcialmente ejecutado; repetir `rg "fn assert_contains|fn assert_not_contains" apps/client/test`. |
 | Public API accidental | Simbolos publicos en `src` sin consumidor claro. | Parcialmente ejecutado; repetir `rg "^pub fn|^pub type|^pub const" apps/client/src apps/server/src shared/src` y auditar consumidores. |
 | SQL fuente Squirrel obsoleto | 4 queries iniciales sin uso directo por nombre generado. | Ejecutado; el barrido actual de `sql.<basename>` no devuelve pendientes. |
-| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Pendiente de nuevos pases UI; usar `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features`. |
+| Card/task/work selectors | Plan/People/Capability/Card Show repiten estado visual. | Parcialmente ejecutado; `features/tasks/rollup` unifica conteos de estado en Plan/Kanban/Capability. Repetir `rg "blocked_count|available_count|claimed_count|ongoing|closed_count" apps/client/src/scrumbringer_client/features` para siguientes pases. |
 | Styles dead classes | Estilos de redisenos acumulados. | Parcialmente ejecutado; repetir comparacion de clases usadas en views contra `styles/*`. |
