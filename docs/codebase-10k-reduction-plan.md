@@ -1518,7 +1518,11 @@ Estado de ejecucion:
   `capability_board_view_test`. Los tipos de tarea del tablero reutilizan
   `domain_fixtures.task_type` manteniendo explicitos icono, capacidad y
   contador; capacidades y usuario admin reutilizan fixtures compartidas.
-- Delta parcial WP-12: `-3.970` lineas netas mantenidas (`-44` del primer pase
+- Cuadragesimoprimer pase de fixtures de dominio aplicado a
+  `admin_task_types_view_test`. Se retiran constructores completos de
+  `TaskType` usando `domain_fixtures.task_type` y se mantienen visibles icono,
+  capacidad asociada y contador de tareas cuando gobiernan el render.
+- Delta parcial WP-12: `-3.979` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1582,7 +1586,8 @@ Estado de ejecucion:
   de cliente, `-70` del trigesimoctavo pase de fixtures de dominio compartidas
   en tests de cliente, `-73` del trigesimonoveno pase de fixtures de dominio
   compartidas en tests de cliente, `-7` del cuadragesimo pase de fixtures de
-  dominio compartidas en tests de cliente).
+  dominio compartidas en tests de cliente, `-9` del cuadragesimoprimer pase
+  de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

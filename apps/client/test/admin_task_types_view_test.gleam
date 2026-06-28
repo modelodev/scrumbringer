@@ -5,7 +5,7 @@ import support/render_assertions
 
 import domain/project.{Project}
 import domain/remote.{Loaded}
-import domain/task_type.{TaskType}
+import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state.{type Model, default_model, update_admin}
 import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
@@ -22,6 +22,21 @@ fn sample_project() {
   Project(..domain_fixtures.project(1, "Project Alpha"), members_count: 2)
 }
 
+fn task_type(
+  id: Int,
+  name: String,
+  icon: String,
+  capability_id: opt.Option(Int),
+  tasks_count: Int,
+) -> TaskType {
+  TaskType(
+    ..domain_fixtures.task_type(id, name),
+    icon: icon,
+    capability_id: capability_id,
+    tasks_count: tasks_count,
+  )
+}
+
 pub fn task_types_table_renders_capability_name_test() {
   let model =
     base_model()
@@ -35,13 +50,7 @@ pub fn task_types_table_renders_capability_name_test() {
         task_types: admin_task_types.Model(
           ..admin.task_types,
           task_types: Loaded([
-            TaskType(
-              id: 99,
-              name: "Bug",
-              icon: "bug-ant",
-              capability_id: opt.Some(1),
-              tasks_count: 7,
-            ),
+            task_type(99, "Bug", "bug-ant", opt.Some(1), 7),
           ]),
         ),
       )
@@ -72,13 +81,7 @@ pub fn task_types_table_renders_none_when_no_capability_test() {
         task_types: admin_task_types.Model(
           ..admin.task_types,
           task_types: Loaded([
-            TaskType(
-              id: 20,
-              name: "Chore",
-              icon: "wrench",
-              capability_id: opt.None,
-              tasks_count: 0,
-            ),
+            task_type(20, "Chore", "wrench", opt.None, 0),
           ]),
         ),
       )
@@ -108,13 +111,7 @@ pub fn task_types_table_does_not_render_ids_test() {
         task_types: admin_task_types.Model(
           ..admin.task_types,
           task_types: Loaded([
-            TaskType(
-              id: 1234,
-              name: "Infra",
-              icon: "bolt",
-              capability_id: opt.None,
-              tasks_count: 2,
-            ),
+            task_type(1234, "Infra", "bolt", opt.None, 2),
           ]),
         ),
       )
@@ -145,13 +142,7 @@ pub fn task_type_edit_dialog_uses_shared_optional_fields_test() {
   let html =
     task_type_crud_dialog.view_edit_dialog_for_test(
       En,
-      TaskType(
-        id: 8,
-        name: "Bug",
-        icon: "bug-ant",
-        capability_id: opt.None,
-        tasks_count: 0,
-      ),
+      domain_fixtures.task_type(8, "Bug"),
     )
     |> element.to_document_string
 
