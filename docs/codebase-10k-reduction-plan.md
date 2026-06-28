@@ -2503,6 +2503,24 @@ Estado de ejecucion:
   - total Gleam actual: `198.540` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.474` lineas;
   - deficit restante para `-20k`: `4.526` lineas.
+- Undecimo pase de fixtures HTTP de metricas:
+  - migrados los tests de `modal_metrics_http_test.gleam` que solo necesitaban
+    app/handler/session/project/task type a `require_project_context` o
+    `require_task_project`;
+  - eliminado el import de `scrumbringer_server`, ya que el archivo no necesita
+    conocer la forma interna de `App` para obtener la conexion DB;
+  - mantenidos explicitos los datos especificos de cada contrato: permisos,
+    eventos de auditoria, sesiones de trabajo, shadow table y asserts de
+    codigos tipados;
+  - delta adicional: `-18` lineas Gleam mantenidas netas;
+  - verificacion: primer intento fallo por timeout DB en
+    `workflows_http_test` no relacionado; repetido
+    `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+    con `553 passed`.
+- Auditoria de contabilidad tras el undecimo pase:
+  - total Gleam actual: `198.522` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.492` lineas;
+  - deficit restante para `-20k`: `4.508` lineas.
 
 ## Orden recomendado de ejecucion
 

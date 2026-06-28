@@ -5,7 +5,6 @@ import gleam/option
 import gleam/string
 import gleeunit
 import pog
-import scrumbringer_server
 import scrumbringer_server/seed_db
 import support/assertions as expect
 import wisp/simulate
@@ -15,11 +14,8 @@ pub fn main() {
 }
 
 pub fn include_metrics_returns_metrics_payload_for_card_and_task_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Metrics card")
 
@@ -59,9 +55,8 @@ pub fn include_metrics_returns_metrics_payload_for_card_and_task_test() {
 }
 
 pub fn include_metrics_forbidden_uses_typed_error_code_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card")
 
@@ -85,11 +80,8 @@ pub fn include_metrics_forbidden_uses_typed_error_code_test() {
 }
 
 pub fn include_metrics_task_forbidden_returns_not_found_typed_error_code_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(
       handler,
@@ -124,11 +116,8 @@ pub fn include_metrics_task_forbidden_returns_not_found_typed_error_code_test() 
 }
 
 pub fn include_metrics_task_returns_expected_counts_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(
       handler,
@@ -284,11 +273,8 @@ pub fn include_metrics_task_returns_expected_counts_test() {
 }
 
 pub fn include_metrics_card_return_expected_counts_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Metrics count card")
 
@@ -353,11 +339,8 @@ pub fn include_metrics_card_not_found_uses_typed_error_code_test() {
 }
 
 pub fn include_metrics_task_unavailable_returns_typed_409_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(
       handler,
@@ -384,9 +367,8 @@ pub fn include_metrics_task_unavailable_returns_typed_409_test() {
 }
 
 pub fn include_metrics_card_unavailable_returns_typed_409_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card")
 
