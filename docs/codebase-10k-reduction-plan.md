@@ -2711,6 +2711,26 @@ Estado de ejecucion:
   - total Gleam actual: `198.032` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.982` lineas;
   - deficit restante para `-20k`: `4.018` lineas.
+- Vigesimosegundo pase de fixtures DB pequenas:
+  - migrados `integration/task_lifecycle_test.gleam`,
+    `people_workload_http_test.gleam`,
+    `automation_config_audit_http_test.gleam` y
+    `unit/use_case/workflows_validation_core_test.gleam` a
+    `require_task_project`, `require_project_context` o
+    `require_project_with_task_type`;
+  - mantenidos explicitos los segundos proyectos en validaciones
+    multiproyecto porque son el contrato probado;
+  - retirados imports locales de `scrumbringer_server` y destructuring local de
+    `App`;
+  - delta adicional: `-34` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulos enfocados via EUnit secuencial (`10 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el vigesimosegundo pase:
+  - total Gleam actual: `197.998` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.016` lineas;
+  - deficit restante para `-20k`: `3.984` lineas.
 
 ## Orden recomendado de ejecucion
 

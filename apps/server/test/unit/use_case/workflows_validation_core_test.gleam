@@ -1,6 +1,5 @@
 import fixtures
 import gleam/option.{Some}
-import scrumbringer_server
 import scrumbringer_server/use_case/capabilities_db
 import scrumbringer_server/use_case/workflows/validation_core
 import support/assertions as expect
@@ -32,14 +31,10 @@ pub fn validate_priority_value_rejects_out_of_range_test() {
 }
 
 pub fn validate_task_type_in_project_rejects_mismatched_project_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, _project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(other_project_id) =
     fixtures.create_project(handler, session, "Other")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
 
   case
     validation_core.validate_task_type_in_project(db, type_id, other_project_id)
@@ -51,10 +46,8 @@ pub fn validate_task_type_in_project_rejects_mismatched_project_test() {
 }
 
 pub fn validate_capability_in_project_rejects_mismatched_project_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(other_project_id) =
     fixtures.create_project(handler, session, "Other")
   let assert Ok(capability) =

@@ -4,20 +4,15 @@ import gleam/int
 import gleam/json
 import gleam/option.{Some}
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
 pub fn automation_config_mutations_record_actor_entity_and_change_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type("Automation Audit", "QA", "bug-ant")
 
   let assert Ok(org_id) = fixtures.get_org_id(db)
   let assert Ok(actor_user_id) = fixtures.get_user_id(db, "admin@example.com")
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Automation Audit")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "QA", "bug-ant")
 
   let assert Ok(workflow_id) =
     fixtures.create_workflow(handler, session, project_id, "Audit Engine")

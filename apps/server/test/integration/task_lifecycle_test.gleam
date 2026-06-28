@@ -9,7 +9,6 @@ import gleam/int
 import gleam/json
 import gleeunit
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
@@ -22,17 +21,9 @@ pub fn main() {
 // =============================================================================
 
 pub fn full_lifecycle_create_claim_close_test() {
-  // Given: Bootstrap and create a project with a task type
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Lifecycle Test Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(
-      handler,
-      session,
-      project_id,
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_project_with_task_type(
+      "Lifecycle Test Project",
       "Feature",
       "sparkles",
     )
@@ -104,14 +95,8 @@ pub fn full_lifecycle_create_claim_close_test() {
 // =============================================================================
 
 pub fn full_lifecycle_create_claim_release_claim_test() {
-  // Given: Bootstrap and create a project
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Release Test Project")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Release Test Project")
 
   // Create a second user who will claim the task after release
   let assert Ok(user2_id) =

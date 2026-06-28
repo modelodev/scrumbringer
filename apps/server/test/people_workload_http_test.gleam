@@ -10,7 +10,6 @@ import gleam/json
 import gleam/list
 import gleam/option
 import pog
-import scrumbringer_server
 import support/assertions as expect
 import wisp
 import wisp/simulate
@@ -18,12 +17,8 @@ import wisp/simulate
 import fixtures
 
 pub fn people_workload_includes_claimed_tasks_in_active_cards_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "People workload")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("People workload")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Active card")
   let assert Ok(task_id) =
@@ -75,10 +70,8 @@ pub fn people_workload_includes_claimed_tasks_in_active_cards_test() {
 }
 
 pub fn people_workload_rejects_authenticated_non_project_member_test() {
-  let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, admin_session, "Private workload")
+  let #(db, handler, _admin_session, project_id) =
+    fixtures.require_project_context("Private workload")
   let assert Ok(_user_id) =
     fixtures.create_member_user(
       handler,
