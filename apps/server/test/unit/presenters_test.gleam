@@ -126,11 +126,8 @@ pub fn project_json_does_not_expose_internal_org_id_test() {
     |> project_presenters.project
     |> json.to_string
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let assert Ok("Core") =
-    decode.run(dynamic, decode.field("name", decode.string, decode.success))
-  let assert Error(_) =
-    decode.run(dynamic, decode.field("org_id", decode.int, decode.success))
+  let assert Ok("Core") = decode_json_field(body, "name", decode.string)
+  let assert Error(_) = decode_json_field(body, "org_id", decode.int)
 }
 
 pub fn project_json_includes_card_depth_names_test() {
@@ -158,8 +155,6 @@ pub fn project_json_includes_card_depth_names_test() {
     |> project_presenters.project
     |> json.to_string
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
   let depth_name_decoder = {
     use depth <- decode.field("depth", decode.int)
     use singular_name <- decode.field("singular_name", decode.string)
@@ -167,14 +162,7 @@ pub fn project_json_includes_card_depth_names_test() {
     decode.success(#(depth, singular_name, plural_name))
   }
   let assert Ok(depth_names) =
-    decode.run(
-      dynamic,
-      decode.field(
-        "card_depth_names",
-        decode.list(depth_name_decoder),
-        decode.success,
-      ),
-    )
+    decode_json_field(body, "card_depth_names", decode.list(depth_name_decoder))
 
   depth_names
   |> expect.equal([#(1, "Epic", "Epics"), #(2, "Story", "Stories")])
@@ -198,12 +186,7 @@ pub fn project_json_includes_healthy_pool_limit_test() {
     |> project_presenters.project
     |> json.to_string
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let assert Ok(14) =
-    decode.run(
-      dynamic,
-      decode.field("healthy_pool_limit", decode.int, decode.success),
-    )
+  let assert Ok(14) = decode_json_field(body, "healthy_pool_limit", decode.int)
 }
 
 pub fn project_member_json_does_not_expose_internal_project_id_test() {
@@ -221,11 +204,8 @@ pub fn project_member_json_does_not_expose_internal_project_id_test() {
     |> project_presenters.member
     |> json.to_string
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let assert Ok(42) =
-    decode.run(dynamic, decode.field("user_id", decode.int, decode.success))
-  let assert Error(_) =
-    decode.run(dynamic, decode.field("project_id", decode.int, decode.success))
+  let assert Ok(42) = decode_json_field(body, "user_id", decode.int)
+  let assert Error(_) = decode_json_field(body, "project_id", decode.int)
 }
 
 pub fn task_json_derives_status_and_work_state_from_task_state_test() {
@@ -263,9 +243,8 @@ pub fn task_json_derives_status_and_work_state_from_task_state_test() {
     |> task_presenters.task_json
     |> json.to_string
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
   let assert Ok(#(status, work_state, claimed_by, claimed_at)) =
-    decode.run(dynamic, task_lifecycle_decoder())
+    decode_json(body, task_lifecycle_decoder())
 
   status |> expect.equal("claimed")
   work_state |> expect.equal("ongoing")
@@ -295,18 +274,18 @@ pub fn task_note_presenter_uses_common_note_contract_test() {
     |> note_presenters.note
     |> json.to_string
 
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let assert Ok("task") =
-    decode.run(
-      dynamic,
-      decode.field("subject_type", decode.string, decode.success),
-    )
-  let assert Ok(13) =
-    decode.run(dynamic, decode.field("subject_id", decode.int, decode.success))
-  let assert Ok(8) =
-    decode.run(dynamic, decode.field("project_id", decode.int, decode.success))
-  let assert Error(_) =
-    decode.run(dynamic, decode.field("task_id", decode.int, decode.success))
+  let assert Ok("task") = decode_json_field(body, "subject_type", decode.string)
+  let assert Ok(13) = decode_json_field(body, "subject_id", decode.int)
+  let assert Ok(8) = decode_json_field(body, "project_id", decode.int)
+  let assert Error(_) = decode_json_field(body, "task_id", decode.int)
+}
+
+fn decode_json(body: String, decoder: decode.Decoder(a)) {
+  json.parse(from: body, using: decoder)
+}
+
+fn decode_json_field(body: String, field: String, decoder: decode.Decoder(a)) {
+  decode_json(body, decode.field(field, decoder, decode.success))
 }
 
 fn task_lifecycle_decoder() -> decode.Decoder(#(String, String, Int, String)) {
