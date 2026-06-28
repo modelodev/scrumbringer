@@ -2595,6 +2595,25 @@ Estado de ejecucion:
   - total Gleam actual: `198.381` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.633` lineas;
   - deficit restante para `-20k`: `4.367` lineas.
+- Decimosexto pase de fixtures de queries de tasks:
+  - migrados los escenarios de `unit/use_case/tasks_queries_test.gleam` a
+    `require_task_project`, eliminando setup local repetido de app, DB,
+    proyecto y tipo de task;
+  - conservadas explicitas las operaciones que forman parte del contrato:
+    usuario alternativo, membresia, claims previos, dependencias abiertas y
+    queries directas de estado;
+  - retirado el import local de `scrumbringer_server` y comentarios
+    `Given/When/Then` que repetian el codigo inmediato sin aportar contrato;
+  - delta adicional: `-68` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `unit@use_case@tasks_queries_test` via EUnit secuencial
+      (`8 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimosexto pase:
+  - total Gleam actual: `198.313` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.701` lineas;
+  - deficit restante para `-20k`: `4.299` lineas.
 
 ## Orden recomendado de ejecucion
 
