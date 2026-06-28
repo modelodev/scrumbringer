@@ -1,5 +1,6 @@
 import gleam/dict
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/metrics.{
@@ -7,8 +8,8 @@ import domain/metrics.{
   OrgMetricsUserOverview, WindowDays,
 }
 import domain/org.{OrgUser}
-import domain/org_role.{Admin, Member}
-import domain/project.{type Project, Project, ProjectMember}
+import domain/org_role.{Admin}
+import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role.{type ProjectRole, Manager}
 import domain/remote.{Loaded}
 import domain/user.{User}
@@ -144,15 +145,11 @@ fn base_model() -> client_state.Model {
 }
 
 fn sample_project(id: Int, name: String) -> Project {
-  Project(
-    id: id,
-    name: name,
-    my_role: Manager,
-    created_at: "2026-01-01",
-    members_count: 0,
-    card_depth_names: [],
-    healthy_pool_limit: 20,
-  )
+  Project(..domain_fixtures.project(id, name), members_count: 0)
+}
+
+fn manager_member(user_id: Int) -> ProjectMember {
+  ProjectMember(..domain_fixtures.project_member(user_id), role: Manager)
 }
 
 pub fn filter_projects_by_name_test() {
@@ -186,20 +183,8 @@ pub fn filter_projects_by_name_test() {
 
 pub fn project_collapsed_hides_members_test() {
   let project = sample_project(1, "Project Alpha")
-  let member =
-    ProjectMember(
-      user_id: 2,
-      role: Manager,
-      created_at: "2026-01-01",
-      claimed_count: 0,
-    )
-  let org_user =
-    OrgUser(
-      id: 2,
-      email: "member@example.com",
-      org_role: Member,
-      created_at: "2026-01-01",
-    )
+  let member = manager_member(2)
+  let org_user = domain_fixtures.org_user(2, "member@example.com")
 
   let model =
     base_model()
@@ -229,20 +214,8 @@ pub fn project_collapsed_hides_members_test() {
 
 pub fn project_expanded_shows_members_test() {
   let project = sample_project(1, "Project Alpha")
-  let member =
-    ProjectMember(
-      user_id: 2,
-      role: Manager,
-      created_at: "2026-01-01",
-      claimed_count: 0,
-    )
-  let org_user =
-    OrgUser(
-      id: 2,
-      email: "member@example.com",
-      org_role: Member,
-      created_at: "2026-01-01",
-    )
+  let member = manager_member(2)
+  let org_user = domain_fixtures.org_user(2, "member@example.com")
 
   let model =
     base_model()
@@ -275,13 +248,7 @@ pub fn project_expanded_shows_members_test() {
 }
 
 pub fn user_without_projects_shows_badge_test() {
-  let user =
-    OrgUser(
-      id: 9,
-      email: "nuevo@example.com",
-      org_role: Member,
-      created_at: "2026-01-01",
-    )
+  let user = domain_fixtures.org_user(9, "nuevo@example.com")
 
   let model =
     base_model()
@@ -404,13 +371,7 @@ pub fn project_metrics_summary_renders_counts_test() {
 }
 
 pub fn user_metrics_summary_renders_counts_test() {
-  let user =
-    OrgUser(
-      id: 9,
-      email: "member@example.com",
-      org_role: Member,
-      created_at: "2026-01-01",
-    )
+  let user = domain_fixtures.org_user(9, "member@example.com")
   let metrics =
     OrgMetricsUserOverview(
       user_id: user.id,
@@ -503,20 +464,9 @@ pub fn empty_state_when_no_users_test() {
 
 pub fn empty_state_when_only_admin_user_test() {
   let admin =
-    User(
-      id: 1,
-      email: "admin@example.com",
-      org_id: 1,
-      org_role: Admin,
-      created_at: "2026-01-01",
-    )
+    User(..domain_fixtures.user(1, "admin@example.com"), org_role: Admin)
   let admin_org_user =
-    OrgUser(
-      id: 1,
-      email: "admin@example.com",
-      org_role: Admin,
-      created_at: "2026-01-01",
-    )
+    OrgUser(..domain_fixtures.org_user(1, "admin@example.com"), org_role: Admin)
 
   let model =
     base_model()
@@ -545,19 +495,8 @@ pub fn empty_state_when_only_admin_user_test() {
 
 pub fn filter_users_by_email_test() {
   let user_admin =
-    OrgUser(
-      id: 1,
-      email: "admin@example.com",
-      org_role: Admin,
-      created_at: "2026-01-01",
-    )
-  let user_member =
-    OrgUser(
-      id: 2,
-      email: "member@example.com",
-      org_role: Member,
-      created_at: "2026-01-01",
-    )
+    OrgUser(..domain_fixtures.org_user(1, "admin@example.com"), org_role: Admin)
+  let user_member = domain_fixtures.org_user(2, "member@example.com")
 
   let model =
     base_model()
@@ -616,20 +555,8 @@ pub fn assignments_renders_table_layout_project_mode_test() {
 
 pub fn assignments_expansion_row_toggles_test() {
   let project = sample_project(1, "Project Alpha")
-  let member =
-    ProjectMember(
-      user_id: 2,
-      role: Manager,
-      created_at: "2026-01-01",
-      claimed_count: 0,
-    )
-  let org_user =
-    OrgUser(
-      id: 2,
-      email: "member@example.com",
-      org_role: Member,
-      created_at: "2026-01-01",
-    )
+  let member = manager_member(2)
+  let org_user = domain_fixtures.org_user(2, "member@example.com")
 
   let collapsed_model =
     base_model()

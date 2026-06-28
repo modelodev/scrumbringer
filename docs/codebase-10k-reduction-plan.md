@@ -1509,7 +1509,12 @@ Estado de ejecucion:
   (`domain_fixtures.user`) en guards, auth helpers, org settings, member
   refresh, pool/right panel y task show. Se conserva override de `org_role`
   solo cuando el test valida permisos o comportamiento de administrador.
-- Delta parcial WP-12: `-3.890` lineas netas mantenidas (`-44` del primer pase
+- Trigesimonoveno pase de fixtures de dominio aplicado a
+  `assignments_view_test`. Se retiran constructores completos de proyecto,
+  usuario de organizacion, usuario autenticado y miembro de proyecto, dejando
+  visibles solo `members_count: 0`, rol `Admin` y rol `Manager` cuando
+  gobiernan el contrato visual.
+- Delta parcial WP-12: `-3.963` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1571,7 +1576,8 @@ Estado de ejecucion:
   trigesimosexto pase de fixtures de dominio compartidas en tests de cliente,
   `-155` del trigesimoseptimo pase de fixtures de dominio compartidas en tests
   de cliente, `-70` del trigesimoctavo pase de fixtures de dominio compartidas
-  en tests de cliente).
+  en tests de cliente, `-73` del trigesimonoveno pase de fixtures de dominio
+  compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
