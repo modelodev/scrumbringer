@@ -12,34 +12,29 @@ import support/assertions as expect
 import wisp
 import wisp/simulate
 
-fn fixture_session(token: String, csrf: String) -> fixtures.Session {
-  fixtures.Session(token: token, csrf: csrf)
-}
-
 fn login_session(
   handler: fn(wisp.Request) -> wisp.Response,
   email: String,
-) -> #(String, String) {
-  let session = fixtures.login(handler, email, "passwordpassword") |> expect.ok
-  #(session.token, session.csrf)
+) -> fixtures.Session {
+  fixtures.login(handler, email, "passwordpassword") |> expect.ok
 }
 
 pub fn task_types_list_sorted_by_name_test() {
   let app = bootstrap_app()
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
 
-  create_task_type(handler, session, csrf, project_id, "Zulu", "bug-ant", 0)
-  create_task_type(handler, session, csrf, project_id, "Alpha", "bolt", 0)
+  create_task_type(handler, session, project_id, "Zulu", "bug-ant", 0)
+  create_task_type(handler, session, project_id, "Alpha", "bolt", 0)
 
   let req =
     simulate.request(
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -71,30 +66,22 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    member_id,
-    "member",
-  )
+  add_member(handler, admin_session, project_id, member_id, "member")
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let member_req =
     simulate.request(
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(
       json.object([
         #("name", json.string("Bug")),
@@ -110,7 +97,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_session_cookies(admin_session, admin_csrf)
+    |> with_session_cookies(admin_session)
     |> simulate.json_body(
       json.object([
         #("name", json.string("Bug")),
@@ -128,8 +115,8 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
 
   let cap1 = insert_capability(db, project_id, "Frontend")
   let cap2 = insert_capability(db, project_id, "Backend")
@@ -138,30 +125,20 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     create_task_type(
       handler,
       session,
-      csrf,
       project_id,
       "NeedleType",
       "bug-ant",
       cap1,
     )
   let other_type_id =
-    create_task_type(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "OtherType",
-      "bolt",
-      cap2,
-    )
+    create_task_type(handler, session, project_id, "OtherType", "bolt", cap2)
 
   let t1_id =
-    create_task(handler, session, csrf, project_id, "Old", "", 3, other_type_id)
+    create_task(handler, session, project_id, "Old", "", 3, other_type_id)
   let t2_id =
     create_task(
       handler,
       session,
-      csrf,
       project_id,
       "needle in title",
       "",
@@ -172,7 +149,6 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
     create_task(
       handler,
       session,
-      csrf,
       project_id,
       "Unrelated",
       "",
@@ -190,7 +166,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(list_res, 200)
@@ -203,7 +179,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?q=needle",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(q_res, 200)
@@ -219,7 +195,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
           <> "/tasks?capability_id="
           <> int.to_string(cap1),
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(cap_res, 200)
@@ -233,7 +209,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         <> int.to_string(project_id)
         <> "/tasks?capability_id=1,2",
     )
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let multi_cap_res = handler(multi_cap_req)
   expect.expect_status(multi_cap_res, 422)
@@ -246,19 +222,19 @@ pub fn tasks_list_includes_task_contract_fields_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
-  create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+  create_task(handler, session, project_id, "Core", "", 3, type_id)
 
   let req =
     simulate.request(
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -323,17 +299,17 @@ pub fn task_get_includes_task_contract_fields_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -386,23 +362,23 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -460,57 +436,32 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-      0,
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant", 0)
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
   let other_id =
     create_member_user(handler, db, "other@example.com", "inv_other")
 
-  add_member(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    member_id,
-    "member",
-  )
-  add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
+  add_member(handler, admin_session, project_id, member_id, "member")
+  add_member(handler, admin_session, project_id, other_id, "member")
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  let #(other_session, other_csrf) = login_session(handler, "other@example.com")
+  let other_session = login_session(handler, "other@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
   let claim_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim_res = handler(claim_req)
@@ -522,7 +473,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_auth(fixture_session(other_session, other_csrf))
+    |> fixtures.with_auth(other_session)
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim2_res = handler(claim2_req)
@@ -533,7 +484,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -553,7 +504,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let release_bad_res = handler(release_bad_req)
@@ -567,7 +518,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(2))]))
 
   let release_ok_res = handler(release_ok_req)
@@ -579,7 +530,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(3))]))
 
   let close_bad_res = handler(close_bad_req)
@@ -594,29 +545,29 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let admin_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
   count_audit_events(db, task_id, "task_created") |> expect.equal(1)
   count_audit_events_for_actor(db, task_id, admin_id, "task_created")
   |> expect.equal(1)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
   count_audit_events(db, task_id, "task_claimed") |> expect.equal(1)
 
-  release_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
+  release_task(handler, session, task_id, 2) |> expect.equal(200)
   count_audit_events(db, task_id, "task_released") |> expect.equal(1)
 
-  claim_task(handler, session, csrf, task_id, 3) |> expect.equal(200)
-  close_task(handler, session, csrf, task_id, 4) |> expect.equal(200)
+  claim_task(handler, session, task_id, 3) |> expect.equal(200)
+  close_task(handler, session, task_id, 4) |> expect.equal(200)
   count_audit_events(db, task_id, "task_closed") |> expect.equal(1)
 }
 
@@ -625,14 +576,14 @@ pub fn delete_task_without_operational_history_removes_task_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let task_id =
-    create_task(handler, session, csrf, project_id, "Clean", "", 3, type_id)
+    create_task(handler, session, project_id, "Clean", "", 3, type_id)
 
-  delete_task(handler, session, csrf, task_id) |> expect.equal(204)
+  delete_task(handler, session, task_id) |> expect.equal(204)
   count_task_rows(db, task_id) |> expect.equal(0)
   count_audit_events(db, task_id, "task_created") |> expect.equal(0)
 }
@@ -642,15 +593,15 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let task_id =
-    create_task(handler, session, csrf, project_id, "Claimed", "", 3, type_id)
+    create_task(handler, session, project_id, "Claimed", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  let res = delete_task_response(handler, session, csrf, task_id)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  let res = delete_task_response(handler, session, task_id)
 
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "TASK_HAS_OPERATIONAL_HISTORY")
@@ -663,24 +614,24 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let noted_task =
-    create_task(handler, session, csrf, project_id, "Noted", "", 3, type_id)
+    create_task(handler, session, project_id, "Noted", "", 3, type_id)
   let blocked_task =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker_task =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_task_note(handler, session, csrf, noted_task, "Operational context")
+  create_task_note(handler, session, noted_task, "Operational context")
   |> expect.equal(200)
-  create_dependency(handler, session, csrf, blocked_task, blocker_task)
+  create_dependency(handler, session, blocked_task, blocker_task)
   |> expect.equal(200)
 
-  delete_task(handler, session, csrf, noted_task) |> expect.equal(409)
-  delete_task(handler, session, csrf, blocker_task) |> expect.equal(409)
+  delete_task(handler, session, noted_task) |> expect.equal(409)
+  delete_task(handler, session, blocker_task) |> expect.equal(409)
   count_task_rows(db, noted_task) |> expect.equal(1)
   count_task_rows(db, blocker_task) |> expect.equal(1)
 }
@@ -690,17 +641,17 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Editable Available")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Editable Available")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Editable", "", 3, type_id)
+    create_task(handler, session, project_id, "Editable", "", 3, type_id)
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -719,39 +670,26 @@ pub fn release_all_tasks_for_member_success_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Bulk Release")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Bulk Release")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, session, csrf, project_id, member_id, "member")
+  add_member(handler, session, project_id, member_id, "member")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_a =
-    create_task(handler, session, csrf, project_id, "Task A", "", 1, type_id)
+    create_task(handler, session, project_id, "Task A", "", 1, type_id)
   let task_b =
-    create_task(handler, session, csrf, project_id, "Task B", "", 1, type_id)
+    create_task(handler, session, project_id, "Task B", "", 1, type_id)
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  claim_task(
-    handler,
-    member_session,
-    member_csrf,
-    task_a,
-    task_version(db, task_a),
-  )
+  claim_task(handler, member_session, task_a, task_version(db, task_a))
   |> expect.equal(200)
-  claim_task(
-    handler,
-    member_session,
-    member_csrf,
-    task_b,
-    task_version(db, task_b),
-  )
+  claim_task(handler, member_session, task_b, task_version(db, task_b))
   |> expect.equal(200)
 
   let list_req =
@@ -759,7 +697,7 @@ pub fn release_all_tasks_for_member_success_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     )
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -796,7 +734,7 @@ pub fn release_all_tasks_for_member_success_test() {
         <> int.to_string(member_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -832,20 +770,18 @@ pub fn release_all_tasks_for_member_forbidden_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id =
-    create_project(handler, session, csrf, "Bulk Release Forbidden")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Bulk Release Forbidden")
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, session, csrf, project_id, member_id, "member")
+  add_member(handler, session, project_id, member_id, "member")
 
   let admin_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let req =
     simulate.request(
@@ -856,7 +792,7 @@ pub fn release_all_tasks_for_member_forbidden_test() {
         <> int.to_string(admin_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+    |> fixtures.with_auth(member_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -868,8 +804,8 @@ pub fn release_all_tasks_for_member_self_release_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Bulk Release Self")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Bulk Release Self")
 
   let admin_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -883,7 +819,7 @@ pub fn release_all_tasks_for_member_self_release_test() {
         <> int.to_string(admin_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 400)
@@ -895,14 +831,14 @@ pub fn release_all_tasks_for_member_not_found_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
+  let session = login_session(handler, "admin@example.com")
 
   let req =
     simulate.request(
       http.Post,
       "/api/v1/projects/99999/members/99999/release-all-tasks",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 404)
@@ -914,22 +850,22 @@ pub fn task_dependencies_reject_circular_dependency_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Deps")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Deps")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_a =
-    create_task(handler, session, csrf, project_id, "Task A", "", 1, type_id)
+    create_task(handler, session, project_id, "Task A", "", 1, type_id)
   let task_b =
-    create_task(handler, session, csrf, project_id, "Task B", "", 1, type_id)
+    create_task(handler, session, project_id, "Task B", "", 1, type_id)
 
   let dep_req =
     simulate.request(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_a) <> "/dependencies",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_b))]),
     )
@@ -942,7 +878,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_b) <> "/dependencies",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_a))]),
     )
@@ -959,37 +895,20 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
+  let session = login_session(handler, "admin@example.com")
 
-  let project_one_id = create_project(handler, session, csrf, "Deps One")
-  let project_two_id = create_project(handler, session, csrf, "Deps Two")
+  let project_one_id = create_project(handler, session, "Deps One")
+  let project_two_id = create_project(handler, session, "Deps Two")
 
   let type_one_id =
-    create_task_type(
-      handler,
-      session,
-      csrf,
-      project_one_id,
-      "Bug",
-      "bug-ant",
-      0,
-    )
+    create_task_type(handler, session, project_one_id, "Bug", "bug-ant", 0)
   let type_two_id =
-    create_task_type(
-      handler,
-      session,
-      csrf,
-      project_two_id,
-      "Bug",
-      "bug-ant",
-      0,
-    )
+    create_task_type(handler, session, project_two_id, "Bug", "bug-ant", 0)
 
   let task_one =
     create_task(
       handler,
       session,
-      csrf,
       project_one_id,
       "Task One",
       "",
@@ -1000,7 +919,6 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
     create_task(
       handler,
       session,
-      csrf,
       project_two_id,
       "Task Two",
       "",
@@ -1013,7 +931,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_one) <> "/dependencies",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_two))]),
     )
@@ -1030,52 +948,22 @@ pub fn task_dependencies_reject_closed_dependency_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Deps Closed")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Deps Closed")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Task Blocked",
-      "",
-      1,
-      type_id,
-    )
+    create_task(handler, session, project_id, "Task Blocked", "", 1, type_id)
   let task_closed =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Task Closed",
-      "",
-      1,
-      type_id,
-    )
+    create_task(handler, session, project_id, "Task Closed", "", 1, type_id)
 
   let claim_status =
-    claim_task(
-      handler,
-      session,
-      csrf,
-      task_closed,
-      task_version(db, task_closed),
-    )
+    claim_task(handler, session, task_closed, task_version(db, task_closed))
   claim_status |> expect.equal(200)
 
   let close_status =
-    close_task(
-      handler,
-      session,
-      csrf,
-      task_closed,
-      task_version(db, task_closed),
-    )
+    close_task(handler, session, task_closed, task_version(db, task_closed))
   close_status |> expect.equal(200)
 
   let closed_req =
@@ -1083,7 +971,7 @@ pub fn task_dependencies_reject_closed_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_blocked) <> "/dependencies",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_closed))]),
     )
@@ -1100,24 +988,23 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Blocked Claim")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Blocked Claim")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 1, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 1, type_id)
   let task_blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 1, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
-  create_dependency(handler, session, csrf, task_blocked, task_blocker)
+  create_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
 
   let claim_res =
     claim_task_response(
       handler,
       session,
-      csrf,
       task_blocked,
       task_version(db, task_blocked),
     )
@@ -1134,43 +1021,24 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id =
-    create_project(handler, session, csrf, "Blocked Claim Closed")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Blocked Claim Closed")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 1, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 1, type_id)
   let task_blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 1, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
-  create_dependency(handler, session, csrf, task_blocked, task_blocker)
+  create_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
-  claim_task(
-    handler,
-    session,
-    csrf,
-    task_blocker,
-    task_version(db, task_blocker),
-  )
+  claim_task(handler, session, task_blocker, task_version(db, task_blocker))
   |> expect.equal(200)
-  close_task(
-    handler,
-    session,
-    csrf,
-    task_blocker,
-    task_version(db, task_blocker),
-  )
+  close_task(handler, session, task_blocker, task_version(db, task_blocker))
   |> expect.equal(200)
 
-  claim_task(
-    handler,
-    session,
-    csrf,
-    task_blocked,
-    task_version(db, task_blocked),
-  )
+  claim_task(handler, session, task_blocked, task_version(db, task_blocked))
   |> expect.equal(200)
 }
 
@@ -1179,29 +1047,22 @@ pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id =
-    create_project(handler, session, csrf, "Blocked Claim Removed")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Blocked Claim Removed")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 1, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 1, type_id)
   let task_blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 1, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 1, type_id)
 
-  create_dependency(handler, session, csrf, task_blocked, task_blocker)
+  create_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(200)
-  delete_dependency(handler, session, csrf, task_blocked, task_blocker)
+  delete_dependency(handler, session, task_blocked, task_blocker)
   |> expect.equal(204)
 
-  claim_task(
-    handler,
-    session,
-    csrf,
-    task_blocked,
-    task_version(db, task_blocked),
-  )
+  claim_task(handler, session, task_blocked, task_version(db, task_blocked))
   |> expect.equal(200)
 }
 
@@ -1227,35 +1088,25 @@ pub fn task_dependencies_schema_indices_present_test() {
 }
 
 pub fn pool_includes_available_active_card_task_test() {
-  let #(_, handler, session, csrf, project_id, type_id) =
+  let #(_, handler, session, project_id, type_id) =
     ht08_project("HT08 Active Card Pool")
 
-  create_task(
-    handler,
-    session,
-    csrf,
-    project_id,
-    "Active card task",
-    "",
-    3,
-    type_id,
-  )
+  create_task(handler, session, project_id, "Active card task", "", 3, type_id)
 
-  let res = list_project_tasks(handler, session, csrf, project_id, "")
+  let res = list_project_tasks(handler, session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res))
   |> expect.equal(["Active card task"])
 }
 
 pub fn pool_excludes_task_under_draft_card_test() {
-  let #(db, handler, session, csrf, project_id, type_id) =
+  let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Draft Card")
   let draft_card = insert_card_state(db, project_id, "Draft", "draft")
 
   create_task_with_card(
     handler,
     session,
-    csrf,
     project_id,
     "Draft task",
     "",
@@ -1264,20 +1115,19 @@ pub fn pool_excludes_task_under_draft_card_test() {
     draft_card,
   )
 
-  let res = list_project_tasks(handler, session, csrf, project_id, "")
+  let res = list_project_tasks(handler, session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res)) |> expect.equal([])
 }
 
 pub fn pool_includes_task_under_active_card_test() {
-  let #(db, handler, session, csrf, project_id, type_id) =
+  let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Active Card")
   let active_card = insert_card_state(db, project_id, "Active", "active")
 
   create_task_with_card(
     handler,
     session,
-    csrf,
     project_id,
     "Active-card task",
     "",
@@ -1286,131 +1136,113 @@ pub fn pool_includes_task_under_active_card_test() {
     active_card,
   )
 
-  let res = list_project_tasks(handler, session, csrf, project_id, "")
+  let res = list_project_tasks(handler, session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res))
   |> expect.equal(["Active-card task"])
 }
 
 pub fn dependency_blocks_available_and_claimed_tasks_test() {
-  let #(db, handler, session, csrf, project_id, type_id) =
+  let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Blocked")
   let blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_dependency(handler, session, csrf, blocked, blocker)
+  create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
 
   let blocked_res =
-    list_project_tasks(handler, session, csrf, project_id, "blocked=true")
+    list_project_tasks(handler, session, project_id, "blocked=true")
   expect.expect_status(blocked_res, 200)
   decode_task_titles(simulate.read_body(blocked_res))
   |> expect.equal(["Blocked"])
 
   let claim_blocked =
-    claim_task_response(
-      handler,
-      session,
-      csrf,
-      blocked,
-      task_version(db, blocked),
-    )
+    claim_task_response(handler, session, blocked, task_version(db, blocked))
   expect.expect_status(claim_blocked, 409)
   simulate.read_body(claim_blocked)
   |> string.contains("CONFLICT_BLOCKED")
   |> expect.is_true
 
-  claim_task(handler, session, csrf, blocker, task_version(db, blocker))
+  claim_task(handler, session, blocker, task_version(db, blocker))
   |> expect.equal(200)
 
   let still_blocked =
-    claim_task_response(
-      handler,
-      session,
-      csrf,
-      blocked,
-      task_version(db, blocked),
-    )
+    claim_task_response(handler, session, blocked, task_version(db, blocked))
   expect.expect_status(still_blocked, 409)
 }
 
 pub fn claimed_task_blocked_after_claim_cannot_close_but_can_release_test() {
-  let #(db, handler, session, csrf, project_id, type_id) =
+  let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Claimed Blocked Close")
   let blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  claim_task(handler, session, csrf, blocked, task_version(db, blocked))
+  claim_task(handler, session, blocked, task_version(db, blocked))
   |> expect.equal(200)
-  create_dependency(handler, session, csrf, blocked, blocker)
+  create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
 
   let close_blocked =
-    close_task_response(
-      handler,
-      session,
-      csrf,
-      blocked,
-      task_version(db, blocked),
-    )
+    close_task_response(handler, session, blocked, task_version(db, blocked))
   expect.expect_status(close_blocked, 409)
   simulate.read_body(close_blocked)
   |> string.contains("CONFLICT_BLOCKED")
   |> expect.is_true
   task_claimed_by(db, blocked) |> expect.equal(1)
 
-  release_task(handler, session, csrf, blocked, task_version(db, blocked))
+  release_task(handler, session, blocked, task_version(db, blocked))
   |> expect.equal(200)
   task_claimed_by(db, blocked) |> expect.equal(0)
 }
 
 pub fn dependency_unblocks_when_dependency_closed_test() {
-  let #(db, handler, session, csrf, project_id, type_id) =
+  let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Closed Dependency")
   let blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_dependency(handler, session, csrf, blocked, blocker)
+  create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
-  claim_task(handler, session, csrf, blocker, task_version(db, blocker))
+  claim_task(handler, session, blocker, task_version(db, blocker))
   |> expect.equal(200)
-  close_task(handler, session, csrf, blocker, task_version(db, blocker))
+  close_task(handler, session, blocker, task_version(db, blocker))
   |> expect.equal(200)
 
   let unblocked_res =
-    list_project_tasks(handler, session, csrf, project_id, "blocked=false")
+    list_project_tasks(handler, session, project_id, "blocked=false")
   expect.expect_status(unblocked_res, 200)
   decode_task_titles(simulate.read_body(unblocked_res))
   |> list.contains("Blocked")
   |> expect.is_true
-  claim_task(handler, session, csrf, blocked, task_version(db, blocked))
+  claim_task(handler, session, blocked, task_version(db, blocked))
   |> expect.equal(200)
 }
 
 pub fn delete_dependency_target_unblocks_task_test() {
-  let #(db, handler, session, csrf, project_id, type_id) =
+  let #(db, handler, session, project_id, type_id) =
     ht08_project("HT08 Delete Dependency")
   let blocked =
-    create_task(handler, session, csrf, project_id, "Blocked", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocked", "", 3, type_id)
   let blocker =
-    create_task(handler, session, csrf, project_id, "Blocker", "", 3, type_id)
+    create_task(handler, session, project_id, "Blocker", "", 3, type_id)
 
-  create_dependency(handler, session, csrf, blocked, blocker)
+  create_dependency(handler, session, blocked, blocker)
   |> expect.equal(200)
-  delete_dependency(handler, session, csrf, blocked, blocker)
+  delete_dependency(handler, session, blocked, blocker)
   |> expect.equal(204)
-  claim_task(handler, session, csrf, blocked, task_version(db, blocked))
+  claim_task(handler, session, blocked, task_version(db, blocked))
   |> expect.equal(200)
 }
 
 pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
-  let #(db, handler, admin_session, admin_csrf, project_id, type_id) =
+  let #(db, handler, admin_session, project_id, type_id) =
     ht08_project("HT08 Close Owner")
 
   let owner_id =
@@ -1422,85 +1254,52 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
       "other-owner@example.com",
       "inv_other_owner",
     )
-  add_member(handler, admin_session, admin_csrf, project_id, owner_id, "member")
-  add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
+  add_member(handler, admin_session, project_id, owner_id, "member")
+  add_member(handler, admin_session, project_id, other_id, "member")
 
-  let #(owner_session, owner_csrf) = login_session(handler, "owner@example.com")
-  let #(other_session, other_csrf) =
-    login_session(handler, "other-owner@example.com")
+  let owner_session = login_session(handler, "owner@example.com")
+  let other_session = login_session(handler, "other-owner@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Owned",
-      "",
-      3,
-      type_id,
-    )
-  claim_task(
-    handler,
-    owner_session,
-    owner_csrf,
-    task_id,
-    task_version(db, task_id),
-  )
+    create_task(handler, admin_session, project_id, "Owned", "", 3, type_id)
+  claim_task(handler, owner_session, task_id, task_version(db, task_id))
   |> expect.equal(200)
 
   let other_close =
     close_task_response(
       handler,
       other_session,
-      other_csrf,
       task_id,
       task_version(db, task_id),
     )
   expect.expect_status(other_close, 403)
 
-  close_task(
-    handler,
-    owner_session,
-    owner_csrf,
-    task_id,
-    task_version(db, task_id),
-  )
+  close_task(handler, owner_session, task_id, task_version(db, task_id))
   |> expect.equal(200)
 }
 
 pub fn dependency_would_create_cycle_is_rejected_test() {
-  let #(_, handler, session, csrf, project_id, type_id) =
-    ht08_project("HT08 Cycle")
+  let #(_, handler, session, project_id, type_id) = ht08_project("HT08 Cycle")
   let task_a =
-    create_task(handler, session, csrf, project_id, "Task A", "", 3, type_id)
+    create_task(handler, session, project_id, "Task A", "", 3, type_id)
   let task_b =
-    create_task(handler, session, csrf, project_id, "Task B", "", 3, type_id)
+    create_task(handler, session, project_id, "Task B", "", 3, type_id)
 
-  create_dependency(handler, session, csrf, task_a, task_b) |> expect.equal(200)
-  create_dependency(handler, session, csrf, task_b, task_a) |> expect.equal(422)
+  create_dependency(handler, session, task_a, task_b) |> expect.equal(200)
+  create_dependency(handler, session, task_b, task_a) |> expect.equal(422)
 }
 
 pub fn cross_project_dependency_is_rejected_test() {
-  let #(_db, handler, session, csrf, project_one_id, type_one_id) =
+  let #(_db, handler, session, project_one_id, type_one_id) =
     ht08_project("HT08 Cross One")
-  let project_two_id = create_project(handler, session, csrf, "HT08 Cross Two")
+  let project_two_id = create_project(handler, session, "HT08 Cross Two")
   let type_two_id =
-    create_task_type(
-      handler,
-      session,
-      csrf,
-      project_two_id,
-      "Bug",
-      "bug-ant",
-      0,
-    )
+    create_task_type(handler, session, project_two_id, "Bug", "bug-ant", 0)
 
   let task_one =
     create_task(
       handler,
       session,
-      csrf,
       project_one_id,
       "Task One",
       "",
@@ -1511,7 +1310,6 @@ pub fn cross_project_dependency_is_rejected_test() {
     create_task(
       handler,
       session,
-      csrf,
       project_two_id,
       "Task Two",
       "",
@@ -1519,12 +1317,12 @@ pub fn cross_project_dependency_is_rejected_test() {
       type_two_id,
     )
 
-  create_dependency(handler, session, csrf, task_one, task_two)
+  create_dependency(handler, session, task_one, task_two)
   |> expect.equal(422)
 }
 
 pub fn pool_filters_by_user_capabilities_test() {
-  let #(db, handler, admin_session, admin_csrf, project_id, _) =
+  let #(db, handler, admin_session, project_id, _) =
     ht08_project("HT08 Capabilities")
   let frontend = insert_capability(db, project_id, "Frontend")
   let backend = insert_capability(db, project_id, "Backend")
@@ -1532,7 +1330,6 @@ pub fn pool_filters_by_user_capabilities_test() {
     create_task_type(
       handler,
       admin_session,
-      admin_csrf,
       project_id,
       "Frontend Task",
       "bolt",
@@ -1542,7 +1339,6 @@ pub fn pool_filters_by_user_capabilities_test() {
     create_task_type(
       handler,
       admin_session,
-      admin_csrf,
       project_id,
       "Backend Task",
       "bug-ant",
@@ -1551,20 +1347,12 @@ pub fn pool_filters_by_user_capabilities_test() {
 
   let member_id =
     create_member_user(handler, db, "cap-user@example.com", "inv_cap")
-  add_member(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    member_id,
-    "member",
-  )
+  add_member(handler, admin_session, project_id, member_id, "member")
   grant_capability(db, project_id, member_id, frontend)
 
   create_task(
     handler,
     admin_session,
-    admin_csrf,
     project_id,
     "Visible frontend",
     "",
@@ -1574,7 +1362,6 @@ pub fn pool_filters_by_user_capabilities_test() {
   create_task(
     handler,
     admin_session,
-    admin_csrf,
     project_id,
     "Hidden backend",
     "",
@@ -1582,11 +1369,9 @@ pub fn pool_filters_by_user_capabilities_test() {
     backend_type,
   )
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "cap-user@example.com")
+  let member_session = login_session(handler, "cap-user@example.com")
 
-  let res =
-    list_project_tasks(handler, member_session, member_csrf, project_id, "")
+  let res = list_project_tasks(handler, member_session, project_id, "")
   expect.expect_status(res, 200)
   decode_task_titles(simulate.read_body(res))
   |> expect.equal(["Visible frontend"])
@@ -1597,20 +1382,20 @@ pub fn me_metrics_returns_counts_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  close_task(handler, session, csrf, task_id, 2) |> expect.equal(200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  close_task(handler, session, task_id, 2) |> expect.equal(200)
 
   let req =
     simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1645,17 +1430,16 @@ pub fn org_metrics_overview_requires_org_admin_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
+  let admin_session = login_session(handler, "admin@example.com")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   // member is authenticated but not org admin
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/overview")
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1663,7 +1447,7 @@ pub fn org_metrics_overview_requires_org_admin_test() {
   // admin succeeds
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/overview")
-    |> fixtures.with_session_cookies(admin_session, admin_csrf)
+    |> with_session_cookies(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
@@ -1674,16 +1458,16 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -1693,7 +1477,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
       http.Get,
       "/api/v1/org/metrics/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1778,23 +1562,22 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
+  let admin_session = login_session(handler, "admin@example.com")
 
   create_member_user(handler, db, "member@example.com", "inv_member")
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
   let member_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
-    |> fixtures.with_session_cookies(member_session, member_csrf)
+    |> with_session_cookies(member_session)
 
   let member_res = handler(member_req)
   expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
-    |> fixtures.with_session_cookies(admin_session, admin_csrf)
+    |> with_session_cookies(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
@@ -1846,11 +1629,11 @@ pub fn org_metrics_users_invalid_window_days_returns_422_test() {
   let scrumbringer_server.App(..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
+  let session = login_session(handler, "admin@example.com")
 
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/users?window_days=999")
-    |> fixtures.with_session_cookies(session, csrf)
+    |> with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 422)
@@ -1861,19 +1644,18 @@ pub fn tasks_list_requires_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
 
   create_member_user(handler, db, "outsider@example.com", "inv_out")
-  let #(outsider_session, outsider_csrf) =
-    login_session(handler, "outsider@example.com")
+  let outsider_session = login_session(handler, "outsider@example.com")
 
   let req =
     simulate.request(
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
+    |> with_session_cookies(outsider_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1885,21 +1667,20 @@ pub fn task_get_requires_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Secret", "", 3, type_id)
+    create_task(handler, session, project_id, "Secret", "", 3, type_id)
 
   create_member_user(handler, db, "outsider@example.com", "inv_out")
-  let #(outsider_session, outsider_csrf) =
-    login_session(handler, "outsider@example.com")
+  let outsider_session = login_session(handler, "outsider@example.com")
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(outsider_session, outsider_csrf)
+    |> with_session_cookies(outsider_session)
 
   let res = handler(req)
   expect.expect_status(res, 404)
@@ -1912,53 +1693,26 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
 
   let bug_type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let chore_type_id =
-    create_task_type(handler, session, csrf, project_id, "Chore", "bolt", 0)
+    create_task_type(handler, session, project_id, "Chore", "bolt", 0)
 
   let available_id =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Available",
-      "",
-      3,
-      bug_type_id,
-    )
+    create_task(handler, session, project_id, "Available", "", 3, bug_type_id)
 
   let claimed_id =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Claimed",
-      "",
-      3,
-      chore_type_id,
-    )
+    create_task(handler, session, project_id, "Claimed", "", 3, chore_type_id)
 
   let closed_id =
-    create_task(
-      handler,
-      session,
-      csrf,
-      project_id,
-      "Closed",
-      "",
-      3,
-      bug_type_id,
-    )
+    create_task(handler, session, project_id, "Closed", "", 3, bug_type_id)
 
-  claim_task(handler, session, csrf, claimed_id, 1) |> expect.equal(200)
-  claim_task(handler, session, csrf, closed_id, 1) |> expect.equal(200)
-  close_task(handler, session, csrf, closed_id, 2) |> expect.equal(200)
+  claim_task(handler, session, claimed_id, 1) |> expect.equal(200)
+  claim_task(handler, session, closed_id, 1) |> expect.equal(200)
+  close_task(handler, session, closed_id, 2) |> expect.equal(200)
 
   let available_res =
     handler(
@@ -1968,7 +1722,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=available",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(available_res, 200)
@@ -1983,7 +1737,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=claimed",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(claimed_res, 200)
@@ -1998,7 +1752,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=closed",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(closed_filter_res, 200)
@@ -2014,7 +1768,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> "/tasks?type_id="
           <> int.to_string(bug_type_id),
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(type_res, 200)
@@ -2027,7 +1781,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?status=nope",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(invalid_status_res, 422)
@@ -2040,7 +1794,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?type_id=abc",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(invalid_type_res, 422)
@@ -2055,7 +1809,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?capability_id=abc",
       )
-      |> fixtures.with_session_cookies(session, csrf),
+      |> with_session_cookies(session),
     )
 
   expect.expect_status(invalid_cap_res, 422)
@@ -2071,58 +1825,33 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(admin_session, admin_csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, admin_csrf, "Core")
+  let admin_session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, admin_session, "Core")
   let type_id =
-    create_task_type(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Bug",
-      "bug-ant",
-      0,
-    )
+    create_task_type(handler, admin_session, project_id, "Bug", "bug-ant", 0)
 
   let member_id =
     create_member_user(handler, db, "member@example.com", "inv_member")
   let other_id =
     create_member_user(handler, db, "other@example.com", "inv_other")
 
-  add_member(
-    handler,
-    admin_session,
-    admin_csrf,
-    project_id,
-    member_id,
-    "member",
-  )
-  add_member(handler, admin_session, admin_csrf, project_id, other_id, "member")
+  add_member(handler, admin_session, project_id, member_id, "member")
+  add_member(handler, admin_session, project_id, other_id, "member")
 
-  let #(member_session, member_csrf) =
-    login_session(handler, "member@example.com")
+  let member_session = login_session(handler, "member@example.com")
 
-  let #(other_session, other_csrf) = login_session(handler, "other@example.com")
+  let other_session = login_session(handler, "other@example.com")
 
   let task_id =
-    create_task(
-      handler,
-      admin_session,
-      admin_csrf,
-      project_id,
-      "Core",
-      "",
-      3,
-      type_id,
-    )
+    create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, member_session, member_csrf, task_id, 1)
+  claim_task(handler, member_session, task_id, 1)
   |> expect.equal(200)
 
   let patch_ok_res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-      |> fixtures.with_auth(fixture_session(member_session, member_csrf))
+      |> fixtures.with_auth(member_session)
       |> simulate.json_body(
         json.object([
           #("version", json.int(2)),
@@ -2141,7 +1870,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let patch_other_res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-      |> fixtures.with_auth(fixture_session(other_session, other_csrf))
+      |> fixtures.with_auth(other_session)
       |> simulate.json_body(
         json.object([
           #("version", json.int(version)),
@@ -2158,7 +1887,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
-      |> fixtures.with_auth(fixture_session(other_session, other_csrf))
+      |> fixtures.with_auth(other_session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2170,7 +1899,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
-      |> fixtures.with_auth(fixture_session(other_session, other_csrf))
+      |> fixtures.with_auth(other_session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2182,20 +1911,20 @@ pub fn patch_rejects_blank_title_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
 
   let res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-      |> fixtures.with_auth(fixture_session(session, csrf))
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("version", json.int(2)),
@@ -2214,23 +1943,23 @@ pub fn me_work_session_start_pause_and_persist_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
 
   let start_body =
-    simulate.read_body(start_work_session(handler, session, csrf, task_id))
+    simulate.read_body(start_work_session(handler, session, task_id))
 
   decode_work_session_task_id(start_body) |> expect.equal(option.Some(task_id))
   is_iso8601_utc(decode_as_of(start_body)) |> expect.equal(True)
 
-  let get_res = get_active_work_sessions(handler, session, csrf)
+  let get_res = get_active_work_sessions(handler, session)
   expect.expect_status(get_res, 200)
   decode_work_session_task_id(simulate.read_body(get_res))
   |> expect.equal(option.Some(task_id))
@@ -2247,7 +1976,7 @@ pub fn me_work_session_start_pause_and_persist_test() {
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
-  let pause_res = pause_work_session(handler, session, csrf, task_id)
+  let pause_res = pause_work_session(handler, session, task_id)
   expect.expect_status(pause_res, 200)
   decode_work_session_task_id(simulate.read_body(pause_res))
   |> expect.equal(option.None)
@@ -2262,12 +1991,12 @@ pub fn me_work_session_start_pause_and_persist_test() {
   let _ = expect.is_true(accumulated_after_pause >= 70)
 
   let resume_body =
-    simulate.read_body(start_work_session(handler, session, csrf, task_id))
+    simulate.read_body(start_work_session(handler, session, task_id))
 
   decode_work_session_accumulated_s(resume_body)
   |> expect.equal(option.Some(accumulated_after_pause))
 
-  let get_after_pause = get_active_work_sessions(handler, session, csrf)
+  let get_after_pause = get_active_work_sessions(handler, session)
   expect.expect_status(get_after_pause, 200)
   decode_work_session_task_id(simulate.read_body(get_after_pause))
   |> expect.equal(option.Some(task_id))
@@ -2278,16 +2007,16 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
@@ -2309,7 +2038,7 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
       [pog.int(user_id), pog.int(task_id)],
     )
 
-  let heartbeat_res = heartbeat_work_session(handler, session, csrf, task_id)
+  let heartbeat_res = heartbeat_work_session(handler, session, task_id)
   expect.expect_status(heartbeat_res, 200)
 
   // Get last_heartbeat_at after heartbeat
@@ -2333,20 +2062,20 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
-  let t1 = create_task(handler, session, csrf, project_id, "T1", "", 3, type_id)
-  let t2 = create_task(handler, session, csrf, project_id, "T2", "", 3, type_id)
+  let t1 = create_task(handler, session, project_id, "T1", "", 3, type_id)
+  let t2 = create_task(handler, session, project_id, "T2", "", 3, type_id)
 
-  claim_task(handler, session, csrf, t1, 1) |> expect.equal(200)
-  claim_task(handler, session, csrf, t2, 1) |> expect.equal(200)
+  claim_task(handler, session, t1, 1) |> expect.equal(200)
+  claim_task(handler, session, t2, 1) |> expect.equal(200)
 
   // Start sessions on both tasks - multi-session model supports this
-  expect.expect_status(start_work_session(handler, session, csrf, t1), 200)
-  let res = start_work_session(handler, session, csrf, t2)
+  expect.expect_status(start_work_session(handler, session, t1), 200)
+  let res = start_work_session(handler, session, t2)
   expect.expect_status(res, 200)
 
   // Verify both sessions exist
@@ -2366,15 +2095,15 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  let res = start_work_session(handler, session, csrf, task_id)
+  let res = start_work_session(handler, session, task_id)
   expect.expect_status(res, 409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
   |> expect.equal(True)
@@ -2385,16 +2114,16 @@ pub fn me_work_session_clears_before_release_and_close_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, csrf, "Core")
+  let session = login_session(handler, "admin@example.com")
+  let project_id = create_project(handler, session, "Core")
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
-    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+    create_task(handler, session, project_id, "Core", "", 3, type_id)
 
-  claim_task(handler, session, csrf, task_id, 1) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
+  claim_task(handler, session, task_id, 1) |> expect.equal(200)
+  expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let version = task_version(db, task_id)
 
@@ -2404,75 +2133,71 @@ pub fn me_work_session_clears_before_release_and_close_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
-      |> fixtures.with_auth(fixture_session(session, csrf))
+      |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
   expect.expect_status(release_res, 200)
 
-  let active_after_release = get_active_work_sessions(handler, session, csrf)
+  let active_after_release = get_active_work_sessions(handler, session)
   decode_work_session_task_id(simulate.read_body(active_after_release))
   |> expect.equal(option.None)
 
   // Re-claim + start, then close.
   let version = task_version(db, task_id)
-  claim_task(handler, session, csrf, task_id, version) |> expect.equal(200)
-  expect.expect_status(start_work_session(handler, session, csrf, task_id), 200)
+  claim_task(handler, session, task_id, version) |> expect.equal(200)
+  expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let version = task_version(db, task_id)
-  close_task(handler, session, csrf, task_id, version) |> expect.equal(200)
+  close_task(handler, session, task_id, version) |> expect.equal(200)
 
-  let active_after_close = get_active_work_sessions(handler, session, csrf)
+  let active_after_close = get_active_work_sessions(handler, session)
   decode_work_session_task_id(simulate.read_body(active_after_close))
   |> expect.equal(option.None)
 }
 
 fn get_active_work_sessions(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Get, "/api/v1/me/work-sessions/active")
-    |> fixtures.with_session_cookies(session, csrf),
+    |> with_session_cookies(session),
   )
 }
 
 fn start_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/start")
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
 fn pause_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
 fn heartbeat_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
@@ -2579,30 +2304,27 @@ fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
 
 fn delete_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
 ) -> Int {
-  let res = delete_task_response(handler, session, csrf, task_id)
+  let res = delete_task_response(handler, session, task_id)
   res.status
 }
 
 fn delete_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Delete, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(fixture_session(session, csrf)),
+    |> fixtures.with_auth(session),
   )
 }
 
 fn create_task_note(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   content: String,
 ) -> Int {
@@ -2612,7 +2334,7 @@ fn create_task_note(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_auth(fixture_session(session, csrf))
+      |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("content", json.string(content))])),
     )
 
@@ -2621,19 +2343,17 @@ fn create_task_note(
 
 fn claim_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   version: Int,
 ) -> Int {
-  let res = claim_task_response(handler, session, csrf, task_id, version)
+  let res = claim_task_response(handler, session, task_id, version)
   res.status
 }
 
 fn claim_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   version: Int,
 ) -> wisp.Response {
@@ -2642,15 +2362,14 @@ fn claim_task_response(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([#("version", json.int(version))])),
   )
 }
 
 fn create_dependency(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   depends_on_task_id: Int,
 ) -> Int {
@@ -2660,7 +2379,7 @@ fn create_dependency(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
       )
-      |> fixtures.with_auth(fixture_session(session, csrf))
+      |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([#("depends_on_task_id", json.int(depends_on_task_id))]),
       ),
@@ -2671,8 +2390,7 @@ fn create_dependency(
 
 fn delete_dependency(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   depends_on_task_id: Int,
 ) -> Int {
@@ -2685,7 +2403,7 @@ fn delete_dependency(
           <> "/dependencies/"
           <> int.to_string(depends_on_task_id),
       )
-      |> fixtures.with_auth(fixture_session(session, csrf)),
+      |> fixtures.with_auth(session),
     )
 
   res.status
@@ -2693,8 +2411,7 @@ fn delete_dependency(
 
 fn release_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   version: Int,
 ) -> Int {
@@ -2704,7 +2421,7 @@ fn release_task(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
-      |> fixtures.with_auth(fixture_session(session, csrf))
+      |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2713,19 +2430,17 @@ fn release_task(
 
 fn close_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   version: Int,
 ) -> Int {
-  let res = close_task_response(handler, session, csrf, task_id, version)
+  let res = close_task_response(handler, session, task_id, version)
   res.status
 }
 
 fn close_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   task_id: Int,
   version: Int,
 ) -> wisp.Response {
@@ -2735,7 +2450,7 @@ fn close_task_response(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
-      |> fixtures.with_auth(fixture_session(session, csrf))
+      |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2766,8 +2481,7 @@ fn decode_task_titles(body: String) -> List(String) {
 
 fn list_project_tasks(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   query: String,
 ) -> wisp.Response {
@@ -2782,24 +2496,22 @@ fn list_project_tasks(
 
   handler(
     simulate.request(http.Get, url)
-    |> fixtures.with_session_cookies(session, csrf),
+    |> with_session_cookies(session),
   )
 }
 
 fn create_project(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   name: String,
 ) -> Int {
-  fixtures.create_project(handler, fixture_session(session, csrf), name)
+  fixtures.create_project(handler, session, name)
   |> expect.ok
 }
 
 fn create_task_type(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   name: String,
   icon: String,
@@ -2824,7 +2536,7 @@ fn create_task_type(
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(body)
 
   let res = handler(req)
@@ -2835,19 +2547,17 @@ fn create_task_type(
 
 fn create_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
   description: String,
   priority: Int,
   type_id: Int,
 ) -> Int {
-  let card_id = create_active_card(handler, session, csrf, project_id, title)
+  let card_id = create_active_card(handler, session, project_id, title)
   create_task_with_card(
     handler,
     session,
-    csrf,
     project_id,
     title,
     description,
@@ -2859,37 +2569,28 @@ fn create_task(
 
 fn create_active_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
 ) -> Int {
-  let card_id =
-    create_card(handler, session, csrf, project_id, title <> " card")
-  try_activate_card(handler, session, csrf, card_id)
+  let card_id = create_card(handler, session, project_id, title <> " card")
+  try_activate_card(handler, session, card_id)
   card_id
 }
 
 fn create_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
 ) -> Int {
-  fixtures.create_card(
-    handler,
-    fixture_session(session, csrf),
-    project_id,
-    title,
-  )
+  fixtures.create_card(handler, session, project_id, title)
   |> expect.ok
 }
 
 fn try_activate_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   card_id: Int,
 ) {
   let req =
@@ -2897,7 +2598,7 @@ fn try_activate_card(
       http.Post,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
     )
-    |> fixtures.with_auth(fixture_session(session, csrf))
+    |> fixtures.with_auth(session)
     |> simulate.json_body(json.object([]))
 
   let res = handler(req)
@@ -2909,8 +2610,7 @@ fn try_activate_card(
 
 fn create_task_with_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   title: String,
   description: String,
@@ -2920,7 +2620,7 @@ fn create_task_with_card(
 ) -> Int {
   fixtures.create_task_with_card_full(
     handler,
-    fixture_session(session, csrf),
+    session,
     project_id,
     title,
     description,
@@ -2933,19 +2633,12 @@ fn create_task_with_card(
 
 fn add_member(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: String,
-  csrf: String,
+  session: fixtures.Session,
   project_id: Int,
   user_id: Int,
   role: String,
 ) {
-  fixtures.add_member(
-    handler,
-    fixture_session(session, csrf),
-    project_id,
-    user_id,
-    role,
-  )
+  fixtures.add_member(handler, session, project_id, user_id, role)
   |> expect.ok
 }
 
@@ -3024,13 +2717,13 @@ fn ht08_project(name: String) {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let #(session, csrf) = login_session(handler, "admin@example.com")
+  let session = login_session(handler, "admin@example.com")
 
-  let project_id = create_project(handler, session, csrf, name)
+  let project_id = create_project(handler, session, name)
   let type_id =
-    create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+    create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
-  #(db, handler, session, csrf, project_id, type_id)
+  #(db, handler, session, project_id, type_id)
 }
 
 fn create_member_user(
@@ -3041,6 +2734,13 @@ fn create_member_user(
 ) -> Int {
   fixtures.create_member_user(handler, db, email, invite_code)
   |> expect.ok
+}
+
+fn with_session_cookies(
+  request: wisp.Request,
+  session: fixtures.Session,
+) -> wisp.Request {
+  fixtures.with_session_cookies(request, session.token, session.csrf)
 }
 
 fn bootstrap_app() -> scrumbringer_server.App {

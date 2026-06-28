@@ -1082,7 +1082,13 @@ Estado de ejecucion:
   `fixtures.Session`; se elimina `fixture_session`, el campo `csrf` duplicado
   de `ResourceViewFixture` y los parametros `csrf` paralelos en helpers de
   proyecto, task type, card, task, member y posiciones.
-- Delta parcial WP-12: `-1.294` lineas netas mantenidas (`-44` del primer pase
+- `tasks_http_test.gleam` aplica el mismo contrato tipado: `login_session`
+  devuelve `fixtures.Session`, los helpers de task lifecycle, dependencias,
+  work sessions, proyectos, cards, miembros y listados reciben la sesion
+  compartida, y las rutas que prueban ausencia de header CSRF usan un wrapper
+  local `with_session_cookies(session)` en vez de repetir token y csrf como
+  strings paralelos.
+- Delta parcial WP-12: `-1.594` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1091,7 +1097,8 @@ Estado de ejecucion:
   de IDs de usuarios en proyectos desde fixtures, `-6` del pase de ID de
   usuario en metricas modales, `-12` del pase de conversion Int->String con
   API estandar, `-213` del pase de `fixtures.Session` tipado en
-  `notes_and_positions_http_test.gleam`).
+  `notes_and_positions_http_test.gleam`, `-300` del pase de
+  `fixtures.Session` tipado en `tasks_http_test.gleam`).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
