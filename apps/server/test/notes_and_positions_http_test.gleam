@@ -1,3 +1,4 @@
+import fixtures
 import gleam/dynamic/decode
 import gleam/erlang/charlist
 import gleam/http
@@ -14,6 +15,10 @@ import wisp
 import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+fn fixture_session(token: String, csrf: String) -> fixtures.Session {
+  fixtures.Session(token: token, csrf: csrf)
+}
 
 type ResourceViewFixture {
   ResourceViewFixture(
@@ -1718,44 +1723,9 @@ fn create_project(
   csrf: String,
   name: String,
 ) {
-  let req =
-    simulate.request(http.Post, "/api/v1/projects")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(project_create_json(name))
-
-  expect.expect_status(handler(req), 200)
-}
-
-fn project_create_json(name: String) -> json.Json {
-  json.object([
-    #("name", json.string(name)),
-    #("healthy_pool_limit", json.int(20)),
-    #(
-      "card_depth_names",
-      json.array(
-        [
-          project_depth_name_json(1, "Initiative", "Initiatives"),
-          project_depth_name_json(2, "Feature", "Features"),
-          project_depth_name_json(3, "Task group", "Task groups"),
-        ],
-        of: fn(value) { value },
-      ),
-    ),
-  ])
-}
-
-fn project_depth_name_json(
-  depth: Int,
-  singular_name: String,
-  plural_name: String,
-) -> json.Json {
-  json.object([
-    #("depth", json.int(depth)),
-    #("singular_name", json.string(singular_name)),
-    #("plural_name", json.string(plural_name)),
-  ])
+  fixtures.create_project(handler, fixture_session(session, csrf), name)
+  |> expect.ok
+  |> fn(_) { Nil }
 }
 
 fn create_task_type(
@@ -1766,19 +1736,15 @@ fn create_task_type(
   name: String,
   icon: String,
 ) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/task-types",
-    )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(
-      json.object([#("name", json.string(name)), #("icon", json.string(icon))]),
-    )
-
-  expect.expect_status(handler(req), 200)
+  fixtures.create_task_type(
+    handler,
+    fixture_session(session, csrf),
+    project_id,
+    name,
+    icon,
+  )
+  |> expect.ok
+  |> fn(_) { Nil }
 }
 
 fn create_task(
@@ -1895,16 +1861,8 @@ fn activate_card(
   csrf: String,
   card_id: Int,
 ) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/cards/" <> int_to_string(card_id) <> "/activate",
-    )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-
-  expect.expect_status(handler(req), 200)
+  fixtures.activate_card(handler, fixture_session(session, csrf), card_id)
+  |> expect.ok
 }
 
 fn add_member(
@@ -1914,22 +1872,14 @@ fn add_member(
   project_id: Int,
   user_id: Int,
 ) {
-  let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
-    )
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(
-      json.object([
-        #("user_id", json.int(user_id)),
-        #("role", json.string("member")),
-      ]),
-    )
-
-  expect.expect_status(handler(req), 200)
+  fixtures.add_member(
+    handler,
+    fixture_session(session, csrf),
+    project_id,
+    user_id,
+    "member",
+  )
+  |> expect.ok
 }
 
 fn resource_view_fixture() -> ResourceViewFixture {
@@ -2007,18 +1957,9 @@ fn create_member_user(
   email: String,
   invite_code: String,
 ) {
-  insert_invite_link_active(db, invite_code, email)
-
-  let req =
-    simulate.request(http.Post, "/api/v1/auth/register")
-    |> simulate.json_body(
-      json.object([
-        #("password", json.string("passwordpassword")),
-        #("invite_token", json.string(invite_code)),
-      ]),
-    )
-
-  expect.expect_status(handler(req), 200)
+  fixtures.create_member_user(handler, db, email, invite_code)
+  |> expect.ok
+  |> fn(_) { Nil }
 }
 
 fn login_as(
@@ -2078,36 +2019,9 @@ fn reset_db(db: pog.Connection) {
   Nil
 }
 
-fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
-  let assert Ok(_) =
-    pog.query(
-      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
-    )
-    |> pog.parameter(pog.text(email))
-    |> pog.parameter(pog.text(token))
-    |> pog.execute(db)
-
-  Nil
-}
-
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
-  let decoder = {
-    use value <- decode.field(0, decode.int)
-    decode.success(value)
-  }
-
-  let query =
-    params
-    |> list.fold(pog.query(sql), fn(query, param) {
-      pog.parameter(query, param)
-    })
-
-  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
-    query
-    |> pog.returning(decoder)
-    |> pog.execute(db)
-
-  value
+  fixtures.query_int(db, sql, params)
+  |> expect.ok
 }
 
 fn set_cookie_headers(headers: List(#(String, String))) -> List(String) {
