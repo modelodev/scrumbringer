@@ -501,25 +501,7 @@ fn decode_rule_name(body: String) -> String {
 }
 
 fn decode_rule_names(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let rule_decoder = {
-    use name <- decode.field("name", decode.string)
-    decode.success(name)
-  }
-
-  let data_decoder = {
-    use rules <- decode.field("rules", decode.list(rule_decoder))
-    decode.success(rules)
-  }
-
-  let response_decoder = {
-    use rules <- decode.field("data", data_decoder)
-    decode.success(rules)
-  }
-
-  let assert Ok(rules) = decode.run(dynamic, response_decoder)
-  rules
+  fixtures.require_data_string_list_field(body, "rules", "name")
 }
 
 fn decode_first_rule_template_name(body: String) -> String {

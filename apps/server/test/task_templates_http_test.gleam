@@ -394,25 +394,7 @@ pub fn task_templates_invalid_type_id_returns_422_test() {
 }
 
 fn decode_template_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let template_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use template <- decode.field("template", template_decoder)
-    decode.success(template)
-  }
-
-  let response_decoder = {
-    use template_id <- decode.field("data", data_decoder)
-    decode.success(template_id)
-  }
-
-  let assert Ok(template_id) = decode.run(dynamic, response_decoder)
-  template_id
+  fixtures.require_entity_id(body, fixtures.Template)
 }
 
 fn decode_template_name(body: String) -> String {
@@ -438,25 +420,7 @@ fn decode_template_name(body: String) -> String {
 }
 
 fn decode_template_names(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let template_decoder = {
-    use name <- decode.field("name", decode.string)
-    decode.success(name)
-  }
-
-  let data_decoder = {
-    use templates <- decode.field("templates", decode.list(template_decoder))
-    decode.success(templates)
-  }
-
-  let response_decoder = {
-    use templates <- decode.field("data", data_decoder)
-    decode.success(templates)
-  }
-
-  let assert Ok(templates) = decode.run(dynamic, response_decoder)
-  templates
+  fixtures.require_data_string_list_field(body, "templates", "name")
 }
 
 fn create_rule(

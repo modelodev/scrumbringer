@@ -275,25 +275,7 @@ pub fn workflows_invalid_payload_returns_400_test() {
 }
 
 fn decode_workflow_names(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let workflow_decoder = {
-    use name <- decode.field("name", decode.string)
-    decode.success(name)
-  }
-
-  let data_decoder = {
-    use workflows <- decode.field("workflows", decode.list(workflow_decoder))
-    decode.success(workflows)
-  }
-
-  let response_decoder = {
-    use workflows <- decode.field("data", data_decoder)
-    decode.success(workflows)
-  }
-
-  let assert Ok(workflows) = decode.run(dynamic, response_decoder)
-  workflows
+  fixtures.require_data_string_list_field(body, "workflows", "name")
 }
 
 fn insert_rule(db: pog.Connection, workflow_id: Int) -> Int {

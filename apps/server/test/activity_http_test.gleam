@@ -529,25 +529,7 @@ fn has_event(
 }
 
 fn decode_note_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let note_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use id <- decode.field("note", note_decoder)
-    decode.success(id)
-  }
-
-  let response_decoder = {
-    use id <- decode.field("data", data_decoder)
-    decode.success(id)
-  }
-
-  let assert Ok(id) = decode.run(dynamic, response_decoder)
-  id
+  fixtures.require_entity_id(body, fixtures.NoteEntity)
 }
 
 fn decode_activity(body: String) -> List(ActivityEvent) {

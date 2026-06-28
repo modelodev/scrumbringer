@@ -1,5 +1,4 @@
 import fixtures
-import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
@@ -206,28 +205,7 @@ fn create_capability(
 }
 
 fn decode_capability_names(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let capability_decoder = {
-    use name <- decode.field("name", decode.string)
-    decode.success(name)
-  }
-
-  let data_decoder = {
-    use capabilities <- decode.field(
-      "capabilities",
-      decode.list(capability_decoder),
-    )
-    decode.success(capabilities)
-  }
-
-  let response_decoder = {
-    use capabilities <- decode.field("data", data_decoder)
-    decode.success(capabilities)
-  }
-
-  let assert Ok(names) = decode.run(dynamic, response_decoder)
-  names
+  fixtures.require_data_string_list_field(body, "capabilities", "name")
 }
 
 fn put_member_capabilities(
@@ -283,20 +261,7 @@ fn get_member_capabilities(
 }
 
 fn decode_member_capabilities(body: String) -> List(Int) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let data_decoder = {
-    use ids <- decode.field("capability_ids", decode.list(decode.int))
-    decode.success(ids)
-  }
-
-  let response_decoder = {
-    use ids <- decode.field("data", data_decoder)
-    decode.success(ids)
-  }
-
-  let assert Ok(ids) = decode.run(dynamic, response_decoder)
-  ids
+  fixtures.require_data_int_list(body, "capability_ids")
 }
 
 fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Int {

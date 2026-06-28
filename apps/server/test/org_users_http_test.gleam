@@ -1,5 +1,4 @@
 import fixtures
-import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
@@ -444,25 +443,7 @@ pub fn update_user_project_role_not_member_test() {
 }
 
 fn decode_user_emails(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let user_decoder = {
-    use email <- decode.field("email", decode.string)
-    decode.success(email)
-  }
-
-  let data_decoder = {
-    use users <- decode.field("users", decode.list(user_decoder))
-    decode.success(users)
-  }
-
-  let response_decoder = {
-    use users <- decode.field("data", data_decoder)
-    decode.success(users)
-  }
-
-  let assert Ok(users) = decode.run(dynamic, response_decoder)
-  users
+  fixtures.require_data_string_list_field(body, "users", "email")
 }
 
 fn create_user_via_invite(

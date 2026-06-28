@@ -984,25 +984,7 @@ fn decode_note_pinned(body: String) -> Bool {
 }
 
 fn decode_note_list_contents(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let note_decoder = {
-    use content <- decode.field("content", decode.string)
-    decode.success(content)
-  }
-
-  let data_decoder = {
-    use notes <- decode.field("notes", decode.list(note_decoder))
-    decode.success(notes)
-  }
-
-  let response_decoder = {
-    use notes <- decode.field("data", data_decoder)
-    decode.success(notes)
-  }
-
-  let assert Ok(notes) = decode.run(dynamic, response_decoder)
-  notes
+  fx.require_data_string_list_field(body, "notes", "content")
 }
 
 fn insert_note_with_created_at(
@@ -1045,25 +1027,7 @@ fn insert_note_with_created_at(
 }
 
 fn decode_note_id(body: String) -> Int {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let note_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-
-  let data_decoder = {
-    use note <- decode.field("note", note_decoder)
-    decode.success(note)
-  }
-
-  let response_decoder = {
-    use note_id <- decode.field("data", data_decoder)
-    decode.success(note_id)
-  }
-
-  let assert Ok(note_id) = decode.run(dynamic, response_decoder)
-  note_id
+  fx.require_entity_id(body, fx.NoteEntity)
 }
 
 fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {
@@ -1119,25 +1083,7 @@ fn decode_task_has_new_notes(body: String, task_id: Int) -> Bool {
 }
 
 fn decode_position_task_ids(body: String) -> List(Int) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let position_decoder = {
-    use task_id <- decode.field("task_id", decode.int)
-    decode.success(task_id)
-  }
-
-  let data_decoder = {
-    use positions <- decode.field("positions", decode.list(position_decoder))
-    decode.success(positions)
-  }
-
-  let response_decoder = {
-    use positions <- decode.field("data", data_decoder)
-    decode.success(positions)
-  }
-
-  let assert Ok(positions) = decode.run(dynamic, response_decoder)
-  positions
+  fx.require_data_int_list_field(body, "positions", "task_id")
 }
 
 fn decode_positions_xy_by_task(body: String, task_id: Int) -> #(Int, Int) {

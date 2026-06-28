@@ -63,6 +63,7 @@ pub type Entity {
   Template
   TaskEntity
   CardEntity
+  NoteEntity
 }
 
 /// Resource type for rules (task or card).
@@ -1223,32 +1224,72 @@ pub fn get_user_id(db: pog.Connection, email: String) -> Result(Int, String) {
 
 /// Decode an ID from an API response using type-safe Entity.
 pub fn decode_entity_id(body: String, entity: Entity) -> Result(Int, String) {
-  let entity_str = entity_to_string(entity)
+  decode_data_entity_id(body, entity_to_string(entity))
+}
+
+pub fn require_entity_id(body: String, entity: Entity) -> Int {
+  decode_entity_id(body, entity) |> expect.ok
+}
+
+pub fn decode_data_entity_id(
+  body: String,
+  entity_field: String,
+) -> Result(Int, String) {
   case json.parse(body, decode.dynamic) {
     Error(_) -> Error("Invalid JSON: " <> body)
-    Ok(dynamic) -> {
-      let id_decoder = {
-        use id <- decode.field("id", decode.int)
-        decode.success(id)
-      }
-
-      let entity_decoder = {
-        use id <- decode.field(entity_str, id_decoder)
-        decode.success(id)
-      }
-
-      let response_decoder = {
-        use id <- decode.field("data", entity_decoder)
-        decode.success(id)
-      }
-
-      case decode.run(dynamic, response_decoder) {
-        Ok(id) -> Ok(id)
-        Error(_) ->
-          Error("Failed to decode " <> entity_str <> " id from: " <> body)
-      }
-    }
+    Ok(dynamic) ->
+      decode.run(dynamic, decode.at(["data", entity_field, "id"], decode.int))
+      |> result.map_error(fn(_) {
+        "Failed to decode " <> entity_field <> " id from: " <> body
+      })
   }
+}
+
+pub fn require_data_string_list_field(
+  body: String,
+  collection_field: String,
+  item_field: String,
+) -> List(String) {
+  let item_decoder = {
+    use value <- decode.field(item_field, decode.string)
+    decode.success(value)
+  }
+
+  require_data_list(body, collection_field, item_decoder)
+}
+
+pub fn require_data_int_list_field(
+  body: String,
+  collection_field: String,
+  item_field: String,
+) -> List(Int) {
+  let item_decoder = {
+    use value <- decode.field(item_field, decode.int)
+    decode.success(value)
+  }
+
+  require_data_list(body, collection_field, item_decoder)
+}
+
+pub fn require_data_int_list(body: String, field: String) -> List(Int) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok(values) =
+    decode.run(dynamic, decode.at(["data", field], decode.list(decode.int)))
+  values
+}
+
+fn require_data_list(
+  body: String,
+  collection_field: String,
+  item_decoder: decode.Decoder(a),
+) -> List(a) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let assert Ok(items) =
+    decode.run(
+      dynamic,
+      decode.at(["data", collection_field], decode.list(item_decoder)),
+    )
+  items
 }
 
 /// Convert Entity to JSON field name string.
@@ -1261,6 +1302,7 @@ fn entity_to_string(entity: Entity) -> String {
     Template -> "template"
     TaskEntity -> "task"
     CardEntity -> "card"
+    NoteEntity -> "note"
   }
 }
 

@@ -1322,7 +1322,12 @@ Estado de ejecucion:
 - `projects_http_test.gleam` adopta el alias local `fx` para el fixture denso y
   elimina el wrapper local `single_int` en favor de
   `fixtures.require_query_int`.
-- Delta parcial WP-12: `-1.792` lineas netas mantenidas (`-44` del primer pase
+- `fixtures.gleam` concentra decoders estrechos para contratos HTTP de test:
+  `data.<entity>.id`, `data.<collection>[].<field>` y listas directas de ints.
+  `activity`, `api_tokens`, `capabilities`, `notes_and_positions`,
+  `org_users`, `rules`, `task_templates` y `workflows` eliminan decoders
+  locales repetidos sin cambiar escenarios ni rutas verificadas.
+- Delta parcial WP-12: `-1.994` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1336,7 +1341,8 @@ Estado de ejecucion:
   `with_session_cookies` tipado en `fixtures.gleam`, `-4` del pase de
   `int.to_string` en `rules_http_test.gleam`, `-141` del pase de modulos
   `support` huerfanos, `-26` del pase de wrappers `require_*` compartidos,
-  `-9` del pase de `projects_http_test.gleam`).
+  `-9` del pase de `projects_http_test.gleam`, `-202` del pase de decoders de
+  envelope HTTP en tests).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

@@ -861,43 +861,11 @@ fn create_api_token_response(
 }
 
 fn decode_integration_user_id(body: String) -> Result(Int, String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let user_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-  let data_decoder = {
-    use id <- decode.field("integration_user", user_decoder)
-    decode.success(id)
-  }
-  let decoder = {
-    use id <- decode.field("data", data_decoder)
-    decode.success(id)
-  }
-  decode.run(dynamic, decoder)
-  |> result.map_error(fn(_) { "invalid integration user response" })
+  fixtures.decode_data_entity_id(body, "integration_user")
 }
 
 fn decode_project_names(body: String) -> List(String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-
-  let project_decoder = {
-    use name <- decode.field("name", decode.string)
-    decode.success(name)
-  }
-
-  let data_decoder = {
-    use projects <- decode.field("projects", decode.list(project_decoder))
-    decode.success(projects)
-  }
-
-  let response_decoder = {
-    use projects <- decode.field("data", data_decoder)
-    decode.success(projects)
-  }
-
-  let assert Ok(projects) = decode.run(dynamic, response_decoder)
-  projects
+  fixtures.require_data_string_list_field(body, "projects", "name")
 }
 
 fn decode_token(body: String) -> Result(String, String) {
@@ -934,21 +902,7 @@ fn decode_created_token(body: String) -> Result(#(Int, String), String) {
 }
 
 fn decode_nested_id(body: String, field: String) -> Result(Int, String) {
-  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
-  let entity_decoder = {
-    use id <- decode.field("id", decode.int)
-    decode.success(id)
-  }
-  let data_decoder = {
-    use id <- decode.field(field, entity_decoder)
-    decode.success(id)
-  }
-  let decoder = {
-    use id <- decode.field("data", data_decoder)
-    decode.success(id)
-  }
-  decode.run(dynamic, decoder)
-  |> result.map_error(fn(_) { "invalid id response" })
+  fixtures.decode_data_entity_id(body, field)
 }
 
 fn option_int_json(value: Option(Int)) -> json.Json {
