@@ -52,7 +52,11 @@ fn build_capabilities(
         seed_db.insert_capability(
           db,
           project_id,
-          list_at(names, proj_idx + idx, "Capability " <> int_string(idx + 1)),
+          seed_pools.list_at(
+            names,
+            proj_idx + idx,
+            "Capability " <> int.to_string(idx + 1),
+          ),
         )
       }),
     )
@@ -77,7 +81,7 @@ fn build_task_types(
           project_id,
           name,
           icon,
-          Some(list_at_int(caps_for_project, idx, 0)),
+          Some(seed_pools.list_at(caps_for_project, idx, 0)),
         )
       })
       |> result.all,
@@ -102,7 +106,7 @@ fn build_member_capabilities(
         _ ->
           list.index_map(members, fn(user_id, idx) {
             let cap_id =
-              list_at_int(
+              seed_pools.list_at(
                 caps_for_project,
                 idx % list.length(caps_for_project),
                 0,
@@ -134,10 +138,6 @@ fn task_type_definitions() -> List(#(String, String)) {
   ]
 }
 
-fn int_string(value: Int) -> String {
-  value |> int.to_string
-}
-
 fn members_for_project(
   project_member_ids: List(#(Int, List(Int))),
   project_id: Int,
@@ -150,21 +150,5 @@ fn members_for_project(
   {
     Ok(#(_pid, members)) -> members
     Error(_) -> []
-  }
-}
-
-fn list_at(items: List(String), idx: Int, default: String) -> String {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_int(items: List(Int), idx: Int, default: Int) -> Int {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
-  case idx, items {
-    _, [] -> default
-    0, [first, ..] -> first
-    n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
   }
 }

@@ -52,7 +52,7 @@ fn build_users(
   use user_ids <- result.try(
     list.index_map(emails, fn(email, idx) {
       let first_login = case idx < active_count {
-        True -> Some(days_ago_timestamp(context.date_range_days / 2))
+        True -> Some(seed_pools.days_ago_timestamp(context.date_range_days / 2))
         False -> None
       }
       seed_db.insert_user(
@@ -62,7 +62,9 @@ fn build_users(
           email: email,
           org_role: org_role.Member,
           first_login_at: first_login,
-          created_at: Some(days_ago_timestamp(context.date_range_days)),
+          created_at: Some(seed_pools.days_ago_timestamp(
+            context.date_range_days,
+          )),
         ),
       )
     })
@@ -110,7 +112,7 @@ fn build_projects(
         db,
         context.org_id,
         name,
-        Some(days_ago_timestamp(days_ago)),
+        Some(seed_pools.days_ago_timestamp(days_ago)),
       ))
 
       case is_empty {
@@ -199,8 +201,4 @@ fn seeded_healthy_pool_limit(project_index: Int) -> Int {
     2 -> 6
     _ -> 20
   }
-}
-
-fn days_ago_timestamp(days: Int) -> String {
-  "NOW() - INTERVAL '" <> int.to_string(days) <> " days'"
 }

@@ -804,6 +804,22 @@ Criterios de aceptacion:
 - Cada escenario puede borrarse o ajustarse sin tocar el orquestador global.
 - No se pierden datos necesarios para QA visual.
 
+Estado de ejecucion:
+
+- Primer pase ejecutado en rama `refactor-cleanup`.
+- Auditoria de `seed_db.gleam`: el modulo es una capa atomica de operaciones
+  SQL y no un orquestador de escenarios; no se fuerza su particion para ganar
+  lineas porque ya separa efectos de escenarios.
+- Centralizados en `seed_pools.gleam` los helpers puros repetidos por escenarios
+  (`days_ago_timestamp` y `list_at`), eliminando copias en
+  `seed_task_scenarios.gleam`, `seed_card_scenarios.gleam`,
+  `seed_capability_scenarios.gleam` y `seed_workspace_scenarios.gleam`.
+- Delta parcial WP-09: `-27` lineas netas mantenidas.
+- Verificacion:
+  - `cd apps/server && gleam format src test`;
+  - `cd apps/server && gleam build`;
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+
 ### WP-10. API publica accidental y codigo obsoleto
 
 Objetivo: eliminar exports que existen solo por tests o por historia.

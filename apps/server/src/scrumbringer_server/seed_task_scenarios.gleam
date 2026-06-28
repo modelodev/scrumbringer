@@ -60,15 +60,15 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
         True -> list.drop(cards, context.empty_card_count)
         False -> cards
       }
-      let fallback_type_id = list_at_int(task_type_ids, 0, 0)
+      let fallback_type_id = seed_pools.list_at(task_type_ids, 0, 0)
 
-      let card_closed_outcomes = list_at_int(usable_cards, 0, 0)
-      let card_mixed = list_at_int(usable_cards, 1, 0)
-      let card_single = list_at_int(usable_cards, 2, 0)
+      let card_closed_outcomes = seed_pools.list_at(usable_cards, 0, 0)
+      let card_mixed = seed_pools.list_at(usable_cards, 1, 0)
+      let card_single = seed_pools.list_at(usable_cards, 2, 0)
 
       let base_idx = project_idx * context.tasks_per_project
       let title_for = fn(idx, fallback) {
-        let base = list_at(titles, idx, fallback)
+        let base = seed_pools.list_at(titles, idx, fallback)
         "P"
         <> int.to_string(project_id)
         <> " - "
@@ -78,7 +78,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
       }
 
       let creator_id =
-        list_at_int(context.user_ids, project_idx, context.admin_id)
+        seed_pools.list_at(context.user_ids, project_idx, context.admin_id)
       let claimed_user_id =
         claimed_member_id(
           context.project_member_ids,
@@ -155,12 +155,13 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
       list.index_map(list.append(base_tasks, extra_tasks), fn(task_def, idx) {
         let #(title, type_id, execution_state, card_id) = task_def
         let priority =
-          list_at_int(
+          seed_pools.list_at(
             context.priority_distribution,
             idx % list.length(context.priority_distribution),
             3,
           )
-        let creator_for = list_at_int(context.user_ids, idx, context.admin_id)
+        let creator_for =
+          seed_pools.list_at(context.user_ids, idx, context.admin_id)
         let claimed_user_for = member_for_index(members, idx, claimed_user_id)
         let created_from_rule_id = seeded_rule_for_task(project_rule_ids, idx)
         let pool_lifetime_s =
@@ -175,13 +176,17 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
         let #(claimed_by, claimed_at, closed_at) = case execution_state {
           task_state.Claimed(..) -> #(
             Some(claimed_user_for),
-            Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
+            Some(
+              seed_pools.days_ago_timestamp(int.max(1, base_days - { idx % 7 })),
+            ),
             None,
           )
           task_state.Closed(..) -> #(
             None,
             None,
-            Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 }))),
+            Some(
+              seed_pools.days_ago_timestamp(int.max(1, base_days - { idx % 11 })),
+            ),
           )
           task_state.Available -> #(None, None, None)
         }
@@ -194,7 +199,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
             closed_at,
           )
         let created_at =
-          days_ago_timestamp(int.max(1, base_days - { idx % 13 }))
+          seed_pools.days_ago_timestamp(int.max(1, base_days - { idx % 13 }))
 
         seed_db.insert_task(
           db,
@@ -315,7 +320,7 @@ fn seeded_rule_for_task(
         True -> None
         False -> {
           let rule_idx = task_idx % list.length(project_rule_ids)
-          Some(list_at_int(project_rule_ids, rule_idx, 0))
+          Some(seed_pools.list_at(project_rule_ids, rule_idx, 0))
         }
       }
   }
@@ -351,7 +356,12 @@ fn seeded_last_entered_pool_at(
     task_state.Available ->
       case pool_lifetime_s > 0 {
         True ->
-          Some(days_ago_timestamp(int.max(1, base_days - { task_idx % 5 })))
+          Some(
+            seed_pools.days_ago_timestamp(int.max(
+              1,
+              base_days - { task_idx % 5 },
+            )),
+          )
         False -> None
       }
     task_state.Claimed(..) | task_state.Closed(..) -> None
@@ -378,7 +388,7 @@ fn execution_state_from_pool(
 ) -> task_state.TaskExecutionState {
   case pool {
     [] -> task_state.Available
-    _ -> list_at_helper(pool, idx % list.length(pool), task_state.Available)
+    _ -> seed_pools.list_at(pool, idx % list.length(pool), task_state.Available)
   }
 }
 
@@ -392,12 +402,17 @@ fn repeat_value(value: a, count: Int) -> List(a) {
 fn task_type_for_index(task_type_ids: List(Int), idx: Int, fallback: Int) -> Int {
   case task_type_ids {
     [] -> fallback
-    _ -> list_at_int(task_type_ids, idx % list.length(task_type_ids), fallback)
+    _ ->
+      seed_pools.list_at(
+        task_type_ids,
+        idx % list.length(task_type_ids),
+        fallback,
+      )
   }
 }
 
 fn member_for_index(members: List(Int), idx: Int, fallback: Int) -> Int {
-  list_at_int(members, idx % int.max(1, list.length(members)), fallback)
+  seed_pools.list_at(members, idx % int.max(1, list.length(members)), fallback)
 }
 
 fn hydrate_seed_execution_state(
@@ -449,25 +464,5 @@ fn option_string(value: Option(String), default: String) -> String {
   case value {
     Some(inner) -> inner
     None -> default
-  }
-}
-
-fn days_ago_timestamp(days: Int) -> String {
-  "NOW() - INTERVAL '" <> int.to_string(days) <> " days'"
-}
-
-fn list_at(items: List(String), idx: Int, default: String) -> String {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_int(items: List(Int), idx: Int, default: Int) -> Int {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
-  case idx, items {
-    _, [] -> default
-    0, [first, ..] -> first
-    n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
   }
 }

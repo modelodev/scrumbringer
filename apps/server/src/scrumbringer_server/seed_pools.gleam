@@ -1,4 +1,6 @@
-//// Static seed data pools used by scenario builders.
+//// Static seed data pools and pure helpers used by scenario builders.
+
+import gleam/int
 
 /// Pool of realistic task titles.
 pub fn task_titles() -> List(String) {
@@ -46,4 +48,16 @@ pub fn capability_names() -> List(String) {
     "Engineering", "Product", "Operations", "Security", "Design", "QA",
     "Platform", "Data",
   ]
+}
+
+pub fn days_ago_timestamp(days: Int) -> String {
+  "NOW() - INTERVAL '" <> int.to_string(days) <> " days'"
+}
+
+pub fn list_at(items: List(a), idx: Int, default: a) -> a {
+  case idx, items {
+    _, [] -> default
+    0, [first, ..] -> first
+    n, [_, ..rest] -> list_at(rest, n - 1, default)
+  }
 }

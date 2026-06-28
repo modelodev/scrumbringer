@@ -51,7 +51,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(CardResult, String)
         list.range(0, context.cards_per_project - 1)
         |> list.try_map(fn(idx) {
           let base_title =
-            list_at(titles, idx, "Card " <> int.to_string(idx + 1))
+            seed_pools.list_at(titles, idx, "Card " <> int.to_string(idx + 1))
           let title =
             "P"
             <> int.to_string(project_id)
@@ -59,10 +59,10 @@ pub fn build(db: pog.Connection, context: Context) -> Result(CardResult, String)
             <> base_title
             <> " #"
             <> int.to_string(idx + 1)
-          let color = Some(list_at_helper(colors, idx, card.Gray))
+          let color = Some(seed_pools.list_at(colors, idx, card.Gray))
           let creator_idx = idx % list.length(context.user_ids)
           let creator_id =
-            list_at_int(context.user_ids, creator_idx, context.admin_id)
+            seed_pools.list_at(context.user_ids, creator_idx, context.admin_id)
 
           seed_db.insert_card(
             db,
@@ -72,7 +72,9 @@ pub fn build(db: pog.Connection, context: Context) -> Result(CardResult, String)
               description: "Seeded card",
               color: color,
               created_by: creator_id,
-              created_at: Some(days_ago_timestamp(context.date_range_days - idx)),
+              created_at: Some(seed_pools.days_ago_timestamp(
+                context.date_range_days - idx,
+              )),
             ),
           )
         }),
@@ -149,24 +151,4 @@ fn flatten_ids(ids_by_project: List(#(Int, List(Int)))) -> List(Int) {
     ids
   })
   |> list.flatten
-}
-
-fn days_ago_timestamp(days: Int) -> String {
-  "NOW() - INTERVAL '" <> int.to_string(days) <> " days'"
-}
-
-fn list_at(items: List(String), idx: Int, default: String) -> String {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_int(items: List(Int), idx: Int, default: Int) -> Int {
-  list_at_helper(items, idx, default)
-}
-
-fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
-  case idx, items {
-    _, [] -> default
-    0, [first, ..] -> first
-    n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
-  }
 }
