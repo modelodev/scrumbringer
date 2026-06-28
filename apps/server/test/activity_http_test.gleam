@@ -11,16 +11,13 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
-import scrumbringer_server
 import support/assertions as expect
 import wisp
 import wisp/simulate
 
 pub fn task_activity_lists_real_audit_events_with_limit_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
@@ -55,10 +52,8 @@ pub fn task_activity_lists_real_audit_events_with_limit_test() {
 }
 
 pub fn task_activity_paginates_with_offset_and_metadata_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
@@ -88,10 +83,8 @@ pub fn task_activity_paginates_with_offset_and_metadata_test() {
 }
 
 pub fn card_activity_includes_descendant_task_activity_items_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(parent_card_id) =
     fixtures.create_card(handler, session, project_id, "API Cleanup")
   let assert Ok(task_id) =
@@ -138,10 +131,8 @@ pub fn card_activity_includes_descendant_task_activity_items_test() {
 }
 
 pub fn task_activity_includes_note_create_pin_and_unpin_events_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
@@ -171,8 +162,8 @@ pub fn task_activity_includes_note_create_pin_and_unpin_events_test() {
 }
 
 pub fn card_activity_includes_note_create_pin_and_unpin_events_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "API Cleanup")
 
@@ -202,10 +193,8 @@ pub fn card_activity_includes_note_create_pin_and_unpin_events_test() {
 }
 
 pub fn task_activity_includes_due_date_change_event_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
@@ -233,8 +222,8 @@ pub fn task_activity_includes_due_date_change_event_test() {
 }
 
 pub fn card_activity_includes_due_date_change_event_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let #(_db, handler, session, project_id) =
+    fixtures.require_project_context("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "API Cleanup")
 
@@ -263,11 +252,8 @@ pub fn card_activity_includes_due_date_change_event_test() {
 }
 
 pub fn activity_requires_project_membership_test() {
-  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
-  let scrumbringer_server.App(db: db, ..) = app
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
   let assert Ok(_) =
@@ -293,10 +279,8 @@ pub fn activity_requires_project_membership_test() {
 }
 
 pub fn activity_rejects_invalid_limit_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 
@@ -313,10 +297,8 @@ pub fn activity_rejects_invalid_limit_test() {
 }
 
 pub fn activity_rejects_invalid_offset_test() {
-  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
-  let assert Ok(type_id) =
-    fixtures.create_task_type(handler, session, project_id, "Bug", "bug")
+  let #(_db, handler, session, project_id, type_id) =
+    fixtures.require_task_project("Core")
   let assert Ok(task_id) =
     fixtures.create_task(handler, session, project_id, type_id, "Fix callback")
 

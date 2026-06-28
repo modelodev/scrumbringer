@@ -2575,6 +2575,26 @@ Estado de ejecucion:
   - total Gleam actual: `198.399` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.615` lineas;
   - deficit restante para `-20k`: `4.385` lineas.
+- Decimoquinto pase de fixtures HTTP de actividad:
+  - migrados los tests de `activity_http_test.gleam` que repetian
+    `bootstrap -> create_project -> create_task_type` a
+    `require_task_project`;
+  - migrados los casos solo-card a `require_project_context`, manteniendo
+    explicita la creacion de card y las operaciones de notas/due date que son
+    parte del contrato;
+  - retirado el import `scrumbringer_server`, ya innecesario al no destructurar
+    `App` localmente para obtener la conexion DB;
+  - mantenidos explicitos los asserts de actividad, paginacion, membresia,
+    notas, pin/unpin y validacion de parametros;
+  - delta adicional: `-18` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `activity_http_test` via EUnit secuencial (`10 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimoquinto pase:
+  - total Gleam actual: `198.381` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.633` lineas;
+  - deficit restante para `-20k`: `4.367` lineas.
 
 ## Orden recomendado de ejecucion
 
