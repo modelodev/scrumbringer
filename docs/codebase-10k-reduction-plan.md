@@ -1397,7 +1397,12 @@ Estado de ejecucion:
   `pool_drag_update` y `tasks_create_update`). Se retiran constructores
   completos y se mantienen visibles estado, dependencia, descripcion,
   prioridad, fecha, version, autor y estado de card cuando son parte del caso.
-- Delta parcial WP-12: `-2.985` lineas netas mantenidas (`-44` del primer pase
+- Duodecimo pase de fixtures de dominio aplicado a tests de cabecera, titular
+  y resumen de task show (`tasks_show_header`, `tasks_show_headline` y
+  `tasks_show_summary`). Se preservan explicitamente tipo/icono, prioridad,
+  autor, fechas, version, card y dependencias que alimentan textos y estados
+  visuales del inspector.
+- Delta parcial WP-12: `-3.038` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1427,7 +1432,9 @@ Estado de ejecucion:
   del octavo pase de fixtures de dominio compartidas en tests de cliente, `-50`
   del noveno pase de fixtures de dominio compartidas en tests de cliente, `-75`
   del decimo pase de fixtures de dominio compartidas en tests de cliente, `-96`
-  del undecimo pase de fixtures de dominio compartidas en tests de cliente).
+  del undecimo pase de fixtures de dominio compartidas en tests de cliente,
+  `-53` del duodecimo pase de fixtures de dominio compartidas en tests de
+  cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

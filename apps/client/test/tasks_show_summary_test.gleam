@@ -1,6 +1,7 @@
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import domain/remote.{Loaded}
@@ -206,37 +207,17 @@ pub fn task_show_summary_localizes_partial_automation_origin_fallbacks_test() {
 
 fn task() -> Task {
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(42, "Prepare release", 1),
     task_type: TaskTypeInline(id: 1, name: "Feature", icon: "sparkles"),
-    ongoing_by: None,
-    title: "Prepare release",
-    description: Some("Task description"),
     priority: 2,
-    state: task_state.Available,
     created_by: 7,
     created_at: "2026-06-01T10:00:00Z",
-    due_date: None,
     version: 3,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
 
 fn dependency(id: Int, state: task_state.TaskExecutionState) -> TaskDependency {
-  TaskDependency(
-    depends_on_task_id: id,
-    title: "Dependency",
-    state: state,
-    claimed_by: None,
-  )
+  TaskDependency(..domain_fixtures.dependency(id), state: state)
 }
 
 fn closed_done_state() -> task_state.TaskExecutionState {
