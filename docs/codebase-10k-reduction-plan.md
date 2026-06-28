@@ -2949,6 +2949,29 @@ Estado de ejecucion:
   - total Gleam actual: `197.186` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.828` lineas;
   - deficit restante para `-20k`: `3.172` lineas.
+- Trigesimotercer pase de fixtures locales de Assignments View:
+  - extraidos en `assignments_view_test.gleam` helpers privados para proyectos,
+    usuario actual, usuarios de organizacion, assignments, modo de vista,
+    members por proyecto, proyectos por usuario y filas expandidas;
+  - migrados los escenarios de filtros, estados vacios, metricas y expansion
+    que repetian `client_state.update_core`/`update_admin` con los mismos
+    records parciales;
+  - se mantienen explicitas las expectativas visuales, los nombres de proyecto,
+    emails, metricas y queries de busqueda de cada caso;
+  - delta adicional: `-60` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce fixture
+    repetido en tests Lustre sin moverlo a soporte compartido ni ocultar
+    comportamiento probado;
+  - verificacion:
+    - `cd apps/client && gleam format test/assignments_view_test.gleam && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el trigesimotercer pase:
+  - total Gleam actual: `197.126` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.888` lineas;
+  - deficit restante para `-20k`: `3.112` lineas.
 
 ## Orden recomendado de ejecucion
 

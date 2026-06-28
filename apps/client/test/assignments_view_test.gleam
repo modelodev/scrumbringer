@@ -6,12 +6,12 @@ import domain/metrics.{
   NoSample, OrgMetricsOverview, OrgMetricsProjectOverview,
   OrgMetricsUserOverview, WindowDays,
 }
-import domain/org.{OrgUser}
+import domain/org.{type OrgUser, OrgUser}
 import domain/org_role.{Admin}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role.{type ProjectRole, Manager}
 import domain/remote.{Loaded}
-import domain/user.{User}
+import domain/user.{type User, User}
 import gleam/option as opt
 import gleam/set
 import scrumbringer_client/assignments_view_mode
@@ -151,26 +151,114 @@ fn manager_member(user_id: Int) -> ProjectMember {
   ProjectMember(..domain_fixtures.project_member(user_id), role: Manager)
 }
 
+fn with_projects(model: client_state.Model, projects: List(Project)) {
+  model
+  |> client_state.update_core(fn(core) {
+    client_state.CoreModel(..core, projects: Loaded(projects))
+  })
+}
+
+fn with_current_user(model: client_state.Model, user: User) {
+  model
+  |> client_state.update_core(fn(core) {
+    client_state.CoreModel(..core, user: opt.Some(user))
+  })
+}
+
+fn with_org_users(model: client_state.Model, users: List(OrgUser)) {
+  model
+  |> client_state.update_admin(fn(admin) {
+    admin_state.AdminModel(
+      ..admin,
+      members: admin_members.Model(
+        ..admin.members,
+        org_users_cache: Loaded(users),
+      ),
+    )
+  })
+}
+
+fn with_assignments(
+  model: client_state.Model,
+  update: fn(assignments_state.AssignmentsModel) ->
+    assignments_state.AssignmentsModel,
+) {
+  model
+  |> client_state.update_admin(fn(admin) {
+    admin_state.AdminModel(..admin, assignments: update(admin.assignments))
+  })
+}
+
+fn with_view_mode(
+  model: client_state.Model,
+  mode: assignments_view_mode.AssignmentsViewMode,
+) {
+  model
+  |> with_assignments(fn(assignments) {
+    assignments_state.AssignmentsModel(..assignments, view_mode: mode)
+  })
+}
+
+fn with_project_members(
+  model: client_state.Model,
+  project_id: Int,
+  members: List(ProjectMember),
+) {
+  model
+  |> with_assignments(fn(assignments) {
+    assignments_state.AssignmentsModel(
+      ..assignments,
+      project_members: dict.from_list([#(project_id, Loaded(members))]),
+    )
+  })
+}
+
+fn with_user_projects(
+  model: client_state.Model,
+  user_id: Int,
+  projects: List(Project),
+) {
+  model
+  |> with_assignments(fn(assignments) {
+    assignments_state.AssignmentsModel(
+      ..assignments,
+      user_projects: dict.insert(dict.new(), user_id, Loaded(projects)),
+    )
+  })
+}
+
+fn with_project_expanded(model: client_state.Model, project_id: Int) {
+  model
+  |> with_assignments(fn(assignments) {
+    assignments_state.AssignmentsModel(
+      ..assignments,
+      expanded_projects: set.insert(assignments.expanded_projects, project_id),
+    )
+  })
+}
+
+fn with_user_expanded(model: client_state.Model, user_id: Int) {
+  model
+  |> with_assignments(fn(assignments) {
+    assignments_state.AssignmentsModel(
+      ..assignments,
+      expanded_users: set.insert(assignments.expanded_users, user_id),
+    )
+  })
+}
+
 pub fn filter_projects_by_name_test() {
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(
-        ..core,
-        projects: Loaded([
-          sample_project(1, "Project Alpha"),
-          sample_project(2, "Project Beta"),
-        ]),
-      )
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByProject,
-          search_query: "alpha",
-        ),
+    |> with_projects([
+      sample_project(1, "Project Alpha"),
+      sample_project(2, "Project Beta"),
+    ])
+    |> with_assignments(fn(assignments) {
+      assignments_state.AssignmentsModel(
+        ..assignments,
+        view_mode: assignments_view_mode.ByProject,
+        search_query: "alpha",
       )
     })
 
@@ -187,24 +275,9 @@ pub fn project_collapsed_hides_members_test() {
 
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: Loaded([project]))
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([org_user]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          project_members: dict.from_list([
-            #(project.id, Loaded([member])),
-          ]),
-        ),
-      )
-    })
+    |> with_projects([project])
+    |> with_org_users([org_user])
+    |> with_project_members(project.id, [member])
 
   let html = render_assignments(model)
 
@@ -218,28 +291,10 @@ pub fn project_expanded_shows_members_test() {
 
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: Loaded([project]))
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([org_user]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          project_members: dict.from_list([
-            #(project.id, Loaded([member])),
-          ]),
-          expanded_projects: set.insert(
-            admin.assignments.expanded_projects,
-            project.id,
-          ),
-        ),
-      )
-    })
+    |> with_projects([project])
+    |> with_org_users([org_user])
+    |> with_project_members(project.id, [member])
+    |> with_project_expanded(project.id)
 
   let html = render_assignments(model)
 
@@ -251,20 +306,9 @@ pub fn user_without_projects_shows_badge_test() {
 
   let model =
     base_model()
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([user]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByUser,
-          user_projects: dict.insert(dict.new(), user.id, Loaded([])),
-        ),
-      )
-    })
+    |> with_org_users([user])
+    |> with_view_mode(assignments_view_mode.ByUser)
+    |> with_user_projects(user.id, [])
 
   let html = render_assignments(model)
 
@@ -276,21 +320,9 @@ pub fn project_without_members_shows_badge_test() {
 
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: Loaded([project]))
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByProject,
-          project_members: dict.from_list([
-            #(project.id, Loaded([])),
-          ]),
-        ),
-      )
-    })
+    |> with_projects([project])
+    |> with_view_mode(assignments_view_mode.ByProject)
+    |> with_project_members(project.id, [])
 
   let html = render_assignments(model)
 
@@ -337,9 +369,7 @@ pub fn project_metrics_summary_renders_counts_test() {
 
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: Loaded([project]))
-    })
+    |> with_projects([project])
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
@@ -347,16 +377,10 @@ pub fn project_metrics_summary_renders_counts_test() {
           ..admin.metrics,
           admin_metrics_overview: Loaded(overview),
         ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByProject,
-          expanded_projects: set.insert(
-            admin.assignments.expanded_projects,
-            project.id,
-          ),
-        ),
       )
     })
+    |> with_view_mode(assignments_view_mode.ByProject)
+    |> with_project_expanded(project.id)
 
   let html = render_assignments(model)
 
@@ -384,25 +408,19 @@ pub fn user_metrics_summary_renders_counts_test() {
 
   let model =
     base_model()
+    |> with_org_users([user])
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([user]),
-        ),
         metrics: admin_metrics.Model(
           ..admin.metrics,
           admin_metrics_users: Loaded([metrics]),
         ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByUser,
-          user_projects: dict.insert(dict.new(), user.id, Loaded([])),
-          expanded_users: set.insert(admin.assignments.expanded_users, user.id),
-        ),
       )
     })
+    |> with_view_mode(assignments_view_mode.ByUser)
+    |> with_user_projects(user.id, [])
+    |> with_user_expanded(user.id)
 
   let html = render_assignments(model)
 
@@ -419,18 +437,8 @@ pub fn user_metrics_summary_renders_counts_test() {
 pub fn empty_state_when_no_projects_test() {
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: Loaded([]))
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByProject,
-        ),
-      )
-    })
+    |> with_projects([])
+    |> with_view_mode(assignments_view_mode.ByProject)
 
   let html = render_assignments(model)
 
@@ -441,19 +449,8 @@ pub fn empty_state_when_no_projects_test() {
 pub fn empty_state_when_no_users_test() {
   let model =
     base_model()
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByUser,
-        ),
-      )
-    })
+    |> with_org_users([])
+    |> with_view_mode(assignments_view_mode.ByUser)
 
   let html = render_assignments(model)
 
@@ -469,22 +466,9 @@ pub fn empty_state_when_only_admin_user_test() {
 
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, user: opt.Some(admin))
-    })
-    |> client_state.update_admin(fn(admin_model) {
-      admin_state.AdminModel(
-        ..admin_model,
-        members: admin_members.Model(
-          ..admin_model.members,
-          org_users_cache: Loaded([admin_org_user]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin_model.assignments,
-          view_mode: assignments_view_mode.ByUser,
-        ),
-      )
-    })
+    |> with_current_user(admin)
+    |> with_org_users([admin_org_user])
+    |> with_view_mode(assignments_view_mode.ByUser)
 
   let html = render_assignments(model)
 
@@ -499,22 +483,16 @@ pub fn filter_users_by_email_test() {
 
   let model =
     base_model()
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([user_admin, user_member]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByUser,
-          search_query: "admin",
-          user_projects: dict.from_list([
-            #(user_admin.id, Loaded([])),
-            #(user_member.id, Loaded([])),
-          ]),
-        ),
+    |> with_org_users([user_admin, user_member])
+    |> with_assignments(fn(assignments) {
+      assignments_state.AssignmentsModel(
+        ..assignments,
+        view_mode: assignments_view_mode.ByUser,
+        search_query: "admin",
+        user_projects: dict.from_list([
+          #(user_admin.id, Loaded([])),
+          #(user_member.id, Loaded([])),
+        ]),
       )
     })
 
@@ -527,23 +505,8 @@ pub fn filter_users_by_email_test() {
 pub fn assignments_renders_table_layout_project_mode_test() {
   let model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(
-        ..core,
-        projects: Loaded([
-          sample_project(1, "Project Alpha"),
-        ]),
-      )
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          view_mode: assignments_view_mode.ByProject,
-        ),
-      )
-    })
+    |> with_projects([sample_project(1, "Project Alpha")])
+    |> with_view_mode(assignments_view_mode.ByProject)
 
   let html = render_assignments(model)
 
@@ -559,36 +522,13 @@ pub fn assignments_expansion_row_toggles_test() {
 
   let collapsed_model =
     base_model()
-    |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: Loaded([project]))
-    })
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members: admin_members.Model(
-          ..admin.members,
-          org_users_cache: Loaded([org_user]),
-        ),
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          project_members: dict.from_list([
-            #(project.id, Loaded([member])),
-          ]),
-        ),
-      )
-    })
+    |> with_projects([project])
+    |> with_org_users([org_user])
+    |> with_project_members(project.id, [member])
 
   let expanded_model =
     collapsed_model
-    |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        assignments: assignments_state.AssignmentsModel(
-          ..admin.assignments,
-          expanded_projects: set.insert(admin.assignments.expanded_projects, 1),
-        ),
-      )
-    })
+    |> with_project_expanded(1)
 
   let collapsed_html = render_assignments(collapsed_model)
   let expanded_html = render_assignments(expanded_model)
