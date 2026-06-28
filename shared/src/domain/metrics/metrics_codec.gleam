@@ -21,8 +21,7 @@ import domain/task_status.{WorkOngoing}
 // Decoders
 // =============================================================================
 
-/// Decoder for WindowDays.
-pub fn window_days_decoder() -> decode.Decoder(WindowDays) {
+fn window_days_decoder() -> decode.Decoder(WindowDays) {
   use value <- decode.then(decode.int)
   case window_days_from_int(value) {
     Ok(window) -> decode.success(window)
@@ -30,8 +29,7 @@ pub fn window_days_decoder() -> decode.Decoder(WindowDays) {
   }
 }
 
-/// Decoder for SampledMetric.
-pub fn sampled_metric_decoder() -> decode.Decoder(SampledMetric) {
+fn sampled_metric_decoder() -> decode.Decoder(SampledMetric) {
   use p50_ms <- decode.optional_field(
     "p50_ms",
     option.None,
@@ -61,15 +59,13 @@ pub fn my_metrics_decoder() -> decode.Decoder(MyMetrics) {
   ))
 }
 
-/// Decoder for OrgMetricsBucket.
-pub fn org_metrics_bucket_decoder() -> decode.Decoder(OrgMetricsBucket) {
+fn org_metrics_bucket_decoder() -> decode.Decoder(OrgMetricsBucket) {
   use bucket <- decode.field("bucket", decode.string)
   use count <- decode.field("count", decode.int)
   decode.success(OrgMetricsBucket(bucket: bucket, count: count))
 }
 
-/// Decoder for OrgMetricsProjectOverview.
-pub fn org_metrics_project_overview_decoder() -> decode.Decoder(
+fn org_metrics_project_overview_decoder() -> decode.Decoder(
   OrgMetricsProjectOverview,
 ) {
   use project_id <- decode.field("project_id", decode.int)

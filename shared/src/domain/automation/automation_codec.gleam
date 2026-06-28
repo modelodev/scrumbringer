@@ -79,7 +79,7 @@ fn card_trigger_to_json(
 // Card scope
 // =============================================================================
 
-pub fn scope_decoder() -> decode.Decoder(automation.CardAutomationScope) {
+fn scope_decoder() -> decode.Decoder(automation.CardAutomationScope) {
   use kind <- decode.field("type", decode.string)
   case kind {
     "any_card" -> decode.success(automation.AnyCard)
@@ -94,7 +94,7 @@ pub fn scope_decoder() -> decode.Decoder(automation.CardAutomationScope) {
   }
 }
 
-pub fn scope_to_json(scope: automation.CardAutomationScope) -> Json {
+fn scope_to_json(scope: automation.CardAutomationScope) -> Json {
   case scope {
     automation.AnyCard ->
       json.object([

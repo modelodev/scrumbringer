@@ -2111,6 +2111,25 @@ Criterios de aceptacion:
 - Los casos AU siguen teniendo datos representativos.
 - No se elimina seed que cubre un permiso, estado o empty state unico.
 
+Estado de ejecucion:
+
+- Segundo pase auditado en rama `refactor-cleanup`.
+- Clases CSS: barrido exacto de clases definidas en `styles/*.gleam` frente a
+  `apps/client/src` y `apps/client/test`, excluyendo estilos. Las unicas clases
+  sin literal directo son variantes dinamicas de `CardColor`
+  (`card-border-*` y `card-initials-*`) generadas por `color_picker` y
+  `task_color`; no se eliminan porque cubren colores validos del ADT aunque los
+  fixtures actuales no usen todos.
+- i18n: los 866 constructores de `Text` tienen consumidor real fuera de
+  `i18n/text.gleam`, `i18n/en.gleam` e `i18n/es.gleam`; no hay traducciones
+  muertas sin degradar exhaustividad.
+- SQL fuente/seeds: los 109 ficheros `.sql` tienen consumidor por basename y
+  las APIs publicas de seed conservan consumidores entre modulos de seed; no se
+  elimina escenario visual sin ejecutar antes AU-01 a AU-12.
+- Decision: WP-15 queda auditado sin cambios adicionales de codigo; perseguir
+  reduccion aqui sin evidencia implicaria borrar cobertura visual o estados de
+  dominio validos.
+
 ### WP-16. Tramo 30k: auditoria de extension condicionada
 
 Objetivo: decidir y ejecutar solo los paquetes adicionales necesarios para
@@ -2174,6 +2193,29 @@ Criterios de aceptacion:
   quedan documentadas como preexistentes con owner claro.
 - Si no aparecen candidatos de bajo/medio riesgo suficientes, se cierra el plan
   en `-20k` y se documenta por que perseguir `-30k` seria sobreingenieria.
+
+Estado de ejecucion:
+
+- Primer pase iniciado con el paquete de menor riesgo del diseno:
+  `pub` accidental y helpers internos de codecs/presenters.
+- Privatizados helpers sin consumidor externo:
+  - `metrics_codec.window_days_decoder`, `sampled_metric_decoder`,
+    `org_metrics_bucket_decoder` y `org_metrics_project_overview_decoder`;
+  - `automation_codec.scope_decoder` y `scope_to_json`;
+  - `tasks/presenters.task_type_json`, `dependency_json` y
+    `task_metrics_json`.
+- Las APIs publicas vivas siguen siendo los decoders/responses de contrato
+  (`my_metrics_decoder`, `org_metrics_overview_decoder`,
+  `task_types_response`, `dependency_response`, `task_metrics_response`, etc.).
+- Delta del pase: `-13` lineas mantenidas y nueve funciones publicas menos.
+- Verificacion:
+  - `cd shared && gleam format src test && gleam test` (`277 passed`);
+  - `cd apps/server && gleam format src test && gleam build`;
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+    (`560 passed`);
+  - `cd apps/client && gleam format src test && gleam test` (`1819 passed`);
+  - barrido de referencias externas de los nueve helpers privatizados sin
+    consumidores.
 
 ## Orden recomendado de ejecucion
 

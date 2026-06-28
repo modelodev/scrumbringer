@@ -34,16 +34,7 @@ import scrumbringer_server/use_case/task_types_db
 // Task Type JSON
 // =============================================================================
 
-/// Convert a TaskType to JSON.
-///
-/// ## Example
-///
-/// ```gleam
-/// let json = task_type_json(task_type)
-/// // {"id": 1, "project_id": 10, "name": "Bug", "icon": "🐛", "capability_id": null}
-/// ```
-/// Story 4.9 AC15: Added tasks_count field.
-pub fn task_type_json(task_type: task_types_db.TaskType) -> json.Json {
+fn task_type_json(task_type: task_types_db.TaskType) -> json.Json {
   let task_types_db.TaskType(
     id: id,
     project_id: project_id,
@@ -190,7 +181,7 @@ fn option_card_color_json(color: Option(card.CardColor)) -> json.Json {
   })
 }
 
-pub fn dependency_json(dep: TaskDependency) -> json.Json {
+fn dependency_json(dep: TaskDependency) -> json.Json {
   let TaskDependency(
     depends_on_task_id: depends_on_task_id,
     title: title,
@@ -228,7 +219,7 @@ pub fn dependency_response(value: TaskDependency) -> json.Json {
   json.object([#("dependency", dependency_json(value))])
 }
 
-pub fn task_metrics_json(metrics: metrics_db.TaskMetrics) -> json.Json {
+fn task_metrics_json(metrics: metrics_db.TaskMetrics) -> json.Json {
   let metrics_db.TaskMetrics(
     claim_count: claim_count,
     release_count: release_count,
