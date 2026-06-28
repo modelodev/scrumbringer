@@ -872,6 +872,29 @@ Criterios de aceptacion:
 - Cada `pub` nuevo o mantenido tiene consumidor de produccion o justificacion.
 - No se reduce cobertura funcional.
 
+Estado de ejecucion:
+
+- Pase aplicado en `apps/server/test/fixtures.gleam` para estrechar la API
+  publica accidental del fixture compartido. Se retiraron helpers sin
+  consumidores externos:
+  - `task_ongoing`;
+  - `required_cookie_value`;
+  - `create_template_with_priority`;
+  - `decode_entity_names`;
+  - `insert_note_db`;
+  - `insert_task_type_db`;
+  - `insert_project_db`;
+  - `insert_member_db`.
+- Se mantuvieron helpers publicos con consumidores reales o uso interno
+  justificado, como `insert_user_db`, `extract_session`,
+  `task_trigger_state_with_card` y `card_trigger_state_full`.
+- Delta del pase: `-108` lineas mantenidas.
+- Verificacion:
+  - `rg` de los simbolos retirados en `apps/server/test`, `apps/server/src`,
+    `shared`, `apps/client/src` y `apps/client/test` sin consumidores reales;
+  - `cd apps/server && gleam format test && gleam build`;
+  - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable SB_DB_POOL_SIZE=2 gleam test` (`560 passed`).
+
 ### WP-11. i18n, estilos y clases muertas
 
 Objetivo: borrar claves, copy y estilos que ya no tienen consumidores.

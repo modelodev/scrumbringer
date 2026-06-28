@@ -7,7 +7,6 @@
 
 import domain/card as domain_card
 import domain/org_role
-import domain/project_role
 import domain/task/state as task_state
 import gleam/dynamic/decode
 import gleam/erlang/charlist
@@ -77,10 +76,6 @@ pub fn task_available() -> task_state.TaskExecutionState {
 
 pub fn task_claimed() -> task_state.TaskExecutionState {
   task_state.Claimed(0, "", task_state.Taken)
-}
-
-pub fn task_ongoing() -> task_state.TaskExecutionState {
-  task_state.Claimed(0, "", task_state.Ongoing)
 }
 
 pub fn task_closed_done() -> task_state.TaskExecutionState {
@@ -156,17 +151,6 @@ pub fn extract_session(
     Some(token), Some(csrf) -> Ok(Session(token: token, csrf: csrf))
     None, _ -> Error("Missing sb_session cookie")
     _, None -> Error("Missing sb_csrf cookie")
-  }
-}
-
-/// Extract a required cookie value from response headers.
-pub fn required_cookie_value(
-  headers: List(#(String, String)),
-  name: String,
-) -> Result(String, String) {
-  case find_cookie_value(headers, name) {
-    Some(value) -> Ok(value)
-    None -> Error("Missing " <> name <> " cookie")
   }
 }
 
@@ -648,26 +632,6 @@ pub fn create_template_with_desc(
     name,
     description,
     3,
-  )
-}
-
-/// Create a task template with a validated explicit priority.
-pub fn create_template_with_priority(
-  handler: Handler,
-  session: Session,
-  project_id: Int,
-  type_id: Int,
-  name: String,
-  priority: Int,
-) -> Result(Int, String) {
-  create_template_full(
-    handler,
-    session,
-    project_id,
-    type_id,
-    name,
-    "Auto-created task",
-    priority,
   )
 }
 
@@ -1189,39 +1153,6 @@ pub fn decode_entity_id(body: String, entity: Entity) -> Result(Int, String) {
   }
 }
 
-/// Decode a list of names from an API response using type-safe Entity.
-pub fn decode_entity_names(
-  body: String,
-  entity: Entity,
-) -> Result(List(String), String) {
-  let entity_str = entity_to_string(entity)
-  case json.parse(body, decode.dynamic) {
-    Error(_) -> Error("Invalid JSON: " <> body)
-    Ok(dynamic) -> {
-      let name_decoder = {
-        use name <- decode.field("name", decode.string)
-        decode.success(name)
-      }
-
-      let list_decoder = {
-        use names <- decode.field(entity_str, decode.list(name_decoder))
-        decode.success(names)
-      }
-
-      let response_decoder = {
-        use names <- decode.field("data", list_decoder)
-        decode.success(names)
-      }
-
-      case decode.run(dynamic, response_decoder) {
-        Ok(names) -> Ok(names)
-        Error(_) ->
-          Error("Failed to decode " <> entity_str <> " names from: " <> body)
-      }
-    }
-  }
-}
-
 /// Convert Entity to JSON field name string.
 fn entity_to_string(entity: Entity) -> String {
   case entity {
@@ -1523,16 +1454,6 @@ pub fn insert_work_session_db(
   seed_db.insert_work_session(db, user_id, task_id, accumulated_s)
 }
 
-/// Insert a task note directly to DB.
-pub fn insert_note_db(
-  db: pog.Connection,
-  task_id: Int,
-  user_id: Int,
-  content: String,
-) -> Result(Int, String) {
-  seed_db.insert_task_note(db, task_id, user_id, content, None)
-}
-
 /// Insert a card directly to DB.
 pub fn insert_card_db(
   db: pog.Connection,
@@ -1552,35 +1473,6 @@ pub fn insert_user_db(
   org_role: org_role.OrgRole,
 ) -> Result(Int, String) {
   seed_db.insert_user_simple(db, org_id, email, org_role)
-}
-
-/// Insert a task type directly to DB.
-pub fn insert_task_type_db(
-  db: pog.Connection,
-  project_id: Int,
-  name: String,
-  icon: String,
-) -> Result(Int, String) {
-  seed_db.insert_task_type(db, project_id, name, icon)
-}
-
-/// Insert a project directly to DB.
-pub fn insert_project_db(
-  db: pog.Connection,
-  org_id: Int,
-  name: String,
-) -> Result(Int, String) {
-  seed_db.insert_project(db, org_id, name, None)
-}
-
-/// Insert a project member directly to DB.
-pub fn insert_member_db(
-  db: pog.Connection,
-  project_id: Int,
-  user_id: Int,
-  role: project_role.ProjectRole,
-) -> Result(Nil, String) {
-  seed_db.insert_member(db, project_id, user_id, role)
 }
 
 /// Insert an audit event directly to DB.
