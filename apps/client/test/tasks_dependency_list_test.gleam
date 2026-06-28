@@ -1,4 +1,5 @@
-import gleam/option.{None, Some}
+import gleam/option.{Some}
+import support/domain_fixtures
 
 import domain/remote.{Loaded, Loading}
 import domain/task.{type Task, type TaskDependency, Task, TaskDependency}
@@ -56,12 +57,7 @@ fn sample_dependency(
   depends_on_task_id: Int,
   state: task_state.TaskExecutionState,
 ) -> TaskDependency {
-  TaskDependency(
-    depends_on_task_id: depends_on_task_id,
-    title: "Dependency",
-    state: state,
-    claimed_by: None,
-  )
+  TaskDependency(..domain_fixtures.dependency(depends_on_task_id), state: state)
 }
 
 fn closed_done_state() -> task_state.TaskExecutionState {
@@ -70,26 +66,9 @@ fn closed_done_state() -> task_state.TaskExecutionState {
 
 fn sample_task() -> Task {
   Task(
-    id: 42,
-    project_id: 1,
-    type_id: 1,
+    ..domain_fixtures.task(42, "Task", 1),
     task_type: TaskTypeInline(id: 1, name: "Task", icon: "check"),
-    ongoing_by: None,
-    title: "Task",
     description: Some("Details"),
     priority: 1,
-    state: task_state.Available,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
-    card_id: None,
-    card_title: None,
-    card_color: None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
