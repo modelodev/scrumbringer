@@ -1,9 +1,8 @@
 import gleam/dict
 import gleam/list
 import gleam/option as opt
-import gleam/string
-import lustre/element
 import support/domain_fixtures
+import support/render_assertions
 
 import domain/card
 import domain/org_role
@@ -37,9 +36,9 @@ pub fn admin_page_without_user_shows_login_test() {
       CoreModel(..core, page: Admin, user: opt.None)
     })
 
-  let html = client_view.view(model) |> element.to_document_string
+  let html = client_view.view(model) |> render_assertions.html
 
-  let assert True = string.contains(html, "login-email")
+  render_assertions.contains(html, "login-email")
 }
 
 pub fn admin_section_without_permission_shows_not_permitted_test() {
@@ -53,9 +52,9 @@ pub fn admin_section_without_permission_shows_not_permitted_test() {
       )
     })
 
-  let html = client_view.view(model) |> element.to_document_string
+  let html = client_view.view(model) |> render_assertions.html
 
-  let assert True = string.contains(html, "not-permitted")
+  render_assertions.contains(html, "not-permitted")
 }
 
 pub fn new_task_shortcut_is_global_without_open_card_test() {
@@ -132,10 +131,10 @@ pub fn mobile_admin_team_uses_team_title_test() {
     })
     |> update_ui(fn(ui) { ui_state.UiModel(..ui, is_mobile: True) })
 
-  let html = client_view.view(model) |> element.to_document_string
+  let html = client_view.view(model) |> render_assertions.html
 
-  let assert True = string.contains(html, "topbar-title-mobile")
-  let assert True = string.contains(html, "Team")
+  render_assertions.contains(html, "topbar-title-mobile")
+  render_assertions.contains(html, "Team")
 }
 
 pub fn mobile_admin_automation_modes_use_single_console_title_test() {
@@ -143,11 +142,13 @@ pub fn mobile_admin_automation_modes_use_single_console_title_test() {
   |> list.each(fn(section) {
     let model = admin_mobile_model(section)
 
-    let html = client_view.view(model) |> element.to_document_string
+    let html = client_view.view(model) |> render_assertions.html
 
-    let assert True = string.contains(html, "topbar-title-mobile")
-    let assert True =
-      string.contains(html, "class=\"topbar-title-mobile\">Automations<")
+    render_assertions.contains(html, "topbar-title-mobile")
+    render_assertions.contains(
+      html,
+      "class=\"topbar-title-mobile\">Automations<",
+    )
   })
 }
 
@@ -180,11 +181,11 @@ pub fn member_people_view_renders_task_and_card_ctas_from_client_config_test() {
       )
     })
 
-  let html = client_view.view(model) |> element.to_document_string
+  let html = client_view.view(model) |> render_assertions.html
 
-  let assert True = string.contains(html, "Work for beta@example.com")
-  let assert True = string.contains(html, "Open task")
-  let assert True = string.contains(html, "Open card")
+  render_assertions.contains(html, "Work for beta@example.com")
+  render_assertions.contains(html, "Open task")
+  render_assertions.contains(html, "Open card")
 }
 
 pub fn member_plan_structure_ignores_inherited_work_search_test() {
@@ -216,10 +217,10 @@ pub fn member_plan_structure_ignores_inherited_work_search_test() {
       )
     })
 
-  let html = client_view.view(model) |> element.to_document_string
+  let html = client_view.view(model) |> render_assertions.html
 
-  let assert True = string.contains(html, "data-testid=\"plan-structure-view\"")
-  let assert False = string.contains(html, "Buscar: rollout")
+  render_assertions.contains(html, "data-testid=\"plan-structure-view\"")
+  render_assertions.not_contains(html, "Buscar: rollout")
 }
 
 fn admin_mobile_model(section: permissions.AdminSection) -> Model {

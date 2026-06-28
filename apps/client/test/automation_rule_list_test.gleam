@@ -217,7 +217,7 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Card automation scope")
   render_assertions.contains(html, "inert")
@@ -267,7 +267,7 @@ pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Card level 9 is no longer available.")
   render_assertions.contains(html, "Choose an existing card level or Any card.")
@@ -287,7 +287,7 @@ pub fn automation_rule_delete_panel_focuses_title_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "automation-rule-panel-danger")
   render_assertions.contains(html, "inert")
@@ -305,7 +305,7 @@ pub fn automation_rule_delete_panel_focuses_title_test() {
 pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {
   let html =
     rule_list.view(config())
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Rules - Release automation")
   render_assertions.contains(html, "Back to Automations")
@@ -341,7 +341,7 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
 pub fn automation_rule_list_localizes_rule_meta_labels_test() {
   let html =
     rule_list.view(rule_list.Config(..config(), locale: locale.Es))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Motor:")
   render_assertions.contains(html, "Plantilla:")
@@ -361,7 +361,7 @@ pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_t
         rules: admin_rules.Model(..rules_state(), rules: Loaded([])),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No rules yet")
 }
@@ -369,7 +369,7 @@ pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_t
 pub fn automation_rule_list_marks_selected_rule_test() {
   let html =
     rule_list.view(rule_list.Config(..config(), selected_rule_id: opt.Some(9)))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-rule-row\"")
   render_assertions.contains(html, "role=\"button\"")
@@ -403,7 +403,7 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "automation-rule-panel")
   render_assertions.contains(html, "data-testid=\"automation-rule-builder\"")
@@ -458,7 +458,7 @@ pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-rule-builder\"")
   render_assertions.contains(html, "data-testid=\"automation-template-panel\"")
@@ -483,7 +483,7 @@ pub fn automation_rule_builder_offers_only_supported_task_events_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "value=\"task_created\"")
   render_assertions.contains(html, "value=\"task_claimed\"")
@@ -517,7 +517,7 @@ pub fn automation_rule_builder_offers_only_supported_card_events_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "value=\"card_activated\"")
   render_assertions.contains(html, "value=\"card_closed\"")
@@ -548,7 +548,7 @@ pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Card follow-up")
   render_assertions.contains(html, "Review {{card_title}}")
@@ -577,7 +577,7 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Nueva regla")
   render_assertions.contains(html, "Cuando")
@@ -635,7 +635,7 @@ pub fn automation_rule_list_template_picker_filters_and_previews_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Search templates")
   render_assertions.contains(html, "value=\"Follow\"")
@@ -661,7 +661,7 @@ pub fn automation_rule_list_template_picker_empty_filter_state_test() {
         ),
       ),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "No templates match this search.")
   render_assertions.not_contains(html, "Follow-up task")

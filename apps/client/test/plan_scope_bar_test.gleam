@@ -35,7 +35,7 @@ pub fn scope_bar_card_mode_uses_search_without_duplicate_select_test() {
       on_closed_toggled: fn(_) { 0 },
     )
     |> scope_bar.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"plan-scope-bar\"")
   render_assertions.contains(html, "data-testid=\"plan-scope-card-search\"")
@@ -78,7 +78,7 @@ pub fn scope_bar_can_render_optional_mode_controls_test() {
       on_closed_toggled: fn(_) { 0 },
     )
     |> scope_bar.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"capability-mode-list\"")
   render_assertions.contains(html, "aria-pressed=\"true\"")
@@ -107,7 +107,7 @@ pub fn scope_bar_marks_refinement_controls_as_work_filter_bar_test() {
       on_closed_toggled: fn(_) { 0 },
     )
     |> scope_bar.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(
     html,
@@ -138,7 +138,7 @@ pub fn scope_bar_filters_card_options_by_query_test() {
       on_closed_toggled: fn(_) { 0 },
     )
     |> scope_bar.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "value=\"sprint\"")
   render_assertions.contains(html, "aria-expanded=\"true\"")

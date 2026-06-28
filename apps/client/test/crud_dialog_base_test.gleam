@@ -1,5 +1,4 @@
 import gleam/option
-import gleam/string
 import lustre/effect
 import lustre/element
 import lustre/element/html
@@ -72,7 +71,7 @@ pub fn optional_int_or_none_keeps_tolerant_dom_event_fallback_test() {
 pub fn view_cancel_button_renders_localized_text_test() {
   let html =
     view_cancel_button(locale.Es, Nil)
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Cancelar")
 }
@@ -80,7 +79,7 @@ pub fn view_cancel_button_renders_localized_text_test() {
 pub fn view_cancel_button_with_class_preserves_classes_test() {
   let html =
     view_cancel_button_with_class(locale.En, Nil, "dialog-cancel")
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Cancel")
   render_assertions.contains(html, "btn-secondary")
@@ -90,7 +89,7 @@ pub fn view_cancel_button_with_class_preserves_classes_test() {
 pub fn view_dialog_error_renders_standard_error_block_test() {
   let html =
     view_dialog_error(option.Some("Boom"))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "dialog-error")
   render_assertions.contains(html, "Boom")
@@ -99,7 +98,7 @@ pub fn view_dialog_error_renders_standard_error_block_test() {
 pub fn view_form_error_renders_compact_error_block_test() {
   let html =
     view_form_error(option.Some("Missing name"))
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "form-error")
   render_assertions.contains(html, "Missing name")
@@ -113,7 +112,7 @@ pub fn optional_field_attributes_are_added_only_when_present_test() {
       |> with_optional_placeholder(option.Some("Type here"))
       |> with_autofocus_when(True),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "aria-label=\"Visible label\"")
   render_assertions.contains(html, "placeholder=\"Type here\"")
@@ -128,11 +127,11 @@ pub fn optional_field_attributes_are_omitted_when_absent_test() {
       |> with_optional_placeholder(option.None)
       |> with_autofocus_when(False),
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
-  let assert False = string.contains(html, "aria-label")
-  let assert False = string.contains(html, "placeholder")
-  let assert False = string.contains(html, "autofocus")
+  render_assertions.not_contains(html, "aria-label")
+  render_assertions.not_contains(html, "placeholder")
+  render_assertions.not_contains(html, "autofocus")
 }
 
 pub fn view_dialog_shell_renders_standard_structure_test() {
@@ -144,7 +143,7 @@ pub fn view_dialog_shell_renders_standard_structure_test() {
       [element.text("Body")],
       [element.text("Footer")],
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "dialog-overlay")
   render_assertions.contains(html, "dialog dialog-md")
@@ -164,7 +163,7 @@ pub fn view_dialog_frame_preserves_custom_body_structure_test() {
       [element.text("Custom body")],
       [element.text("Footer")],
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "dialog-overlay")
   render_assertions.contains(html, "dialog dialog-lg dialog-lg-tight")
@@ -177,7 +176,7 @@ pub fn view_dialog_frame_preserves_custom_body_structure_test() {
 pub fn view_submit_button_renders_form_and_loading_state_test() {
   let html =
     view_submit_button("form-id", True, "Save", "Saving")
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "form=\"form-id\"")
   render_assertions.contains(html, "disabled")
@@ -188,7 +187,7 @@ pub fn view_submit_button_renders_form_and_loading_state_test() {
 pub fn view_primary_action_button_renders_button_action_test() {
   let html =
     view_primary_action_button(Nil, True, "Create", "Creating", "btn-compact")
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "type=\"button\"")
   render_assertions.contains(html, "disabled")
@@ -200,7 +199,7 @@ pub fn view_primary_action_button_renders_button_action_test() {
 pub fn view_danger_button_renders_danger_class_and_loading_label_test() {
   let html =
     view_danger_button(Nil, True, "Delete", "Removing")
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "btn-danger")
   render_assertions.contains(html, "disabled")
@@ -217,7 +216,7 @@ pub fn view_danger_action_button_renders_extra_disabled_state_test() {
       "Deleting",
       "danger-extra",
     )
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "type=\"button\"")
   render_assertions.contains(html, "disabled")

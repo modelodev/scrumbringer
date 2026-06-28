@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
 import lustre/attribute
-import lustre/element
+import lustre/element.{type Element}
 import lustre/element/html.{button, div, text}
 import support/render_assertions
 
@@ -31,7 +31,7 @@ fn render_with_locale(
     executions_view: div([], [text("executions body")]),
   )
   |> automations_console.view
-  |> element.to_document_string
+  |> render_assertions.html
 }
 
 pub fn automations_console_uses_work_surface_contract_test() {
@@ -105,7 +105,7 @@ pub fn automations_console_renders_selected_entity_context_test() {
       executions_view: div([], [text("executions body")]),
     )
     |> automations_console.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-selected-entity\"")
   render_assertions.contains(html, "Template #12 selected")
@@ -129,7 +129,7 @@ pub fn automations_console_localizes_selected_entity_context_to_spanish_test() {
       executions_view: div([], [text("executions body")]),
     )
     |> automations_console.view
-    |> element.to_document_string
+    |> render_assertions.html
 
   render_assertions.contains(html, "Automatizaciones")
   render_assertions.contains(html, "Crea trabajo automático en el Pool")
@@ -140,7 +140,7 @@ pub fn automations_console_localizes_selected_entity_context_to_spanish_test() {
   render_assertions.not_contains(html, "Rule #8 selected")
 }
 
-fn primary_action() -> element.Element(msg) {
+fn primary_action() -> Element(msg) {
   button([attribute.attribute("data-testid", "automation-create-engine")], [
     text("Create engine"),
   ])
