@@ -1056,6 +1056,14 @@ Estado de ejecucion:
     `view_create_dialog_for_test`, evitando exponer una pieza interna del icon
     picker;
   - delta adicional: `-17` lineas mantenidas.
+- Micro-pase adicional de API publica cliente accidental:
+  - retirado `crud_dialog_base.decode_optional_int_attribute`, helper publico
+    sin consumidores;
+  - `auth/helpers.clear_drag_state`, `auth/view.view_forgot_password`,
+    `rule_sentence.trigger_sentence` y
+    `action_buttons.delete_button_with_size` pasan a ser privados porque solo
+    tienen consumidores dentro del propio modulo;
+  - delta adicional: `-13` lineas mantenidas y cuatro exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1065,10 +1073,12 @@ Estado de ejecucion:
     `1887 passed` tras retirar `url_state.card_show` y
     `url_state.task_show`;
     `1887 passed` tras retirar
-    `task_type_crud_dialog.view_icon_picker_trigger_for_test`);
+    `task_type_crud_dialog.view_icon_picker_trigger_for_test`;
+    `1887 passed` tras retirar `decode_optional_int_attribute` y privatizar
+    helpers cliente sin consumidores externos);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.407` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.420` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

@@ -140,7 +140,7 @@ pub fn view_login(config: Config(msg)) -> Element(msg) {
 }
 
 /// Renders the forgot password form with email input and reset link display.
-pub fn view_forgot_password(config: Config(msg)) -> Element(msg) {
+fn view_forgot_password(config: Config(msg)) -> Element(msg) {
   let auth = config.auth
   let t = fn(key) { i18n.t(config.locale, key) }
 

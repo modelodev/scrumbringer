@@ -98,19 +98,6 @@ pub fn decode_int_attribute(
   |> result.replace_error(Nil)
 }
 
-/// Decodes optional int attribute.
-///
-/// Example:
-///   decode_optional_int_attribute(...)
-pub fn decode_optional_int_attribute(
-  value: String,
-  to_msg: fn(Option(Int)) -> msg,
-) -> Result(msg, Nil) {
-  parse_optional_int(value)
-  |> result.map(to_msg)
-  |> result.replace_error(Nil)
-}
-
 /// Parses optional integer form/select values.
 pub fn parse_optional_int(
   value: String,

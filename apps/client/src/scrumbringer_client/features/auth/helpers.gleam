@@ -33,7 +33,7 @@ import scrumbringer_client/client_state/member as member_state
 ///
 /// Used when transitioning away from pages with drag functionality
 /// (e.g., on logout or auth errors).
-pub fn clear_drag_state(
+fn clear_drag_state(
   model: client_state_module.Model,
 ) -> client_state_module.Model {
   client_state_module.update_member(model, fn(member) {

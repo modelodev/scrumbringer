@@ -33,7 +33,7 @@ pub fn view(
   ])
 }
 
-pub fn trigger_sentence(
+fn trigger_sentence(
   locale: Locale,
   rule: workflow.Rule,
   task_type_name: opt.Option(String),

@@ -230,7 +230,7 @@ pub fn delete_button(title: String, on_click: msg) -> Element(msg) {
 }
 
 /// Creates a delete button with custom size.
-pub fn delete_button_with_size(
+fn delete_button_with_size(
   title: String,
   on_click: msg,
   size: ButtonSize,
