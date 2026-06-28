@@ -2820,6 +2820,26 @@ Estado de ejecucion:
   - total Gleam actual: `197.503` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.511` lineas;
   - deficit restante para `-20k`: `3.489` lineas.
+- Vigesimoseptimo pase de contrato compacto de theme tokens:
+  - sustituida en `theme_test.gleam` la duplicacion completa de los 51 tokens
+    por tema por un contrato estructural compacto: longitud, presencia de roles
+    semanticos y valores criticos de fondo, texto, primario y color de card;
+  - se mantienen los tests de parse/serialize, estado invalido de storage y
+    tokens de espaciado semantico;
+  - delta adicional: `-59` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo-medio. Reduce fixture
+    visual duplicado y brittle, conservando cobertura de los tokens que actuan
+    como contrato publico de tema;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el vigesimoseptimo pase:
+  - total Gleam actual: `197.444` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.570` lineas;
+  - deficit restante para `-20k`: `3.430` lineas.
 
 ## Orden recomendado de ejecucion
 
