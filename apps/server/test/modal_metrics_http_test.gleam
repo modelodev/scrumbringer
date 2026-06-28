@@ -99,7 +99,7 @@ pub fn include_metrics_task_forbidden_returns_not_found_typed_error_code_test() 
       "Task forbidden",
     )
 
-  let assert Ok(_) =
+  let assert Ok(_member_id) =
     fixtures.create_member_user(
       handler,
       db,
@@ -147,18 +147,12 @@ pub fn include_metrics_task_returns_expected_counts_test() {
       [],
     )
 
-  let assert Ok(_) =
+  let assert Ok(member_id) =
     fixtures.create_member_user(
       handler,
       db,
       "member4@example.com",
       "inv_member",
-    )
-  let assert Ok(member_id) =
-    fixtures.query_int(
-      db,
-      "select id from users where email = 'member4@example.com'",
-      [],
     )
 
   let _ =
