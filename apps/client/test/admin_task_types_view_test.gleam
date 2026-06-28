@@ -102,10 +102,7 @@ pub fn task_types_table_renders_none_when_no_capability_test() {
 
 pub fn icon_picker_trigger_hides_slug_test() {
   let html =
-    task_type_crud_dialog.view_icon_picker_trigger_for_test(
-      En,
-      "clipboard-document-list",
-    )
+    task_type_crud_dialog.view_create_dialog_for_test(En)
     |> element.to_document_string
 
   render_assertions.not_contains(html, "clipboard-document-list")

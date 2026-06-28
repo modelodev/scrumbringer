@@ -1049,6 +1049,13 @@ Estado de ejecucion:
   - los tests pasan a verificar el ADT publico `ShowParam` mediante
     `url_state.show`, que es el contrato que consume `client_update`;
   - delta adicional: `-20` lineas mantenidas.
+- Micro-pase adicional de helper visual `for_test`:
+  - retirado `task_type_crud_dialog.view_icon_picker_trigger_for_test`, helper
+    publico creado solo para un test;
+  - el test comprueba el mismo contrato visual desde
+    `view_create_dialog_for_test`, evitando exponer una pieza interna del icon
+    picker;
+  - delta adicional: `-17` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1056,10 +1063,12 @@ Estado de ejecucion:
     `1887 passed` tras retirar `url_state.without_project`;
     `1887 passed` tras retirar `url_state.assignments_view`;
     `1887 passed` tras retirar `url_state.card_show` y
-    `url_state.task_show`);
+    `url_state.task_show`;
+    `1887 passed` tras retirar
+    `task_type_crud_dialog.view_icon_picker_trigger_for_test`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`).
-- Delta acumulado WP-10 tras micro-pases: `-1.390` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.407` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

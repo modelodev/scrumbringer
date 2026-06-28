@@ -767,20 +767,6 @@ const task_type_icons = [
   "puzzle-piece",
 ]
 
-/// Minimal icon picker view for tests (no dropdown open).
-pub fn view_icon_picker_trigger_for_test(
-  locale: Locale,
-  current_icon: String,
-) -> Element(Msg) {
-  view_icon_picker(
-    locale,
-    current_icon,
-    False,
-    CreateIconToggle,
-    CreateIconChanged,
-  )
-}
-
 pub fn view_create_dialog_for_test(locale: Locale) -> Element(Msg) {
   let model = default_model()
   let model = Model(..model, locale: locale, mode: crud_dialog_base.Creating)
