@@ -2,10 +2,10 @@ import domain/card
 import domain/org_role
 import domain/task.{type Task, Task}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import domain/user.{User}
 import gleam/option.{None, Some}
 import lustre/element
+import support/domain_fixtures
 import support/render_assertions
 
 import scrumbringer_client/features/layout/right_panel
@@ -44,27 +44,13 @@ fn base_config(
 
 fn sample_task(state: task_state.TaskExecutionState) -> Task {
   Task(
-    id: 1,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug-ant"),
-    ongoing_by: None,
-    title: "Fix login",
+    ..domain_fixtures.task(1, "Fix login", 1),
     description: None,
     priority: 3,
     state: state,
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: None,
-    version: 1,
-    parent_card_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some(card.Blue),
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: None,
   )
 }
 

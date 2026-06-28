@@ -1,19 +1,14 @@
 import gleam/option as opt
+import support/domain_fixtures
 
 import domain/remote.{Loaded}
 import domain/task.{type Task, type WorkSession, OngoingBy, Task, WorkSession}
 import domain/task/state as task_state
-import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/features/tasks/work_sessions_state
 
 fn task(id: Int, user_id: Int, mode: task_state.TaskClaimMode) -> Task {
   Task(
-    id: id,
-    project_id: 1,
-    type_id: 1,
-    task_type: TaskTypeInline(id: 1, name: "Bug", icon: "bug"),
-    ongoing_by: opt.None,
-    title: "Task",
+    ..domain_fixtures.task(id, "Task", 1),
     description: opt.None,
     priority: 1,
     state: task_state.Claimed(
@@ -21,18 +16,6 @@ fn task(id: Int, user_id: Int, mode: task_state.TaskClaimMode) -> Task {
       claimed_at: "2026-01-01T00:00:00Z",
       mode: mode,
     ),
-    created_by: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    due_date: opt.None,
-    version: 1,
-    parent_card_id: opt.None,
-    card_id: opt.None,
-    card_title: opt.None,
-    card_color: opt.None,
-    has_new_notes: False,
-    blocked_count: 0,
-    dependencies: [],
-    automation_origin: opt.None,
   )
 }
 
