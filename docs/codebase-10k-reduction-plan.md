@@ -1257,6 +1257,15 @@ Estado de ejecucion:
   - el picker conectado renderiza directamente desde `icon_catalog.catalog()`,
     eliminando duplicacion entre catalogo, labels y render;
   - delta adicional WP-10: `-7` lineas mantenidas.
+- Micro-pase adicional de API preventiva en `signal_chip`:
+  - retirados `signal_chip.with_extra_class` y `signal_chip.with_title`, sin
+    consumidores de produccion;
+  - retirados los campos internos `extra_class` y `title`, simplificando el
+    contrato renderizado de la primitiva a clase base, tono, partes y
+    `data-testid`;
+  - `ui_signal_chip_test` conserva la cobertura de las capacidades usadas por
+    producto y deja de proteger una API preventiva;
+  - delta adicional WP-10: `-24` lineas mantenidas y dos exports menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1287,10 +1296,11 @@ Estado de ejecucion:
     `1859 passed` tras retirar `ui/icon_picker`;
     `1859 passed` tras retirar categoria legacy del icon catalog;
     `1859 passed` tras retirar busqueda legacy del icon catalog;
-    `1859 passed` tras conectar el picker a `icon_catalog.catalog`);
+    `1859 passed` tras conectar el picker a `icon_catalog.catalog`;
+    `1859 passed` tras retirar API preventiva de `signal_chip`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-2.916` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-2.940` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

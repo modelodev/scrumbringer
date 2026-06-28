@@ -15,11 +15,9 @@ pub opaque type SignalChip {
     value: Option(String),
     tone: tone.Tone,
     base_class: String,
-    extra_class: Option(String),
     value_class: String,
     label_class: String,
     testid: Option(String),
-    title: Option(String),
   )
 }
 
@@ -30,11 +28,9 @@ pub fn text(label: String, tone_value: tone.Tone) -> SignalChip {
     value: None,
     tone: tone_value,
     base_class: "signal-chip",
-    extra_class: None,
     value_class: "signal-chip-value",
     label_class: "signal-chip-label",
     testid: None,
-    title: None,
   )
 }
 
@@ -69,11 +65,6 @@ pub fn with_class(chip: SignalChip, base_class: String) -> SignalChip {
   SignalChip(..chip, base_class: base_class)
 }
 
-/// Add a business-specific modifier class.
-pub fn with_extra_class(chip: SignalChip, extra_class: String) -> SignalChip {
-  SignalChip(..chip, extra_class: Some(extra_class))
-}
-
 /// Override metric value and label classes for specialized layouts.
 pub fn with_parts(
   chip: SignalChip,
@@ -88,11 +79,6 @@ pub fn with_testid(chip: SignalChip, testid: String) -> SignalChip {
   SignalChip(..chip, testid: Some(testid))
 }
 
-/// Add a title tooltip.
-pub fn with_title(chip: SignalChip, title: String) -> SignalChip {
-  SignalChip(..chip, title: Some(title))
-}
-
 /// Render the signal chip.
 pub fn view(chip: SignalChip) -> Element(msg) {
   html.span(attrs(chip), children(chip))
@@ -101,10 +87,7 @@ pub fn view(chip: SignalChip) -> Element(msg) {
 fn attrs(chip: SignalChip) -> List(attribute.Attribute(msg)) {
   list.append(
     [attribute.class(class_name(chip))],
-    list.append(
-      optional_attr("data-testid", chip.testid),
-      optional_attr("title", chip.title),
-    ),
+    optional_attr("data-testid", chip.testid),
   )
 }
 
@@ -119,12 +102,7 @@ fn optional_attr(
 }
 
 fn class_name(chip: SignalChip) -> String {
-  let base = chip.base_class <> " " <> tone.class_name(chip.tone)
-
-  case chip.extra_class {
-    Some(extra) -> base <> " " <> extra
-    None -> base
-  }
+  chip.base_class <> " " <> tone.class_name(chip.tone)
 }
 
 fn children(chip: SignalChip) -> List(Element(msg)) {

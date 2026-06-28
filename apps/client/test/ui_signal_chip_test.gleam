@@ -51,7 +51,6 @@ pub fn custom_class_preserves_view_contract_test() {
     |> signal_chip.with_class("custom-health-chip")
     |> signal_chip.with_parts("custom-health-value", "custom-health-label")
     |> signal_chip.with_testid("custom-health-chip")
-    |> signal_chip.with_title("Blocked: 1")
     |> signal_chip.view
     |> render_assertions.html
 
@@ -59,5 +58,4 @@ pub fn custom_class_preserves_view_contract_test() {
   render_assertions.contains(html, "custom-health-value")
   render_assertions.contains(html, "custom-health-label")
   render_assertions.contains(html, "data-testid=\"custom-health-chip\"")
-  render_assertions.contains(html, "title=\"Blocked: 1\"")
 }
