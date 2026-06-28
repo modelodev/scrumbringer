@@ -936,12 +936,17 @@ Estado de ejecucion:
   - `create_task_with_card_full`, para compartir el POST tipado de tasks sin
     perder `description`, `priority`, `type_id` ni `card_id`;
   - `required_cookie_value`, para retirar parsers locales de `set-cookie`.
+  - `with_session_cookies`, para compartir cookies de sesion sin anadir
+    `X-CSRF`; se mantiene separado de `with_auth` porque varios tests validan
+    precisamente la ausencia de ese header.
 - Migrados `tasks_http_test.gleam` y `notes_and_positions_http_test.gleam` para
   delegar esos helpers y sustituir el patron repetido `login_as` +
-  extraccion de cookies por `login_session`, manteniendo intactos los
-  escenarios.
-- Delta parcial WP-12: `-301` lineas netas mantenidas (`-44` del primer pase
-  de helpers de task/cookie y `-257` del pase de login/session).
+  extraccion de cookies por `login_session`, y los pares repetidos
+  `sb_session`/`sb_csrf` por `with_session_cookies`, manteniendo intactos los
+  escenarios y los casos sin CSRF.
+- Delta parcial WP-12: `-397` lineas netas mantenidas (`-44` del primer pase
+  de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
+  de cookies de sesion).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;
