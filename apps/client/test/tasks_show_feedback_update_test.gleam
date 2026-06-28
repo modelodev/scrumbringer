@@ -75,7 +75,6 @@ fn sample_task() -> Task {
     ..domain_fixtures.task(42, "Prepare release", 1),
     description: Some("Review checklist."),
     priority: 2,
-    created_at: "2026-03-20T14:00:00Z",
     version: 3,
   )
 }

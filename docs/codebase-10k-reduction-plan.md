@@ -1468,7 +1468,12 @@ Estado de ejecucion:
   `tasks_show_summary`). Se retiran tipo/card/fechas/version cuando el HTML o
   la regla solo observan estado, usuario y titulo; se conserva `Feature/P2`
   donde el resumen lo verifica.
-- Delta parcial WP-12: `-3.524` lineas netas mantenidas (`-44` del primer pase
+- Trigesimoprimer pase de fixtures de dominio aplicado a editor/form/update de
+  task show (`task_show_editor_view`, `tasks_show_edit_form`,
+  `task_show_update` y `tasks_show_feedback_update`). Se eliminan fechas y
+  versiones no observadas conservando descripcion, prioridad y version donde
+  gobiernan dirty-check o concurrencia.
+- Delta parcial WP-12: `-3.530` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1520,7 +1525,8 @@ Estado de ejecucion:
   en tests de cliente, `-11` del vigesimoctavo pase de fixtures de dominio
   compartidas en tests de cliente, `-41` del vigesimonoveno pase de fixtures
   de dominio compartidas en tests de cliente, `-30` del trigesimo pase de
-  fixtures de dominio compartidas en tests de cliente).
+  fixtures de dominio compartidas en tests de cliente, `-6` del
+  trigesimoprimer pase de fixtures de dominio compartidas en tests de cliente).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

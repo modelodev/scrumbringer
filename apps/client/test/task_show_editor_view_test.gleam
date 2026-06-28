@@ -23,8 +23,6 @@ fn claimed_task() -> Task {
     description: Some("Review release checklist."),
     priority: 2,
     state: state,
-    created_at: "2026-03-20T14:00:00Z",
-    version: 3,
   )
 }
 
