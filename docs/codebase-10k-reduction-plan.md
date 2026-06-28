@@ -2633,6 +2633,24 @@ Estado de ejecucion:
   - total Gleam actual: `198.260` lineas;
   - reduccion real frente al baseline de `214.014`: `-15.754` lineas;
   - deficit restante para `-20k`: `4.246` lineas.
+- Decimoctavo pase de fixtures de autorizacion de proyectos:
+  - migrados los escenarios de `unit/use_case/projects_db_test.gleam` que
+    necesitan proyecto a `require_project_context`;
+  - extraido un helper local minimo `org_context` para los tests de rol de
+    organizacion sin crear proyectos artificiales;
+  - conservadas explicitas las comprobaciones de miembro, manager, usuario no
+    miembro y roles `admin`/`member`;
+  - retirados comentarios `Given/When/Then` redundantes;
+  - delta adicional: `-32` lineas Gleam mantenidas netas;
+  - verificacion:
+    - modulo enfocado `unit@use_case@projects_db_test` via EUnit secuencial
+      (`6 passed`);
+    - `cd apps/server && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`).
+- Auditoria de contabilidad tras el decimoctavo pase:
+  - total Gleam actual: `198.228` lineas;
+  - reduccion real frente al baseline de `214.014`: `-15.786` lineas;
+  - deficit restante para `-20k`: `4.214` lineas.
 
 ## Orden recomendado de ejecucion
 
