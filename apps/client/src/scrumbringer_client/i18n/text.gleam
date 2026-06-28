@@ -228,7 +228,6 @@ pub type Text {
   SearchPlaceholder
   ClearFilters
   NoAvailableTasksRightNow
-  CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
   NoOpenPoolTasks
   NoOpenPoolTasksBody

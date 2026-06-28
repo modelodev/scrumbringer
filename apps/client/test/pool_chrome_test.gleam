@@ -46,15 +46,8 @@ pub fn pool_chrome_renders_task_states_without_root_model_test() {
     chrome.tasks_no_matches(locale.En)
     |> element.to_document_string
 
-  let onboarding =
-    chrome.tasks_onboarding(locale.En, "new-task")
-    |> element.to_document_string
-
   render_assertions.contains(loading, "Loading")
   render_assertions.contains(no_matches, "No tasks match your filters")
-  render_assertions.contains(onboarding, "No available tasks right now")
-  render_assertions.contains(onboarding, "Create your first task")
-  render_assertions.contains(onboarding, "New task")
 }
 
 pub fn pool_chrome_renders_my_tasks_states_without_root_model_test() {

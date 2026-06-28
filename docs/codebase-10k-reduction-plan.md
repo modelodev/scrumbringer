@@ -1093,6 +1093,12 @@ Estado de ejecucion:
     `http/api.session_cookie_attributes`, `http/api.csrf_cookie_attributes`,
     `http/auth.auth_required_response` y `cards/presenters.card_metrics`;
   - delta adicional: `0` lineas mantenidas y diez exports menos.
+- Micro-pase adicional de empty state de Pool sin consumidor:
+  - retirado `pool/chrome.tasks_onboarding`, componente publico sin llamadas
+    desde produccion y cubierto solo por un test directo de implementacion;
+  - retiradas sus aserciones de `pool_chrome_test`, conservando la cobertura de
+    estados vivos de carga y filtros sin resultados;
+  - delta adicional WP-10: `-18` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1110,10 +1116,11 @@ Estado de ejecucion:
     `1887 passed` tras retirar wrappers triviales y privatizar helpers cliente
     sin consumidores externos;
     `1887 passed` tras privatizar helpers app-specific sin consumidores
-    externos);
+    externos;
+    `1887 passed` tras retirar `pool/chrome.tasks_onboarding`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-1.457` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-1.475` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
@@ -1193,12 +1200,15 @@ Estado de ejecucion:
   `styles/components.gleam` para plantillas antiguas, mobile header obsoleto,
   rollups previos de plan, decoracion kanban/footer retirada, jerarquias
   antiguas y selectores compuestos ya sin markup.
+- Noveno pase i18n: retirada la clave `CreateFirstTaskToStartUsingPool` de
+  `Text`, `en` y `es` tras eliminar el unico componente que la consumia.
 - Delta parcial WP-11: `-913` lineas netas mantenidas (`-20` estilos iniciales,
   `-700` i18n/tests, `-139` estilos legacy de jerarquias, `-54` estilos legacy
   adicionales). Delta adicional del quinto pase: `-8` lineas mantenidas.
   Delta adicional del sexto pase: `-53` lineas mantenidas. Delta adicional del
   septimo pase: `-47` lineas mantenidas. Delta adicional del octavo pase:
-  `-28` lineas mantenidas.
+  `-28` lineas mantenidas. Delta adicional del noveno pase: `-5` lineas
+  mantenidas.
 - Verificacion:
   - `cd apps/client && gleam format src test`;
   - `cd apps/client && gleam build`;

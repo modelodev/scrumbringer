@@ -261,8 +261,6 @@ pub fn translate(text: Text) -> String {
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Limpiar"
     text.NoAvailableTasksRightNow -> "No hay tareas disponibles ahora"
-    text.CreateFirstTaskToStartUsingPool ->
-      "Crea tu primera tarea para empezar a usar el Pool."
     text.NoTasksMatchYourFilters -> "Ninguna tarea coincide con tus filtros"
     text.NoOpenPoolTasks -> "No hay tareas abiertas en el Pool"
     text.NoOpenPoolTasksBody ->

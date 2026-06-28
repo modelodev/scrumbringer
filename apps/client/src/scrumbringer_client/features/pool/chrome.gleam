@@ -116,17 +116,6 @@ pub fn tasks_no_blocked(locale: Locale, on_view_open: msg) -> Element(msg) {
   |> empty_state.view
 }
 
-pub fn tasks_onboarding(locale: Locale, on_new_task: msg) -> Element(msg) {
-  empty_state.new(
-    "star",
-    i18n.t(locale, i18n_text.NoAvailableTasksRightNow),
-    i18n.t(locale, i18n_text.CreateFirstTaskToStartUsingPool),
-  )
-  |> empty_state.with_meaning(empty_state.Onboarding)
-  |> empty_state.with_action(i18n.t(locale, i18n_text.NewTask), on_new_task)
-  |> empty_state.view
-}
-
 pub fn my_tasks_heading(locale: Locale) -> Element(msg) {
   h3([], [text(i18n.t(locale, i18n_text.MyTasks))])
 }
