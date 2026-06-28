@@ -24,6 +24,7 @@ import scrumbringer_server/seed_db
 import scrumbringer_server/use_case/rate_limit
 import scrumbringer_server/use_case/rules_engine
 import scrumbringer_server/use_case/workflows/validation_core
+import support/assertions as expect
 import wisp
 import wisp/simulate
 
@@ -127,6 +128,11 @@ pub fn bootstrap() -> Result(
   }
 }
 
+pub fn require_app() -> scrumbringer_server.App {
+  let #(app, _, _) = bootstrap() |> expect.ok
+  app
+}
+
 /// Create a test app without registering users or resetting the database.
 pub fn new_app() -> Result(scrumbringer_server.App, String) {
   use database_url <- result.try(require_database_url())
@@ -182,6 +188,10 @@ pub fn login(
   }
 }
 
+pub fn require_login_session(handler: Handler, email: String) -> Session {
+  login(handler, email, "passwordpassword") |> expect.ok
+}
+
 /// Create a member user via invite link and return their ID.
 pub fn create_member_user(
   handler: Handler,
@@ -223,6 +233,15 @@ pub fn create_member_user(
   }
 }
 
+pub fn require_member_user(
+  handler: Handler,
+  db: pog.Connection,
+  email: String,
+  invite_code: String,
+) -> Int {
+  create_member_user(handler, db, email, invite_code) |> expect.ok
+}
+
 // =============================================================================
 // Entity Creation (return IDs from API response)
 // =============================================================================
@@ -252,6 +271,10 @@ pub fn create_project(
         <> simulate.read_body(res),
       )
   }
+}
+
+pub fn require_project(handler: Handler, session: Session, name: String) -> Int {
+  create_project(handler, session, name) |> expect.ok
 }
 
 fn project_create_json(name: String) -> json.Json {
@@ -319,6 +342,16 @@ pub fn create_task_type(
         <> simulate.read_body(res),
       )
   }
+}
+
+pub fn require_task_type(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  name: String,
+  icon: String,
+) -> Int {
+  create_task_type(handler, session, project_id, name, icon) |> expect.ok
 }
 
 /// Create a workflow and return its ID.
@@ -729,6 +762,14 @@ pub fn activate_card(
   }
 }
 
+pub fn require_activate_card(
+  handler: Handler,
+  session: Session,
+  card_id: Int,
+) -> Nil {
+  activate_card(handler, session, card_id) |> expect.ok
+}
+
 /// Create a task associated with a card and return its ID.
 pub fn create_task_with_card(
   handler: Handler,
@@ -813,6 +854,29 @@ pub fn create_task_with_card_full(
   }
 }
 
+pub fn require_task_with_card_full(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  card_id: Int,
+) -> Int {
+  create_task_with_card_full(
+    handler,
+    session,
+    project_id,
+    title,
+    description,
+    priority,
+    type_id,
+    card_id,
+  )
+  |> expect.ok
+}
+
 /// Create a card and return its ID.
 pub fn create_card(
   handler: Handler,
@@ -847,6 +911,15 @@ pub fn create_card(
         <> simulate.read_body(res),
       )
   }
+}
+
+pub fn require_card(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  title: String,
+) -> Int {
+  create_card(handler, session, project_id, title) |> expect.ok
 }
 
 /// Create a child card and return its ID.
@@ -956,6 +1029,25 @@ pub fn add_member(
   }
 }
 
+pub fn require_member(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  user_id: Int,
+  role: String,
+) -> Nil {
+  add_member(handler, session, project_id, user_id, role) |> expect.ok
+}
+
+pub fn require_project_member(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  user_id: Int,
+) -> Nil {
+  require_member(handler, session, project_id, user_id, "member")
+}
+
 // =============================================================================
 // Database Helpers
 // =============================================================================
@@ -982,6 +1074,14 @@ pub fn query_int(
     Ok(pog.Returned(rows: [], ..)) -> Error("No rows returned")
     Error(e) -> Error("Query error: " <> string.inspect(e))
   }
+}
+
+pub fn require_query_int(
+  db: pog.Connection,
+  sql: String,
+  params: List(pog.Value),
+) -> Int {
+  query_int(db, sql, params) |> expect.ok
 }
 
 /// Query a single string value from the database.

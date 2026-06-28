@@ -1315,7 +1315,11 @@ Estado de ejecucion:
 - Retirados `support/test_db.gleam` y `support/test_helpers.gleam`, modulos de
   soporte de tests sin importadores reales; solo se referenciaban en sus
   propios comentarios de ejemplo.
-- Delta parcial WP-12: `-1.757` lineas netas mantenidas (`-44` del primer pase
+- `fixtures.gleam` incorpora helpers `require_*` estrechos para setup HTTP que
+  falla el test via `expect.ok`; `tasks_http_test.gleam` y
+  `notes_and_positions_http_test.gleam` retiran wrappers locales equivalentes y
+  usan alias `fx` solo en esos tests densos para evitar wrapping repetitivo.
+- Delta parcial WP-12: `-1.783` lineas netas mantenidas (`-44` del primer pase
   de helpers de task/cookie, `-257` del pase de login/session y `-96` del pase
   de cookies de sesion, `-63` del pase de cookies+CSRF a `with_auth`, `-169`
   del pase de IDs de proyecto desde fixtures, `-240` del pase de IDs de tipos
@@ -1328,7 +1332,7 @@ Estado de ejecucion:
   `fixtures.Session` tipado en `tasks_http_test.gleam`, `-18` del pase de
   `with_session_cookies` tipado en `fixtures.gleam`, `-4` del pase de
   `int.to_string` en `rules_http_test.gleam`, `-141` del pase de modulos
-  `support` huerfanos).
+  `support` huerfanos, `-26` del pase de wrappers `require_*` compartidos).
 - Verificacion:
   - `cd apps/server && gleam format src test`;
   - `cd apps/server && gleam build`;

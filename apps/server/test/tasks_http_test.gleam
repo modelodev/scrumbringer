@@ -1,4 +1,4 @@
-import fixtures
+import fixtures as fx
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -12,19 +12,12 @@ import support/assertions as expect
 import wisp
 import wisp/simulate
 
-fn login_session(
-  handler: fn(wisp.Request) -> wisp.Response,
-  email: String,
-) -> fixtures.Session {
-  fixtures.login(handler, email, "passwordpassword") |> expect.ok
-}
-
 pub fn task_types_list_sorted_by_name_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
 
   create_task_type(handler, session, project_id, "Zulu", "bug-ant", 0)
   create_task_type(handler, session, project_id, "Alpha", "bolt", 0)
@@ -34,7 +27,7 @@ pub fn task_types_list_sorted_by_name_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -62,26 +55,26 @@ pub fn task_types_list_sorted_by_name_test() {
 }
 
 pub fn task_types_create_requires_project_admin_and_csrf_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, "Core")
+  let admin_session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, admin_session, "Core")
 
   let member_id =
-    create_member_user(handler, db, "member@example.com", "inv_member")
+    fx.require_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, admin_session, project_id, member_id, "member")
+  fx.require_member(handler, admin_session, project_id, member_id, "member")
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
   let member_req =
     simulate.request(
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
     |> simulate.json_body(
       json.object([
         #("name", json.string("Bug")),
@@ -97,7 +90,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_session_cookies(admin_session)
+    |> fx.with_session_cookies(admin_session)
     |> simulate.json_body(
       json.object([
         #("name", json.string("Bug")),
@@ -111,12 +104,12 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn tasks_list_filters_sorting_and_q_search_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
 
   let cap1 = insert_capability(db, project_id, "Frontend")
   let cap2 = insert_capability(db, project_id, "Backend")
@@ -166,7 +159,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(list_res, 200)
@@ -179,7 +172,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?q=needle",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(q_res, 200)
@@ -195,7 +188,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
           <> "/tasks?capability_id="
           <> int.to_string(cap1),
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(cap_res, 200)
@@ -209,7 +202,7 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
         <> int.to_string(project_id)
         <> "/tasks?capability_id=1,2",
     )
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let multi_cap_res = handler(multi_cap_req)
   expect.expect_status(multi_cap_res, 422)
@@ -218,12 +211,12 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
 }
 
 pub fn tasks_list_includes_task_contract_fields_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -234,7 +227,7 @@ pub fn tasks_list_includes_task_contract_fields_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -295,12 +288,12 @@ pub fn tasks_list_includes_task_contract_fields_test() {
 }
 
 pub fn task_get_includes_task_contract_fields_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -309,7 +302,7 @@ pub fn task_get_includes_task_contract_fields_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -358,12 +351,12 @@ pub fn task_get_includes_task_contract_fields_test() {
 }
 
 pub fn task_get_includes_ongoing_by_when_active_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -374,11 +367,15 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let user_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -432,26 +429,26 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
 // Justification: large function kept intact to preserve cohesive logic.
 // Coverage marker: do_not_emit_audit_event_on_conflict, conflict_does_not_emit_audit.
 pub fn claim_conflict_version_conflict_and_state_machine_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, "Core")
+  let admin_session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, admin_session, "Core")
   let type_id =
     create_task_type(handler, admin_session, project_id, "Bug", "bug-ant", 0)
 
   let member_id =
-    create_member_user(handler, db, "member@example.com", "inv_member")
+    fx.require_member_user(handler, db, "member@example.com", "inv_member")
   let other_id =
-    create_member_user(handler, db, "other@example.com", "inv_other")
+    fx.require_member_user(handler, db, "other@example.com", "inv_other")
 
-  add_member(handler, admin_session, project_id, member_id, "member")
-  add_member(handler, admin_session, project_id, other_id, "member")
+  fx.require_member(handler, admin_session, project_id, member_id, "member")
+  fx.require_member(handler, admin_session, project_id, other_id, "member")
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
-  let other_session = login_session(handler, "other@example.com")
+  let other_session = fx.require_login_session(handler, "other@example.com")
 
   let task_id =
     create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
@@ -461,7 +458,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim_res = handler(claim_req)
@@ -473,7 +470,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_auth(other_session)
+    |> fx.with_auth(other_session)
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let claim2_res = handler(claim2_req)
@@ -484,7 +481,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -504,7 +501,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     )
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(1))]))
 
   let release_bad_res = handler(release_bad_req)
@@ -518,7 +515,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
     )
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(2))]))
 
   let release_ok_res = handler(release_ok_req)
@@ -530,7 +527,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
     )
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
     |> simulate.json_body(json.object([#("version", json.int(3))]))
 
   let close_bad_res = handler(close_bad_req)
@@ -541,17 +538,21 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
 }
 
 pub fn audit_events_persist_for_lifecycle_actions_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let admin_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
   let task_id =
     create_task(handler, session, project_id, "Core", "", 3, type_id)
@@ -572,12 +573,12 @@ pub fn audit_events_persist_for_lifecycle_actions_test() {
 }
 
 pub fn delete_task_without_operational_history_removes_task_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let task_id =
@@ -589,12 +590,12 @@ pub fn delete_task_without_operational_history_removes_task_test() {
 }
 
 pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let task_id =
@@ -610,12 +611,12 @@ pub fn delete_task_with_claim_returns_operational_history_conflict_test() {
 }
 
 pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
   let noted_task =
@@ -637,12 +638,12 @@ pub fn delete_task_with_note_or_dependency_returns_conflict_test() {
 }
 
 pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Editable Available")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Editable Available")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -651,7 +652,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
 
   let patch_req =
     simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(
       json.object([
         #("version", json.int(1)),
@@ -666,17 +667,17 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
 }
 
 pub fn release_all_tasks_for_member_success_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Bulk Release")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Bulk Release")
 
   let member_id =
-    create_member_user(handler, db, "member@example.com", "inv_member")
+    fx.require_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, session, project_id, member_id, "member")
+  fx.require_member(handler, session, project_id, member_id, "member")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -685,7 +686,7 @@ pub fn release_all_tasks_for_member_success_test() {
   let task_b =
     create_task(handler, session, project_id, "Task B", "", 1, type_id)
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
   claim_task(handler, member_session, task_a, task_version(db, task_a))
   |> expect.equal(200)
@@ -697,7 +698,7 @@ pub fn release_all_tasks_for_member_success_test() {
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     )
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 200)
@@ -734,7 +735,7 @@ pub fn release_all_tasks_for_member_success_test() {
         <> int.to_string(member_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -757,7 +758,7 @@ pub fn release_all_tasks_for_member_success_test() {
   list.length(task_ids) |> expect.equal(2)
 
   let claimed_left =
-    single_int(
+    fx.require_query_int(
       db,
       "select count(*) from tasks where project_id = $1 and claimed_by = $2 and execution_state = 'claimed'",
       [pog.int(project_id), pog.int(member_id)],
@@ -766,22 +767,27 @@ pub fn release_all_tasks_for_member_success_test() {
 }
 
 pub fn release_all_tasks_for_member_forbidden_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Bulk Release Forbidden")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id =
+    fx.require_project(handler, session, "Bulk Release Forbidden")
 
   let member_id =
-    create_member_user(handler, db, "member@example.com", "inv_member")
+    fx.require_member_user(handler, db, "member@example.com", "inv_member")
 
-  add_member(handler, session, project_id, member_id, "member")
+  fx.require_member(handler, session, project_id, member_id, "member")
 
   let admin_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
   let req =
     simulate.request(
@@ -792,7 +798,7 @@ pub fn release_all_tasks_for_member_forbidden_test() {
         <> int.to_string(admin_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_auth(member_session)
+    |> fx.with_auth(member_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -800,15 +806,19 @@ pub fn release_all_tasks_for_member_forbidden_test() {
 }
 
 pub fn release_all_tasks_for_member_self_release_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Bulk Release Self")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Bulk Release Self")
 
   let admin_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
   let req =
     simulate.request(
@@ -819,7 +829,7 @@ pub fn release_all_tasks_for_member_self_release_test() {
         <> int.to_string(admin_id)
         <> "/release-all-tasks",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 400)
@@ -827,18 +837,18 @@ pub fn release_all_tasks_for_member_self_release_test() {
 }
 
 pub fn release_all_tasks_for_member_not_found_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
+  let session = fx.require_login_session(handler, "admin@example.com")
 
   let req =
     simulate.request(
       http.Post,
       "/api/v1/projects/99999/members/99999/release-all-tasks",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
 
   let res = handler(req)
   expect.expect_status(res, 404)
@@ -846,12 +856,12 @@ pub fn release_all_tasks_for_member_not_found_test() {
 }
 
 pub fn task_dependencies_reject_circular_dependency_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Deps")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Deps")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -865,7 +875,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_a) <> "/dependencies",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_b))]),
     )
@@ -878,7 +888,7 @@ pub fn task_dependencies_reject_circular_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_b) <> "/dependencies",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_a))]),
     )
@@ -891,14 +901,14 @@ pub fn task_dependencies_reject_circular_dependency_test() {
 }
 
 pub fn task_dependencies_reject_cross_project_dependency_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
+  let session = fx.require_login_session(handler, "admin@example.com")
 
-  let project_one_id = create_project(handler, session, "Deps One")
-  let project_two_id = create_project(handler, session, "Deps Two")
+  let project_one_id = fx.require_project(handler, session, "Deps One")
+  let project_two_id = fx.require_project(handler, session, "Deps Two")
 
   let type_one_id =
     create_task_type(handler, session, project_one_id, "Bug", "bug-ant", 0)
@@ -931,7 +941,7 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_one) <> "/dependencies",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_two))]),
     )
@@ -944,12 +954,12 @@ pub fn task_dependencies_reject_cross_project_dependency_test() {
 }
 
 pub fn task_dependencies_reject_closed_dependency_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Deps Closed")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Deps Closed")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -971,7 +981,7 @@ pub fn task_dependencies_reject_closed_dependency_test() {
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_blocked) <> "/dependencies",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(
       json.object([#("depends_on_task_id", json.int(task_closed))]),
     )
@@ -984,12 +994,12 @@ pub fn task_dependencies_reject_closed_dependency_test() {
 }
 
 pub fn blocked_task_claim_returns_conflict_blocked_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Blocked Claim")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Blocked Claim")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1017,12 +1027,12 @@ pub fn blocked_task_claim_returns_conflict_blocked_test() {
 }
 
 pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Blocked Claim Closed")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Blocked Claim Closed")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1043,12 +1053,12 @@ pub fn blocked_task_claim_succeeds_after_dependency_closed_test() {
 }
 
 pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Blocked Claim Removed")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Blocked Claim Removed")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1067,11 +1077,11 @@ pub fn blocked_task_claim_succeeds_after_dependency_removed_test() {
 }
 
 pub fn task_dependencies_schema_indices_present_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
 
   let columns_count =
-    single_int(
+    fx.require_query_int(
       db,
       "select count(*) from information_schema.columns where table_name = 'task_dependencies' and column_name in ('task_id', 'depends_on_task_id', 'created_at', 'created_by')",
       [],
@@ -1079,7 +1089,7 @@ pub fn task_dependencies_schema_indices_present_test() {
   columns_count |> expect.equal(4)
 
   let index_count =
-    single_int(
+    fx.require_query_int(
       db,
       "select count(*) from pg_indexes where tablename = 'task_dependencies' and indexname in ('idx_task_dependencies_task_id', 'idx_task_dependencies_depends_on_task_id')",
       [],
@@ -1104,7 +1114,7 @@ pub fn pool_excludes_task_under_draft_card_test() {
     ht08_project("HT08 Draft Card")
   let draft_card = insert_card_state(db, project_id, "Draft", "draft")
 
-  create_task_with_card(
+  fx.require_task_with_card_full(
     handler,
     session,
     project_id,
@@ -1125,7 +1135,7 @@ pub fn pool_includes_task_under_active_card_test() {
     ht08_project("HT08 Active Card")
   let active_card = insert_card_state(db, project_id, "Active", "active")
 
-  create_task_with_card(
+  fx.require_task_with_card_full(
     handler,
     session,
     project_id,
@@ -1246,19 +1256,20 @@ pub fn manual_close_claimed_task_allowed_only_for_owner_test() {
     ht08_project("HT08 Close Owner")
 
   let owner_id =
-    create_member_user(handler, db, "owner@example.com", "inv_owner")
+    fx.require_member_user(handler, db, "owner@example.com", "inv_owner")
   let other_id =
-    create_member_user(
+    fx.require_member_user(
       handler,
       db,
       "other-owner@example.com",
       "inv_other_owner",
     )
-  add_member(handler, admin_session, project_id, owner_id, "member")
-  add_member(handler, admin_session, project_id, other_id, "member")
+  fx.require_member(handler, admin_session, project_id, owner_id, "member")
+  fx.require_member(handler, admin_session, project_id, other_id, "member")
 
-  let owner_session = login_session(handler, "owner@example.com")
-  let other_session = login_session(handler, "other-owner@example.com")
+  let owner_session = fx.require_login_session(handler, "owner@example.com")
+  let other_session =
+    fx.require_login_session(handler, "other-owner@example.com")
 
   let task_id =
     create_task(handler, admin_session, project_id, "Owned", "", 3, type_id)
@@ -1292,7 +1303,7 @@ pub fn dependency_would_create_cycle_is_rejected_test() {
 pub fn cross_project_dependency_is_rejected_test() {
   let #(_db, handler, session, project_one_id, type_one_id) =
     ht08_project("HT08 Cross One")
-  let project_two_id = create_project(handler, session, "HT08 Cross Two")
+  let project_two_id = fx.require_project(handler, session, "HT08 Cross Two")
   let type_two_id =
     create_task_type(handler, session, project_two_id, "Bug", "bug-ant", 0)
 
@@ -1346,8 +1357,8 @@ pub fn pool_filters_by_user_capabilities_test() {
     )
 
   let member_id =
-    create_member_user(handler, db, "cap-user@example.com", "inv_cap")
-  add_member(handler, admin_session, project_id, member_id, "member")
+    fx.require_member_user(handler, db, "cap-user@example.com", "inv_cap")
+  fx.require_member(handler, admin_session, project_id, member_id, "member")
   grant_capability(db, project_id, member_id, frontend)
 
   create_task(
@@ -1369,7 +1380,7 @@ pub fn pool_filters_by_user_capabilities_test() {
     backend_type,
   )
 
-  let member_session = login_session(handler, "cap-user@example.com")
+  let member_session = fx.require_login_session(handler, "cap-user@example.com")
 
   let res = list_project_tasks(handler, member_session, project_id, "")
   expect.expect_status(res, 200)
@@ -1378,12 +1389,12 @@ pub fn pool_filters_by_user_capabilities_test() {
 }
 
 pub fn me_metrics_returns_counts_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1395,7 +1406,7 @@ pub fn me_metrics_returns_counts_test() {
 
   let req =
     simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1426,20 +1437,20 @@ pub fn me_metrics_returns_counts_test() {
 }
 
 pub fn org_metrics_overview_requires_org_admin_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_session = login_session(handler, "admin@example.com")
+  let admin_session = fx.require_login_session(handler, "admin@example.com")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
+  fx.require_member_user(handler, db, "member@example.com", "inv_member")
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
   // member is authenticated but not org admin
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/overview")
-    |> fixtures.with_session_cookies(member_session)
+    |> fx.with_session_cookies(member_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1447,19 +1458,19 @@ pub fn org_metrics_overview_requires_org_admin_test() {
   // admin succeeds
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/overview")
-    |> fixtures.with_session_cookies(admin_session)
+    |> fx.with_session_cookies(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
 }
 
 pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1470,14 +1481,18 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let user_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
   let req =
     simulate.request(
       http.Get,
       "/api/v1/org/metrics/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 200)
@@ -1558,26 +1573,26 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 }
 
 pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_session = login_session(handler, "admin@example.com")
+  let admin_session = fx.require_login_session(handler, "admin@example.com")
 
-  create_member_user(handler, db, "member@example.com", "inv_member")
+  fx.require_member_user(handler, db, "member@example.com", "inv_member")
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
   let member_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
-    |> fixtures.with_session_cookies(member_session)
+    |> fx.with_session_cookies(member_session)
 
   let member_res = handler(member_req)
   expect.expect_status(member_res, 403)
 
   let admin_req =
     simulate.request(http.Get, "/api/v1/org/metrics/users")
-    |> fixtures.with_session_cookies(admin_session)
+    |> fx.with_session_cookies(admin_session)
 
   let admin_res = handler(admin_req)
   expect.expect_status(admin_res, 200)
@@ -1625,37 +1640,38 @@ pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
 }
 
 pub fn org_metrics_users_invalid_window_days_returns_422_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
+  let session = fx.require_login_session(handler, "admin@example.com")
 
   let req =
     simulate.request(http.Get, "/api/v1/org/metrics/users?window_days=999")
-    |> fixtures.with_session_cookies(session)
+    |> fx.with_session_cookies(session)
 
   let res = handler(req)
   expect.expect_status(res, 422)
 }
 
 pub fn tasks_list_requires_membership_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, "Core")
+  let admin_session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, admin_session, "Core")
 
-  create_member_user(handler, db, "outsider@example.com", "inv_out")
-  let outsider_session = login_session(handler, "outsider@example.com")
+  fx.require_member_user(handler, db, "outsider@example.com", "inv_out")
+  let outsider_session =
+    fx.require_login_session(handler, "outsider@example.com")
 
   let req =
     simulate.request(
       http.Get,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
     )
-    |> fixtures.with_session_cookies(outsider_session)
+    |> fx.with_session_cookies(outsider_session)
 
   let res = handler(req)
   expect.expect_status(res, 403)
@@ -1663,24 +1679,25 @@ pub fn tasks_list_requires_membership_test() {
 }
 
 pub fn task_get_requires_membership_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   let task_id =
     create_task(handler, session, project_id, "Secret", "", 3, type_id)
 
-  create_member_user(handler, db, "outsider@example.com", "inv_out")
-  let outsider_session = login_session(handler, "outsider@example.com")
+  fx.require_member_user(handler, db, "outsider@example.com", "inv_out")
+  let outsider_session =
+    fx.require_login_session(handler, "outsider@example.com")
 
   let req =
     simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_session_cookies(outsider_session)
+    |> fx.with_session_cookies(outsider_session)
 
   let res = handler(req)
   expect.expect_status(res, 404)
@@ -1689,12 +1706,12 @@ pub fn task_get_requires_membership_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn tasks_list_filters_status_type_and_invalid_values_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
 
   let bug_type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
@@ -1722,7 +1739,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=available",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(available_res, 200)
@@ -1737,7 +1754,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=claimed",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(claimed_res, 200)
@@ -1752,7 +1769,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?status=closed",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(closed_filter_res, 200)
@@ -1768,7 +1785,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> "/tasks?type_id="
           <> int.to_string(bug_type_id),
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(type_res, 200)
@@ -1781,7 +1798,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?status=nope",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(invalid_status_res, 422)
@@ -1794,7 +1811,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
         http.Get,
         "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks?type_id=abc",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(invalid_type_res, 422)
@@ -1809,7 +1826,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
           <> int.to_string(project_id)
           <> "/tasks?capability_id=abc",
       )
-      |> fixtures.with_session_cookies(session),
+      |> fx.with_session_cookies(session),
     )
 
   expect.expect_status(invalid_cap_res, 422)
@@ -1821,26 +1838,26 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
 
 // Justification: large function kept intact to preserve cohesive logic.
 pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, admin_session, "Core")
+  let admin_session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, admin_session, "Core")
   let type_id =
     create_task_type(handler, admin_session, project_id, "Bug", "bug-ant", 0)
 
   let member_id =
-    create_member_user(handler, db, "member@example.com", "inv_member")
+    fx.require_member_user(handler, db, "member@example.com", "inv_member")
   let other_id =
-    create_member_user(handler, db, "other@example.com", "inv_other")
+    fx.require_member_user(handler, db, "other@example.com", "inv_other")
 
-  add_member(handler, admin_session, project_id, member_id, "member")
-  add_member(handler, admin_session, project_id, other_id, "member")
+  fx.require_member(handler, admin_session, project_id, member_id, "member")
+  fx.require_member(handler, admin_session, project_id, other_id, "member")
 
-  let member_session = login_session(handler, "member@example.com")
+  let member_session = fx.require_login_session(handler, "member@example.com")
 
-  let other_session = login_session(handler, "other@example.com")
+  let other_session = fx.require_login_session(handler, "other@example.com")
 
   let task_id =
     create_task(handler, admin_session, project_id, "Core", "", 3, type_id)
@@ -1851,7 +1868,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let patch_ok_res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-      |> fixtures.with_auth(member_session)
+      |> fx.with_auth(member_session)
       |> simulate.json_body(
         json.object([
           #("version", json.int(2)),
@@ -1870,7 +1887,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let patch_other_res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-      |> fixtures.with_auth(other_session)
+      |> fx.with_auth(other_session)
       |> simulate.json_body(
         json.object([
           #("version", json.int(version)),
@@ -1887,7 +1904,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
-      |> fixtures.with_auth(other_session)
+      |> fx.with_auth(other_session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -1899,7 +1916,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
-      |> fixtures.with_auth(other_session)
+      |> fx.with_auth(other_session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -1907,12 +1924,12 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 }
 
 pub fn patch_rejects_blank_title_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1924,7 +1941,7 @@ pub fn patch_rejects_blank_title_test() {
   let res =
     handler(
       simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
-      |> fixtures.with_auth(session)
+      |> fx.with_auth(session)
       |> simulate.json_body(
         json.object([
           #("version", json.int(2)),
@@ -1939,12 +1956,12 @@ pub fn patch_rejects_blank_title_test() {
 }
 
 pub fn me_work_session_start_pause_and_persist_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -1966,7 +1983,11 @@ pub fn me_work_session_start_pause_and_persist_test() {
 
   // Simulate ~70s of elapsed time, then pause to flush accumulation.
   let user_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
   let _ =
     pog.query(
@@ -1982,7 +2003,7 @@ pub fn me_work_session_start_pause_and_persist_test() {
   |> expect.equal(option.None)
 
   let accumulated_after_pause =
-    single_int(
+    fx.require_query_int(
       db,
       "select accumulated_s from user_task_work_total where user_id = $1 and task_id = $2",
       [pog.int(user_id), pog.int(task_id)],
@@ -2003,12 +2024,12 @@ pub fn me_work_session_start_pause_and_persist_test() {
 }
 
 pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -2019,7 +2040,11 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
   expect.expect_status(start_work_session(handler, session, task_id), 200)
 
   let user_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
 
   // Set started_at to 65 seconds ago to simulate elapsed time
   let _ =
@@ -2032,7 +2057,7 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
 
   // Get last_heartbeat_at before heartbeat (as epoch integer)
   let heartbeat_before =
-    single_int(
+    fx.require_query_int(
       db,
       "select extract(epoch from last_heartbeat_at)::int from user_task_work_session where user_id = $1 and task_id = $2 and ended_at is null",
       [pog.int(user_id), pog.int(task_id)],
@@ -2043,7 +2068,7 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
 
   // Get last_heartbeat_at after heartbeat
   let heartbeat_after =
-    single_int(
+    fx.require_query_int(
       db,
       "select extract(epoch from last_heartbeat_at)::int from user_task_work_session where user_id = $1 and task_id = $2 and ended_at is null",
       [pog.int(user_id), pog.int(task_id)],
@@ -2058,12 +2083,12 @@ pub fn me_work_session_heartbeat_updates_last_heartbeat_at_test() {
 }
 
 pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -2080,9 +2105,13 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
 
   // Verify both sessions exist
   let user_id =
-    single_int(db, "select id from users where email = 'admin@example.com'", [])
+    fx.require_query_int(
+      db,
+      "select id from users where email = 'admin@example.com'",
+      [],
+    )
   let session_count =
-    single_int(
+    fx.require_query_int(
       db,
       "select count(*)::int from user_task_work_session where user_id = $1 and ended_at is null",
       [pog.int(user_id)],
@@ -2091,12 +2120,12 @@ pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
 }
 
 pub fn me_work_session_start_returns_409_when_not_claimed_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -2110,12 +2139,12 @@ pub fn me_work_session_start_returns_409_when_not_claimed_test() {
 }
 
 pub fn me_work_session_clears_before_release_and_close_test() {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
-  let project_id = create_project(handler, session, "Core")
+  let session = fx.require_login_session(handler, "admin@example.com")
+  let project_id = fx.require_project(handler, session, "Core")
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
@@ -2133,7 +2162,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
-      |> fixtures.with_auth(session)
+      |> fx.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2158,46 +2187,46 @@ pub fn me_work_session_clears_before_release_and_close_test() {
 
 fn get_active_work_sessions(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Get, "/api/v1/me/work-sessions/active")
-    |> fixtures.with_session_cookies(session),
+    |> fx.with_session_cookies(session),
   )
 }
 
 fn start_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/start")
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
 fn pause_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
 fn heartbeat_work_session(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
@@ -2256,13 +2285,19 @@ fn is_iso8601_utc(value: String) -> Bool {
 }
 
 fn task_claimed_by(db: pog.Connection, task_id: Int) -> Int {
-  single_int(db, "select coalesce(claimed_by, 0) from tasks where id = $1", [
-    pog.int(task_id),
-  ])
+  fx.require_query_int(
+    db,
+    "select coalesce(claimed_by, 0) from tasks where id = $1",
+    [
+      pog.int(task_id),
+    ],
+  )
 }
 
 fn task_version(db: pog.Connection, task_id: Int) -> Int {
-  single_int(db, "select version from tasks where id = $1", [pog.int(task_id)])
+  fx.require_query_int(db, "select version from tasks where id = $1", [
+    pog.int(task_id),
+  ])
 }
 
 fn count_audit_events(
@@ -2270,7 +2305,7 @@ fn count_audit_events(
   task_id: Int,
   event_type: String,
 ) -> Int {
-  single_int(
+  fx.require_query_int(
     db,
     "select count(*) from audit_events where task_id = $1 and event_type = $2",
     [pog.int(task_id), pog.text(event_type)],
@@ -2278,9 +2313,13 @@ fn count_audit_events(
 }
 
 fn count_audit_events_for_task(db: pog.Connection, task_id: Int) -> Int {
-  single_int(db, "select count(*) from audit_events where task_id = $1", [
-    pog.int(task_id),
-  ])
+  fx.require_query_int(
+    db,
+    "select count(*) from audit_events where task_id = $1",
+    [
+      pog.int(task_id),
+    ],
+  )
 }
 
 fn count_audit_events_for_actor(
@@ -2289,7 +2328,7 @@ fn count_audit_events_for_actor(
   actor_user_id: Int,
   event_type: String,
 ) -> Int {
-  single_int(
+  fx.require_query_int(
     db,
     "select count(*) from audit_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
     [pog.int(task_id), pog.int(actor_user_id), pog.text(event_type)],
@@ -2297,14 +2336,14 @@ fn count_audit_events_for_actor(
 }
 
 fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
-  single_int(db, "select count(*) from tasks where id = $1", [
+  fx.require_query_int(db, "select count(*) from tasks where id = $1", [
     pog.int(task_id),
   ])
 }
 
 fn delete_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
 ) -> Int {
   let res = delete_task_response(handler, session, task_id)
@@ -2313,18 +2352,18 @@ fn delete_task(
 
 fn delete_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
 ) -> wisp.Response {
   handler(
     simulate.request(http.Delete, "/api/v1/tasks/" <> int.to_string(task_id))
-    |> fixtures.with_auth(session),
+    |> fx.with_auth(session),
   )
 }
 
 fn create_task_note(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   content: String,
 ) -> Int {
@@ -2334,7 +2373,7 @@ fn create_task_note(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
       )
-      |> fixtures.with_auth(session)
+      |> fx.with_auth(session)
       |> simulate.json_body(json.object([#("content", json.string(content))])),
     )
 
@@ -2343,7 +2382,7 @@ fn create_task_note(
 
 fn claim_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   version: Int,
 ) -> Int {
@@ -2353,7 +2392,7 @@ fn claim_task(
 
 fn claim_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   version: Int,
 ) -> wisp.Response {
@@ -2362,14 +2401,14 @@ fn claim_task_response(
       http.Post,
       "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(json.object([#("version", json.int(version))])),
   )
 }
 
 fn create_dependency(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   depends_on_task_id: Int,
 ) -> Int {
@@ -2379,7 +2418,7 @@ fn create_dependency(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/dependencies",
       )
-      |> fixtures.with_auth(session)
+      |> fx.with_auth(session)
       |> simulate.json_body(
         json.object([#("depends_on_task_id", json.int(depends_on_task_id))]),
       ),
@@ -2390,7 +2429,7 @@ fn create_dependency(
 
 fn delete_dependency(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   depends_on_task_id: Int,
 ) -> Int {
@@ -2403,7 +2442,7 @@ fn delete_dependency(
           <> "/dependencies/"
           <> int.to_string(depends_on_task_id),
       )
-      |> fixtures.with_auth(session),
+      |> fx.with_auth(session),
     )
 
   res.status
@@ -2411,7 +2450,7 @@ fn delete_dependency(
 
 fn release_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   version: Int,
 ) -> Int {
@@ -2421,7 +2460,7 @@ fn release_task(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
       )
-      |> fixtures.with_auth(session)
+      |> fx.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2430,7 +2469,7 @@ fn release_task(
 
 fn close_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   version: Int,
 ) -> Int {
@@ -2440,7 +2479,7 @@ fn close_task(
 
 fn close_task_response(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   task_id: Int,
   version: Int,
 ) -> wisp.Response {
@@ -2450,7 +2489,7 @@ fn close_task_response(
         http.Post,
         "/api/v1/tasks/" <> int.to_string(task_id) <> "/close",
       )
-      |> fixtures.with_auth(session)
+      |> fx.with_auth(session)
       |> simulate.json_body(json.object([#("version", json.int(version))])),
     )
 
@@ -2481,7 +2520,7 @@ fn decode_task_titles(body: String) -> List(String) {
 
 fn list_project_tasks(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   project_id: Int,
   query: String,
 ) -> wisp.Response {
@@ -2496,22 +2535,13 @@ fn list_project_tasks(
 
   handler(
     simulate.request(http.Get, url)
-    |> fixtures.with_session_cookies(session),
+    |> fx.with_session_cookies(session),
   )
-}
-
-fn create_project(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  name: String,
-) -> Int {
-  fixtures.create_project(handler, session, name)
-  |> expect.ok
 }
 
 fn create_task_type(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   project_id: Int,
   name: String,
   icon: String,
@@ -2536,18 +2566,18 @@ fn create_task_type(
       http.Post,
       "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(body)
 
   let res = handler(req)
   expect.expect_status(res, 200)
-  fixtures.decode_entity_id(simulate.read_body(res), fixtures.TaskType)
+  fx.decode_entity_id(simulate.read_body(res), fx.TaskType)
   |> expect.ok
 }
 
 fn create_task(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   project_id: Int,
   title: String,
   description: String,
@@ -2555,7 +2585,7 @@ fn create_task(
   type_id: Int,
 ) -> Int {
   let card_id = create_active_card(handler, session, project_id, title)
-  create_task_with_card(
+  fx.require_task_with_card_full(
     handler,
     session,
     project_id,
@@ -2569,28 +2599,18 @@ fn create_task(
 
 fn create_active_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   project_id: Int,
   title: String,
 ) -> Int {
-  let card_id = create_card(handler, session, project_id, title <> " card")
+  let card_id = fx.require_card(handler, session, project_id, title <> " card")
   try_activate_card(handler, session, card_id)
   card_id
 }
 
-fn create_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  project_id: Int,
-  title: String,
-) -> Int {
-  fixtures.create_card(handler, session, project_id, title)
-  |> expect.ok
-}
-
 fn try_activate_card(
   handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
+  session: fx.Session,
   card_id: Int,
 ) {
   let req =
@@ -2598,7 +2618,7 @@ fn try_activate_card(
       http.Post,
       "/api/v1/cards/" <> int.to_string(card_id) <> "/activate",
     )
-    |> fixtures.with_auth(session)
+    |> fx.with_auth(session)
     |> simulate.json_body(json.object([]))
 
   let res = handler(req)
@@ -2606,40 +2626,6 @@ fn try_activate_card(
     200 | 403 -> Nil
     _ -> expect.expect_status(res, 200)
   }
-}
-
-fn create_task_with_card(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  project_id: Int,
-  title: String,
-  description: String,
-  priority: Int,
-  type_id: Int,
-  card_id: Int,
-) -> Int {
-  fixtures.create_task_with_card_full(
-    handler,
-    session,
-    project_id,
-    title,
-    description,
-    priority,
-    type_id,
-    card_id,
-  )
-  |> expect.ok
-}
-
-fn add_member(
-  handler: fn(wisp.Request) -> wisp.Response,
-  session: fixtures.Session,
-  project_id: Int,
-  user_id: Int,
-  role: String,
-) {
-  fixtures.add_member(handler, session, project_id, user_id, role)
-  |> expect.ok
 }
 
 fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {
@@ -2713,35 +2699,15 @@ fn insert_card_state(
 }
 
 fn ht08_project(name: String) {
-  let app = bootstrap_app()
+  let app = fx.require_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let session = login_session(handler, "admin@example.com")
+  let session = fx.require_login_session(handler, "admin@example.com")
 
-  let project_id = create_project(handler, session, name)
+  let project_id = fx.require_project(handler, session, name)
   let type_id =
     create_task_type(handler, session, project_id, "Bug", "bug-ant", 0)
 
   #(db, handler, session, project_id, type_id)
-}
-
-fn create_member_user(
-  handler: fn(wisp.Request) -> wisp.Response,
-  db: pog.Connection,
-  email: String,
-  invite_code: String,
-) -> Int {
-  fixtures.create_member_user(handler, db, email, invite_code)
-  |> expect.ok
-}
-
-fn bootstrap_app() -> scrumbringer_server.App {
-  let #(app, _, _) = fixtures.bootstrap() |> expect.ok
-  app
-}
-
-fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
-  fixtures.query_int(db, sql, params)
-  |> expect.ok
 }
