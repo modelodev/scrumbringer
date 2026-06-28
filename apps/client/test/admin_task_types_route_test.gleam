@@ -1,6 +1,7 @@
 import gleam/dict
 import gleam/option as opt
 import lustre/effect
+import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/remote.{Loaded}
@@ -24,13 +25,7 @@ fn base_model() -> client_state.Model {
 }
 
 fn task_type(id: Int, name: String) -> TaskType {
-  TaskType(
-    id: id,
-    name: name,
-    icon: "box",
-    capability_id: opt.None,
-    tasks_count: 0,
-  )
+  TaskType(..domain_fixtures.task_type(id, name), icon: "box")
 }
 
 fn with_member_task_types(
