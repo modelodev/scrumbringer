@@ -3013,6 +3013,26 @@ Estado de ejecucion:
   - total Gleam actual: `197.028` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.986` lineas;
   - deficit restante para `-20k`: `3.014` lineas.
+- Trigesimosexto pase de helpers locales en Projects Update:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados y
+    extraido `open_model` para construir modelos con `projects_dialog:
+    DialogOpen(...)` en `projects_update_test.gleam`;
+  - codigo eliminado: imports de tipos usados solo por firmas privadas, firmas
+    repetitivas de fixtures/contextos y construcciones repetidas de
+    `admin_projects.Model(projects_dialog: DialogOpen(...))`;
+  - limite deliberado: no se creo builder compartido de dialogos ni se ocultaron
+    las expectativas sobre `DialogOpen`, `DialogClosed`, operaciones o
+    `CorePolicy`;
+  - delta adicional: `-81` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce setup local y
+    deja mas visibles los cambios de estado probados;
+  - verificacion:
+    - `cd apps/client && gleam format test/projects_update_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el trigesimosexto pase:
+  - total Gleam actual: `196.947` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.067` lineas;
+  - deficit restante para `-20k`: `2.933` lineas.
 
 ## Orden recomendado de ejecucion
 

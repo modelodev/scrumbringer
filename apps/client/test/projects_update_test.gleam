@@ -4,7 +4,7 @@ import lustre/effect
 import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/project.{type Project, ProjectDepthName}
+import domain/project.{ProjectDepthName}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/types.{
@@ -13,22 +13,19 @@ import scrumbringer_client/client_state/types.{
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/projects/update as projects_update
 
-fn project(id: Int, name: String) -> Project {
+fn project(id, name) {
   domain_fixtures.project(id, name)
 }
 
-fn edit_form(id: Int, name: String) -> admin_projects.ProjectDialogForm {
+fn edit_form(id, name) {
   edit_form_with_limit(id, name, "20")
 }
 
-fn create_form(name: String) -> admin_projects.ProjectDialogForm {
+fn create_form(name) {
   create_form_at_step(name, admin_projects.ProjectCreateGeneral)
 }
 
-fn create_form_at_step(
-  name: String,
-  step: admin_projects.ProjectCreateStep,
-) -> admin_projects.ProjectDialogForm {
+fn create_form_at_step(name, step) {
   admin_projects.ProjectDialogCreate(
     step: step,
     name: name,
@@ -42,11 +39,7 @@ fn create_form_at_step(
   )
 }
 
-fn edit_form_with_limit(
-  id: Int,
-  name: String,
-  healthy_pool_limit: String,
-) -> admin_projects.ProjectDialogForm {
+fn edit_form_with_limit(id, name, healthy_pool_limit) {
   admin_projects.ProjectDialogEdit(
     id: id,
     name: name,
@@ -61,7 +54,14 @@ fn edit_form_with_limit(
   )
 }
 
-fn context() -> projects_update.Context(Nil) {
+fn open_model(form, operation) {
+  admin_projects.Model(projects_dialog: DialogOpen(
+    form: form,
+    operation: operation,
+  ))
+}
+
+fn context() {
   projects_update.Context(
     on_project_created: fn(_result) { Nil },
     on_project_updated: fn(_result) { Nil },
@@ -76,7 +76,7 @@ fn context() -> projects_update.Context(Nil) {
   )
 }
 
-fn feedback_context() -> projects_update.FeedbackContext(Nil) {
+fn feedback_context() {
   projects_update.FeedbackContext(
     project_created: "Project created",
     project_updated: "Saved",
@@ -85,7 +85,7 @@ fn feedback_context() -> projects_update.FeedbackContext(Nil) {
   )
 }
 
-fn error_feedback_context() -> projects_update.ErrorFeedbackContext(Nil) {
+fn error_feedback_context() {
   projects_update.ErrorFeedbackContext(
     not_permitted: "Not permitted",
     on_warning_toast: fn(_message) { effect.from(fn(_dispatch) { Nil }) },
@@ -93,15 +93,7 @@ fn error_feedback_context() -> projects_update.ErrorFeedbackContext(Nil) {
   )
 }
 
-fn update(
-  model: admin_projects.Model,
-  msg: admin_messages.Msg,
-) -> #(
-  admin_projects.Model,
-  effect.Effect(Nil),
-  projects_update.AuthPolicy,
-  projects_update.CorePolicy,
-) {
+fn update(model, msg) {
   let assert option.Some(projects_update.Update(
     next,
     fx,
@@ -133,11 +125,7 @@ pub fn create_dialog_opened_sets_empty_create_form_test() {
 }
 
 pub fn create_submit_requires_name_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form("  "),
-      operation: Idle,
-    ))
+  let model = open_model(create_form("  "), Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateSubmitted)
@@ -151,11 +139,7 @@ pub fn create_submit_requires_name_test() {
 }
 
 pub fn create_submit_advances_general_step_for_valid_name_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form(" New project "),
-      operation: Idle,
-    ))
+  let model = open_model(create_form(" New project "), Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateSubmitted)
@@ -174,13 +158,10 @@ pub fn create_submit_advances_general_step_for_valid_name_test() {
 
 pub fn create_next_valid_structure_advances_to_capabilities_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form_at_step(
-        "Project",
-        admin_projects.ProjectCreateStructurePool,
-      ),
-      operation: Idle,
-    ))
+    open_model(
+      create_form_at_step("Project", admin_projects.ProjectCreateStructurePool),
+      Idle,
+    )
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateNextClicked)
@@ -196,10 +177,10 @@ pub fn create_next_valid_structure_advances_to_capabilities_test() {
 
 pub fn create_back_returns_to_previous_step_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form_at_step("Project", admin_projects.ProjectCreateTeam),
-      operation: OpError("stale"),
-    ))
+    open_model(
+      create_form_at_step("Project", admin_projects.ProjectCreateTeam),
+      OpError("stale"),
+    )
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateBackClicked)
@@ -215,13 +196,10 @@ pub fn create_back_returns_to_previous_step_test() {
 
 pub fn create_submit_sets_in_flight_on_review_step_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form_at_step(
-        " New project ",
-        admin_projects.ProjectCreateReview,
-      ),
-      operation: Idle,
-    ))
+    open_model(
+      create_form_at_step(" New project ", admin_projects.ProjectCreateReview),
+      Idle,
+    )
 
   let #(next, _fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreateSubmitted)
@@ -235,11 +213,7 @@ pub fn create_submit_sets_in_flight_on_review_step_test() {
 }
 
 pub fn edit_name_changed_preserves_project_id_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form(9, "Old"),
-      operation: Idle,
-    ))
+  let model = open_model(edit_form(9, "Old"), Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditNameChanged("New"))
@@ -253,11 +227,7 @@ pub fn edit_name_changed_preserves_project_id_test() {
 }
 
 pub fn edit_submit_rejects_invalid_pool_limit_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form_with_limit(9, "Project", "0"),
-      operation: Idle,
-    ))
+  let model = open_model(edit_form_with_limit(9, "Project", "0"), Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditSubmitted)
@@ -274,11 +244,7 @@ pub fn edit_submit_rejects_invalid_pool_limit_test() {
 }
 
 pub fn edit_depth_name_changed_preserves_other_settings_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form_with_limit(9, "Project", "18"),
-      operation: Idle,
-    ))
+  let model = open_model(edit_form_with_limit(9, "Project", "18"), Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditDepthSingularChanged(2, "Entrega"))
@@ -304,11 +270,7 @@ pub fn edit_depth_name_changed_preserves_other_settings_test() {
 }
 
 pub fn edit_max_depth_changed_marks_reduction_for_review_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form(9, "Project"),
-      operation: Idle,
-    ))
+  let model = open_model(edit_form(9, "Project"), Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditMaxDepthChanged("2"))
@@ -347,11 +309,7 @@ pub fn depth_reduction_previewed_sets_ready_state_test() {
       ],
       depth_reduction: admin_projects.DepthReductionLoading(2),
     )
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: form,
-      operation: Idle,
-    ))
+  let model = open_model(form, Idle)
   let impact =
     api_projects.DepthReductionImpact(
       affected_cards_count: 4,
@@ -405,11 +363,7 @@ pub fn edit_submit_blocks_lower_depth_before_review_test() {
       ],
       depth_reduction: admin_projects.DepthReductionNeedsReview(2),
     )
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: form,
-      operation: Idle,
-    ))
+  let model = open_model(form, Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditSubmitted)
@@ -439,11 +393,7 @@ pub fn edit_submit_allows_confirmed_lower_depth_test() {
       ],
       depth_reduction: admin_projects.DepthReductionConfirmed(2),
     )
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: form,
-      operation: Idle,
-    ))
+  let model = open_model(form, Idle)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectEditSubmitted)
@@ -457,11 +407,7 @@ pub fn edit_submit_allows_confirmed_lower_depth_test() {
 }
 
 pub fn created_ok_closes_dialog_and_emits_feedback_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form("Project"),
-      operation: InFlight,
-    ))
+  let model = open_model(create_form("Project"), InFlight)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectCreated(Ok(project(1, "Project"))))
@@ -474,11 +420,7 @@ pub fn created_ok_closes_dialog_and_emits_feedback_test() {
 }
 
 pub fn updated_ok_closes_dialog_and_emits_feedback_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form(9, "Project"),
-      operation: InFlight,
-    ))
+  let model = open_model(edit_form(9, "Project"), InFlight)
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectUpdated(Ok(project(9, "Project"))))
@@ -491,11 +433,7 @@ pub fn updated_ok_closes_dialog_and_emits_feedback_test() {
 }
 
 pub fn update_error_sets_edit_dialog_error_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form(9, "Name"),
-      operation: InFlight,
-    ))
+  let model = open_model(edit_form(9, "Name"), InFlight)
 
   let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
   let #(next, fx, auth_policy, core_policy) =
@@ -514,11 +452,7 @@ pub fn update_error_sets_edit_dialog_error_test() {
 }
 
 pub fn create_forbidden_error_sets_dialog_error_and_emits_feedback_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form("Project"),
-      operation: InFlight,
-    ))
+  let model = open_model(create_form("Project"), InFlight)
 
   let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
   let #(next, fx, auth_policy, core_policy) =
@@ -535,10 +469,7 @@ pub fn create_forbidden_error_sets_dialog_error_and_emits_feedback_test() {
 
 pub fn delete_submit_sets_in_flight_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
-      operation: Idle,
-    ))
+    open_model(admin_projects.ProjectDialogDelete(id: 5, name: "Project"), Idle)
 
   let #(next, _fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectDeleteSubmitted)
@@ -552,11 +483,7 @@ pub fn delete_submit_sets_in_flight_test() {
 }
 
 pub fn deleted_ok_without_delete_dialog_has_no_core_delete_id_test() {
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form("Project"),
-      operation: Idle,
-    ))
+  let model = open_model(create_form("Project"), Idle)
 
   let #(_next, _fx, _auth_policy, core_policy) =
     update(model, admin_messages.ProjectDeleted(Ok(Nil)))
@@ -566,10 +493,10 @@ pub fn deleted_ok_without_delete_dialog_has_no_core_delete_id_test() {
 
 pub fn deleted_ok_closes_dialog_and_emits_feedback_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
-      operation: InFlight,
-    ))
+    open_model(
+      admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
+      InFlight,
+    )
 
   let #(next, fx, auth_policy, core_policy) =
     update(model, admin_messages.ProjectDeleted(Ok(Nil)))
@@ -582,10 +509,10 @@ pub fn deleted_ok_closes_dialog_and_emits_feedback_test() {
 
 pub fn deleted_error_returns_delete_dialog_to_idle_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
-      operation: InFlight,
-    ))
+    open_model(
+      admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
+      InFlight,
+    )
 
   let err = ApiError(status: 403, code: "FORBIDDEN", message: "backend")
   let #(next, fx, auth_policy, core_policy) =
@@ -603,10 +530,10 @@ pub fn deleted_error_returns_delete_dialog_to_idle_test() {
 
 pub fn deleted_generic_error_returns_to_idle_and_emits_error_feedback_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
-      operation: InFlight,
-    ))
+    open_model(
+      admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
+      InFlight,
+    )
 
   let err = ApiError(status: 500, code: "ERR", message: "Boom")
   let #(next, fx, auth_policy, core_policy) =
@@ -624,11 +551,7 @@ pub fn deleted_generic_error_returns_to_idle_and_emits_error_feedback_test() {
 
 pub fn try_update_created_ok_returns_core_policy_test() {
   let created = project(7, "Project")
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: create_form("Project"),
-      operation: InFlight,
-    ))
+  let model = open_model(create_form("Project"), InFlight)
 
   let assert option.Some(projects_update.Update(
     next,
@@ -653,10 +576,10 @@ pub fn try_update_created_ok_returns_core_policy_test() {
 
 pub fn try_update_deleted_ok_preserves_delete_id_in_core_policy_test() {
   let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
-      operation: InFlight,
-    ))
+    open_model(
+      admin_projects.ProjectDialogDelete(id: 5, name: "Project"),
+      InFlight,
+    )
 
   let assert option.Some(projects_update.Update(
     next,
@@ -680,11 +603,7 @@ pub fn try_update_deleted_ok_preserves_delete_id_in_core_policy_test() {
 
 pub fn try_update_error_requests_auth_check_test() {
   let err = ApiError(status: 500, code: "ERR", message: "Backend failed")
-  let model =
-    admin_projects.Model(projects_dialog: DialogOpen(
-      form: edit_form(9, "Project"),
-      operation: InFlight,
-    ))
+  let model = open_model(edit_form(9, "Project"), InFlight)
 
   let assert option.Some(projects_update.Update(
     next,
