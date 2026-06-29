@@ -78,8 +78,7 @@ import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
 import scrumbringer_client/features/cards/policy as card_policy
-import scrumbringer_client/features/cards/view as cards_view
-import scrumbringer_client/features/cards/view_config as cards_view_config
+import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
@@ -2096,23 +2095,30 @@ fn view_member_card_show(
   model: client_state.Model,
   _user: User,
 ) -> Element(client_state.Msg) {
-  cards_view.view_card_show(member_cards_config(model))
+  show_entry.view(member_card_show_config(model))
 }
 
-fn member_cards_config(
+fn member_card_show_config(
   model: client_state.Model,
-) -> cards_view.Config(client_state.Msg) {
-  cards_view_config.from_state(
-    model.ui.locale,
-    project_cards(model),
-    model.member.pool,
-    model.member.card_show_model,
-    model.member.card_show_open,
-    selected_member_show_card(model),
-    model.core.user,
-    state_selectors.selected_project(model),
-    fn(id) { client_state.pool_msg(pool_messages.OpenCardShow(id)) },
-    fn(msg) { client_state.pool_msg(pool_messages.CardShowMsg(msg)) },
+) -> show_entry.Config(client_state.Msg) {
+  let selected_project = state_selectors.selected_project(model)
+
+  show_entry.Config(
+    model: model.member.card_show_model,
+    card: selected_member_show_card(model),
+    cards: project_cards(model),
+    tasks: selected_member_show_card_tasks(model),
+    locale: model.ui.locale,
+    current_user_id: model.core.user |> opt.map(fn(user) { user.id }),
+    can_manage_notes: can_manage_card_notes(model.core.user, selected_project),
+    can_manage_structure: can_manage_card_notes(
+      model.core.user,
+      selected_project,
+    ),
+    can_execute_work: can_execute_card_work(model.core.user, selected_project),
+    on_card_show_msg: fn(msg) {
+      client_state.pool_msg(pool_messages.CardShowMsg(msg))
+    },
   )
 }
 
@@ -2120,6 +2126,45 @@ fn selected_member_show_card(model: client_state.Model) -> opt.Option(Card) {
   case model.member.card_show_open {
     opt.Some(card_id) -> find_card(model, card_id)
     opt.None -> opt.None
+  }
+}
+
+fn selected_member_show_card_tasks(model: client_state.Model) -> List(Task) {
+  case model.member.card_show_open {
+    opt.Some(card_id) ->
+      show_entry.tasks_for_card(model.member.pool.member_tasks, card_id)
+    opt.None -> []
+  }
+}
+
+fn can_manage_card_notes(
+  current_user: opt.Option(User),
+  selected_project: opt.Option(Project),
+) -> Bool {
+  is_org_admin(current_user) || is_project_manager(selected_project)
+}
+
+fn is_org_admin(current_user: opt.Option(User)) -> Bool {
+  case current_user {
+    opt.Some(user) -> permissions.is_org_admin(user.org_role)
+    opt.None -> False
+  }
+}
+
+fn is_project_manager(selected_project: opt.Option(Project)) -> Bool {
+  case selected_project {
+    opt.Some(project) -> permissions.is_project_manager(project)
+    opt.None -> False
+  }
+}
+
+fn can_execute_card_work(
+  current_user: opt.Option(User),
+  selected_project: opt.Option(Project),
+) -> Bool {
+  case current_user, selected_project {
+    opt.Some(_), opt.Some(_) -> True
+    _, _ -> False
   }
 }
 

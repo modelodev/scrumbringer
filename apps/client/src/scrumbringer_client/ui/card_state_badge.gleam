@@ -6,14 +6,12 @@ import domain/card.{type CardPhase, Active, Closed, Draft}
 
 pub type Variant {
   Table
-  Ficha
   Detail
 }
 
 pub fn view(state: CardPhase, label: String, variant: Variant) -> Element(msg) {
   let class = case variant {
     Table -> "state-badge " <> table_class(state)
-    Ficha -> "ficha-state-badge " <> ficha_class(state)
     Detail -> "card-state-badge " <> detail_class(state)
   }
 
@@ -25,14 +23,6 @@ fn table_class(state: CardPhase) -> String {
     Draft -> "state-pending"
     Active -> "state-active"
     Closed -> "state-closed"
-  }
-}
-
-fn ficha_class(state: CardPhase) -> String {
-  case state {
-    Draft -> "ficha-state-pendiente"
-    Active -> "ficha-state-en_curso"
-    Closed -> "ficha-state-cerrada"
   }
 }
 

@@ -1012,7 +1012,6 @@ pub fn translate(text: Text) -> String {
 
     // Story 3.4 - Member Card Views
     text.MemberCards -> "Plan"
-    text.MemberCardsEmpty -> "No cards"
     text.MemberCardsEmptyHint -> "Cards group related tasks"
 
     // Color picker

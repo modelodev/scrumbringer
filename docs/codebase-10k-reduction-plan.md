@@ -1441,6 +1441,25 @@ Estado de ejecucion:
     aumentaria acoplamiento entre contratos de producto distintos y aportaria
     poco ahorro real;
   - delta adicional WP-10: `-29` lineas mantenidas y un modulo publico menos.
+- Micro-pase adicional de retirada de Member Cards list legacy:
+  - retirados `features/cards/view`, `features/cards/view_config` y
+    `features/cards/list_view`; la pantalla `view=cards` ya se resuelve por
+    Plan Structure/Kanban y produccion solo usaba el modulo antiguo como
+    wrapper de Card Show;
+  - `client_view` construye directamente `show_entry.Config`, conservando el
+    contrato vivo de Card Show y eliminando un adaptador intermedio sin ruta de
+    producto;
+  - retirados los tests directos de la lista legacy y del adaptador de cache
+    asociado; la cobertura viva permanece en `show_entry`, Card Show,
+    Plan/Kanban y las rutas de navegacion;
+  - retirados restos derivados: `MemberCardsEmpty`, variante
+    `card_state_badge.Ficha` y estilos `ficha-*`;
+  - guardarrail: `rg "features/cards/view|features/cards/list_view|cards_view_config|cards_view\\.view_cards|list_view\\.|MemberCardsEmpty\\b|ficha-|fichas-list|card_state_badge\\.Ficha" apps/client/src apps/client/test` no devuelve referencias;
+  - rechazado mantener un wrapper `features/cards/view` solo para Card Show:
+    ocultaba dependencias reales, mantenia campos de lista obsoletos y no
+    aportaba reutilizacion;
+  - delta adicional WP-10: `-533` lineas mantenidas, tres modulos legacy y tres
+    tests directos menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1485,10 +1504,11 @@ Estado de ejecucion:
     `1819 passed` tras retirar helpers preventivos de `signal_chip`;
     `1819 passed` tras retirar `ids.toast_id_eq`;
     `1819 passed` tras privatizar helpers internos de `ui/dialog`;
-    `1777 passed` tras consolidar `ui/detail_tabs` en `ui/tabs`);
+    `1777 passed` tras consolidar `ui/detail_tabs` en `ui/tabs`;
+    `1770 passed` tras retirar la lista legacy de Member Cards);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.153` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.686` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

@@ -847,7 +847,6 @@ pub type Text {
   // Story 3.4 - Member Card Views
   // Member Cards section
   MemberCards
-  MemberCardsEmpty
   MemberCardsEmptyHint
 
   // Color picker

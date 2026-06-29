@@ -15,7 +15,7 @@
 ////
 //// ## Relations
 ////
-//// - Parent: features/cards/view.gleam renders this component
+//// - Parent: features/cards/show_entry.gleam renders this component
 //// - API: api/cards.gleam for getting card notes
 
 import gleam/int
