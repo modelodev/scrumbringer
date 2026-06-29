@@ -3553,6 +3553,47 @@ El informe final debe incluir:
 Un caso AU fallido bloquea el cierre del plan salvo que se documente como bug
 preexistente fuera del alcance y se cree plan/issue separado.
 
+### Evidencia de ejecucion final en `refactor-cleanup`
+
+- Fecha de ejecucion: 2026-06-29.
+- URL local: `http://127.0.0.1:18443`.
+- URLs LAN emitidas por `scripts/dev-hot.sh`:
+  `http://192.168.1.120:18443` y `http://192.168.1.115:18443`.
+- `DATABASE_URL` usada para seed y servidor:
+  `postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable`.
+- Seed ejecutado:
+  `cd apps/server && DATABASE_URL=... gleam run -m scrumbringer_server/seed`
+  (`4` proyectos, `9` usuarios, `72` tasks, `18` cards).
+- Stack ejecutado:
+  `DATABASE_URL=... SB_PORT=18000 DEV_PORT=11234 CADDY_HTTP_PORT=18443 HEALTH_MONITOR_INTERVAL=0 scripts/dev-hot.sh`.
+- Screenshots agent-browser:
+  - `.tmp/agent-browser-shots/screenshot-1782696255838.png` desktop Pool;
+  - `.tmp/agent-browser-shots/screenshot-1782696313307.png` Card Show/menus;
+  - `.tmp/agent-browser-shots/screenshot-1782696446014.png` mobile Pool;
+  - `.tmp/agent-browser-shots/screenshot-1782696456927.png` mobile Task Show;
+  - `.tmp/agent-browser-shots/screenshot-1782696465788.png` tablet Task Show;
+  - `.tmp/agent-browser-shots/screenshot-1782696514164.png` desktop anotado.
+- Network: `npx agent-browser --session-name scrumbringer-refactor network requests --type xhr,fetch --status 400-599`
+  devolvio `No requests captured` tras los flujos navegados.
+
+| Caso | Estado | Evidencia |
+| --- | --- | --- |
+| AU-01 Login y shell | Pass | Login con `admin@example.com` / `passwordpassword`; shell Pool visible con nav principal, proyecto `Default`, filtros y contadores. |
+| AU-02 Pool pull flow | Pass | `Reclamar a Mis tareas` mueve `P1 - Password reset #13` a `MIS TAREAS (1)` con acciones `Empezar`/`Liberar`; `Liberar` devuelve `MIS TAREAS (0)`. |
+| AU-03 Drag en Pool | No concluyente | `agent-browser drag` y `mouse down/move/up` sobre handles `Arrastrar` no dispararon reordenado; el Pool permanecio estable y sin requests fallidas, pero no queda probado que el orden cambie correctamente con un drag humano real. |
+| AU-04 Card show | Pass | Abierto desde Task Show; tabs `Trabajo`, `Resumen`, `Notas`, `Actividad`; menus `Abrir en` y `Acciones` se cierran mutuamente y no quedan simultaneos. |
+| AU-05 Task show | Pass | Abierto desde Pool; tabs `Detalles`, `Bloqueos`, `Notas`, `Actividad`; menus `Abrir en` y `Acciones` se cierran mutuamente. |
+| AU-06 Plan estructura | Pass | Plan carga jerarquia, tabla y detalle de `P1 - Sprint Planning #1`; acciones y filtros visibles. |
+| AU-07 Capability board | Pass | Capacidades carga bloques por capacidad/card con tasks reclamables; no se observa barra negra ni artefacto visual en snapshot. |
+| AU-08 People/workload | Pass | Personas carga usuarios, filtros y trabajo asignado (`beta@example.com`, `P1 - Session timeout #4`). |
+| AU-09 Automations | Pass | Configuracion -> Automatizaciones carga tabs `Motores`, `Plantillas`, `Ejecuciones` sin errores. |
+| AU-10 CRUD admin/settings | Pass | Dialogo `Nueva tarea` abierto desde Pool; campos y validacion visibles, `Crear` deshabilitado sin titulo, cierre por `Cancelar` sin mutacion. |
+| AU-11 Responsive smoke | Pass | Capturas mobile `390x844` y tablet `900x900` en Pool/Task Show; botones de inspector visibles. |
+| AU-12 Reload/consistencia | Pass | Reload de `http://127.0.0.1:18443/app/pool?project=1&view=pool` recupera Pool, proyecto, filtros y tasks sin 4xx/5xx. |
+
+Estado de cierre: el objetivo `-20k` y las suites estan cumplidos, pero el
+gate agent-browser completo todavia no queda demostrado por AU-03.
+
 ## Evidencia inicial capturada
 
 Comandos ejecutados durante el diseno del plan:
