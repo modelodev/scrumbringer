@@ -3096,6 +3096,26 @@ Estado de ejecucion:
   - total Gleam actual: `196.808` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.206` lineas;
   - deficit restante para `-20k`: `2.794` lineas.
+- Cuadragesimo pase de helpers locales en Assignments Update:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados y
+    extraido `model_with_assignment` para caches cargadas de usuario/proyecto
+    en `assignments_update_test.gleam`;
+  - codigo eliminado: imports de tipos usados solo por firmas privadas,
+    firmas repetitivas de modelo/contextos y tres construcciones duplicadas de
+    `project_members` + `user_projects` cargados para el mismo par de ids;
+  - limite deliberado: no se creo un builder generico de assignment state ni se
+    abstrajo el flujo de inline-add, porque esos casos expresan variantes de
+    producto distintas;
+  - delta adicional: `-12` lineas Gleam mantenidas netas;
+  - V/C/R: valor bajo-medio, complejidad muy baja, riesgo bajo. Limpia setup
+    repetido sin ocultar las transiciones y politicas verificadas;
+  - verificacion:
+    - `cd apps/client && gleam format test/assignments_update_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el cuadragesimo pase:
+  - total Gleam actual: `196.796` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.218` lineas;
+  - deficit restante para `-20k`: `2.782` lineas.
 
 ## Orden recomendado de ejecucion
 

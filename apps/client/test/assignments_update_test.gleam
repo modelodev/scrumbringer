@@ -6,7 +6,7 @@ import support/assertions.{assert_equal}
 import support/domain_fixtures
 
 import domain/api_error.{ApiError}
-import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/project.{Project, ProjectMember}
 import domain/project_role.{Manager, Member}
 import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/api/projects as api_projects
@@ -16,7 +16,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/update as assignments_update
 import scrumbringer_client/permissions.{Team}
 
-fn model() -> assignments_state.AssignmentsModel {
+fn model() {
   assignments_state.AssignmentsModel(
     view_mode: assignments_view_mode.ByProject,
     search_input: "",
@@ -36,21 +36,21 @@ fn model() -> assignments_state.AssignmentsModel {
   )
 }
 
-fn project(id: Int, role) -> Project {
+fn project(id, role) {
   Project(..domain_fixtures.project(id, "Project"), my_role: role)
 }
 
-fn member(user_id: Int, role) -> ProjectMember {
+fn member(user_id, role) {
   ProjectMember(..domain_fixtures.project_member(user_id), role: role)
 }
 
-fn feedback_context() -> assignments_update.FeedbackContext(Nil) {
+fn feedback_context() {
   assignments_update.FeedbackContext(on_error_toast: fn(_) {
     effect.from(fn(_dispatch) { Nil })
   })
 }
 
-fn context() -> assignments_update.Context(Nil) {
+fn context() {
   assignments_update.Context(
     active_section: Team,
     on_project_members_fetched: fn(_, _) { Nil },
@@ -62,13 +62,22 @@ fn context() -> assignments_update.Context(Nil) {
   )
 }
 
-fn update(
-  model: assignments_state.AssignmentsModel,
-  inner: admin_messages.Msg,
-) -> assignments_update.Update(Nil) {
+fn update(model, inner) {
   let assert option.Some(update) =
     assignments_update.try_update(model, inner, context(), feedback_context())
   update
+}
+
+fn model_with_assignment(member_role, project_role) {
+  assignments_state.AssignmentsModel(
+    ..model(),
+    project_members: dict.from_list([
+      #(7, Loaded([member(9, member_role)])),
+    ]),
+    user_projects: dict.from_list([
+      #(9, Loaded([project(7, project_role)])),
+    ]),
+  )
 }
 
 pub fn view_mode_change_preserves_search_test() {
@@ -365,13 +374,7 @@ pub fn try_update_remove_completed_error_returns_auth_policy_test() {
 pub fn try_update_role_change_completed_ok_returns_feedback_policy_test() {
   let initial =
     assignments_state.AssignmentsModel(
-      ..model(),
-      project_members: dict.from_list([
-        #(7, Loaded([member(9, Member)])),
-      ]),
-      user_projects: dict.from_list([
-        #(9, Loaded([project(7, Member)])),
-      ]),
+      ..model_with_assignment(Member, Member),
       role_change_in_flight: option.Some(#(7, 9)),
       role_change_previous: option.Some(#(7, 9, Member)),
     )
@@ -416,13 +419,7 @@ pub fn try_update_role_change_completed_error_rolls_back_then_checks_auth_test()
     )
   let initial =
     assignments_state.AssignmentsModel(
-      ..model(),
-      project_members: dict.from_list([
-        #(7, Loaded([member(9, Manager)])),
-      ]),
-      user_projects: dict.from_list([
-        #(9, Loaded([project(7, Manager)])),
-      ]),
+      ..model_with_assignment(Manager, Manager),
       role_change_in_flight: option.Some(#(7, 9)),
       role_change_previous: option.Some(#(7, 9, Member)),
     )
@@ -480,16 +477,7 @@ pub fn inline_add_started_resets_selection_and_role_test() {
 }
 
 pub fn role_change_error_restores_previous_role_test() {
-  let initial =
-    assignments_state.AssignmentsModel(
-      ..model(),
-      project_members: dict.from_list([
-        #(7, Loaded([member(9, Member)])),
-      ]),
-      user_projects: dict.from_list([
-        #(9, Loaded([project(7, Member)])),
-      ]),
-    )
+  let initial = model_with_assignment(Member, Member)
 
   let assignments_update.Update(changed, _, _, _) =
     update(initial, admin_messages.AssignmentsRoleChanged(7, 9, Manager))
