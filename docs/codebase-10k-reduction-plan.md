@@ -1473,6 +1473,25 @@ Estado de ejecucion:
     ya usan componentes especificos compartidos (`card_with_tasks_surface`,
     `task_item` y vistas feature-owned) y el modulo no estaba montado;
   - delta adicional WP-10: `-532` lineas mantenidas.
+- Micro-pase adicional de retirada del modelo shared `HTxx` no conectado:
+  - retirados `domain/card/activation`, `domain/card/closure`,
+    `domain/card/entity`, `domain/card/structure`, `domain/card/state_codec`,
+    `domain/task/entity`, `domain/task/placement`,
+    `domain/task/placement_codec`, `domain/task/state_codec`,
+    `domain/task/creation`, `domain/task/transitions` y
+    `domain/task/claimability`;
+  - retirados los tests directos `hierarchy_task_leaves_ht01_test`,
+    `hierarchy_invariants_ht02_test`, `card_activation_claimability_ht03_test`,
+    `card_closure_rollup_ht04_test` y `typed_permissions_ht05_test`;
+  - razon: el bloque modelaba una jerarquia card/task alternativa sostenida por
+    tests de diseno, pero no tenia importadores en cliente ni servidor; la
+    ejecucion real usa `domain/card`, `domain/task`, `domain/task/state`,
+    `api/cards/contracts`, repositorios y use cases existentes;
+  - guardarrail: `rg "domain/card/(activation|entity|structure|closure|state_codec)|domain/task/(entity|placement|placement_codec|creation|transitions|claimability|state_codec)|hierarchy_task_leaves_ht01|hierarchy_invariants_ht02|card_activation_claimability_ht03|card_closure_rollup_ht04|typed_permissions_ht05" apps shared -g '*.gleam'` no devuelve referencias;
+  - rechazado retirar `api/cards/contracts`, `domain/card/state` o
+    `domain/task/state` porque si tienen consumidores vivos en cliente,
+    servidor y tests de contratos reales;
+  - delta adicional WP-10: `-2.249` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1520,9 +1539,11 @@ Estado de ejecucion:
     `1777 passed` tras consolidar `ui/detail_tabs` en `ui/tabs`;
     `1770 passed` tras retirar la lista legacy de Member Cards;
     `1766 passed` tras retirar `grouped_list` legacy);
+  - `cd shared && gleam format --check src test && gleam test`
+    (`222 passed` tras retirar el modelo shared `HTxx` no conectado);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-5.218` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-7.467` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 
@@ -3336,6 +3357,92 @@ Estado de ejecucion:
   - total Gleam actual: `196.504` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.510` lineas;
   - deficit restante para `-20k`: `2.490` lineas.
+- Cuadragesimoctavo pase de consolidacion de tabs de detalle:
+  - cambio aplicado: `ui/tabs` absorbe el contrato accesible comun de tabs de
+    detalle y se elimina `ui/detail_tabs`;
+  - codigo eliminado: wrapper duplicado de `TabItem`, `Config`, helpers de
+    panel y conversiones locales entre Card Show/Task Show y tabs base;
+  - limite deliberado: se mantienen ADT separados para `CardTab` y `TaskTab`
+    porque representan contratos de producto distintos;
+  - delta adicional: `-29` lineas mantenidas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce API UI duplicada
+    sin alterar roles ARIA ni tests de inspectores;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias.
+- Auditoria de contabilidad tras el cuadragesimoctavo pase:
+  - total Gleam actual: `196.475` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.539` lineas;
+  - deficit restante para `-20k`: `2.461` lineas.
+- Cuadragesimonoveno pase de retirada de Member Cards list legacy:
+  - cambio aplicado: eliminados `features/cards/view`,
+    `features/cards/view_config` y `features/cards/list_view`; `client_view`
+    construye directamente `show_entry.Config`;
+  - codigo eliminado: pantalla de lista de fichas sin ruta de producto viva,
+    tests directos de la lista legacy, `MemberCardsEmpty`,
+    `card_state_badge.Ficha` y estilos `ficha-*`;
+  - limite deliberado: no se toca Card Show, Plan Structure ni Kanban, que son
+    las superficies vivas para abrir cards;
+  - delta adicional: `-533` lineas mantenidas;
+  - V/C/R: valor alto, complejidad baja, riesgo medio-bajo. Retira una
+    superficie obsoleta y un adaptador sin reintroducir wrappers;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1770 passed`);
+    - guardarrail de `rg` sin referencias a la lista legacy.
+- Auditoria de contabilidad tras el cuadragesimonoveno pase:
+  - total Gleam actual: `195.942` lineas;
+  - reduccion real frente al baseline de `214.014`: `-18.072` lineas;
+  - deficit restante para `-20k`: `1.928` lineas.
+- Quincuagesimo pase de retirada de `grouped_list` legacy:
+  - cambio aplicado: eliminado `features/views/grouped_list` y sus dos tests
+    directos;
+  - codigo eliminado: superficie agrupada de tasks por card no montada y
+    estilos exclusivos `grouped-list*`, `card-group*` y `card-task-list`;
+  - limite deliberado: no se porta la vista a Plan/Capability porque esas
+    superficies ya tienen componentes feature-owned vivos;
+  - delta adicional: `-532` lineas mantenidas;
+  - V/C/R: valor alto, complejidad baja, riesgo bajo. Elimina UI muerta sin
+    tocar rutas ni contratos de task actuales;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1766 passed`);
+    - guardarrail de `rg` sin referencias a `grouped_list`.
+- Auditoria de contabilidad tras el quincuagesimo pase:
+  - total Gleam actual: `195.410` lineas;
+  - reduccion real frente al baseline de `214.014`: `-18.604` lineas;
+  - deficit restante para `-20k`: `1.396` lineas.
+- Quincuagesimoprimer pase de retirada del modelo shared `HTxx` no conectado:
+  - cambio aplicado: se eliminan los modulos shared de jerarquia/ejecucion
+    alternativa de cards y tasks (`domain/card/activation`,
+    `domain/card/closure`, `domain/card/entity`, `domain/card/structure`,
+    `domain/card/state_codec`, `domain/task/entity`,
+    `domain/task/placement`, `domain/task/placement_codec`,
+    `domain/task/state_codec`, `domain/task/creation`,
+    `domain/task/transitions` y `domain/task/claimability`) junto con sus
+    tests directos `HT01` a `HT05`;
+  - codigo preservado deliberadamente: `api/cards/contracts`,
+    `domain/card/state` y `domain/task/state`, porque tienen consumidores vivos
+    en cliente, servidor y tests de contrato actuales;
+  - guardarrail: no quedan referencias Gleam en `apps` ni `shared` al bloque
+    retirado;
+  - delta adicional: `-2.249` lineas mantenidas;
+  - V/C/R: valor alto, complejidad baja, riesgo medio-bajo. Elimina un modelo
+    paralelo no montado sin tocar los contratos reales de cards/tasks;
+  - verificacion:
+    - `cd shared && gleam format --check src test && gleam test`
+      (`222 passed`);
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1766 passed`);
+    - `cd apps/server && gleam format --check src test && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `rg "domain/card/(activation|entity|structure|closure|state_codec)|domain/task/(entity|placement|placement_codec|creation|transitions|claimability|state_codec)|hierarchy_task_leaves_ht01|hierarchy_invariants_ht02|card_activation_claimability_ht03|card_closure_rollup_ht04|typed_permissions_ht05" apps shared -g '*.gleam'`
+      sin resultados.
+- Auditoria de contabilidad tras el quincuagesimoprimer pase:
+  - total Gleam actual: `193.161` lineas;
+  - reduccion real frente al baseline de `214.014`: `-20.853` lineas;
+  - margen sobre el objetivo `-20k`: `853` lineas.
 
 ## Orden recomendado de ejecucion
 
