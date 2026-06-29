@@ -3033,6 +3033,26 @@ Estado de ejecucion:
   - total Gleam actual: `196.947` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.067` lineas;
   - deficit restante para `-20k`: `2.933` lineas.
+- Trigesimoseptimo pase de helpers locales en Admin Workflows Update:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados y
+    reutilizado `engines_state` en el caso que reconstruia manualmente el mismo
+    modelo de workflows;
+  - codigo eliminado: imports de tipos usados solo por firmas privadas, firmas
+    largas de fixtures/contextos/update helpers y una construccion duplicada de
+    `admin_workflows.Model`;
+  - limite deliberado: no se creo un DSL de workflows/rules ni se movieron
+    fixtures a soporte compartido; las transiciones probadas siguen expresadas
+    en cada test;
+  - delta adicional: `-40` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad muy baja, riesgo bajo. Reduce ruido de
+    test y reutiliza un helper existente;
+  - verificacion:
+    - `cd apps/client && gleam format test/admin_workflows_update_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el trigesimoseptimo pase:
+  - total Gleam actual: `196.907` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.107` lineas;
+  - deficit restante para `-20k`: `2.893` lineas.
 
 ## Orden recomendado de ejecucion
 

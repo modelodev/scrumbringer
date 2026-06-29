@@ -3,8 +3,8 @@ import lustre/effect
 
 import domain/api_error.{ApiError}
 import domain/automation
-import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/workflow.{type Rule, type Workflow, Rule, Workflow}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/workflow.{Rule, Workflow}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
@@ -13,7 +13,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/workflows as automations_update
 import scrumbringer_client/features/pool/msg as pool_messages
 
-fn engine(id: Int, name: String, project_id: opt.Option(Int)) -> Workflow {
+fn engine(id, name, project_id) {
   Workflow(
     id: id,
     org_id: 1,
@@ -27,7 +27,7 @@ fn engine(id: Int, name: String, project_id: opt.Option(Int)) -> Workflow {
   )
 }
 
-fn rule(id: Int, name: String) -> Rule {
+fn rule(id, name) {
   Rule(
     id: id,
     workflow_id: 3,
@@ -41,15 +41,11 @@ fn rule(id: Int, name: String) -> Rule {
   )
 }
 
-fn rule_with_trigger(
-  id: Int,
-  name: String,
-  trigger: automation.AutomationTrigger,
-) -> Rule {
+fn rule_with_trigger(id, name, trigger) {
   Rule(..rule(id, name), trigger: trigger)
 }
 
-fn engine_metrics(workflow_id: Int) -> api_rule_metrics.WorkflowMetrics {
+fn engine_metrics(workflow_id) {
   api_rule_metrics.WorkflowMetrics(
     workflow_id: workflow_id,
     workflow_name: "Delivery",
@@ -57,9 +53,7 @@ fn engine_metrics(workflow_id: Int) -> api_rule_metrics.WorkflowMetrics {
   )
 }
 
-fn engine_feedback_context() -> automations_update.EngineFeedbackContext(
-  client_state.Msg,
-) {
+fn engine_feedback_context() {
   automations_update.EngineFeedbackContext(
     engine_created: "Engine created",
     engine_updated: "Engine updated",
@@ -77,9 +71,7 @@ fn engine_feedback_context() -> automations_update.EngineFeedbackContext(
   )
 }
 
-fn rule_feedback_context() -> automations_update.RuleFeedbackContext(
-  client_state.Msg,
-) {
+fn rule_feedback_context() {
   automations_update.RuleFeedbackContext(
     rule_created: "Rule created",
     rule_updated: "Rule updated",
@@ -94,9 +86,7 @@ fn rule_feedback_context() -> automations_update.RuleFeedbackContext(
   )
 }
 
-fn rules_context(
-  selected_project_id: opt.Option(Int),
-) -> automations_update.RulesContext(client_state.Msg) {
+fn rules_context(selected_project_id) {
   automations_update.RulesContext(
     selected_project_id: selected_project_id,
     on_rules_fetched: fn(result) {
@@ -111,10 +101,7 @@ fn rules_context(
   )
 }
 
-fn engines_state(
-  org: Remote(List(Workflow)),
-  project: Remote(List(Workflow)),
-) -> admin_workflows.Model {
+fn engines_state(org, project) {
   admin_workflows.Model(
     engines_org: org,
     engines_project: project,
@@ -129,29 +116,14 @@ fn engines_state(
   )
 }
 
-fn engine_update(
-  state: admin_workflows.Model,
-  msg: pool_messages.Msg,
-) -> #(
-  admin_workflows.Model,
-  effect.Effect(client_state.Msg),
-  automations_update.EngineAuthPolicy,
-) {
+fn engine_update(state, msg) {
   let assert opt.Some(automations_update.EngineUpdate(next, fx, auth_policy)) =
     automations_update.try_engines_update(state, msg, engine_feedback_context())
 
   #(next, fx, auth_policy)
 }
 
-fn rules_update(
-  state: admin_rules.Model,
-  msg: pool_messages.Msg,
-  selected_project_id: opt.Option(Int),
-) -> #(
-  admin_rules.Model,
-  effect.Effect(client_state.Msg),
-  automations_update.RulesAuthPolicy,
-) {
+fn rules_update(state, msg, selected_project_id) {
   let assert opt.Some(automations_update.RulesUpdate(next, fx, auth_policy)) =
     automations_update.try_rules_update(
       state,
@@ -658,19 +630,7 @@ pub fn try_rules_update_rule_saved_updates_rules_and_emits_feedback_test() {
 pub fn try_engines_update_created_updates_project_scope_and_emits_feedback_test() {
   let existing = engine(1, "Existing", opt.Some(7))
   let created = engine(2, "Created", opt.Some(7))
-  let engines =
-    admin_workflows.Model(
-      engines_org: Loaded([]),
-      engines_project: Loaded([existing]),
-      engine_search: "",
-      engine_status_filter: "all",
-      engine_dialog_mode: opt.Some(admin_workflows.EngineDialogCreate),
-      engine_form_name: "",
-      engine_form_description: "",
-      engine_form_active: True,
-      engine_form_submitting: False,
-      engine_form_error: opt.None,
-    )
+  let engines = engines_state(Loaded([]), Loaded([existing]))
 
   let #(next, fx, auth_policy) =
     engine_update(engines, pool_messages.EngineSaved(Ok(created)))
