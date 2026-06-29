@@ -70,16 +70,17 @@ pub fn plan_kanban_uses_active_universe_and_closed_toggle_test() {
 
   render_assertions.contains(default_html, "Release 1.5")
   render_assertions.not_contains(default_html, "Draft prep")
-  render_assertions.not_contains(default_html, "Closed outcome")
+  render_assertions.contains(default_html, "Closed outcome")
+  render_assertions.contains(default_html, "checked")
 
-  let closed_html =
-    kanban_board.KanbanConfig(..config([]), show_closed: Some(True))
+  let hidden_html =
+    kanban_board.KanbanConfig(..config([]), show_closed: Some(False))
     |> kanban_view.view
     |> render_assertions.html
 
-  render_assertions.contains(closed_html, "Release 1.5")
-  render_assertions.not_contains(closed_html, "Draft prep")
-  render_assertions.contains(closed_html, "Closed outcome")
+  render_assertions.contains(hidden_html, "Release 1.5")
+  render_assertions.not_contains(hidden_html, "Draft prep")
+  render_assertions.not_contains(hidden_html, "Closed outcome")
 }
 
 fn config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {

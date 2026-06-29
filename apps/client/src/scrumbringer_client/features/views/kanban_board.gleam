@@ -165,7 +165,7 @@ fn view_scoped_board(config: KanbanConfig(msg)) -> element.Element(msg) {
     })
 
   let scoped_cards = cards_in_scope(config)
-  let include_closed = show_closed(config, scoped_cards, filtered_tasks)
+  let include_closed = show_closed(config)
   let cards_with_progress =
     compute_progress(scoped_cards, filtered_tasks, config.cards)
 
@@ -619,20 +619,10 @@ fn card_visible_for_purpose(
   }
 }
 
-fn show_closed(
-  config: KanbanConfig(msg),
-  scoped_cards: List(Card),
-  tasks: List(domain_task.Task),
-) -> Bool {
+fn show_closed(config: KanbanConfig(msg)) -> Bool {
   case config.show_closed {
     option.Some(value) -> value
-    option.None ->
-      card_queries.closed_default_for_scope(
-        scoped_cards,
-        tasks,
-        config.scope_kind,
-        config.selected_card_id,
-      )
+    option.None -> True
   }
 }
 

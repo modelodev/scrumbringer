@@ -276,7 +276,7 @@ pub fn kanban_columns_are_inferred_from_descendant_task_state_test() {
   render_assertions.contains(html, "Child")
 }
 
-pub fn kanban_level_scope_hides_closed_cards_by_default_test() {
+pub fn kanban_level_scope_shows_closed_cards_by_default_test() {
   let closed_card = case base_config([]).cards {
     [first, ..] -> Card(..first, id: 9, title: "Closed card", state: Closed)
     [] -> panic
@@ -287,8 +287,9 @@ pub fn kanban_level_scope_hides_closed_cards_by_default_test() {
     |> kanban_board.view
     |> render_assertions.html
 
-  render_assertions.not_contains(html, "Closed card")
-  render_assertions.not_contains(html, "cerrada")
+  render_assertions.contains(html, "Closed card")
+  render_assertions.contains(html, "cerrada")
+  render_assertions.contains(html, "checked")
 }
 
 pub fn kanban_card_scope_with_direct_tasks_shows_closed_by_default_test() {
