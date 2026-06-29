@@ -246,10 +246,9 @@ El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en 
 | `work_surface` | `features/layout/work_surface.gleam` | Cabecera común de vistas de trabajo con propósito, summary y acciones |
 
 Los estados de carga, error, sin resultados o sin configuración en vistas de
-producto deben usar `empty_state.Meaning`. Las clases locales como
-`people-state` o `hierarchies-error` pueden mantenerse como modificadores
-específicos de una superficie, pero no deben ser la única fuente del significado
-visual.
+producto deben usar `empty_state.Meaning`. Las clases locales de una superficie
+pueden mantenerse como modificadores específicos, pero no deben ser la única
+fuente del significado visual.
 
 Las acciones nuevas de producto deben usar `ui/button` salvo que ya exista un
 helper semántico más específico en `ui/action_buttons` o `ui/task_actions`.
@@ -410,18 +409,13 @@ apps/server/src/scrumbringer_server/sql/
 -- apps/server/src/scrumbringer_server/sql/tasks_list.sql
 
 -- name: list_tasks_for_project
--- Get all available tasks for a project.
--- Public API projection only: repository/domain code must keep canonical
--- execution_state='closed' instead of treating 'completed' as internal state.
+-- Get all open tasks for a project.
 SELECT
     t.id,
     t.title,
     COALESCE(t.description, '') AS description,
     t.priority,
-    CASE
-      WHEN t.execution_state = 'closed' THEN 'completed'
-      ELSE t.execution_state
-    END AS status,
+    t.execution_state,
     t.created_at,
     t.version,
     tt.name AS type_name,

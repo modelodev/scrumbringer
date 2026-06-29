@@ -1,108 +1,47 @@
-# ScrumBringer - Architecture Document
+# ScrumBringer Architecture
 
-> **Version:** 1.0
-> **Date:** 2026-01-12
-> **Status:** MVP Definition
+ScrumBringer is a Gleam monorepo with a Lustre client, a Wisp/Mist HTTP server,
+a shared domain package, and PostgreSQL persistence.
 
----
+## System Shape
 
-## Overview
+- `apps/client`: Lustre TEA application compiled to JavaScript.
+- `apps/server`: Gleam/BEAM HTTP API and business workflows.
+- `shared`: domain types, API contracts, and helpers reused by client and server.
+- `db`: dbmate migrations and generated schema snapshot.
+- `packages`: local support packages used by the apps.
 
-ScrumBringer adopts a **traditional client/server architecture**:
+## Product Model
 
-- **Client:** Lustre (TEA) compiled to JavaScript (`target=javascript`) for the interactive UI (drag & drop, filters, optimistic UX).
-- **Server:** Gleam on the BEAM (`target=erlang`) exposing an HTTP API (`/api/v1`), implementing all business rules, and persisting state in PostgreSQL.
+- Work belongs to a project.
+- Cards are planning and delivery containers. Cards can be nested with
+  `parent_card_id` and move through `draft`, `active`, and `closed`.
+- Tasks are the pullable work units. Active execution is represented by
+  `available`, `claimed`, and `closed`.
+- Claiming is pull-based: users claim work for themselves; the product avoids
+  direct task assignment.
+- Capabilities and task types describe what kind of work a task needs.
+- Automations create follow-up work from workflow rules and task templates, but
+  they still create available work in the Pool rather than assigning it.
+- Notes and activity records preserve operational context.
 
-This resolves the key constraint identified in `.ai/handoff.md`: Lustre 4.x is not “server-driven UI”; it is primarily a client-side TEA framework (with optional SSR patterns).
+## Runtime Boundaries
 
-### Key Principles
+- The server is the source of truth for auth, authorization, state transitions,
+  invariants, and persistence.
+- The client owns presentation state, filters, drag interactions, optimistic UI,
+  and API orchestration.
+- Shared code must stay target-neutral and cannot import client or server
+  modules.
+- Database invariants live in migrations/schema; generated SQL must not be
+  edited by hand.
 
-1. **Server as Source of Truth** - Persistent state and permissions are enforced on the server
-2. **Optimistic UI** - Client can predict outcomes; server validates and returns authoritative state
-3. **First-Write-Wins + Versioning** - Concurrent mutations use optimistic concurrency with a `version` field
-4. **Pull-Based Flow** - Users claim tasks for themselves; no direct assignment
+## Current References
 
----
-
-## Architecture Pattern: Lustre Client + Gleam API
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      Browser                             │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │               Lustre App (TEA)                  │   │
-│  │  - State: UI state + cached data                │   │
-│  │  - Optimistic interactions                      │   │
-│  │  - Calls API (JSON)                             │   │
-│  └─────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-                          │ HTTPS (JSON)
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                 Gleam API (BEAM / Erlang)                │
-│  - Auth (JWT cookie)                                     │
-│  - Authorization (claim-required edits)                  │
-│  - Command validation + optimistic concurrency            │
-│  - Data access via Squirrel/gleam_pgo                    │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                     PostgreSQL                           │
-│  - Persistent storage                                    │
-│  - Migrations via dbmate                                 │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Realtime (optional, post-MVP):** WebSocket/SSE for pool updates. MVP can work with request/response + periodic refresh.
-
----
-
-## Sharded Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Tech Stack](architecture/tech-stack.md) | Technology choices and rationale |
-| [Data Model](architecture/data-model.md) | Entities, commands, events |
-| [API Contract](architecture/api-contract.md) | HTTP endpoints, auth, errors |
-| [Coding Standards](architecture/coding-standards.md) | Gleam conventions and patterns |
-| [Source Tree](architecture/source-tree.md) | Project structure |
-
----
-
-## Key Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Runtime | Client/Server (Lustre TEA + Gleam API) | Matches Lustre’s model; keeps Gleam ecosystem |
-| Positions | Per-user (not shared) | Avoid real-time sync complexity in MVP |
-| Concurrency | Optimistic UI + `version` field | Good UX with conflict detection |
-| Claim conflicts | First-write-wins | Simple, fair, predictable |
-| Auth | Email/password + JWT cookie + Argon2 | Standard, secure, no external deps |
-
----
-
-## Non-Functional Requirements
-
-### Performance
-- Pool render: < 100ms for 200 tasks
-- Claim latency: < 200ms P95
-- Initial load: < 3s on 3G
-
-### Security
-- Argon2id for password hashing
-- JWT in HttpOnly cookies
-- CSRF protection via SameSite
-- Input validation on all endpoints
-
-### Scalability (MVP)
-- Single PostgreSQL instance
-- Vertical scaling on BEAM VM
-- Target: 50 concurrent users, 5000 tasks
-
----
-
-## References
-
-- [Lustre Documentation](https://hexdocs.pm/lustre)
-- [Squirrel Documentation](https://hexdocs.pm/squirrel)
+- [Tech stack](architecture/tech-stack.md)
+- [Source tree](architecture/source-tree.md)
+- [Data model](architecture/data-model.md)
+- [Coding standards](architecture/coding-standards.md)
+- [Responsive system](architecture/responsive.md)
+- [Lustre components](architecture/lustre-components.md)
+- [No-legacy rules](no-legacy-rules.md)

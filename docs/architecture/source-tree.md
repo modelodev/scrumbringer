@@ -1,250 +1,53 @@
 # Source Tree
 
-> **Version:** 1.0
-> **Parent:** [Architecture](../architecture.md)
+ScrumBringer is organized as a monorepo with two Gleam applications, one shared
+package, local support packages, database migrations, scripts, and docs.
 
----
-
-## Project Structure
-
-Because ScrumBringer is **client/server** (Lustre TEA client + Gleam API server), the repository is organized as a monorepo with two Gleam apps and one shared package.
-
-```
+```text
 scrumbringer/
-├── .bmad-core/                  # BMAD methodology files
-├── .ai/                         # Session handoff + notes
-├── docs/                        # Documentation
-│   ├── index.md
-│   ├── architecture.md
-│   ├── architecture/
-│   ├── deploy/
-│   ├── references/
-│   └── scripts/
-│
 ├── apps/
-│   ├── client/                  # Lustre app (Gleam → JavaScript)
-│   │   ├── gleam.toml           # target = "javascript"
-│   │   ├── src/
-│   │   │   ├── scrumbringer_client.gleam
-│   │   │   └── scrumbringer_client/
-│   │   │       ├── features/
-│   │   │       ├── client_state/
-│   │   │       ├── components/
-│   │   │       ├── ui/
-│   │   │       ├── styles/
-│   │   │       ├── i18n/
-│   │   │       └── helpers/
+│   ├── client/                  # Lustre app, target=javascript
+│   │   ├── src/scrumbringer_client/
+│   │   │   ├── api/             # HTTP client modules
+│   │   │   ├── app/             # app bootstrap and routing shell
+│   │   │   ├── client_state/    # client model slices
+│   │   │   ├── components/      # Lustre components
+│   │   │   ├── domain/          # client-only domain helpers
+│   │   │   ├── features/        # feature routes, views, updates
+│   │   │   ├── helpers/         # reusable client helpers
+│   │   │   ├── i18n/            # localized copy
+│   │   │   ├── state/           # state helpers
+│   │   │   ├── styles/          # CSS
+│   │   │   ├── ui/              # reusable UI primitives
+│   │   │   └── utils/
 │   │   └── test/
-│   │
-│   └── server/                  # HTTP API (Gleam → Erlang/BEAM)
-│       ├── gleam.toml           # target = "erlang"
-│       ├── src/
-│       │   ├── main.gleam
-│       │   ├── scrumbringer_server.gleam
-│       │   └── scrumbringer_server/
-│       │       ├── web/
-│       │       ├── http/
-│       │       ├── use_case/
-│       │       ├── repository/
-│       │       └── sql/
+│   └── server/                  # Wisp/Mist API, target=erlang
+│       ├── src/scrumbringer_server/
+│       │   ├── http/            # request handlers and payload mapping
+│       │   ├── repository/      # persistence adapters and row mappers
+│       │   ├── sql/             # Squirrel source queries
+│       │   ├── use_case/        # business workflows and services
+│       │   └── web/             # router and web bootstrap
 │       └── test/
-│
-├── shared/                      # Shared domain types/helpers (reused by client and server)
-│   ├── gleam.toml
-│   ├── src/
-│   │   ├── domain/
-│   │   └── helpers/
-│   └── test/
-│
+├── shared/
+│   └── src/
+│       ├── api/                 # shared API contracts/codecs
+│       ├── domain/              # target-neutral domain types
+│       └── helpers/
+├── packages/                    # local dependencies
 ├── db/
-│   └── migrations/              # dbmate migrations
-├── docker-compose.yml           # Local PostgreSQL
-├── database.yml                 # dbmate config
-└── README.md
+│   ├── migrations/              # dbmate migrations
+│   └── schema.sql               # schema snapshot
+├── scripts/                     # development and validation scripts
+├── docs/                        # maintained documentation
+└── Makefile
 ```
 
----
+## Dependency Rules
 
-## Key Directories
-
-### `apps/client/`
-
-Lustre UI application (Gleam → JavaScript). Recommended responsibilities:
-- UI composition (`features/`, `components/`, `ui/`)
-- Client-side state (filters, drag interactions, optimistic transitions)
-- API client and decoding of server responses
-
-Client FFI layout (isolated by domain, referenced via `client_ffi.gleam`):
-
-```
-apps/client/src/scrumbringer_client/
-├── client_ffi.gleam
-├── cookies.ffi.mjs
-├── date.ffi.mjs
-├── device.ffi.mjs
-├── dom.ffi.mjs
-├── keyboard.ffi.mjs
-├── navigation.ffi.mjs
-└── url.ffi.mjs
-```
-
-### `apps/server/`
-
-Gleam HTTP API (Gleam → Erlang/BEAM). Recommended responsibilities:
-- Authentication and authorization
-- Business rules (claim required to edit, no direct assignment)
-- Command validation and optimistic concurrency (`version`)
-- Data access through repository modules and Squirrel-generated SQL
-
-Runtime business behavior belongs in `scrumbringer_server/use_case/`.
-Persistence adapters and row mappers belong in `scrumbringer_server/repository/`.
-Squirrel query files live under `scrumbringer_server/sql/` and generate the
-`scrumbringer_server/sql.gleam` module. Authentication bootstrap keeps related
-login, registration, invite, organization, and initial membership queries under
-the `repository/auth/` boundary.
-
-`scrumbringer_server/seed.gleam`, `seed_builder.gleam`, and `seed_db.gleam` are
-dev/test support modules for local demo data and test fixtures. They should not
-be imported by runtime HTTP handlers or use cases.
-
-### `shared/`
-
-Shared domain types and helper functions reused by both targets.
-
-### `db/migrations/`
-
-Database migrations managed by dbmate:
-- Sequential numbering
-- One change per file
-- Both up and down migrations
-
----
-
-## Module Dependencies
-
-```
-           apps/client (Lustre TEA)
-                    │
-                    ▼
-                 shared
-
-           apps/server (HTTP API)
-                    │
-        ┌───────────┴───────────┐
-        ▼                       ▼
-      shared         use_case + repository + sql
-```
-
-**Rules (recommended):**
-- Client imports `shared` types (and its own UI modules)
-- Server imports `shared` types and owns persistence/query code
-- `shared` must not depend on client/server modules
-- No circular dependencies allowed
-
----
-
-## Configuration Files
-
-### `apps/client/gleam.toml`
-
-```toml
-name = "scrumbringer_client"
-version = "0.1.0"
-target = "javascript"
-
-[dependencies]
-gleam_stdlib = "~> 0.68"
-gleam_javascript = "~> 1.0"
-gleam_json = "~> 3.0"
-gleam_http = "~> 4.3"
-lustre = "~> 5.0"
-lustre_http = { path = "../../packages/lustre_http" }
-shared = { path = "../../shared" }
-
-[dev-dependencies]
-gleeunit = "~> 1.0"
-lustre_dev_tools = "~> 2.0"
-```
-
-### `apps/server/gleam.toml`
-
-```toml
-name = "scrumbringer_server"
-version = "0.1.0"
-target = "erlang"
-
-[dependencies]
-gleam_stdlib = "0.68.1"
-wisp = "2.1.1"
-mist = "5.0.4"
-pog = "~> 4.0"
-gleam_http = "4.3.0"
-gleam_json = "3.1.0"
-gleam_crypto = "~> 1.0"
-shared = { path = "../../shared" }
-
-[dev-dependencies]
-gleeunit = "~> 1.0"
-squirrel = "~> 4.0"
-```
-
-### `docker-compose.yml`
-
-```yaml
-version: '3.8'
-services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: scrumbringer
-      POSTGRES_PASSWORD: scrumbringer
-      POSTGRES_DB: scrumbringer_dev
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
-```
-
-### `database.yml` (dbmate)
-
-```yaml
-development:
-  url: postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_dev?sslmode=disable
-  migrations_dir: db/migrations
-
-test:
-  url: postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_test?sslmode=disable
-  migrations_dir: db/migrations
-```
-
----
-
-## Build & Run Commands
-
-```bash
-# Database
-docker-compose up -d
-
-dbmate up
-
-# Client (apps/client)
-gleam run -m lustre/dev
-
-gleam test
-
-gleam format
-
-# Server (apps/server)
-gleam run
-
-gleam test
-
-gleam format
-
-# Production (example)
-# - build client bundle and serve via CDN/static hosting
-# - deploy server as BEAM release + connect to PostgreSQL
-```
+- `shared` must not depend on `apps/client` or `apps/server`.
+- `apps/client` may depend on `shared` and client-local modules.
+- `apps/server` may depend on `shared`, `repository`, generated SQL, and
+  use-case modules.
+- HTTP handlers should map payloads and delegate business rules to use cases.
+- Runtime code must not import seed/demo helpers.

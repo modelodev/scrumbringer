@@ -1,439 +1,59 @@
 # Data Model
 
-> **Version:** 1.0
-> **Parent:** [Architecture](../architecture.md)
-
----
-
-## Entity Relationship Diagram
-
-> Note: canonical schema lives in `db/schema.sql`. This document reflects the current project-scoped capabilities model.
-
-```
-┌──────────────┐       ┌──────────────┐
-│ Organization │       │  Capability  │
-│──────────────│       │──────────────│
-│ id           │       │ id           │
-│ name         │◄──────│ name         │
-│ created_at   │       │ project_id(FK)│
-└──────────────┘       └──────────────┘
-       │                      │
-       │                      │
-       ▼                      ▼
-┌──────────────┐       ┌────────────────┐
-│     User     │       │ MemberCapability│
-│──────────────│       │────────────────│
-│ id           │◄──────│ project_id (FK)│
-│ email        │       │ user_id (FK)   │
-│ password_hash│       │ cap_id (FK)    │
-│ org_id (FK)  │       └────────────────┘
-│ created_at   │
-└──────────────┘
-       │
-       ▼
-┌──────────────┐       ┌──────────────┐
-│   Project    │       │   TaskType   │
-│──────────────│       │──────────────│
-│ id           │       │ id           │
-│ name         │◄──────│ name         │
-│ org_id (FK)  │       │ icon         │
-│ created_at   │       │ cap_id (FK)? │
-└──────────────┘       │ project_id   │
-       ▲               └──────────────┘
-       │
-       │  ┌────────────────┐
-       │  │ ProjectMember  │
-       │  │────────────────│
-       └──│ project_id (FK)│
-          │ user_id (FK)   │
-          │ role           │
-          └────────────────┘
-
-┌─────────────────────────────┴────────────────────────────┐
-│                          Task                             │
-│───────────────────────────────────────────────────────────│
-│ id            │ title         │ description               │
-│ priority      │ exec_state    │ type_id (FK)              │
-│ project_id    │ created_by    │ claimed_by (FK)?          │
-│ claimed_at?   │ closed_at?    │ due_date?                 │
-│ version       │               │                           │
-└───────────────────────────────────────────────────────────┘
-       │                              │
-       ▼                              ▼
-┌──────────────┐              ┌──────────────┐          ┌────────────────┐
-│   TaskNote   │              │ TaskPosition │          │  UserTaskView  │
-│──────────────│              │──────────────│          │────────────────│
-│ id           │              │ task_id (FK) │          │ user_id (FK)   │
-│ task_id (FK) │              │ user_id (FK) │          │ task_id (FK)   │
-│ user_id (FK) │              │ x            │          │ last_viewed_at │
-│ content      │              │ y            │          └────────────────┘
-│ created_at   │              │ updated_at   │
-└──────────────┘              └──────────────┘
-
-┌──────────────┐
-│  CardNote    │
-│──────────────│
-│ id           │
-│ card_id (FK) │
-│ user_id (FK) │
-│ content      │
-│ created_at   │
-└──────────────┘
-┌────────────────┐
-│  UserCardView  │
-│────────────────│
-│ user_id (FK)   │
-│ card_id (FK)   │
-│ last_viewed_at │
-└────────────────┘
-```
-
----
-
-## Entities
-
-### Organization
-```sql
-CREATE TABLE organizations (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-### OrgInvite (invite-only registration)
-
-`code` is an opaque, URL-safe random token (single-use in MVP).
-
-```sql
-CREATE TABLE org_invites (
-    code TEXT PRIMARY KEY,
-    org_id BIGINT NOT NULL REFERENCES organizations(id),
-    created_by BIGINT NOT NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
-    used_at TIMESTAMPTZ,
-    used_by BIGINT REFERENCES users(id)
-);
-
-CREATE INDEX idx_org_invites_org ON org_invites(org_id);
-CREATE INDEX idx_org_invites_used_at ON org_invites(used_at);
-```
-
-### User
-```sql
-CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    org_id BIGINT NOT NULL REFERENCES organizations(id),
-    org_role TEXT NOT NULL DEFAULT 'member' CHECK (org_role IN ('member', 'admin')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-### Capability
-```sql
-CREATE TABLE capabilities (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    project_id BIGINT NOT NULL REFERENCES projects(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(name, project_id)
-);
-```
-
-### ProjectMemberCapability
-```sql
-CREATE TABLE project_member_capabilities (
-    project_id BIGINT NOT NULL REFERENCES projects(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    capability_id BIGINT NOT NULL REFERENCES capabilities(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (project_id, user_id, capability_id)
-);
-```
-
-### Project
-```sql
-CREATE TABLE projects (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    org_id BIGINT NOT NULL REFERENCES organizations(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-### ProjectMember
-Users can participate in multiple projects within their organization.
-
-In the MVP, **project membership is managed by org admins/project managers** (no self-join).
-
-```sql
-CREATE TABLE project_members (
-    project_id BIGINT NOT NULL REFERENCES projects(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'manager')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (project_id, user_id)
-);
-
-CREATE INDEX idx_project_members_user ON project_members(user_id);
-```
-
-### TaskType
-```sql
-CREATE TABLE task_types (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    icon TEXT NOT NULL,  -- heroicon name
-    capability_id BIGINT REFERENCES capabilities(id),
-    project_id BIGINT NOT NULL REFERENCES projects(id),
-    UNIQUE(name, project_id)
-);
-```
-
-### Task
-```sql
-CREATE TABLE tasks (
-    id BIGSERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    priority INT NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
-    type_id BIGINT NOT NULL REFERENCES task_types(id),
-    project_id BIGINT NOT NULL REFERENCES projects(id),
-    created_by BIGINT NOT NULL REFERENCES users(id),
-    claimed_by BIGINT REFERENCES users(id),
-    claimed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    version INT NOT NULL DEFAULT 1,
-    card_id BIGINT REFERENCES cards(id),
-    pool_lifetime_s BIGINT NOT NULL DEFAULT 0 CHECK (pool_lifetime_s >= 0),
-    last_entered_pool_at TIMESTAMPTZ,
-    created_from_rule_id BIGINT REFERENCES rules(id),
-    execution_state TEXT NOT NULL
-        CHECK (execution_state IN ('available', 'claimed', 'closed')),
-    claimed_mode TEXT
-        CHECK (claimed_mode IS NULL OR claimed_mode IN ('taken', 'ongoing')),
-    closed_at TIMESTAMPTZ,
-    closed_by BIGINT REFERENCES users(id),
-    closed_reason TEXT
-        CHECK (closed_reason IS NULL OR closed_reason IN (
-          'done',
-          'manually_closed',
-          'closed_by_ancestor'
-        )),
-    due_date DATE,
-    capability_id BIGINT REFERENCES capabilities(id)
-);
-
-CREATE INDEX idx_tasks_project_execution_state
-    ON tasks(project_id, execution_state);
-CREATE INDEX idx_tasks_project ON tasks(project_id);
-CREATE INDEX idx_tasks_claimed_by ON tasks(claimed_by);
-```
-
-`due_date` is a date-only value. PostgreSQL stores it as `DATE`, API payloads
-represent it as `YYYY-MM-DD`, and urgency comparisons use the project-local
-calendar day rather than UTC timestamps.
-
-### TaskNote
-```sql
-CREATE TABLE task_notes (
-    id BIGSERIAL PRIMARY KEY,
-    task_id BIGINT NOT NULL REFERENCES tasks(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    content TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_task_notes_task ON task_notes(task_id);
-```
-
-### TaskPosition
-```sql
-CREATE TABLE task_positions (
-    task_id BIGINT NOT NULL REFERENCES tasks(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    x INT NOT NULL DEFAULT 0,
-    y INT NOT NULL DEFAULT 0,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (task_id, user_id)
-);
-
-### CardNote
-```sql
-CREATE TABLE card_notes (
-    id BIGSERIAL PRIMARY KEY,
-    card_id BIGINT NOT NULL REFERENCES cards(id),
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    content TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_card_notes_card ON card_notes(card_id);
-```
-
-### UserCardView
-```sql
-CREATE TABLE user_card_views (
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    card_id BIGINT NOT NULL REFERENCES cards(id),
-    last_viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, card_id)
-);
-
-CREATE INDEX idx_user_card_views_card ON user_card_views(card_id);
-```
-
-### UserTaskView
-```sql
-CREATE TABLE user_task_views (
-    user_id BIGINT NOT NULL REFERENCES users(id),
-    task_id BIGINT NOT NULL REFERENCES tasks(id),
-    last_viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, task_id)
-);
-
-CREATE INDEX idx_user_task_views_task ON user_task_views(task_id);
-```
-```
-
----
-
-## Commands
-
-Commands represent user intentions. Validated on server before execution.
-
-**Bootstrap / Invites (MVP):**
-- When no organization exists yet, the first registration bootstraps it and creates the first org admin.
-- After that, registrations must present a valid, unexpired invite code.
-
-| Command | Fields | Validation |
-|---------|--------|------------|
-| `CreateTask` | title, description?, priority, type_id | User is project member |
-| `ClaimTask` | task_id, version | User is project member, execution state is available, version match |
-| `ReleaseTask` | task_id, version | Claimed by user, version match |
-| `CompleteTask` | task_id, version | Claimed by user, version match |
-| `UpdateTask` | task_id, fields, version | Claimed by user, version match |
-| `AddTaskNote` | task_id, content | User is project member |
-| `MoveTask` | task_id, x, y | User is project member |
-| `DeleteTask` | task_id, version | Claimed by user OR creator, version match |
-| `AddProjectMember` | project_id, user_id, role | Caller is project admin, target user in same org |
-| `RemoveProjectMember` | project_id, user_id | Caller is project admin, cannot remove last admin |
-
----
-
-## Events
-
-Events represent state changes. Used for UI updates and audit.
-
-| Event | Fields | Triggered By |
-|-------|--------|--------------|
-| `TaskCreated` | task | CreateTask |
-| `TaskClaimed` | task_id, user_id, claimed_at | ClaimTask |
-| `TaskReleased` | task_id, user_id | ReleaseTask |
-| `TaskClosed` | task_id, user_id, closed_at | CompleteTask |
-| `TaskUpdated` | task_id, changed_fields | UpdateTask |
-| `TaskNoteAdded` | note | AddTaskNote |
-| `TaskPositionChanged` | task_id, user_id, x, y | MoveTask |
-| `TaskDeleted` | task_id | DeleteTask |
-
----
-
-## Concurrency Strategy
-
-### Optimistic Concurrency Control
-
-1. Each task has a `version` field (starts at 1)
-2. Client sends `version` with every mutating command
-3. Server checks `WHERE id = $1 AND version = $2`
-4. On success: increment version, apply change
-5. On failure: return conflict error with current state
-
-### Claim Conflicts
-
-**Scenario:** Two users click "Claim" simultaneously
-
-**Resolution:** First-Write-Wins
-```sql
-UPDATE tasks
-SET claimed_by = $1,
-    claimed_at = NOW(),
-    claimed_mode = 'taken',
-    execution_state = 'claimed',
-    version = version + 1
-WHERE id = $2
-  AND execution_state = 'available'
-  AND version = $3
-RETURNING *;
-```
-
-- First UPDATE succeeds (1 row affected)
-- Second UPDATE fails (0 rows affected)
-- Loser gets conflict response, UI refreshes
-
-### Optimistic UI
-
-1. User clicks "Claim"
-2. UI immediately shows task as claimed (optimistic)
-3. Server processes command
-4. Success: UI state confirmed
-5. Conflict: UI reverts, shows notification
-
----
-
-## Execution State Machine
-
-```
-┌───────────┐    Claim     ┌─────────┐   Complete/Close   ┌────────┐
-│ available │─────────────►│ claimed │────────────────────►│ closed │
-└───────────┘              └─────────┘                     └────────┘
-       ▲                        │
-       │       Release          │
-       └────────────────────────┘
-```
-
-**Transitions:**
-- `available` → `claimed`: ClaimTask (any user)
-- `claimed` → `available`: ReleaseTask (claimed user only)
-- `claimed` → `closed`: CompleteTask (claimed user only, reason `done`)
-- `available` → `closed`: manual card closure or explicit close (reason
-  `closed_by_ancestor` or `manually_closed`)
-- `closed` → (terminal state)
-
----
-
-## Decay Calculation
-
-Age-based visual decay is calculated client-side:
-
-```gleam
-pub fn calculate_decay(created_at: Time) -> Float {
-  let age_days = time.diff_days(time.now(), created_at)
-  let decay = int.min(age_days, 30) |> int.to_float
-  decay /. 30.0  // 0.0 to 1.0
-}
-```
-
-Visual effects based on decay:
-- 0.0-0.3: Fresh (full color)
-- 0.3-0.6: Aging (slight desaturation)
-- 0.6-0.9: Old (more desaturation, slight opacity)
-- 0.9-1.0: Critical (red tint, pulsing)
-
----
-
-## Priority Visual Mapping
-
-```gleam
-pub fn priority_to_size(priority: Int) -> String {
-  case priority {
-    1 -> "w-16 h-16"   // Lowest - smallest
-    2 -> "w-20 h-20"
-    3 -> "w-24 h-24"   // Default
-    4 -> "w-28 h-28"
-    5 -> "w-32 h-32"   // Highest - largest
-  }
-}
-```
+The canonical schema lives in `db/schema.sql` and the dbmate migrations in
+`db/migrations/`. This document only records the current domain shape and the
+invariants that are easy to lose when reading SQL directly.
+
+## Core Entities
+
+- `organizations`: tenant boundary.
+- `users`: organization users with `member` or `admin` org role.
+- `projects`: project workspaces inside an organization.
+- `project_members`: project access and project role.
+- `capabilities`: project-scoped skill/capability labels.
+- `project_member_capabilities`: capability configuration per project member.
+- `task_types`: project-scoped task classification, optionally linked to a
+  capability.
+- `cards`: delivery containers; may be nested through `parent_card_id`.
+- `tasks`: pullable work units; normally linked to a card through `card_id`.
+- `notes`, `task_notes`, `card_notes`: shared note body plus task/card links.
+- `workflows`, `rules`, `task_templates`, `rule_executions`: automation model.
+- `api_tokens`, `integration_users`: Bearer API access for integrations.
+- `audit_events`: immutable operational events for task/card/note/due-date
+  activity.
+
+## State Model
+
+Cards use `execution_state`:
+
+- `draft`: prepared but not claimable through its tasks.
+- `active`: opens its task leaves to the Pool.
+- `closed`: terminal state for the card branch.
+
+Tasks use `execution_state`:
+
+- `available`: visible work in the Pool.
+- `claimed`: pulled by a user.
+- `closed`: terminal state.
+
+Task close reasons are `done`, `manually_closed`, and `closed_by_ancestor`.
+Card close reasons are `rollup` and `manually_closed`.
+
+## Card And Task Invariants
+
+- A card can contain child cards or tasks, but not both.
+- A claimed task must belong to an active card lineage.
+- Closing or moving cards must not leave claimed descendant tasks in an invalid
+  lineage.
+- Card parent links cannot create cycles.
+- Cross-project card/task relationships are rejected.
+- Available root tasks are tolerated by the data model for migration and edge
+  cases, but normal product flows should create card-scoped tasks.
+
+## Concurrency And History
+
+- Tasks carry a `version` for optimistic concurrency on mutations and lifecycle
+  transitions.
+- Task/card view tables track per-user read state.
+- Audit events and rule executions provide operational history; they should be
+  preferred over destructive rewrites when preserving context matters.

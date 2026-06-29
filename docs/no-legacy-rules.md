@@ -10,8 +10,9 @@ links. Each exception must have an owner, tests, and product justification.
 Internal domain, repository, use-case, client state, selector, and UI code must
 use the canonical model for the current product.
 
-Historical planning documents may mention removed modules, old routes, or
-intermediate names. Treat those references as context, not current architecture.
+Historical plans are intentionally not part of the live documentation set. If a
+removed document is recovered from git history, treat it as context only, not as
+current architecture.
 
 ### Invites
 
