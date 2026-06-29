@@ -27,6 +27,7 @@ import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/capability_board/task_preview_state
 import scrumbringer_client/features/cards/move_target.{type MoveTarget}
 import scrumbringer_client/features/cards/show as card_show
+import scrumbringer_client/features/tasks/task_action
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/show_tabs
 
@@ -101,9 +102,10 @@ pub type Msg {
   MemberTaskCreated(ApiResult(Task))
   MemberTaskCreatedFeedback(Int)
   MemberHighlightExpired(Int)
-  MemberClaimClicked(Int, Int)
-  MemberReleaseClicked(Int, Int)
-  MemberCloseClicked(Int, Int)
+  MemberClaimClicked(task_action.TaskActionRef)
+  MemberReleaseClicked(task_action.TaskActionRef)
+  MemberCloseClicked(task_action.TaskActionRef)
+  MemberTaskResolvedForAction(task_action.TaskAction, ApiResult(Task))
   MemberDeleteTaskClicked(Int)
   MemberTaskClaimed(ApiResult(Task))
   MemberTaskReleased(ApiResult(Task))

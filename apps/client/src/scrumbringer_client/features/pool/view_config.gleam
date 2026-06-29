@@ -45,6 +45,7 @@ pub type Callbacks(msg) {
     on_view_mode_change: fn(pool_prefs.ViewMode) -> msg,
     on_now_working_pause: msg,
     on_now_working_start: fn(Int) -> msg,
+    on_now_working_close: fn(Int) -> msg,
     on_claim: fn(Int, Int) -> msg,
     on_release: fn(Int, Int) -> msg,
     on_close: fn(Int, Int) -> msg,
@@ -175,7 +176,7 @@ fn now_working_config(context: Context(msg)) -> now_working_panel.Config(msg) {
     disable_actions: context.pool.member_task_mutation_in_flight
       || context.now_working.member_now_working_in_flight,
     on_pause: context.callbacks.on_now_working_pause,
-    on_close: context.callbacks.on_close,
+    on_close: context.callbacks.on_now_working_close,
   )
 }
 

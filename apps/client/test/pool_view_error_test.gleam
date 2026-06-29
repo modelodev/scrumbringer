@@ -31,6 +31,7 @@ fn pool_callbacks() -> pool_view.Callbacks(String) {
     on_view_mode_change: fn(_) { "view-mode" },
     on_now_working_pause: "pause",
     on_now_working_start: fn(_) { "start" },
+    on_now_working_close: fn(_) { "close-working" },
     on_claim: fn(_, _) { "claim" },
     on_release: fn(_, _) { "release" },
     on_close: fn(_, _) { "close" },

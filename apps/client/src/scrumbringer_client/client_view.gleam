@@ -92,6 +92,7 @@ import scrumbringer_client/features/pool/view_config as pool_view
 import scrumbringer_client/features/pool/view_context as pool_view_context
 import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/features/tasks/show/config as task_show_config
+import scrumbringer_client/features/tasks/task_action
 
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
@@ -338,25 +339,31 @@ fn task_show_callbacks() -> task_show_config.Callbacks(client_state.Msg) {
       client_state.pool_msg(pool_messages.OpenCardShow(card_id))
     },
     on_claim: fn(claim_task_id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(
-        claim_task_id,
-        version,
-      ))
+      client_state.pool_msg(
+        pool_messages.MemberClaimClicked(task_action.Resolved(
+          claim_task_id,
+          version,
+        )),
+      )
     },
     on_start_work: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
     },
     on_release: fn(release_task_id, version) {
-      client_state.pool_msg(pool_messages.MemberReleaseClicked(
-        release_task_id,
-        version,
-      ))
+      client_state.pool_msg(
+        pool_messages.MemberReleaseClicked(task_action.Resolved(
+          release_task_id,
+          version,
+        )),
+      )
     },
     on_task_close: fn(close_task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCloseClicked(
-        close_task_id,
-        version,
-      ))
+      client_state.pool_msg(
+        pool_messages.MemberCloseClicked(task_action.Resolved(
+          close_task_id,
+          version,
+        )),
+      )
     },
     on_delete: fn(delete_task_id) {
       client_state.pool_msg(pool_messages.MemberDeleteTaskClicked(
@@ -1266,14 +1273,21 @@ fn now_working_mobile_config(
       layout_messages.MemberPanelToggled,
     ),
     on_pause: client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked),
-    on_close: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
+    on_close: fn(task_id) {
+      client_state.pool_msg(
+        pool_messages.MemberCloseClicked(task_action.NeedsResolution(task_id)),
+      )
     },
     on_start: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
     },
     on_release: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberReleaseClicked(task_action.Resolved(
+          task_id,
+          version,
+        )),
+      )
     },
   )
 }
@@ -1659,7 +1673,9 @@ fn kanban_config(
       client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberClaimClicked(task_action.Resolved(task_id, version)),
+      )
     },
     on_create_task_in_card: fn(card_id) {
       client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
@@ -1904,10 +1920,17 @@ fn people_config(
       pool_messages.MemberNowWorkingPauseClicked,
     ),
     on_task_release: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberReleaseClicked(task_action.Resolved(
+          task_id,
+          version,
+        )),
+      )
     },
     on_task_close: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberCloseClicked(task_action.Resolved(task_id, version)),
+      )
     },
   )
 }
@@ -1949,7 +1972,9 @@ fn capability_board_config(
       client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))
     },
     on_task_claim: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberClaimClicked(task_action.Resolved(task_id, version)),
+      )
     },
     depth_names: configured_depth_names(
       state_selectors.active_projects(model),
@@ -2021,35 +2046,15 @@ fn build_right_panel(
       client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked)
     },
     on_task_close: fn(task_id) {
-      case
-        right_panel_data.find_loaded_task(
-          model.member.pool.member_tasks,
-          task_id,
-        )
-      {
-        opt.Some(task) ->
-          client_state.pool_msg(pool_messages.MemberCloseClicked(
-            task_id,
-            task.version,
-          ))
-        _ -> client_state.NoOp
-      }
+      client_state.pool_msg(
+        pool_messages.MemberCloseClicked(task_action.NeedsResolution(task_id)),
+      )
     },
     on_logout: client_state.auth_msg(auth_messages.LogoutClicked),
     on_task_release: fn(task_id) {
-      case
-        right_panel_data.find_loaded_task(
-          model.member.pool.member_tasks,
-          task_id,
-        )
-      {
-        opt.Some(task) ->
-          client_state.pool_msg(pool_messages.MemberReleaseClicked(
-            task_id,
-            task.version,
-          ))
-        _ -> client_state.NoOp
-      }
+      client_state.pool_msg(
+        pool_messages.MemberReleaseClicked(task_action.NeedsResolution(task_id)),
+      )
     },
     on_task_click: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))

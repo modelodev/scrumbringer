@@ -9,6 +9,7 @@ import domain/task/state as task_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/mutation_update
+import scrumbringer_client/features/tasks/task_action
 import scrumbringer_client/ui/toast
 
 fn mutation_context() {
@@ -17,6 +18,7 @@ fn mutation_context() {
     on_task_claimed: fn(_result) { Nil },
     on_task_released: fn(_result) { Nil },
     on_task_closed: fn(_result) { Nil },
+    on_task_resolved_for_action: fn(_action, _result) { Nil },
     on_task_deleted: fn(_task_id, _result) { Nil },
   )
 }
@@ -91,7 +93,7 @@ pub fn try_update_claim_clicked_sets_local_policy_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       pool_with_tasks([task]),
-      pool_messages.MemberClaimClicked(42, 3),
+      pool_messages.MemberClaimClicked(task_action.Resolved(42, 3)),
       dispatch_context(),
     )
 
@@ -169,7 +171,7 @@ pub fn local_claim_clicked_blocked_task_does_not_submit_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       pool_with_tasks([task]),
-      pool_messages.MemberClaimClicked(42, 3),
+      pool_messages.MemberClaimClicked(task_action.Resolved(42, 3)),
       dispatch_context(),
     )
 
@@ -186,7 +188,7 @@ pub fn local_claim_clicked_applies_optimistic_claim_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       pool_with_tasks([task]),
-      pool_messages.MemberClaimClicked(42, 3),
+      pool_messages.MemberClaimClicked(task_action.Resolved(42, 3)),
       dispatch_context(),
     )
 
@@ -238,7 +240,7 @@ pub fn local_release_clicked_applies_optimistic_release_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       pool_with_tasks([task]),
-      pool_messages.MemberReleaseClicked(42, 3),
+      pool_messages.MemberReleaseClicked(task_action.Resolved(42, 3)),
       dispatch_context(),
     )
 
@@ -249,13 +251,31 @@ pub fn local_release_clicked_applies_optimistic_release_test() {
   let assert True = fx != effect.none()
 }
 
+pub fn release_needs_resolution_uses_cached_task_version_test() {
+  let task = Task(..taken_task(), version: 9)
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      pool_with_tasks([task]),
+      pool_messages.MemberReleaseClicked(task_action.NeedsResolution(42)),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let expected = Task(..available_task(), version: 9)
+  let assert True = next.member_tasks == remote.Loaded([expected])
+  let assert True = next.member_task_mutation_in_flight
+  let assert Some(42) = next.member_task_mutation_task_id
+  let assert True = fx != effect.none()
+}
+
 pub fn local_close_clicked_applies_optimistic_close_test() {
   let task = taken_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       pool_with_tasks([task]),
-      pool_messages.MemberCloseClicked(42, 3),
+      pool_messages.MemberCloseClicked(task_action.Resolved(42, 3)),
       dispatch_context(),
     )
 
@@ -264,6 +284,89 @@ pub fn local_close_clicked_applies_optimistic_close_test() {
     sample_task(42, task_state.Closed(task_state.ClosedByClaimant, "", 7))
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
+  let assert True = fx != effect.none()
+}
+
+pub fn close_needs_resolution_uses_cached_task_version_test() {
+  let task = Task(..taken_task(), version: 9)
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      pool_with_tasks([task]),
+      pool_messages.MemberCloseClicked(task_action.NeedsResolution(42)),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let expected =
+    sample_task(42, task_state.Closed(task_state.ClosedByClaimant, "", 7))
+  let assert True =
+    next.member_tasks == remote.Loaded([Task(..expected, version: 9)])
+  let assert True = next.member_task_mutation_in_flight
+  let assert Some(42) = next.member_task_mutation_task_id
+  let assert True = fx != effect.none()
+}
+
+pub fn close_needs_resolution_fetches_missing_task_before_close_test() {
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      pool_with_tasks([]),
+      pool_messages.MemberCloseClicked(task_action.NeedsResolution(42)),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let assert True = next.member_task_mutation_in_flight
+  let assert Some(42) = next.member_task_mutation_task_id
+  let assert None = next.member_tasks_snapshot
+  let assert True = next.member_tasks == remote.Loaded([])
+  let assert True = fx != effect.none()
+}
+
+pub fn resolved_close_action_closes_with_resolved_version_test() {
+  let task = Task(..taken_task(), version: 11)
+  let resolving =
+    member_pool.Model(
+      ..pool_with_tasks([]),
+      member_task_mutation_in_flight: True,
+      member_task_mutation_task_id: Some(42),
+    )
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      resolving,
+      pool_messages.MemberTaskResolvedForAction(task_action.Close, Ok(task)),
+      dispatch_context(),
+    )
+
+  let assert mutation_update.NoPolicy = policy
+  let assert True = next.member_task_mutation_in_flight
+  let assert Some(42) = next.member_task_mutation_task_id
+  let assert True = next.member_tasks == remote.Loaded([])
+  let assert True = fx != effect.none()
+}
+
+pub fn task_action_resolution_error_checks_auth_after_clear_test() {
+  let err = ApiError(status: 404, code: "NOT_FOUND", message: "missing")
+  let resolving =
+    member_pool.Model(
+      ..pool_with_tasks([]),
+      member_task_mutation_in_flight: True,
+      member_task_mutation_task_id: Some(42),
+    )
+
+  let assert Some(mutation_update.Update(next, fx, policy)) =
+    mutation_update.try_update(
+      resolving,
+      pool_messages.MemberTaskResolvedForAction(task_action.Close, Error(err)),
+      dispatch_context(),
+    )
+  let assert mutation_update.CheckAuthAfter(auth_err) = policy
+
+  let assert True = auth_err == err
+  let assert False = next.member_task_mutation_in_flight
+  let assert None = next.member_task_mutation_task_id
+  let assert None = next.member_tasks_snapshot
   let assert True = fx != effect.none()
 }
 

@@ -55,7 +55,7 @@ pub type Config(msg) {
     error: opt.Option(String),
     disable_actions: Bool,
     on_pause: msg,
-    on_close: fn(Int, Int) -> msg,
+    on_close: fn(Int) -> msg,
   )
 }
 
@@ -131,24 +131,21 @@ fn view_session(config: Config(msg), session: WorkSession) -> Element(msg) {
 
   let elapsed = session_elapsed(config.server_offset_ms, session)
 
-  let actions = case task_info {
-    opt.Some(Task(version: version, ..)) ->
-      task_actions.pause_and_close(
-        task_state_ui.pause_action(config.locale),
-        config.on_pause,
-        task_state_ui.close_action(config.locale),
-        config.on_close(task_id, version),
-        action_buttons.SizeXs,
-        config.disable_actions,
-        "",
-        "",
-        opt.None,
-        opt.None,
-        opt.None,
-        opt.None,
-      )
-    opt.None -> []
-  }
+  let actions =
+    task_actions.pause_and_close(
+      task_state_ui.pause_action(config.locale),
+      config.on_pause,
+      task_state_ui.close_action(config.locale),
+      config.on_close(task_id),
+      action_buttons.SizeXs,
+      config.disable_actions,
+      "",
+      "",
+      opt.None,
+      opt.None,
+      opt.None,
+      opt.None,
+    )
 
   task_item.view(
     task_item.Config(

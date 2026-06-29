@@ -20,7 +20,7 @@ fn now_working_config() -> now_working_mobile.Config(String) {
     disable_actions: False,
     on_panel_toggled: "panel-toggled",
     on_pause: "pause",
-    on_close: fn(_, _) { "close" },
+    on_close: fn(_) { "close" },
     on_start: fn(_) { "start" },
     on_release: fn(_, _) { "release" },
   )

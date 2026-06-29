@@ -17,19 +17,6 @@ pub fn loaded_tasks_or_empty_returns_loaded_tasks_and_defaults_empty_test() {
   let assert [] = right_panel_data.loaded_tasks_or_empty(NotAsked)
 }
 
-pub fn find_loaded_task_returns_task_only_when_loaded_and_present_test() {
-  let tasks =
-    Loaded([
-      task(1, task_state.Available),
-      task(2, task_state.Available),
-    ])
-
-  let assert Some(found) = right_panel_data.find_loaded_task(tasks, 2)
-  let assert 2 = found.id
-  let assert None = right_panel_data.find_loaded_task(tasks, 99)
-  let assert None = right_panel_data.find_loaded_task(NotAsked, 1)
-}
-
 pub fn claimed_tasks_keeps_only_taken_tasks_for_user_test() {
   let tasks = [
     task(1, task_state.Claimed(7, "2026-06-01T10:00:00Z", task_state.Taken)),

@@ -16,19 +16,6 @@ pub fn loaded_tasks_or_empty(tasks: Remote(List(Task))) -> List(Task) {
   }
 }
 
-pub fn find_loaded_task(tasks: Remote(List(Task)), task_id: Int) -> Option(Task) {
-  tasks
-  |> loaded_tasks_or_empty
-  |> find_task(task_id)
-}
-
-fn find_task(tasks: List(Task), task_id: Int) -> Option(Task) {
-  case list.find(tasks, fn(task) { task.id == task_id }) {
-    Ok(task) -> Some(task)
-    Error(_) -> None
-  }
-}
-
 pub fn claimed_tasks(tasks: List(Task), user_id: Int) -> List(Task) {
   list.filter(tasks, fn(task) {
     case task.state {

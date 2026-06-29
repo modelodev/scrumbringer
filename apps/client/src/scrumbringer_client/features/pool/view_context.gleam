@@ -10,6 +10,7 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/view_config as pool_view
+import scrumbringer_client/features/tasks/task_action
 
 pub fn from_state(
   model: client_state.Model,
@@ -76,14 +77,28 @@ fn callbacks() -> pool_view.Callbacks(client_state.Msg) {
     on_now_working_start: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
     },
+    on_now_working_close: fn(task_id) {
+      client_state.pool_msg(
+        pool_messages.MemberCloseClicked(task_action.NeedsResolution(task_id)),
+      )
+    },
     on_claim: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberClaimClicked(task_action.Resolved(task_id, version)),
+      )
     },
     on_release: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberReleaseClicked(task_action.Resolved(
+          task_id,
+          version,
+        )),
+      )
     },
     on_close: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCloseClicked(task_id, version))
+      client_state.pool_msg(
+        pool_messages.MemberCloseClicked(task_action.Resolved(task_id, version)),
+      )
     },
     on_open: fn(task_id) {
       client_state.pool_msg(pool_messages.MemberTaskShowOpened(task_id))

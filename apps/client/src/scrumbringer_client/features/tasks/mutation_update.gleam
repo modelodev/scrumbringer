@@ -13,6 +13,7 @@ import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/claimability
 import scrumbringer_client/features/tasks/mutation_state
+import scrumbringer_client/features/tasks/task_action
 import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/ui/toast
 
@@ -22,6 +23,8 @@ pub type MutationContext(parent_msg) {
     on_task_claimed: fn(ApiResult(Task)) -> parent_msg,
     on_task_released: fn(ApiResult(Task)) -> parent_msg,
     on_task_closed: fn(ApiResult(Task)) -> parent_msg,
+    on_task_resolved_for_action: fn(task_action.TaskAction, ApiResult(Task)) ->
+      parent_msg,
     on_task_deleted: fn(Int, ApiResult(Nil)) -> parent_msg,
   )
 }
@@ -88,17 +91,39 @@ pub fn try_update(
   context: DispatchContext(parent_msg),
 ) -> opt.Option(Update(parent_msg)) {
   case inner {
-    pool_messages.MemberClaimClicked(task_id, version) ->
-      handle_claim_clicked(model, task_id, version, context.mutation_context)
+    pool_messages.MemberClaimClicked(ref) ->
+      handle_task_action(
+        model,
+        task_action.Claim,
+        ref,
+        context.mutation_context,
+      )
       |> without_policy
 
-    pool_messages.MemberReleaseClicked(task_id, version) ->
-      handle_release_clicked(model, task_id, version, context.mutation_context)
+    pool_messages.MemberReleaseClicked(ref) ->
+      handle_task_action(
+        model,
+        task_action.Release,
+        ref,
+        context.mutation_context,
+      )
       |> without_policy
 
-    pool_messages.MemberCloseClicked(task_id, version) ->
-      handle_close_clicked(model, task_id, version, context.mutation_context)
+    pool_messages.MemberCloseClicked(ref) ->
+      handle_task_action(
+        model,
+        task_action.Close,
+        ref,
+        context.mutation_context,
+      )
       |> without_policy
+
+    pool_messages.MemberTaskResolvedForAction(action, Ok(task)) ->
+      handle_task_action_resolved(model, action, task, context.mutation_context)
+      |> without_policy
+
+    pool_messages.MemberTaskResolvedForAction(_, Error(err)) ->
+      mutation_error(model, err, context.error_context)
 
     pool_messages.MemberDeleteTaskClicked(task_id) ->
       handle_delete_clicked(model, task_id, context.mutation_context)
@@ -182,25 +207,91 @@ fn mutation_error(
   ))
 }
 
-/// Handle claim button click with optimistic update.
-/// Immediately marks task as claimed locally, sends API request.
-fn handle_claim_clicked(
+/// Handle a task action by resolving the task version when the caller cannot
+/// provide one directly.
+fn handle_task_action(
   model: member_pool.Model,
-  task_id: Int,
-  version: Int,
+  action: task_action.TaskAction,
+  ref: task_action.TaskActionRef,
   context: MutationContext(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
   case model.member_task_mutation_in_flight {
     True -> #(model, effect.none())
-    False ->
+    False -> {
+      case ref {
+        task_action.Resolved(task_id, version) ->
+          submit_resolved_task_action(model, action, task_id, version, context)
+
+        task_action.NeedsResolution(task_id) ->
+          case helpers_lookup.find_task_by_id(model.member_tasks, task_id) {
+            opt.Some(task) ->
+              submit_task_action_with_task(model, action, task, context)
+            opt.None -> #(
+              mutation_state.start_resolving(model, task_id),
+              task_operations_api.get_task(task_id, fn(result) {
+                context.on_task_resolved_for_action(action, result)
+              }),
+            )
+          }
+      }
+    }
+  }
+}
+
+fn handle_task_action_resolved(
+  model: member_pool.Model,
+  action: task_action.TaskAction,
+  task: Task,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  submit_task_action_with_task(
+    mutation_state.clear(model),
+    action,
+    task,
+    context,
+  )
+}
+
+fn submit_task_action_with_task(
+  model: member_pool.Model,
+  action: task_action.TaskAction,
+  task: Task,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case action {
+    task_action.Claim ->
+      case claimability.can_claim(task) {
+        True -> submit_claim(model, task.id, task.version, context)
+        False -> #(mutation_state.clear(model), effect.none())
+      }
+
+    task_action.Release -> submit_release(model, task.id, task.version, context)
+
+    task_action.Close -> submit_close(model, task.id, task.version, context)
+  }
+}
+
+fn submit_resolved_task_action(
+  model: member_pool.Model,
+  action: task_action.TaskAction,
+  task_id: Int,
+  version: Int,
+  context: MutationContext(parent_msg),
+) -> #(member_pool.Model, Effect(parent_msg)) {
+  case action {
+    task_action.Claim ->
       case helpers_lookup.find_task_by_id(model.member_tasks, task_id) {
         opt.Some(task) ->
           case claimability.can_claim(task) {
             True -> submit_claim(model, task_id, version, context)
-            False -> #(model, effect.none())
+            False -> #(mutation_state.clear(model), effect.none())
           }
-        _ -> #(model, effect.none())
+        opt.None -> submit_claim(model, task_id, version, context)
       }
+
+    task_action.Release -> submit_release(model, task_id, version, context)
+
+    task_action.Close -> submit_close(model, task_id, version, context)
   }
 }
 
@@ -243,42 +334,28 @@ fn submit_claim(
   )
 }
 
-/// Handle release button click with optimistic update.
-/// Immediately marks task as available locally, sends API request.
-fn handle_release_clicked(
+fn submit_release(
   model: member_pool.Model,
   task_id: Int,
   version: Int,
   context: MutationContext(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  case model.member_task_mutation_in_flight {
-    True -> #(model, effect.none())
-    False -> #(
-      mutation_state.start_release(model, task_id),
-      task_operations_api.release_task(
-        task_id,
-        version,
-        context.on_task_released,
-      ),
-    )
-  }
+  #(
+    mutation_state.start_release(model, task_id),
+    task_operations_api.release_task(task_id, version, context.on_task_released),
+  )
 }
 
-/// Handles close button clicks with an optimistic update.
-/// Immediately marks task as closed locally, sends API request.
-fn handle_close_clicked(
+fn submit_close(
   model: member_pool.Model,
   task_id: Int,
   version: Int,
   context: MutationContext(parent_msg),
 ) -> #(member_pool.Model, Effect(parent_msg)) {
-  case model.member_task_mutation_in_flight {
-    True -> #(model, effect.none())
-    False -> #(
-      mutation_state.start_close(model, task_id, context.current_user_id),
-      task_operations_api.close_task(task_id, version, context.on_task_closed),
-    )
-  }
+  #(
+    mutation_state.start_close(model, task_id, context.current_user_id),
+    task_operations_api.close_task(task_id, version, context.on_task_closed),
+  )
 }
 
 fn handle_delete_clicked(

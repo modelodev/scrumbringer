@@ -36,9 +36,7 @@ fn config() -> mobile.Config(String) {
     disable_actions: False,
     on_panel_toggled: "panel-toggled",
     on_pause: "pause",
-    on_close: fn(task_id, version) {
-      "close:" <> int.to_string(task_id) <> ":" <> int.to_string(version)
-    },
+    on_close: fn(task_id) { "close:" <> int.to_string(task_id) },
     on_start: fn(task_id) { "start:" <> int.to_string(task_id) },
     on_release: fn(task_id, version) {
       "release:" <> int.to_string(task_id) <> ":" <> int.to_string(version)

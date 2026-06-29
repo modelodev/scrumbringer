@@ -80,6 +80,18 @@ pub fn start_dropped_claim(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(..model, member_task_mutation_in_flight: True)
 }
 
+pub fn start_resolving(
+  model: member_pool.Model,
+  task_id: Int,
+) -> member_pool.Model {
+  member_pool.Model(
+    ..model,
+    member_task_mutation_in_flight: True,
+    member_task_mutation_task_id: opt.Some(task_id),
+    member_tasks_snapshot: opt.None,
+  )
+}
+
 pub fn clear(model: member_pool.Model) -> member_pool.Model {
   member_pool.Model(
     ..model,

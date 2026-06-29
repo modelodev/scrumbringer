@@ -590,6 +590,12 @@ pub fn mutation_context(
     on_task_closed: fn(result) {
       client_state.pool_msg(pool_messages.MemberTaskClosed(result))
     },
+    on_task_resolved_for_action: fn(action, result) {
+      client_state.pool_msg(pool_messages.MemberTaskResolvedForAction(
+        action,
+        result,
+      ))
+    },
     on_task_deleted: fn(task_id, result) {
       client_state.pool_msg(pool_messages.MemberTaskDeleted(task_id, result))
     },

@@ -985,9 +985,10 @@ fn update_without_view_mode(
     | pool_messages.MemberTaskCreated(_) -> #(model, effect.none())
 
     // Handled by task_route.try_update before this dispatch.
-    pool_messages.MemberClaimClicked(_, _)
-    | pool_messages.MemberReleaseClicked(_, _)
-    | pool_messages.MemberCloseClicked(_, _)
+    pool_messages.MemberClaimClicked(_)
+    | pool_messages.MemberReleaseClicked(_)
+    | pool_messages.MemberCloseClicked(_)
+    | pool_messages.MemberTaskResolvedForAction(_, _)
     | pool_messages.MemberDeleteTaskClicked(_)
     | pool_messages.MemberTaskClaimed(_)
     | pool_messages.MemberTaskReleased(_)

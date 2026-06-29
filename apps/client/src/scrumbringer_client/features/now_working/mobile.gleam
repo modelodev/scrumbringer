@@ -55,7 +55,7 @@ pub type Config(msg) {
     disable_actions: Bool,
     on_panel_toggled: msg,
     on_pause: msg,
-    on_close: fn(Int, Int) -> msg,
+    on_close: fn(Int) -> msg,
     on_start: fn(Int) -> msg,
     on_release: fn(Int, Int) -> msg,
   )
@@ -212,13 +212,8 @@ pub fn view_overlay(config: Config(msg)) -> Element(msg) {
 /// Row for an active work session (NOW WORKING section).
 /// Actions: Pause, Close
 fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
-  let SessionInfo(
-    task_id: task_id,
-    title: title,
-    icon: icon,
-    elapsed: elapsed,
-    version: version,
-  ) = session
+  let SessionInfo(task_id: task_id, title: title, icon: icon, elapsed: elapsed) =
+    session
 
   let actions = [
     action_buttons.task_icon_button_with_class(
@@ -233,7 +228,7 @@ fn view_session_row(config: Config(msg), session: SessionInfo) -> Element(msg) {
     ),
     action_buttons.task_icon_button_with_class(
       task_state_ui.close_action(config.locale),
-      config.on_close(task_id, version),
+      config.on_close(task_id),
       icons.Check,
       icons.Small,
       config.disable_actions,
@@ -340,13 +335,7 @@ fn view_claimed_row(config: Config(msg), task: domain_task.Task) -> Element(msg)
 
 /// Info about an active work session.
 type SessionInfo {
-  SessionInfo(
-    task_id: Int,
-    title: String,
-    icon: String,
-    elapsed: String,
-    version: Int,
-  )
+  SessionInfo(task_id: Int, title: String, icon: String, elapsed: String)
 }
 
 /// Get all active work sessions with their display info.
@@ -359,17 +348,13 @@ fn get_active_sessions(config: Config(msg)) -> List(SessionInfo) {
       accumulated_s: accumulated_s,
     ) = session
     let task_info = find_task_by_id(config.tasks, task_id)
-    let #(title, icon, version) = case task_info {
-      opt.Some(domain_task.Task(title: t, task_type: tt, version: v, ..)) -> #(
-        t,
-        tt.icon,
-        v,
-      )
-      opt.None -> #(i18n.t(config.locale, i18n_text.TaskNumber(task_id)), "", 0)
+    let #(title, icon) = case task_info {
+      opt.Some(domain_task.Task(title: t, task_type: tt, ..)) -> #(t, tt.icon)
+      opt.None -> #(i18n.t(config.locale, i18n_text.TaskNumber(task_id)), "")
     }
     let elapsed =
       calculate_elapsed(config.server_offset_ms, started_at, accumulated_s)
-    SessionInfo(task_id, title, icon, elapsed, version)
+    SessionInfo(task_id, title, icon, elapsed)
   })
 }
 
