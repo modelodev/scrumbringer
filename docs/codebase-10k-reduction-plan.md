@@ -1427,6 +1427,20 @@ Estado de ejecucion:
     evitando conservar encoders solo para construir fixtures;
   - delta adicional WP-10: `-84` lineas mantenidas, dos funciones publicas y un
     tipo publico menos.
+- Micro-pase adicional de consolidacion de tabs de detalle:
+  - retirado `ui/detail_tabs`, wrapper que duplicaba `TabItem`, `Config`,
+    conversiones y helpers de IDs alrededor de `ui/tabs`;
+  - `ui/tabs` absorbe el contrato comun de panel accesible y permite declarar
+    `data-testid` de forma explicita mediante `with_testid`, sin acoplar todas
+    las tabs a los inspectores;
+  - Card Show, Task Show y `show_tabs` consumen directamente
+    `tabs.TabItem`, manteniendo `role=tablist`, `role=tabpanel`,
+    `aria-controls`, `aria-labelledby`, navegacion por teclado y el ancla
+    `entity-tabs` usada por tests;
+  - rechazado fusionar los ADT `CardTab` y `TaskTab` en un tipo generico:
+    aumentaria acoplamiento entre contratos de producto distintos y aportaria
+    poco ahorro real;
+  - delta adicional WP-10: `-29` lineas mantenidas y un modulo publico menos.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1470,10 +1484,11 @@ Estado de ejecucion:
     `1820 passed` tras retirar la variante textual de `task_metric_chip`;
     `1819 passed` tras retirar helpers preventivos de `signal_chip`;
     `1819 passed` tras retirar `ids.toast_id_eq`;
-    `1819 passed` tras privatizar helpers internos de `ui/dialog`);
+    `1819 passed` tras privatizar helpers internos de `ui/dialog`;
+    `1777 passed` tras consolidar `ui/detail_tabs` en `ui/tabs`);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.124` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-4.153` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

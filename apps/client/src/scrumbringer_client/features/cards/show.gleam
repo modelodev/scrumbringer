@@ -57,7 +57,6 @@ import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
-import scrumbringer_client/ui/detail_tabs
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/inspector_actions
@@ -68,6 +67,7 @@ import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/show_tabs
+import scrumbringer_client/ui/tabs
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_metric
@@ -545,7 +545,7 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
     Loaded(notes_list) -> list.length(notes_list)
     _ -> 0
   }
-  let tabs = card_tab_items(model, notes_count, card.has_new_notes)
+  let tab_items = card_tab_items(model, notes_count, card.has_new_notes)
 
   inspector_shell.detail(
     inspector_shell.Config(
@@ -557,14 +557,17 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
     "card-show-header-block",
     "card-show-body",
     view_card_header(model, card),
-    detail_tabs.view(detail_tabs.Config(
-      active_tab: model.active_tab,
-      tabs: tabs,
-      container_class: "card-show-tabs detail-tabs",
-      tab_class: "card-tab card-show-tab detail-tab",
-      on_tab_click: TabClicked,
-    )),
-    detail_tabs.panel(model.active_tab, tabs, case model.active_tab {
+    tabs.view(
+      tabs.config(
+        active: model.active_tab,
+        tabs: tab_items,
+        container_class: "card-show-tabs detail-tabs",
+        tab_class: "card-tab card-show-tab detail-tab",
+        on_click: TabClicked,
+      )
+      |> tabs.with_testid("entity-tabs"),
+    ),
+    tabs.panel(model.active_tab, tab_items, case model.active_tab {
       show_tabs.CardWorkTab -> view_card_tasks_section(model, card)
       show_tabs.CardSummaryTab -> view_card_summary_section(model, card)
       show_tabs.CardNotesTab -> view_card_notes_section(model)
@@ -1064,7 +1067,7 @@ fn card_tab_items(
   model: Model,
   notes_count: Int,
   has_new_notes: Bool,
-) -> List(detail_tabs.TabItem(show_tabs.CardShowTab)) {
+) -> List(tabs.TabItem(show_tabs.CardShowTab)) {
   show_tabs.card_items(
     show_tabs.CardLabels(
       summary: t(model.locale, i18n_text.TabSummary),

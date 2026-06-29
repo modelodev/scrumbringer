@@ -19,6 +19,7 @@ pub type Config(id, msg) {
     container_class: String,
     tab_class: String,
     on_click: fn(id) -> msg,
+    testid: Option(String),
   )
 }
 
@@ -29,15 +30,50 @@ pub fn config(
   tab_class tab_class: String,
   on_click on_click: fn(id) -> msg,
 ) -> Config(id, msg) {
-  Config(tabs:, active:, container_class:, tab_class:, on_click:)
+  Config(tabs:, active:, container_class:, tab_class:, on_click:, testid: None)
+}
+
+pub fn with_testid(config: Config(id, msg), testid: String) -> Config(id, msg) {
+  Config(..config, testid: Some(testid))
 }
 
 pub fn view(cfg: Config(id, msg)) -> Element(msg) {
-  let Config(tabs:, active:, container_class:, tab_class:, on_click:) = cfg
+  let Config(tabs:, active:, container_class:, tab_class:, on_click:, testid:) =
+    cfg
 
   div(
-    [attribute.class(container_class), attribute.role("tablist")],
+    tablist_attributes(container_class, testid),
     indexed_buttons(tabs, tabs, 0, active, tab_class, on_click),
+  )
+}
+
+fn tablist_attributes(
+  container_class: String,
+  testid: Option(String),
+) -> List(attribute.Attribute(msg)) {
+  let base = [attribute.class(container_class), attribute.role("tablist")]
+
+  case testid {
+    Some(value) -> [attribute.attribute("data-testid", value), ..base]
+    None -> base
+  }
+}
+
+pub fn panel(
+  active_tab: id,
+  tabs: List(TabItem(id)),
+  content: Element(msg),
+) -> Element(msg) {
+  let index = active_index(tabs, active_tab)
+
+  div(
+    [
+      attribute.class("detail-tabpanel"),
+      attribute.attribute("role", "tabpanel"),
+      attribute.id(tab_panel_dom_id(index)),
+      attribute.attribute("aria-labelledby", tab_dom_id(index)),
+    ],
+    [content],
   )
 }
 
@@ -267,6 +303,21 @@ fn tab_id_at_loop(
       case current_index == target_index {
         True -> Some(item.id)
         False -> tab_id_at_loop(rest, target_index, current_index + 1)
+      }
+  }
+}
+
+fn active_index(tabs: List(TabItem(id)), active_tab: id) -> Int {
+  active_index_loop(tabs, active_tab, 0)
+}
+
+fn active_index_loop(tabs: List(TabItem(id)), active_tab: id, index: Int) -> Int {
+  case tabs {
+    [] -> 0
+    [item, ..rest] ->
+      case item.id == active_tab {
+        True -> index
+        False -> active_index_loop(rest, active_tab, index + 1)
       }
   }
 }

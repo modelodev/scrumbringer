@@ -2,7 +2,7 @@
 
 import gleam/option as opt
 
-import scrumbringer_client/ui/detail_tabs
+import scrumbringer_client/ui/tabs
 
 pub type CardShowTab {
   CardSummaryTab
@@ -36,27 +36,27 @@ pub fn card_items(
   work_count: Int,
   notes_count: Int,
   has_new_notes: Bool,
-) -> List(detail_tabs.TabItem(CardShowTab)) {
+) -> List(tabs.TabItem(CardShowTab)) {
   [
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: CardWorkTab,
       label: labels.work,
       count: positive_count(work_count),
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: CardSummaryTab,
       label: labels.summary,
       count: opt.None,
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: CardNotesTab,
       label: labels.notes,
       count: positive_count(notes_count),
       has_indicator: has_new_notes,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: CardActivityTab,
       label: labels.activity,
       count: opt.None,
@@ -73,27 +73,27 @@ pub fn task_items(
   labels: TaskLabels,
   notes_count: Int,
   has_new_notes: Bool,
-) -> List(detail_tabs.TabItem(TaskShowTab)) {
+) -> List(tabs.TabItem(TaskShowTab)) {
   [
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: TaskDetailsTab,
       label: labels.details,
       count: opt.None,
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: TaskDependenciesTab,
       label: labels.dependencies,
       count: opt.None,
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: TaskNotesTab,
       label: labels.notes,
       count: positive_count(notes_count),
       has_indicator: has_new_notes,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: TaskActivityTab,
       label: labels.activity,
       count: opt.None,

@@ -50,11 +50,11 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/activity_feed
 import scrumbringer_client/ui/button
-import scrumbringer_client/ui/detail_tabs
 import scrumbringer_client/ui/inspector_actions
 import scrumbringer_client/ui/inspector_shell
 import scrumbringer_client/ui/pinned_context
 import scrumbringer_client/ui/show_tabs
+import scrumbringer_client/ui/tabs
 
 pub type TaskShowConfig(msg) {
   TaskShowConfig(
@@ -343,13 +343,16 @@ fn no_primary_reason_label(
 }
 
 fn view_task_show_tabs(config: TaskShowConfig(msg)) -> Element(msg) {
-  detail_tabs.view(detail_tabs.Config(
-    active_tab: config.active_tab,
-    tabs: task_tab_items(config),
-    container_class: "task-show-tabs detail-tabs",
-    tab_class: "task-tab task-show-tab detail-tab",
-    on_tab_click: config.on_tab_clicked,
-  ))
+  tabs.view(
+    tabs.config(
+      active: config.active_tab,
+      tabs: task_tab_items(config),
+      container_class: "task-show-tabs detail-tabs",
+      tab_class: "task-tab task-show-tab detail-tab",
+      on_click: config.on_tab_clicked,
+    )
+    |> tabs.with_testid("entity-tabs"),
+  )
 }
 
 fn view_task_tab_content(config: TaskShowConfig(msg)) -> Element(msg) {
@@ -360,12 +363,12 @@ fn view_task_tab_content(config: TaskShowConfig(msg)) -> Element(msg) {
     show_tabs.TaskActivityTab -> view_task_activity(config)
   }
 
-  detail_tabs.panel(config.active_tab, task_tab_items(config), panel)
+  tabs.panel(config.active_tab, task_tab_items(config), panel)
 }
 
 fn task_tab_items(
   config: TaskShowConfig(msg),
-) -> List(detail_tabs.TabItem(show_tabs.TaskShowTab)) {
+) -> List(tabs.TabItem(show_tabs.TaskShowTab)) {
   show_tabs.task_items(
     show_tabs.TaskLabels(
       details: i18n.t(config.locale, i18n_text.TabDetails),

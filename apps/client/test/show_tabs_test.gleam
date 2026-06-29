@@ -2,8 +2,8 @@ import gleam/option as opt
 import lustre/element/html
 import support/render_assertions
 
-import scrumbringer_client/ui/detail_tabs
 import scrumbringer_client/ui/show_tabs
+import scrumbringer_client/ui/tabs
 
 pub fn card_items_start_with_work_and_count_visible_work_test() {
   let items =
@@ -20,25 +20,25 @@ pub fn card_items_start_with_work_and_count_visible_work_test() {
     )
 
   let assert [
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.CardWorkTab,
       label: "Work",
       count: opt.Some(3),
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.CardSummaryTab,
       label: "Summary",
       count: opt.None,
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.CardNotesTab,
       label: "Notes",
       count: opt.Some(1),
       has_indicator: True,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.CardActivityTab,
       label: "Activity",
       count: opt.None,
@@ -62,25 +62,25 @@ pub fn task_items_render_closed_task_show_contract_test() {
     )
 
   let assert [
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.TaskDetailsTab,
       label: "Details",
       count: opt.None,
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.TaskDependenciesTab,
       label: "Dependencies",
       count: opt.None,
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.TaskNotesTab,
       label: "Notes",
       count: opt.Some(2),
       has_indicator: False,
     ),
-    detail_tabs.TabItem(
+    tabs.TabItem(
       id: show_tabs.TaskActivityTab,
       label: "Activity",
       count: opt.None,
@@ -89,7 +89,7 @@ pub fn task_items_render_closed_task_show_contract_test() {
   ] = items
 }
 
-pub fn detail_tabs_panel_sets_accessible_tab_contract_test() {
+pub fn tabs_panel_sets_accessible_tab_contract_test() {
   let tabs =
     show_tabs.task_items(
       show_tabs.TaskLabels(
@@ -103,7 +103,7 @@ pub fn detail_tabs_panel_sets_accessible_tab_contract_test() {
     )
 
   let html =
-    detail_tabs.panel(show_tabs.TaskActivityTab, tabs, html.div([], []))
+    tabs.panel(show_tabs.TaskActivityTab, tabs, html.div([], []))
     |> render_assertions.html
 
   render_assertions.contains(html, "detail-tabpanel")
