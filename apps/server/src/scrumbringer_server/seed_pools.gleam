@@ -5,39 +5,43 @@ import gleam/int
 /// Pool of realistic task titles.
 pub fn task_titles() -> List(String) {
   [
-    "Fix login button", "Dashboard slow", "Upload fails", "Session timeout",
-    "Email delayed", "Dark mode support", "Export to PDF", "Notifications",
-    "User profile bug", "Search not working", "API rate limiting",
-    "Mobile responsive", "Password reset", "Two-factor auth", "Audit logging",
-    "Performance tuning", "Cache invalidation", "Database indexing",
-    "Error handling", "Input validation",
+    "Refine checkout acceptance criteria", "Design payment error states",
+    "Build responsive checkout layout", "Implement checkout summary",
+    "Expose order pricing API", "Run checkout regression pack",
+    "Clarify refund edge cases", "Prototype saved payment method",
+    "Slice account settings layout", "Implement notification preferences",
+    "Add profile preferences endpoint", "Verify account settings flow",
+    "Prepare sprint review notes", "Triage customer login bug",
+    "Document API contract changes", "Tune search results performance",
+    "Improve cache invalidation strategy", "Add database index migration",
+    "Harden form validation errors", "Update release checklist",
   ]
 }
 
 /// Pool of realistic card titles.
 pub fn card_titles() -> List(String) {
   [
-    "Sprint Planning", "Architecture", "Retrospective", "Release Notes",
-    "Backend Refactor", "API Cleanup", "DB Migration", "Documentation",
-    "Security Audit", "Performance",
+    "Sprint Planning", "Checkout MVP", "Account Settings", "Search Iteration",
+    "Release Readiness", "Architecture Decisions", "UX Discovery",
+    "Regression Stabilization", "Observability", "Documentation",
   ]
 }
 
 /// Pool of user emails for generated users.
 pub fn user_emails() -> List(String) {
   [
-    "member@example.com", "pm@example.com", "beta@example.com",
-    "dev@example.com", "qa@example.com", "lead@example.com",
-    "intern@example.com", "contractor@example.com", "ops@example.com",
-    "design@example.com", "data@example.com",
+    "analyst@example.com", "designer@example.com", "markup@example.com",
+    "frontend@example.com", "backend@example.com", "qa@example.com",
+    "scrum-master@example.com", "product-owner@example.com",
+    "devops@example.com", "support@example.com", "data@example.com",
   ]
 }
 
 /// Pool of capability names.
 pub fn capability_names() -> List(String) {
   [
-    "Engineering", "Product", "Operations", "Security", "Design", "QA",
-    "Platform", "Data",
+    "Functional Analysis", "UX Design", "Markup", "Frontend", "Backend", "QA",
+    "DevOps", "Product",
   ]
 }
 

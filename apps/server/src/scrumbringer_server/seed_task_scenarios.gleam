@@ -40,6 +40,7 @@ pub type TaskSeed {
     created_at: String,
     created_by: Int,
     claimed_by: Option(Int),
+    created_from_rule_id: Option(Int),
   )
 }
 
@@ -227,6 +228,7 @@ pub fn build(db: pog.Connection, context: Context) -> Result(TaskResult, String)
             created_at: created_at,
             created_by: creator_for,
             claimed_by: claimed_by,
+            created_from_rule_id: created_from_rule_id,
           )
         })
       })

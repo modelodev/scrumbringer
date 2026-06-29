@@ -129,12 +129,12 @@ fn build_member_capabilities(
 
 fn task_type_definitions() -> List(#(String, String)) {
   [
-    #("Bug", "bug-ant"),
-    #("Feature", "sparkles"),
-    #("Task", "clipboard-document-check"),
-    #("Security", "shield-check"),
-    #("Design", "paint-brush"),
-    #("QA", "check-badge"),
+    #("Requirement", "clipboard-document-check"),
+    #("UX/UI Design", "pencil-square"),
+    #("Markup", "globe-alt"),
+    #("Frontend", "code-bracket"),
+    #("Backend", "server"),
+    #("QA", "check-circle"),
   ]
 }
 

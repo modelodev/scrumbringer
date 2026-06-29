@@ -90,6 +90,23 @@ pub type WorkSessionInsertOptions {
   )
 }
 
+/// Options for inserting a historical automation rule execution.
+pub type RuleExecutionInsertOptions {
+  RuleExecutionInsertOptions(
+    rule_id: Int,
+    event_key: String,
+    task_id: Option(Int),
+    card_id: Option(Int),
+    outcome: String,
+    suppression_reason: Option(String),
+    user_id: Option(Int),
+    template_id: Option(Int),
+    template_version: Option(Int),
+    created_task_id: Option(Int),
+    created_at: Option(String),
+  )
+}
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -940,6 +957,63 @@ pub fn insert_work_session(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) { "insert_work_session: " <> string.inspect(e) })
+}
+
+// =============================================================================
+// Rule Execution Operations
+// =============================================================================
+
+/// Insert one automation execution row for seed history and metrics screens.
+pub fn insert_rule_execution(
+  db: pog.Connection,
+  opts: RuleExecutionInsertOptions,
+) -> Result(Int, String) {
+  let base_cols =
+    "rule_id, event_key, task_id, card_id, outcome, suppression_reason, user_id, template_id, template_version, created_task_id"
+  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10"
+  let base_idx = 11
+
+  let #(cols, vals, _, params) =
+    append_optional_timestamp(
+      base_cols,
+      base_vals,
+      base_idx,
+      "created_at",
+      opts.created_at,
+      [],
+    )
+
+  let sql =
+    "INSERT INTO rule_executions ("
+    <> cols
+    <> ") VALUES ("
+    <> vals
+    <> ") ON CONFLICT DO NOTHING RETURNING id"
+
+  let base_query =
+    pog.query(sql)
+    |> pog.parameter(pog.int(opts.rule_id))
+    |> pog.parameter(pog.text(opts.event_key))
+    |> pog.parameter(pog.nullable(pog.int, opts.task_id))
+    |> pog.parameter(pog.nullable(pog.int, opts.card_id))
+    |> pog.parameter(pog.text(opts.outcome))
+    |> pog.parameter(pog.nullable(pog.text, opts.suppression_reason))
+    |> pog.parameter(pog.nullable(pog.int, opts.user_id))
+    |> pog.parameter(pog.nullable(pog.int, opts.template_id))
+    |> pog.parameter(pog.nullable(pog.int, opts.template_version))
+    |> pog.parameter(pog.nullable(pog.int, opts.created_task_id))
+
+  apply_timestamp_params(base_query, params)
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "insert_rule_execution: " <> string.inspect(e) })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      [] -> Error("Duplicate rule execution event " <> opts.event_key)
+      _ -> Error("No ID")
+    }
+  })
 }
 
 /// Reset all dev seed data and recreate the minimum workspace seed expects.

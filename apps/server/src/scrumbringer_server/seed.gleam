@@ -102,6 +102,7 @@ fn print_summary(stats: seed_builder.SeedResult) {
   io.println("Projects: " <> int.to_string(stats.projects))
   io.println("Users: " <> int.to_string(stats.users))
   io.println("Task types: " <> int.to_string(stats.task_types))
+  io.println("Task templates: " <> int.to_string(stats.task_templates))
   io.println("Workflows: " <> int.to_string(stats.workflows))
   io.println("Rules: " <> int.to_string(stats.rules))
   io.println("Tasks: " <> int.to_string(stats.tasks))

@@ -3,6 +3,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/list
+import gleam/result
 import gleeunit
 import pog
 import scrumbringer_server
@@ -28,6 +29,10 @@ pub fn seed_creates_visible_operational_tasks_under_active_cards_test() {
     fixtures.query_int(db, "select id from projects where name = 'Default'", [])
 
   stats.task_types |> expect.equal(12)
+  stats.task_templates |> expect.equal(8)
+  stats.workflows |> expect.equal(6)
+  stats.rules |> expect.equal(8)
+  stats.rule_executions |> expect.equal(6)
 
   let assert Ok(active_card_count) =
     fixtures.query_int(
@@ -53,6 +58,42 @@ pub fn seed_creates_visible_operational_tasks_under_active_cards_test() {
     )
   seed_capability_count |> expect.equal(6)
 
+  let assert Ok(seed_capability_names) =
+    query_project_string_list(
+      db,
+      "select name from capabilities where project_id = $1 order by id",
+      default_project_id,
+    )
+  seed_capability_names
+  |> expect.equal([
+    "Functional Analysis",
+    "UX Design",
+    "Markup",
+    "Frontend",
+    "Backend",
+    "QA",
+  ])
+
+  let assert Ok(task_type_capabilities) =
+    query_project_string_list(
+      db,
+      "select tt.name || ':' || c.name
+       from task_types tt
+       join capabilities c on c.id = tt.capability_id
+       where tt.project_id = $1
+       order by tt.id",
+      default_project_id,
+    )
+  task_type_capabilities
+  |> expect.equal([
+    "Requirement:Functional Analysis",
+    "UX/UI Design:UX Design",
+    "Markup:Markup",
+    "Frontend:Frontend",
+    "Backend:Backend",
+    "QA:QA",
+  ])
+
   let assert Ok(seed_capabilities_used_by_tasks) =
     fixtures.query_int(
       db,
@@ -68,6 +109,47 @@ pub fn seed_creates_visible_operational_tasks_under_active_cards_test() {
       [pog.int(default_project_id)],
     )
   seed_capabilities_used_by_tasks |> expect.equal(6)
+
+  let assert Ok(default_workflow_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from workflows where project_id = $1",
+      [pog.int(default_project_id)],
+    )
+  default_workflow_count |> expect.equal(3)
+
+  let assert Ok(default_paused_workflow_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from workflows
+       where project_id = $1 and active = false",
+      [pog.int(default_project_id)],
+    )
+  default_paused_workflow_count |> expect.equal(1)
+
+  let assert Ok(default_template_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from task_templates where project_id = $1",
+      [pog.int(default_project_id)],
+    )
+  default_template_count |> expect.equal(4)
+
+  let assert Ok(default_complete_execution_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int
+       from rule_executions re
+       join rules r on r.id = re.rule_id
+       join workflows w on w.id = r.workflow_id
+       where w.project_id = $1
+         and re.outcome = 'applied'
+         and re.template_id is not null
+         and re.created_task_id is not null",
+      [pog.int(default_project_id)],
+    )
+  default_complete_execution_count |> expect.equal(3)
 
   let assert Ok(max_card_depth) =
     fixtures.query_int(
@@ -170,4 +252,22 @@ fn decode_task_count(body: String) -> Int {
       decode.field("tasks", decode.list(decode.dynamic), decode.success),
     )
   list.length(tasks)
+}
+
+fn query_project_string_list(
+  db: pog.Connection,
+  sql: String,
+  project_id: Int,
+) -> Result(List(String), String) {
+  let decoder = {
+    use value <- decode.field(0, decode.string)
+    decode.success(value)
+  }
+
+  pog.query(sql)
+  |> pog.parameter(pog.int(project_id))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+  |> result.map(fn(returned) { returned.rows })
+  |> result.map_error(fn(_) { "query_string_list failed" })
 }
