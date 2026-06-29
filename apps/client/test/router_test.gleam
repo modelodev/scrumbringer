@@ -14,7 +14,7 @@ import scrumbringer_client/url_state
 
 // Story 4.5: New /config/* routes
 pub fn parse_config_members_with_project_test() {
-  let parsed = router.parse_uri(build_uri("/config/members", "?project=2"))
+  let parsed = parse("/config/members", "?project=2")
 
   assert_equal(
     parsed,
@@ -23,8 +23,7 @@ pub fn parse_config_members_with_project_test() {
 }
 
 pub fn parse_config_automation_templates_mode_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/workflows", "?project=2&mode=templates"))
+  let parsed = parse("/config/workflows", "?project=2&mode=templates")
 
   assert_equal(
     parsed,
@@ -33,11 +32,7 @@ pub fn parse_config_automation_templates_mode_test() {
 }
 
 pub fn parse_config_automation_executions_mode_test() {
-  let parsed =
-    router.parse_uri(build_uri(
-      "/config/workflows",
-      "?project=2&mode=executions",
-    ))
+  let parsed = parse("/config/workflows", "?project=2&mode=executions")
 
   assert_equal(
     parsed,
@@ -46,8 +41,7 @@ pub fn parse_config_automation_executions_mode_test() {
 }
 
 pub fn parse_config_automation_engine_selection_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/workflows", "?project=2&engine=3"))
+  let parsed = parse("/config/workflows", "?project=2&engine=3")
 
   assert_equal(
     parsed,
@@ -60,11 +54,7 @@ pub fn parse_config_automation_engine_selection_test() {
 }
 
 pub fn parse_config_automation_rule_selection_with_engine_test() {
-  let parsed =
-    router.parse_uri(build_uri(
-      "/config/workflows",
-      "?project=2&engine=3&rule=8",
-    ))
+  let parsed = parse("/config/workflows", "?project=2&engine=3&rule=8")
 
   assert_equal(
     parsed,
@@ -78,10 +68,7 @@ pub fn parse_config_automation_rule_selection_with_engine_test() {
 
 pub fn parse_config_automation_template_selection_test() {
   let parsed =
-    router.parse_uri(build_uri(
-      "/config/workflows",
-      "?project=2&mode=templates&template=12",
-    ))
+    parse("/config/workflows", "?project=2&mode=templates&template=12")
 
   assert_equal(
     parsed,
@@ -95,10 +82,7 @@ pub fn parse_config_automation_template_selection_test() {
 
 pub fn parse_config_automation_execution_selection_test() {
   let parsed =
-    router.parse_uri(build_uri(
-      "/config/workflows",
-      "?project=2&mode=executions&execution=101",
-    ))
+    parse("/config/workflows", "?project=2&mode=executions&execution=101")
 
   assert_equal(
     parsed,
@@ -111,8 +95,7 @@ pub fn parse_config_automation_execution_selection_test() {
 }
 
 pub fn parse_config_automation_unknown_mode_redirects_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/workflows", "?project=2&mode=metrics"))
+  let parsed = parse("/config/workflows", "?project=2&mode=metrics")
 
   assert_equal(
     parsed,
@@ -156,8 +139,7 @@ pub fn page_title_for_automation_modes_uses_single_console_title_test() {
 }
 
 pub fn parse_invalid_automation_rule_selection_redirects_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/workflows", "?project=2&rule=nope"))
+  let parsed = parse("/config/workflows", "?project=2&rule=nope")
 
   assert_equal(
     parsed,
@@ -166,8 +148,7 @@ pub fn parse_invalid_automation_rule_selection_redirects_test() {
 }
 
 pub fn parse_config_mode_outside_automations_redirects_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/members", "?project=2&mode=templates"))
+  let parsed = parse("/config/members", "?project=2&mode=templates")
 
   assert_equal(
     parsed,
@@ -176,7 +157,7 @@ pub fn parse_config_mode_outside_automations_redirects_test() {
 }
 
 pub fn parse_config_unknown_section_redirects_to_members_test() {
-  let parsed = router.parse_uri(build_uri("/config/unknown", "?project=2"))
+  let parsed = parse("/config/unknown", "?project=2")
 
   assert_equal(
     parsed,
@@ -185,8 +166,7 @@ pub fn parse_config_unknown_section_redirects_to_members_test() {
 }
 
 pub fn parse_config_member_scope_redirects_to_canonical_config_test() {
-  let parsed =
-    router.parse_uri(build_uri("/config/members", "?project=2&scope=mine"))
+  let parsed = parse("/config/members", "?project=2&scope=mine")
 
   assert_equal(
     parsed,
@@ -195,44 +175,44 @@ pub fn parse_config_member_scope_redirects_to_canonical_config_test() {
 }
 
 pub fn parse_member_pool_with_project_test() {
-  let parsed = router.parse_uri(build_uri("/app/pool", "?project=2"))
+  let parsed = parse("/app/pool", "?project=2")
 
   assert_equal(parsed, router.Parsed(member_route(Some(2), None)))
 }
 
 pub fn parse_member_unknown_section_redirects_to_pool_test() {
-  let parsed = router.parse_uri(build_uri("/app/unknown", "?project=2"))
+  let parsed = parse("/app/unknown", "?project=2")
 
   assert_equal(parsed, router.Redirect(member_route(Some(2), None)))
 }
 
 pub fn parse_accept_invite_token_test() {
-  let parsed = router.parse_uri(build_uri("/accept-invite", "?token=il_token"))
+  let parsed = parse("/accept-invite", "?token=il_token")
 
   assert_equal(parsed, router.Parsed(router.AcceptInvite("il_token")))
 }
 
 pub fn parse_org_team_test() {
-  let parsed = router.parse_uri(build_uri("/org/team", ""))
+  let parsed = parse("/org/team", "")
 
   assert_equal(parsed, router.Parsed(router.Org(permissions.Team)))
 }
 
 pub fn parse_org_api_tokens_test() {
-  let parsed = router.parse_uri(build_uri("/org/api-tokens", ""))
+  let parsed = parse("/org/api-tokens", "")
 
   assert_equal(parsed, router.Parsed(router.Org(permissions.ApiTokens)))
 }
 
 pub fn parse_org_unknown_section_redirects_to_invites_test() {
-  let parsed = router.parse_uri(build_uri("/org/unknown", ""))
+  let parsed = parse("/org/unknown", "")
 
   assert_equal(parsed, router.Redirect(router.Org(permissions.Invites)))
 }
 
 // Story 4.5: Invalid project redirects to Config with None
 pub fn parse_invalid_project_redirects_and_drops_project_test() {
-  let parsed = router.parse_uri(build_uri("/config/members", "?project=nope"))
+  let parsed = parse("/config/members", "?project=nope")
 
   // Invalid project is dropped via redirect
   assert_equal(
@@ -242,13 +222,13 @@ pub fn parse_invalid_project_redirects_and_drops_project_test() {
 }
 
 pub fn parse_member_invalid_view_redirects_test() {
-  let parsed = router.parse_uri(build_uri("/app/pool", "?view=nope"))
+  let parsed = parse("/app/pool", "?view=nope")
 
   assert_equal(parsed, router.Redirect(member_route(None, None)))
 }
 
 pub fn parse_member_removed_list_view_redirects_test() {
-  let parsed = router.parse_uri(build_uri("/app/pool", "?view=list"))
+  let parsed = parse("/app/pool", "?view=list")
 
   assert_equal(parsed, router.Redirect(member_route(None, None)))
 }
@@ -256,14 +236,14 @@ pub fn parse_member_removed_list_view_redirects_test() {
 // Story 4.4: Mobile keeps pool route in 3-panel layout
 pub fn mobile_keeps_pool_route_test() {
   assert_equal(
-    router.parse_uri(build_uri("/app/pool", "?project=2")),
+    parse("/app/pool", "?project=2"),
     router.Parsed(member_route(Some(2), None)),
   )
 }
 
 pub fn desktop_keeps_pool_route_test() {
   assert_equal(
-    router.parse_uri(build_uri("/app/pool", "?project=2")),
+    parse("/app/pool", "?project=2"),
     router.Parsed(member_route(Some(2), None)),
   )
 }
@@ -276,6 +256,10 @@ fn parse_formatted(url: String) -> router.ParseResult {
     [q, ..] -> "?" <> q
   }
 
+  parse(pathname, search)
+}
+
+fn parse(pathname, search) {
   router.parse_uri(build_uri(pathname, search))
 }
 
@@ -506,7 +490,7 @@ pub fn roundtrip_org_api_tokens_test() {
 
 pub fn parse_unknown_member_route_redirects_to_pool_test() {
   assert_equal(
-    router.parse_uri(build_uri("/app/unknown-member-route", "")),
+    parse("/app/unknown-member-route", ""),
     router.Redirect(member_route(None, None)),
   )
 }
@@ -518,7 +502,7 @@ pub fn roundtrip_member_cards_with_project_test() {
 
 pub fn parse_removed_tracking_view_redirects_to_pool_test() {
   assert_equal(
-    router.parse_uri(build_uri("/app/pool", "?project=2&view=hierarchies")),
+    parse("/app/pool", "?project=2&view=hierarchies"),
     router.Redirect(member_route(Some(2), None)),
   )
 }

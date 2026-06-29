@@ -3239,6 +3239,29 @@ Estado de ejecucion:
   - total Gleam actual: `196.551` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.463` lineas;
   - deficit restante para `-20k`: `2.537` lineas.
+- Cuadragesimosexto pase de helper de parseo en Router Test:
+  - cambio aplicado: extraido `parse(pathname, search)` en
+    `router_test.gleam` para centralizar las llamadas repetidas a
+    `router.parse_uri(build_uri(...))`;
+  - codigo eliminado: llamadas anidadas repetidas en tests de parseo de
+    rutas, configuracion y automatizaciones, ademas de la duplicacion interna
+    de `parse_formatted`;
+  - limite deliberado: no se creo DSL global de rutas ni builder compartido;
+    `build_uri` sigue local y tipado porque el modulo prueba conversiones URI
+    concretas y los casos de `Parsed`/`Redirect` deben permanecer explicitos;
+  - delta adicional: `-16` lineas Gleam mantenidas netas;
+  - V/C/R: valor bajo-medio, complejidad baja, riesgo bajo. Reduce ruido en
+    tests puros de router sin cambiar contratos de serializacion ni parseo;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el cuadragesimosexto pase:
+  - total Gleam actual: `196.535` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.479` lineas;
+  - deficit restante para `-20k`: `2.521` lineas.
 
 ## Orden recomendado de ejecucion
 
