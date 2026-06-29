@@ -493,7 +493,6 @@ src/
 apps/server/test/
 ├── scrumbringer_server_test.gleam  # Main test entry
 ├── fixtures.gleam                   # Shared test fixtures and bootstrap
-├── test_runner.gleam                # Custom sequential test runner
 ├── support/                         # Test helpers
 │   ├── test_helpers.gleam           # Factory functions for domain objects
 │   └── test_db.gleam                # Transaction isolation helpers

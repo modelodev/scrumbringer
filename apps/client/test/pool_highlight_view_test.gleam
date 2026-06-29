@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/int
 import gleam/option.{None}
 import gleam/string
@@ -10,6 +11,7 @@ import domain/task.{type Task, type TaskDependency, Task}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/member/positions as member_positions
 import scrumbringer_client/features/pool/view_config as pool_view
 
 fn pool_callbacks() -> pool_view.Callbacks(String) {
@@ -170,4 +172,41 @@ pub fn pool_card_applies_created_highlight_info_class_test() {
   render_assertions.contains(created_html, "is-highlight-source")
   render_assertions.contains(created_html, "highlight-info")
   render_assertions.not_contains(other_html, "highlight-info")
+}
+
+pub fn pool_card_default_position_stays_stable_after_previous_card_is_saved_test() {
+  let moved = make_task(13, 0, [])
+  let next = make_task(12, 0, [])
+  let later = make_task(24, 0, [])
+
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      let positions = member.positions
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_tasks: Loaded([moved, next, later]),
+        ),
+        positions: member_positions.Model(
+          ..positions,
+          member_positions_by_task: dict.from_list([#(13, #(110, 93))]),
+        ),
+      )
+    })
+
+  let moved_html =
+    pool_view.view_task_card(pool_context(model), moved)
+    |> render_assertions.html
+  let next_html =
+    pool_view.view_task_card(pool_context(model), next)
+    |> render_assertions.html
+
+  render_assertions.contains(moved_html, "left:max(0px,110px)")
+  render_assertions.contains(moved_html, "top:max(0px,93px)")
+  render_assertions.contains(next_html, "left:max(0px,172px)")
+  render_assertions.contains(next_html, "top:max(0px,12px)")
+  render_assertions.not_contains(next_html, "left:max(0px,12px)")
 }

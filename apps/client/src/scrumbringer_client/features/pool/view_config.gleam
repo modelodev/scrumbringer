@@ -345,21 +345,14 @@ fn hidden_blocked_count(context: Context(msg), task_id: Int) -> opt.Option(Int) 
 fn task_position(context: Context(msg), task_id: Int) -> #(Int, Int) {
   case dict.get(context.positions.member_positions_by_task, task_id) {
     Ok(xy) -> xy
-    Error(_) -> initial_task_position(unpositioned_task_index(context, task_id))
+    Error(_) -> initial_task_position(task_list_index(context, task_id))
   }
 }
 
-fn unpositioned_task_index(context: Context(msg), task_id: Int) -> Int {
+fn task_list_index(context: Context(msg), task_id: Int) -> Int {
   let tasks =
     context.pool.member_tasks
     |> unwrap([])
-    |> list.filter(fn(task) {
-      let Task(id: id, ..) = task
-      case dict.get(context.positions.member_positions_by_task, id) {
-        Ok(_) -> False
-        Error(_) -> True
-      }
-    })
 
   case
     list.index_map(tasks, fn(task, index) {

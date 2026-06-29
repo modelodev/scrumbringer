@@ -3443,6 +3443,35 @@ Estado de ejecucion:
   - total Gleam actual: `193.161` lineas;
   - reduccion real frente al baseline de `214.014`: `-20.853` lineas;
   - margen sobre el objetivo `-20k`: `853` lineas.
+- Pase de estabilizacion del drag del Pool tras validacion agent-browser:
+  - hallazgo: al persistir la posicion de una task, las tasks no posicionadas
+    se reindexaban porque el fallback de `view_config.gleam` calculaba la
+    posicion inicial excluyendo las tasks ya posicionadas;
+  - cambio aplicado: el fallback usa el indice estable de la lista visible
+    completa, de modo que guardar una posicion no desplaza las demas tasks;
+  - test nuevo: `pool_card_default_position_stays_stable_after_previous_card_is_saved_test`;
+  - verificacion:
+    - `cd apps/client && gleam format src/scrumbringer_client/features/pool/view_config.gleam test/pool_highlight_view_test.gleam && gleam test`
+      (`1767 passed`);
+    - agent-browser AU-03: tras drag de `task-card-13`, solo esa task cambia de
+      `left/top` (`12,12` -> `110,93`); `task-card-12`, `task-card-24`,
+      `task-card-11`, `task-card-23` y `task-card-10` mantienen sus coordenadas;
+    - reload de `/app/pool?project=1&view=pool` conserva `task-card-13` en
+      `110,93`;
+    - consulta directa:
+      `select task_id,user_id,x,y from task_positions order by task_id,user_id;`
+      devuelve `13|1|110|93`.
+- Auditoria de contabilidad tras estabilizacion AU-03:
+  - total Gleam actual: `193.193` lineas;
+  - reduccion real frente al baseline de `214.014`: `-20.821` lineas;
+  - margen sobre el objetivo `-20k`: `821` lineas.
+- Verificacion final post-AU-03:
+  - `cd apps/client && gleam format --check src test && gleam test`
+    (`1767 passed`);
+  - `cd shared && gleam format --check src test && gleam test`
+    (`222 passed`);
+  - `cd apps/server && gleam format --check src test && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+    (`553 passed`).
 
 ## Orden recomendado de ejecucion
 
@@ -3572,7 +3601,8 @@ preexistente fuera del alcance y se cree plan/issue separado.
   - `.tmp/agent-browser-shots/screenshot-1782696446014.png` mobile Pool;
   - `.tmp/agent-browser-shots/screenshot-1782696456927.png` mobile Task Show;
   - `.tmp/agent-browser-shots/screenshot-1782696465788.png` tablet Task Show;
-  - `.tmp/agent-browser-shots/screenshot-1782696514164.png` desktop anotado.
+  - `.tmp/agent-browser-shots/screenshot-1782696514164.png` desktop anotado;
+  - `.tmp/agent-browser-shots/screenshot-1782697183320.png` Pool tras drag AU-03.
 - Network: `npx agent-browser --session-name scrumbringer-refactor network requests --type xhr,fetch --status 400-599`
   devolvio `No requests captured` tras los flujos navegados.
 
@@ -3580,7 +3610,7 @@ preexistente fuera del alcance y se cree plan/issue separado.
 | --- | --- | --- |
 | AU-01 Login y shell | Pass | Login con `admin@example.com` / `passwordpassword`; shell Pool visible con nav principal, proyecto `Default`, filtros y contadores. |
 | AU-02 Pool pull flow | Pass | `Reclamar a Mis tareas` mueve `P1 - Password reset #13` a `MIS TAREAS (1)` con acciones `Empezar`/`Liberar`; `Liberar` devuelve `MIS TAREAS (0)`. |
-| AU-03 Drag en Pool | No concluyente | `agent-browser drag` y `mouse down/move/up` sobre handles `Arrastrar` no dispararon reordenado; el Pool permanecio estable y sin requests fallidas, pero no queda probado que el orden cambie correctamente con un drag humano real. |
+| AU-03 Drag en Pool | Pass | Reproducido con `mouse down/move/up` sobre el handle `Arrastrar` de `task-card-13`; antes del fix se observo que otras tasks se reindexaban, se corrigio el fallback de posicion y se repitio el flujo: solo `task-card-13` cambia de `12,12` a `110,93`; las siguientes tasks mantienen `172,12`, `332,12`, `492,12`, `652,12`, `12,172`; reload conserva la posicion y PostgreSQL contiene `13|1|110|93`. |
 | AU-04 Card show | Pass | Abierto desde Task Show; tabs `Trabajo`, `Resumen`, `Notas`, `Actividad`; menus `Abrir en` y `Acciones` se cierran mutuamente y no quedan simultaneos. |
 | AU-05 Task show | Pass | Abierto desde Pool; tabs `Detalles`, `Bloqueos`, `Notas`, `Actividad`; menus `Abrir en` y `Acciones` se cierran mutuamente. |
 | AU-06 Plan estructura | Pass | Plan carga jerarquia, tabla y detalle de `P1 - Sprint Planning #1`; acciones y filtros visibles. |
@@ -3591,8 +3621,9 @@ preexistente fuera del alcance y se cree plan/issue separado.
 | AU-11 Responsive smoke | Pass | Capturas mobile `390x844` y tablet `900x900` en Pool/Task Show; botones de inspector visibles. |
 | AU-12 Reload/consistencia | Pass | Reload de `http://127.0.0.1:18443/app/pool?project=1&view=pool` recupera Pool, proyecto, filtros y tasks sin 4xx/5xx. |
 
-Estado de cierre: el objetivo `-20k` y las suites estan cumplidos, pero el
-gate agent-browser completo todavia no queda demostrado por AU-03.
+Estado de cierre: el objetivo `-20k`, las suites y el gate agent-browser quedan
+cumplidos. AU-03 detecto una regresion real en el drag del Pool, corregida y
+validada con test de regresion, recarga de UI y persistencia en PostgreSQL.
 
 ## Evidencia inicial capturada
 
