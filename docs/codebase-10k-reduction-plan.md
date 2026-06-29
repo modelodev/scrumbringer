@@ -3215,6 +3215,30 @@ Estado de ejecucion:
   - total Gleam actual: `196.622` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.392` lineas;
   - deficit restante para `-20k`: `2.608` lineas.
+- Cuadragesimoquinto pase de helpers locales en People View Test:
+  - cambio aplicado: extraido `update_pool` para concentrar la reconstruccion
+    repetida de `MemberModel(..member, pool: member_pool.Model(..pool, ...))`
+    en `people_view_test.gleam`;
+  - codigo eliminado: bloques locales repetidos de `client_state.update_member`
+    para workload, expansiones, busqueda, filtros, scope y member tasks,
+    renderizados directos duplicados de `people_view.view(people_config(...))`
+    y firmas privadas redundantes donde Gleam puede inferir los tipos;
+  - limite deliberado: no se creo builder compartido de personas ni snapshots;
+    las expectativas visuales, accesibilidad, agrupaciones por card y acciones
+    contextuales siguen explicitas en cada test;
+  - delta adicional: `-71` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce fixture Lustre
+    local sin tocar comportamiento de `people_view` ni los contratos de render;
+  - verificacion:
+    - `cd apps/client && gleam format --check src test && gleam test`
+      (`1777 passed`);
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el cuadragesimoquinto pase:
+  - total Gleam actual: `196.551` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.463` lineas;
+  - deficit restante para `-20k`: `2.537` lineas.
 
 ## Orden recomendado de ejecucion
 

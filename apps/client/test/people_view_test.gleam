@@ -14,9 +14,7 @@ import domain/people_workload.{
 }
 import domain/project_role
 import domain/remote
-import domain/task.{
-  type Task, type WorkSessionsPayload, Task, WorkSession, WorkSessionsPayload,
-}
+import domain/task.{type Task, Task, WorkSession, WorkSessionsPayload}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
 import domain/user.{User}
@@ -32,12 +30,7 @@ import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/i18n/locale
 import support/render_assertions
 
-fn make_task(
-  id: Int,
-  title: String,
-  user_id: Int,
-  mode: task_state.TaskClaimMode,
-) -> Task {
+fn make_task(id, title, user_id, mode) {
   let state =
     task_state.Claimed(
       claimed_by: user_id,
@@ -48,7 +41,7 @@ fn make_task(
   Task(..domain_fixtures.task(id, title, 1), description: None, state: state)
 }
 
-fn task_with_type(task: Task, type_id: Int, type_name: String) -> Task {
+fn task_with_type(task, type_id, type_name) {
   Task(
     ..task,
     type_id: type_id,
@@ -56,16 +49,11 @@ fn task_with_type(task: Task, type_id: Int, type_name: String) -> Task {
   )
 }
 
-fn blocked(task: Task) -> Task {
+fn blocked(task) {
   Task(..task, blocked_count: 1)
 }
 
-fn task_on_card(
-  task: Task,
-  card_id: Int,
-  title: String,
-  color: card.CardColor,
-) -> Task {
+fn task_on_card(task, card_id, title, color) {
   Task(
     ..task,
     card_id: Some(card_id),
@@ -74,11 +62,7 @@ fn task_on_card(
   )
 }
 
-fn make_card(
-  id: Int,
-  parent_card_id: option.Option(Int),
-  title: String,
-) -> card.Card {
+fn make_card(id, parent_card_id, title) {
   card.Card(
     ..domain_fixtures.card(id, 1, title),
     parent_card_id: parent_card_id,
@@ -87,14 +71,11 @@ fn make_card(
   )
 }
 
-fn workload_email(user_id: Int, email: String) -> #(Int, String) {
+fn workload_email(user_id, email) {
   #(user_id, email)
 }
 
-fn with_people(
-  model: client_state.Model,
-  users: List(#(Int, String)),
-) -> client_state.Model {
+fn with_people(model, users) {
   with_people_workload(
     model,
     users
@@ -106,15 +87,18 @@ fn with_people(
   )
 }
 
-fn base_model() -> client_state.Model {
+fn base_model() {
   client_state.default_model()
   |> client_state.update_ui(fn(ui) { ui_state.UiModel(..ui, locale: locale.En) })
 }
 
-fn with_current_user(
-  model: client_state.Model,
-  user_id: Int,
-) -> client_state.Model {
+fn update_pool(model, change) {
+  client_state.update_member(model, fn(member) {
+    member_state.MemberModel(..member, pool: change(member.pool))
+  })
+}
+
+fn with_current_user(model, user_id) {
   client_state.update_core(model, fn(core) {
     client_state.CoreModel(
       ..core,
@@ -183,20 +167,13 @@ fn render_people_with_cards(
   |> render_assertions.html
 }
 
-fn with_people_workload(
-  model: client_state.Model,
-  people_workload: remote.Remote(List(PersonWorkload)),
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(..pool, people_workload: people_workload),
-    )
+fn with_people_workload(model, people_workload) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(..pool, people_workload: people_workload)
   })
 }
 
-fn available_person(user_id: Int, email: String) -> PersonWorkload {
+fn available_person(user_id, email) {
   PersonWorkload(
     user_id: user_id,
     email: email,
@@ -213,108 +190,60 @@ fn available_person(user_id: Int, email: String) -> PersonWorkload {
   )
 }
 
-fn with_people_expanded(
-  model: client_state.Model,
-  user_id: Int,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(
-        ..pool,
-        people_expansions: dict.insert(
-          dict.new(),
-          user_id,
-          people_state.Expanded,
-        ),
-      ),
+fn with_people_expanded(model, user_id) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(
+      ..pool,
+      people_expansions: dict.insert(dict.new(), user_id, people_state.Expanded),
     )
   })
 }
 
-fn with_people_search(
-  model: client_state.Model,
-  search: String,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(..pool, member_people_search_query: search),
+fn with_people_search(model, search) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(..pool, member_people_search_query: search)
+  })
+}
+
+fn with_people_filter(model, filter) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(..pool, member_people_filter: filter)
+  })
+}
+
+fn with_scope(model, scope_kind, selected_depth, selected_card_id) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(
+      ..pool,
+      member_plan_scope_kind: scope_kind,
+      member_card_depth_filter: selected_depth,
+      member_plan_scope_card_id: selected_card_id,
     )
   })
 }
 
-fn with_people_filter(
-  model: client_state.Model,
-  filter: people_state.PeopleVisibilityFilter,
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(..pool, member_people_filter: filter),
+fn with_workload_tasks(model, tasks) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(
+      ..pool,
+      people_workload: refresh_test_workload(pool.people_workload, tasks),
     )
   })
 }
 
-fn with_scope(
-  model: client_state.Model,
-  scope_kind: member_pool.PlanScopeKind,
-  selected_depth: option.Option(Int),
-  selected_card_id: option.Option(Int),
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(
-        ..pool,
-        member_plan_scope_kind: scope_kind,
-        member_card_depth_filter: selected_depth,
-        member_plan_scope_card_id: selected_card_id,
-      ),
-    )
+fn with_member_tasks(model, tasks) {
+  update_pool(model, fn(pool) {
+    member_pool.Model(..pool, member_tasks: remote.Loaded(tasks))
   })
 }
 
-fn with_workload_tasks(
-  model: client_state.Model,
-  tasks: List(Task),
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(
-        ..pool,
-        people_workload: refresh_test_workload(pool.people_workload, tasks),
-      ),
-    )
-  })
-}
-
-fn with_member_tasks(
-  model: client_state.Model,
-  tasks: List(Task),
-) -> client_state.Model {
-  client_state.update_member(model, fn(member) {
-    let pool = member.pool
-    member_state.MemberModel(
-      ..member,
-      pool: member_pool.Model(..pool, member_tasks: remote.Loaded(tasks)),
-    )
-  })
-}
-
-fn person_model(user_id: Int, email: String, tasks: List(Task)) {
+fn person_model(user_id, email, tasks) {
   base_model()
   |> with_people([workload_email(user_id, email)])
   |> with_workload_tasks(tasks)
 }
 
-fn expanded_person_model(user_id: Int, email: String, tasks: List(Task)) {
+fn expanded_person_model(user_id, email, tasks) {
   person_model(user_id, email, tasks)
   |> with_people_expanded(user_id)
 }
@@ -407,7 +336,7 @@ fn task_is_ongoing(task: Task) -> Bool {
   }
 }
 
-fn work_session_payload(task_id: Int) -> WorkSessionsPayload {
+fn work_session_payload(task_id) {
   WorkSessionsPayload(
     active_sessions: [
       WorkSession(
@@ -420,13 +349,13 @@ fn work_session_payload(task_id: Int) -> WorkSessionsPayload {
   )
 }
 
-fn no_refresh_context() -> pool_update.Context {
+fn no_refresh_context() {
   pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
 }
 
 pub fn people_view_loading_state_test() {
   let model = base_model() |> with_people_workload(remote.Loading)
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "Loading people...")
 }
@@ -438,7 +367,7 @@ pub fn people_view_error_state_test() {
       remote.Failed(ApiError(status: 500, code: "E_PEOPLE", message: "boom")),
     )
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "Could not load people")
   render_assertions.contains(html, "people-error")
@@ -446,7 +375,7 @@ pub fn people_view_error_state_test() {
 
 pub fn people_view_empty_roster_state_test() {
   let model = base_model() |> with_people_workload(remote.Loaded([]))
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "No members in this project")
 }
@@ -456,7 +385,7 @@ pub fn people_view_no_results_state_test() {
     person_model(10, "alice@example.com", [])
     |> with_people_search("zzz")
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
   render_assertions.contains(html, "No people match your search")
 }
 
@@ -475,7 +404,7 @@ pub fn people_view_availability_rules_test() {
     ])
     |> with_workload_tasks(tasks)
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "Working now")
   render_assertions.contains(html, "Claimed")
@@ -495,7 +424,7 @@ pub fn people_view_availability_prefers_canonical_ongoing_state_test() {
 
   let model = person_model(10, "ana@example.com", tasks)
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "Working now")
   render_assertions.contains(html, "people-roster-row-working")
@@ -527,7 +456,7 @@ pub fn people_view_surface_summary_and_collapsed_balance_test() {
     ])
     |> with_workload_tasks(tasks)
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(
     html,
@@ -569,7 +498,7 @@ pub fn people_view_expanded_keeps_card_context_in_person_tray_test() {
 
   let model = expanded_person_model(10, "ana@example.com", tasks)
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "Checkout")
   render_assertions.contains(html, "Onboarding")
@@ -705,7 +634,7 @@ pub fn people_view_grouped_reserved_tasks_use_card_header_without_legacy_scope_b
 pub fn people_view_expanded_free_person_reads_as_available_capacity_test() {
   let model = expanded_person_model(10, "ana@example.com", [])
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "No active focus")
   render_assertions.contains(html, "No claimed work")
@@ -743,7 +672,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
       make_task(1, "Active task", 10, task_state.Ongoing),
     ])
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "aria-expanded=\"true\"")
   render_assertions.contains(html, "aria-controls=\"person-details-10\"")
@@ -756,7 +685,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
 pub fn people_view_uses_list_semantics_test() {
   let model = person_model(10, "User #10", [])
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "<ul")
   render_assertions.contains(html, "<li")
@@ -765,7 +694,7 @@ pub fn people_view_uses_list_semantics_test() {
 pub fn people_view_toggle_is_keyboard_accessible_button_test() {
   let model = person_model(10, "ana@example.com", [])
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "<button")
   render_assertions.contains(html, "people-row-toggle")
@@ -785,7 +714,7 @@ pub fn people_view_expanded_separates_active_and_reserved_tasks_test() {
 
   let model = expanded_person_model(10, "ana@example.com", tasks)
 
-  let html = people_view.view(people_config(model)) |> render_assertions.html
+  let html = render_people(model)
 
   render_assertions.contains(html, "Now")
   render_assertions.contains(html, "Claimed, not started")
