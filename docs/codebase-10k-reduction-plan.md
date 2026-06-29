@@ -3262,6 +3262,31 @@ Estado de ejecucion:
   - total Gleam actual: `196.535` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.479` lineas;
   - deficit restante para `-20k`: `2.521` lineas.
+- Cuadragesimoseptimo pase de retirada del test runner Erlang propio:
+  - cambio aplicado: `scrumbringer_server_test.gleam` vuelve al `gleeunit.main()`
+    estandar y se eliminan `test_runner.gleam` y `test_runner_ffi.erl`;
+  - codigo eliminado: FFI Erlang que reimplementaba descubrimiento/ejecucion de
+    tests sobre EUnit, `halt/1` manual y wrapper secuencial ya no necesario tras
+    validar la suite completa;
+  - limite deliberado: no se cambia el modelo de fixtures DB ni se introduce
+    transaccion por test en este pase; la mejora se limita a retirar una capa
+    de infraestructura test-only que el CLI/framework estandar cubre hoy;
+  - delta adicional: `-31` lineas Gleam mantenidas netas y `-48` lineas Erlang
+    test-only fuera del contador Gleam principal;
+  - V/C/R: valor medio, complejidad baja, riesgo medio-bajo. Reduce interop
+    manual y acerca la suite a gleeunit estandar, probado contra todos los tests
+    de servidor con PostgreSQL real;
+  - verificacion:
+    - `cd apps/server && gleam format test/scrumbringer_server_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `cd apps/server && gleam format --check src test` sin incidencias;
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el cuadragesimoseptimo pase:
+  - total Gleam actual: `196.504` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.510` lineas;
+  - deficit restante para `-20k`: `2.490` lineas.
 
 ## Orden recomendado de ejecucion
 
