@@ -1460,6 +1460,19 @@ Estado de ejecucion:
     aportaba reutilizacion;
   - delta adicional WP-10: `-533` lineas mantenidas, tres modulos legacy y tres
     tests directos menos.
+- Micro-pase adicional de retirada de `grouped_list` legacy:
+  - retirado `features/views/grouped_list`, superficie colapsable de tasks por
+    card sin consumidores de produccion; solo quedaban dos tests directos sobre
+    el modulo;
+  - retirados `grouped_list_empty_test` y `grouped_list_task_item_test`, que
+    caracterizaban una vista no montada en el producto actual;
+  - limpiados estilos exclusivos `grouped-list*`, `card-group*` y
+    `card-task-list`;
+  - guardarrail: `rg "grouped_list|GroupedList|grouped-list|card-group-header|card-task-list" apps/client/src apps/client/test -g '*.gleam'` no devuelve referencias;
+  - rechazado portar esta vista a Plan/Capability porque las superficies vivas
+    ya usan componentes especificos compartidos (`card_with_tasks_surface`,
+    `task_item` y vistas feature-owned) y el modulo no estaba montado;
+  - delta adicional WP-10: `-532` lineas mantenidas.
 - Verificacion de micro-pases:
   - `cd shared && gleam format --check src test && gleam test` (`277 passed`);
   - `cd apps/client && gleam format --check src test && gleam test`
@@ -1505,10 +1518,11 @@ Estado de ejecucion:
     `1819 passed` tras retirar `ids.toast_id_eq`;
     `1819 passed` tras privatizar helpers internos de `ui/dialog`;
     `1777 passed` tras consolidar `ui/detail_tabs` en `ui/tabs`;
-    `1770 passed` tras retirar la lista legacy de Member Cards);
+    `1770 passed` tras retirar la lista legacy de Member Cards;
+    `1766 passed` tras retirar `grouped_list` legacy);
   - `cd apps/server && gleam format --check src test && DATABASE_URL=... SB_DB_POOL_SIZE=2 gleam test`
     (`560 passed`; `gleam build` tras privatizar helpers app-specific).
-- Delta acumulado WP-10 tras micro-pases: `-4.686` lineas mantenidas.
+- Delta acumulado WP-10 tras micro-pases: `-5.218` lineas mantenidas.
 
 ### WP-11. i18n, estilos y clases muertas
 

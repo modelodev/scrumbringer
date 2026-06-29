@@ -506,7 +506,6 @@ pub fn css() -> List(String) {
     ".card-work-group-count { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; min-height: 22px; padding: 0 6px; border-radius: var(--sb-radius-pill); background: var(--sb-elevated); color: var(--sb-muted-strong); font-size: var(--sb-font-xs); font-weight: var(--sb-weight-semibold); font-variant-numeric: tabular-nums; }",
     ".card-work-group-empty { color: var(--sb-muted); font-size: var(--sb-font-sm); padding: 8px 10px; border: 1px dashed color-mix(in oklab, var(--sb-border) 80%, transparent); border-radius: 8px; background: color-mix(in oklab, var(--sb-elevated) 82%, transparent); }",
     ".card-work-group-list { display: flex; flex-direction: column; gap: 8px; }",
-    ".card-task-list { display: flex; flex-direction: column; gap: 8px; }",
     ".card-task-item { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-elevated); }",
     ".card-task-status-indicator { font-size: 16px; flex-shrink: 0; }",
     ".card-task-title { flex: 1; font-weight: var(--sb-weight-medium); }",
