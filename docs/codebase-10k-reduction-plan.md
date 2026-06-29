@@ -3053,6 +3053,27 @@ Estado de ejecucion:
   - total Gleam actual: `196.907` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.107` lineas;
   - deficit restante para `-20k`: `2.893` lineas.
+- Trigesimoctavo pase de helpers locales en Automation Rule List:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados y
+    extraidos `render`, `render_rules` y `create_rule_dialog_rules` en
+    `automation_rule_list_test.gleam`;
+  - codigo eliminado: imports de tipos usados solo por firmas privadas,
+    serializaciones `rule_list.view(...) |> render_assertions.html`
+    repetidas y construcciones locales duplicadas de `RuleDialogCreate`;
+  - limite deliberado: no se creo un DSL global de reglas ni builders
+    compartidos de automations; las aserciones de HTML y los datos relevantes
+    de cada escenario siguen visibles en cada test;
+  - delta adicional: `-39` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce setup de render
+    sin esconder las expectativas funcionales de builder, filtros, i18n y
+    paneles de templates;
+  - verificacion:
+    - `cd apps/client && gleam format test/automation_rule_list_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el trigesimoctavo pase:
+  - total Gleam actual: `196.868` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.146` lineas;
+  - deficit restante para `-20k`: `2.854` lineas.
 
 ## Orden recomendado de ejecucion
 

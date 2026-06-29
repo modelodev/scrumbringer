@@ -8,11 +8,8 @@ import support/render_assertions
 
 import domain/automation
 import domain/remote.{Loaded, NotAsked}
-import domain/task_type.{type TaskType, TaskType}
-import domain/workflow.{
-  type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
-  RuleTemplate, TaskTemplate, Workflow,
-}
+import domain/task_type.{TaskType}
+import domain/workflow.{Rule, RuleTemplate, TaskTemplate, Workflow}
 import scrumbringer_client/api/workflows/rule_metrics as api_rule_metrics
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/features/automations/focus_target as automation_focus
@@ -21,7 +18,7 @@ import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 
-fn engine(id: Int, name: String) -> Workflow {
+fn engine(id, name) {
   Workflow(
     id: id,
     org_id: 1,
@@ -35,7 +32,7 @@ fn engine(id: Int, name: String) -> Workflow {
   )
 }
 
-fn task_type() -> TaskType {
+fn task_type() {
   TaskType(
     id: 5,
     name: "Bug",
@@ -45,7 +42,7 @@ fn task_type() -> TaskType {
   )
 }
 
-fn rule_template() -> RuleTemplate {
+fn rule_template() {
   RuleTemplate(
     id: 11,
     org_id: 1,
@@ -61,7 +58,7 @@ fn rule_template() -> RuleTemplate {
   )
 }
 
-fn task_template() -> TaskTemplate {
+fn task_template() {
   TaskTemplate(
     id: 12,
     org_id: 1,
@@ -79,7 +76,7 @@ fn task_template() -> TaskTemplate {
   )
 }
 
-fn docs_template() -> TaskTemplate {
+fn docs_template() {
   TaskTemplate(
     id: 13,
     org_id: 1,
@@ -97,7 +94,7 @@ fn docs_template() -> TaskTemplate {
   )
 }
 
-fn card_variable_template() -> TaskTemplate {
+fn card_variable_template() {
   TaskTemplate(
     id: 14,
     org_id: 1,
@@ -115,7 +112,7 @@ fn card_variable_template() -> TaskTemplate {
   )
 }
 
-fn rule() -> Rule {
+fn rule() {
   Rule(
     id: 9,
     workflow_id: 3,
@@ -129,7 +126,7 @@ fn rule() -> Rule {
   )
 }
 
-fn rules_state() -> admin_rules.Model {
+fn rules_state() {
   admin_rules.Model(
     ..admin_rules.default_model(),
     rules_engine_id: opt.Some(3),
@@ -153,7 +150,7 @@ fn rules_state() -> admin_rules.Model {
   )
 }
 
-fn config() -> rule_list.Config(String) {
+fn config() {
   rule_list.Config(
     locale: locale.En,
     theme: theme.Default,
@@ -201,23 +198,34 @@ fn config() -> rule_list.Config(String) {
   )
 }
 
+fn render(config) {
+  rule_list.view(config)
+  |> render_assertions.html
+}
+
+fn render_rules(rules) {
+  render(rule_list.Config(..config(), rules: rules))
+}
+
+fn create_rule_dialog_rules() {
+  admin_rules.Model(
+    ..rules_state(),
+    rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+  )
+}
+
 pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
   let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
-          rule_form_name: "Delivery review",
-          rule_form_subject: "card",
-          rule_form_event: "card_closed",
-          rule_form_card_scope: "2",
-          rule_form_template_id: "12",
-        ),
+    render_rules(
+      admin_rules.Model(
+        ..create_rule_dialog_rules(),
+        rule_form_name: "Delivery review",
+        rule_form_subject: "card",
+        rule_form_event: "card_closed",
+        rule_form_card_scope: "2",
+        rule_form_template_id: "12",
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "Card automation scope")
   render_assertions.contains(html, "inert")
@@ -253,21 +261,16 @@ pub fn automation_rule_list_renders_card_scope_picker_and_preview_test() {
 
 pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
   let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
-          rule_form_name: "Stale card scope",
-          rule_form_subject: "card",
-          rule_form_event: "card_activated",
-          rule_form_card_scope: "9",
-          rule_form_template_id: "12",
-        ),
+    render_rules(
+      admin_rules.Model(
+        ..create_rule_dialog_rules(),
+        rule_form_name: "Stale card scope",
+        rule_form_subject: "card",
+        rule_form_event: "card_activated",
+        rule_form_card_scope: "9",
+        rule_form_template_id: "12",
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "Card level 9 is no longer available.")
   render_assertions.contains(html, "Choose an existing card level or Any card.")
@@ -278,16 +281,12 @@ pub fn automation_rule_builder_rejects_missing_card_depth_scope_test() {
 
 pub fn automation_rule_delete_panel_focuses_title_test() {
   let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogDelete(rule())),
-        ),
+    render_rules(
+      admin_rules.Model(
+        ..rules_state(),
+        rules_dialog_mode: opt.Some(admin_rules.RuleDialogDelete(rule())),
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "automation-rule-panel-danger")
   render_assertions.contains(html, "inert")
@@ -303,9 +302,7 @@ pub fn automation_rule_delete_panel_focuses_title_test() {
 }
 
 pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() {
-  let html =
-    rule_list.view(config())
-    |> render_assertions.html
+  let html = render(config())
 
   render_assertions.contains(html, "Rules - Release automation")
   render_assertions.contains(html, "Back to Automations")
@@ -339,9 +336,7 @@ pub fn automation_rule_list_renders_rules_from_config_without_root_model_test() 
 }
 
 pub fn automation_rule_list_localizes_rule_meta_labels_test() {
-  let html =
-    rule_list.view(rule_list.Config(..config(), locale: locale.Es))
-    |> render_assertions.html
+  let html = render(rule_list.Config(..config(), locale: locale.Es))
 
   render_assertions.contains(html, "Motor:")
   render_assertions.contains(html, "Plantilla:")
@@ -354,22 +349,13 @@ pub fn automation_rule_list_localizes_rule_meta_labels_test() {
 }
 
 pub fn automation_rule_list_renders_empty_state_from_config_without_root_model_test() {
-  let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(..rules_state(), rules: Loaded([])),
-      ),
-    )
-    |> render_assertions.html
+  let html = render_rules(admin_rules.Model(..rules_state(), rules: Loaded([])))
 
   render_assertions.contains(html, "No rules yet")
 }
 
 pub fn automation_rule_list_marks_selected_rule_test() {
-  let html =
-    rule_list.view(rule_list.Config(..config(), selected_rule_id: opt.Some(9)))
-    |> render_assertions.html
+  let html = render(rule_list.Config(..config(), selected_rule_id: opt.Some(9)))
 
   render_assertions.contains(html, "data-testid=\"automation-rule-row\"")
   render_assertions.contains(html, "role=\"button\"")
@@ -389,21 +375,16 @@ pub fn automation_rule_list_activation_keys_match_button_behavior_test() {
 
 pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_test() {
   let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
-          rule_form_name: "Follow-up when bug closes",
-          rule_form_subject: "task",
-          rule_form_task_type_id: "5",
-          rule_form_event: "task_closed",
-          rule_form_template_id: "12",
-        ),
+    render_rules(
+      admin_rules.Model(
+        ..create_rule_dialog_rules(),
+        rule_form_name: "Follow-up when bug closes",
+        rule_form_subject: "task",
+        rule_form_task_type_id: "5",
+        rule_form_event: "task_closed",
+        rule_form_template_id: "12",
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "automation-rule-panel")
   render_assertions.contains(html, "data-testid=\"automation-rule-builder\"")
@@ -437,7 +418,7 @@ pub fn automation_rule_list_renders_rule_builder_from_config_without_root_model_
 
 pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test() {
   let html =
-    rule_list.view(
+    render(
       rule_list.Config(
         ..config(),
         template_panel_open: True,
@@ -449,8 +430,7 @@ pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test
           [text("template panel")],
         ),
         rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          ..create_rule_dialog_rules(),
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
@@ -458,7 +438,6 @@ pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test
         ),
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"automation-rule-builder\"")
   render_assertions.contains(html, "data-testid=\"automation-template-panel\"")
@@ -469,21 +448,16 @@ pub fn automation_rule_builder_opens_template_panel_without_leaving_builder_test
 
 pub fn automation_rule_builder_offers_only_supported_task_events_test() {
   let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
-          rule_form_name: "Follow-up when task changes",
-          rule_form_subject: "task",
-          rule_form_task_type_id: "",
-          rule_form_event: "task_created",
-          rule_form_template_id: "12",
-        ),
+    render_rules(
+      admin_rules.Model(
+        ..create_rule_dialog_rules(),
+        rule_form_name: "Follow-up when task changes",
+        rule_form_subject: "task",
+        rule_form_task_type_id: "",
+        rule_form_event: "task_created",
+        rule_form_template_id: "12",
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "value=\"task_created\"")
   render_assertions.contains(html, "value=\"task_claimed\"")
@@ -503,21 +477,16 @@ pub fn automation_rule_builder_offers_only_supported_task_events_test() {
 
 pub fn automation_rule_builder_offers_only_supported_card_events_test() {
   let html =
-    rule_list.view(
-      rule_list.Config(
-        ..config(),
-        rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
-          rule_form_name: "Follow-up when card changes",
-          rule_form_subject: "card",
-          rule_form_event: "card_activated",
-          rule_form_card_scope: "",
-          rule_form_template_id: "12",
-        ),
+    render_rules(
+      admin_rules.Model(
+        ..create_rule_dialog_rules(),
+        rule_form_name: "Follow-up when card changes",
+        rule_form_subject: "card",
+        rule_form_event: "card_activated",
+        rule_form_card_scope: "",
+        rule_form_template_id: "12",
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "value=\"card_activated\"")
   render_assertions.contains(html, "value=\"card_closed\"")
@@ -533,13 +502,12 @@ pub fn automation_rule_builder_offers_only_supported_card_events_test() {
 
 pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test() {
   let html =
-    rule_list.view(
+    render(
       rule_list.Config(
         ..config(),
         task_templates_project: Loaded([card_variable_template()]),
         rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          ..create_rule_dialog_rules(),
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
@@ -548,7 +516,6 @@ pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test
         ),
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "Card follow-up")
   render_assertions.contains(html, "Review {{card_title}}")
@@ -562,13 +529,12 @@ pub fn automation_rule_builder_disables_save_for_invalid_template_variables_test
 
 pub fn automation_rule_list_localizes_rule_builder_controls_test() {
   let html =
-    rule_list.view(
+    render(
       rule_list.Config(
         ..config(),
         locale: locale.Es,
         rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          ..create_rule_dialog_rules(),
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "card",
           rule_form_event: "card_activated",
@@ -577,7 +543,6 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
         ),
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "Nueva regla")
   render_assertions.contains(html, "Cuando")
@@ -619,13 +584,12 @@ pub fn automation_rule_list_localizes_rule_builder_controls_test() {
 
 pub fn automation_rule_list_template_picker_filters_and_previews_test() {
   let html =
-    rule_list.view(
+    render(
       rule_list.Config(
         ..config(),
         task_templates_project: Loaded([task_template(), docs_template()]),
         rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          ..create_rule_dialog_rules(),
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
@@ -635,7 +599,6 @@ pub fn automation_rule_list_template_picker_filters_and_previews_test() {
         ),
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "Search templates")
   render_assertions.contains(html, "value=\"Follow\"")
@@ -646,13 +609,12 @@ pub fn automation_rule_list_template_picker_filters_and_previews_test() {
 
 pub fn automation_rule_list_template_picker_empty_filter_state_test() {
   let html =
-    rule_list.view(
+    render(
       rule_list.Config(
         ..config(),
         task_templates_project: Loaded([task_template(), docs_template()]),
         rules: admin_rules.Model(
-          ..rules_state(),
-          rules_dialog_mode: opt.Some(admin_rules.RuleDialogCreate),
+          ..create_rule_dialog_rules(),
           rule_form_name: "Follow-up when bug closes",
           rule_form_subject: "task",
           rule_form_task_type_id: "5",
@@ -661,7 +623,6 @@ pub fn automation_rule_list_template_picker_empty_filter_state_test() {
         ),
       ),
     )
-    |> render_assertions.html
 
   render_assertions.contains(html, "No templates match this search.")
   render_assertions.not_contains(html, "Follow-up task")
