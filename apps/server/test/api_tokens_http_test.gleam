@@ -3,13 +3,61 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
+
+fn projects_path() {
+  "/api/v1/projects"
+}
+
+fn project_path(project_id) {
+  projects_path() <> "/" <> int.to_string(project_id)
+}
+
+fn project_tasks_path(project_id) {
+  project_path(project_id) <> "/tasks"
+}
+
+fn project_cards_path(project_id) {
+  project_path(project_id) <> "/cards"
+}
+
+fn card_path(card_id) {
+  "/api/v1/cards/" <> int.to_string(card_id)
+}
+
+fn card_notes_path(card_id) {
+  card_path(card_id) <> "/notes"
+}
+
+fn card_note_path(card_id, note_id) {
+  card_notes_path(card_id) <> "/" <> int.to_string(note_id)
+}
+
+fn task_notes_path(task_id) {
+  "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes"
+}
+
+fn api_tokens_path() {
+  "/api/v1/api-tokens"
+}
+
+fn api_token_path(token_id) {
+  api_tokens_path() <> "/" <> int.to_string(token_id)
+}
+
+fn integration_users_path() {
+  "/api/v1/integration-users"
+}
+
+fn integration_user_path(user_id) {
+  integration_users_path() <> "/" <> int.to_string(user_id)
+}
 
 pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
   let assert Ok(#(app, handler, admin_session)) = fixtures.bootstrap()
@@ -45,10 +93,7 @@ pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
 
   let list_res =
     handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-      )
+      simulate.request(http.Get, project_tasks_path(project_id))
       |> fixtures.with_bearer(token),
     )
   expect.expect_status(list_res, 200)
@@ -57,10 +102,7 @@ pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
     create_active_card(handler, admin_session, project_id, "Imported task card")
   let create_res =
     handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-      )
+      simulate.request(http.Post, project_tasks_path(project_id))
       |> fixtures.with_bearer(token)
       |> simulate.json_body(
         json.object([
@@ -79,7 +121,7 @@ pub fn bearer_token_can_list_and_create_tasks_without_csrf_test() {
       db,
       "select count(*) from api_token_audit_log where endpoint = $1 and status = 200",
       [
-        pog.text("/api/v1/projects/" <> int.to_string(project_id) <> "/tasks"),
+        pog.text(project_tasks_path(project_id)),
       ],
     )
   let assert True = audit_count >= 2
@@ -118,10 +160,7 @@ pub fn bearer_write_requires_write_scope_test() {
 
   let res =
     handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-      )
+      simulate.request(http.Post, project_tasks_path(project_id))
       |> fixtures.with_bearer(token)
       |> simulate.json_body(
         json.object([
@@ -170,10 +209,7 @@ pub fn bearer_project_limit_blocks_other_projects_test() {
 
   let res =
     handler(
-      simulate.request(
-        http.Get,
-        "/api/v1/projects/" <> int.to_string(project_b) <> "/tasks",
-      )
+      simulate.request(http.Get, project_tasks_path(project_b))
       |> fixtures.with_bearer(token),
     )
 
@@ -185,7 +221,7 @@ pub fn invalid_bearer_does_not_fallback_to_cookie_test() {
 
   let res =
     handler(
-      simulate.request(http.Get, "/api/v1/projects")
+      simulate.request(http.Get, projects_path())
       |> fixtures.with_auth(admin_session)
       |> fixtures.with_bearer("sbt_missing_bad"),
     )
@@ -253,20 +289,14 @@ pub fn bearer_can_operate_cards_and_notes_test() {
     )
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
-    )
+    simulate.request(http.Get, project_cards_path(project_id))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
 
   let create_card_res =
     handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
-      )
+      simulate.request(http.Post, project_cards_path(project_id))
       |> fixtures.with_bearer(token)
       |> simulate.json_body(
         json.object([
@@ -281,10 +311,7 @@ pub fn bearer_can_operate_cards_and_notes_test() {
     fixtures.decode_data_entity_id(simulate.read_body(create_card_res), "card")
 
   handler(
-    simulate.request(
-      http.Patch,
-      "/api/v1/cards/" <> int.to_string(created_card_id),
-    )
+    simulate.request(http.Patch, card_path(created_card_id))
     |> fixtures.with_bearer(token)
     |> simulate.json_body(
       json.object([
@@ -296,26 +323,20 @@ pub fn bearer_can_operate_cards_and_notes_test() {
   |> expect.expect_status(200)
 
   handler(
-    simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(card_id))
+    simulate.request(http.Get, card_path(card_id))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-    )
+    simulate.request(http.Get, card_notes_path(card_id))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
 
   let card_note_res =
     handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
-      )
+      simulate.request(http.Post, card_notes_path(card_id))
       |> fixtures.with_bearer(token)
       |> simulate.json_body(
         json.object([
@@ -328,31 +349,19 @@ pub fn bearer_can_operate_cards_and_notes_test() {
     fixtures.decode_data_entity_id(simulate.read_body(card_note_res), "note")
 
   handler(
-    simulate.request(
-      http.Delete,
-      "/api/v1/cards/"
-        <> int.to_string(card_id)
-        <> "/notes/"
-        <> int.to_string(card_note_id),
-    )
+    simulate.request(http.Delete, card_note_path(card_id, card_note_id))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(204)
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-    )
+    simulate.request(http.Get, task_notes_path(task_id))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
 
   handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
-    )
+    simulate.request(http.Post, task_notes_path(task_id))
     |> fixtures.with_bearer(token)
     |> simulate.json_body(
       json.object([
@@ -399,10 +408,7 @@ pub fn project_api_token_grants_access_without_membership_test() {
   expect.equal(member_count, 0)
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
+    simulate.request(http.Get, project_tasks_path(project_id))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
@@ -410,10 +416,7 @@ pub fn project_api_token_grants_access_without_membership_test() {
   let assert Ok(card_id) =
     create_active_card(handler, admin_session, project_id, "Imported task card")
   handler(
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
+    simulate.request(http.Post, project_tasks_path(project_id))
     |> fixtures.with_bearer(token)
     |> simulate.json_body(
       json.object([
@@ -460,7 +463,7 @@ pub fn org_wide_api_token_can_list_existing_projects_test() {
 
   let res =
     handler(
-      simulate.request(http.Get, "/api/v1/projects")
+      simulate.request(http.Get, projects_path())
       |> fixtures.with_bearer(token),
     )
 
@@ -469,10 +472,7 @@ pub fn org_wide_api_token_can_list_existing_projects_test() {
   |> expect.equal(["Alpha", "Default", "Future", "Zulu"])
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_c) <> "/tasks",
-    )
+    simulate.request(http.Get, project_tasks_path(project_c))
     |> fixtures.with_bearer(token),
   )
   |> expect.expect_status(200)
@@ -541,10 +541,7 @@ pub fn api_token_name_can_be_renamed_without_changing_grant_test() {
 
   let res =
     handler(
-      simulate.request(
-        http.Patch,
-        "/api/v1/api-tokens/" <> int.to_string(token_id),
-      )
+      simulate.request(http.Patch, api_token_path(token_id))
       |> fixtures.with_auth(admin_session)
       |> simulate.json_body(json.object([#("name", json.string("docs bot"))])),
     )
@@ -577,7 +574,7 @@ pub fn integration_users_report_active_token_count_test() {
 
   let res =
     handler(
-      simulate.request(http.Get, "/api/v1/integration-users")
+      simulate.request(http.Get, integration_users_path())
       |> fixtures.with_auth(admin_session),
     )
 
@@ -608,28 +605,19 @@ pub fn integration_user_deactivate_requires_no_active_tokens_test() {
     )
 
   handler(
-    simulate.request(
-      http.Delete,
-      "/api/v1/integration-users/" <> int.to_string(integration_user_id),
-    )
+    simulate.request(http.Delete, integration_user_path(integration_user_id))
     |> fixtures.with_auth(admin_session),
   )
   |> expect.expect_status(409)
 
   handler(
-    simulate.request(
-      http.Delete,
-      "/api/v1/api-tokens/" <> int.to_string(token_id),
-    )
+    simulate.request(http.Delete, api_token_path(token_id))
     |> fixtures.with_auth(admin_session),
   )
   |> expect.expect_status(204)
 
   handler(
-    simulate.request(
-      http.Delete,
-      "/api/v1/integration-users/" <> int.to_string(integration_user_id),
-    )
+    simulate.request(http.Delete, integration_user_path(integration_user_id))
     |> fixtures.with_auth(admin_session),
   )
   |> expect.expect_status(204)
@@ -644,7 +632,7 @@ pub fn integration_user_deactivate_requires_no_active_tokens_test() {
 
   let tokens_res =
     handler(
-      simulate.request(http.Get, "/api/v1/api-tokens")
+      simulate.request(http.Get, api_tokens_path())
       |> fixtures.with_auth(admin_session),
     )
   expect.expect_status(tokens_res, 200)
@@ -699,10 +687,7 @@ pub fn bearer_revoked_expired_and_unsupported_routes_are_rejected_test() {
     )
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
+    simulate.request(http.Get, project_tasks_path(project_id))
     |> fixtures.with_bearer(expired_token),
   )
   |> expect.expect_status(401)
@@ -717,30 +702,19 @@ pub fn bearer_revoked_expired_and_unsupported_routes_are_rejected_test() {
     )
 
   handler(
-    simulate.request(
-      http.Delete,
-      "/api/v1/api-tokens/" <> int.to_string(token_id),
-    )
+    simulate.request(http.Delete, api_token_path(token_id))
     |> fixtures.with_auth(admin_session),
   )
   |> expect.expect_status(204)
 
   handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-    )
+    simulate.request(http.Get, project_tasks_path(project_id))
     |> fixtures.with_bearer(token_to_revoke),
   )
   |> expect.expect_status(401)
 }
 
-fn create_active_card(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  project_id: Int,
-  title: String,
-) -> Result(Int, String) {
+fn create_active_card(handler, session, project_id, title) {
   use card_id <- result.try(fixtures.create_card(
     handler,
     session,
@@ -754,11 +728,11 @@ fn create_active_card(
 fn create_integration_user(
   handler: fixtures.Handler,
   session: fixtures.Session,
-  email: String,
-) -> Result(Int, String) {
+  email,
+) {
   let res =
     handler(
-      simulate.request(http.Post, "/api/v1/integration-users")
+      simulate.request(http.Post, integration_users_path())
       |> fixtures.with_auth(session)
       |> simulate.json_body(json.object([#("email", json.string(email))])),
     )
@@ -773,13 +747,7 @@ fn create_integration_user(
   }
 }
 
-fn create_api_token(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  integration: String,
-  project_id: Option(Int),
-  scopes: List(String),
-) -> Result(String, String) {
+fn create_api_token(handler, session, integration, project_id, scopes) {
   create_api_token_with_expires(
     handler,
     session,
@@ -791,13 +759,13 @@ fn create_api_token(
 }
 
 fn create_api_token_with_expires(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  integration: String,
-  project_id: Option(Int),
-  scopes: List(String),
-  expires_at: Option(String),
-) -> Result(String, String) {
+  handler,
+  session,
+  integration,
+  project_id,
+  scopes,
+  expires_at,
+) {
   let res =
     create_api_token_response(
       handler,
@@ -814,13 +782,7 @@ fn create_api_token_with_expires(
   }
 }
 
-fn create_api_token_created(
-  handler: fixtures.Handler,
-  session: fixtures.Session,
-  integration: String,
-  project_id: Option(Int),
-  scopes: List(String),
-) -> Result(#(Int, String), String) {
+fn create_api_token_created(handler, session, integration, project_id, scopes) {
   let res =
     create_api_token_response(
       handler,
@@ -841,14 +803,14 @@ fn create_api_token_created(
 fn create_api_token_response(
   handler: fixtures.Handler,
   session: fixtures.Session,
-  integration: String,
-  project_id: Option(Int),
-  scopes: List(String),
-  expires_at: Option(String),
+  integration,
+  project_id,
+  scopes,
+  expires_at,
 ) {
   let res =
     handler(
-      simulate.request(http.Post, "/api/v1/api-tokens")
+      simulate.request(http.Post, api_tokens_path())
       |> fixtures.with_auth(session)
       |> simulate.json_body(
         json.object([
@@ -864,11 +826,11 @@ fn create_api_token_response(
   res
 }
 
-fn decode_project_names(body: String) -> List(String) {
+fn decode_project_names(body) {
   fixtures.require_data_string_list_field(body, "projects", "name")
 }
 
-fn decode_token(body: String) -> Result(String, String) {
+fn decode_token(body) {
   let data_decoder = {
     use token <- decode.field("token", decode.string)
     decode.success(token)
@@ -877,7 +839,7 @@ fn decode_token(body: String) -> Result(String, String) {
   |> result.map_error(fn(_) { "invalid token response" })
 }
 
-fn decode_created_token(body: String) -> Result(#(Int, String), String) {
+fn decode_created_token(body) {
   let token_decoder = {
     use id <- decode.field("id", decode.int)
     decode.success(id)
@@ -891,18 +853,18 @@ fn decode_created_token(body: String) -> Result(#(Int, String), String) {
   |> result.map_error(fn(_) { "invalid created token response" })
 }
 
-fn decode_data(body: String, decoder: decode.Decoder(a)) {
+fn decode_data(body, decoder) {
   json.parse(from: body, using: decode.field("data", decoder, decode.success))
 }
 
-fn option_int_json(value: Option(Int)) -> json.Json {
+fn option_int_json(value) {
   case value {
     None -> json.null()
     Some(id) -> json.int(id)
   }
 }
 
-fn option_string_json(value: Option(String)) -> json.Json {
+fn option_string_json(value) {
   case value {
     None -> json.null()
     Some(raw) -> json.string(raw)

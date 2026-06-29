@@ -3190,6 +3190,31 @@ Estado de ejecucion:
   - total Gleam actual: `196.660` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.354` lineas;
   - deficit restante para `-20k`: `2.646` lineas.
+- Cuadragesimocuarto pase de helpers locales en API Tokens HTTP Test:
+  - cambio aplicado: extraidos helpers privados de ruta para proyectos,
+    project tasks, project cards, cards, notas, API tokens e integration users
+    en `api_tokens_http_test.gleam`;
+  - codigo eliminado: concatenaciones repetidas de rutas bearer para tasks,
+    cards, notes, revocacion de tokens e integration users, ademas de firmas
+    privadas redundantes en decoders y serializadores JSON auxiliares;
+  - limite deliberado: se conservaron literales de rutas usados como casos
+    explicitos de producto (`/api/v1/auth/login`, `/api/v1/org/users`) y no se
+    movieron helpers a fixtures globales porque el contrato bearer del modulo
+    debe seguir siendo local y legible;
+  - delta adicional: `-38` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Centraliza rutas
+    repetidas dentro del test sin cambiar scopes, permisos ni auditoria bearer;
+  - verificacion:
+    - `cd apps/server && gleam format test/api_tokens_http_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `cd apps/server && gleam format --check src test` sin incidencias;
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el cuadragesimocuarto pase:
+  - total Gleam actual: `196.622` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.392` lineas;
+  - deficit restante para `-20k`: `2.608` lineas.
 
 ## Orden recomendado de ejecucion
 
