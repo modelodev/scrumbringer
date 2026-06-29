@@ -2993,6 +2993,26 @@ Estado de ejecucion:
   - total Gleam actual: `197.103` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.911` lineas;
   - deficit restante para `-20k`: `3.089` lineas.
+- Trigesimoquinto pase de firmas privadas en capabilities update:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados en
+    `capabilities_update_test.gleam`, dejando que la inferencia de Gleam derive
+    los tipos desde `admin_messages`, contextos de capabilities y constructores
+    de dominio usados en cada test;
+  - codigo eliminado: imports de tipos usados solo en firmas privadas y firmas
+    repetitivas de helpers `run`, `handle_*` y contextos locales;
+  - limite deliberado: no se tocaron funciones publicas ni modulos de
+    produccion; tampoco se movieron helpers a soporte compartido porque la
+    duplicacion detectada era interna al fichero;
+  - delta adicional: `-75` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad muy baja, riesgo bajo. Reduce ruido en
+    tests de update sin ocultar aserciones ni fixtures de dominio;
+  - verificacion:
+    - `cd apps/client && gleam format test/capabilities_update_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el trigesimoquinto pase:
+  - total Gleam actual: `197.028` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.986` lineas;
+  - deficit restante para `-20k`: `3.014` lineas.
 
 ## Orden recomendado de ejecucion
 

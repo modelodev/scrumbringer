@@ -3,8 +3,8 @@ import gleam/option
 
 import lustre/effect
 
-import domain/api_error.{type ApiError, ApiError}
-import domain/capability.{type Capability, Capability}
+import domain/api_error.{ApiError}
+import domain/capability.{Capability}
 import domain/remote
 import scrumbringer_client/api/member_capabilities
 import scrumbringer_client/api/projects as api_projects
@@ -14,7 +14,7 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/capabilities/types as capability_types
 import scrumbringer_client/features/capabilities/update as capabilities_update
 
-fn context(selected_project_id) -> capability_types.Context(Nil) {
+fn context(selected_project_id) {
   capability_types.Context(
     selected_project_id: selected_project_id,
     on_member_capabilities_fetched: fn(_result) { Nil },
@@ -28,7 +28,7 @@ fn context(selected_project_id) -> capability_types.Context(Nil) {
   )
 }
 
-fn feedback_context() -> capability_types.FeedbackContext(Nil) {
+fn feedback_context() {
   capability_types.FeedbackContext(
     capability_created: "Capability created",
     capability_updated: "Capability updated",
@@ -41,7 +41,7 @@ fn feedback_context() -> capability_types.FeedbackContext(Nil) {
   )
 }
 
-fn error_feedback_context() -> capability_types.ErrorFeedbackContext(Nil) {
+fn error_feedback_context() {
   capability_types.ErrorFeedbackContext(
     not_permitted: "Not permitted",
     on_warning_toast: fn(_message) {
@@ -50,13 +50,7 @@ fn error_feedback_context() -> capability_types.ErrorFeedbackContext(Nil) {
   )
 }
 
-fn run(
-  model: admin_capabilities.Model,
-  inner: admin_messages.Msg,
-  context: capability_types.Context(Nil),
-  feedback: capability_types.FeedbackContext(Nil),
-  error_feedback: capability_types.ErrorFeedbackContext(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn run(model, inner, context, feedback, error_feedback) {
   let assert option.Some(capabilities_update.Update(next, fx, _policy)) =
     capabilities_update.try_update(
       model,
@@ -68,10 +62,7 @@ fn run(
   #(next, fx)
 }
 
-fn run_default(
-  model: admin_capabilities.Model,
-  inner: admin_messages.Msg,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn run_default(model, inner) {
   run(
     model,
     inner,
@@ -81,15 +72,11 @@ fn run_default(
   )
 }
 
-fn api_error(message: String) -> ApiError {
+fn api_error(message) {
   ApiError(status: 500, code: "ERROR", message: message)
 }
 
-fn handle_capabilities_fetched_ok(
-  model: admin_capabilities.Model,
-  capabilities: List(Capability),
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capabilities_fetched_ok(model, capabilities, context) {
   run(
     model,
     admin_messages.CapabilitiesFetched(Ok(capabilities)),
@@ -99,11 +86,7 @@ fn handle_capabilities_fetched_ok(
   )
 }
 
-fn handle_member_capabilities_dialog_opened(
-  model: admin_capabilities.Model,
-  user_id: Int,
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_dialog_opened(model, user_id, context) {
   run(
     model,
     admin_messages.MemberCapabilitiesDialogOpened(user_id),
@@ -113,17 +96,11 @@ fn handle_member_capabilities_dialog_opened(
   )
 }
 
-fn handle_member_capabilities_toggled(
-  model: admin_capabilities.Model,
-  capability_id: Int,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_toggled(model, capability_id) {
   run_default(model, admin_messages.MemberCapabilitiesToggled(capability_id))
 }
 
-fn handle_member_capabilities_save_clicked(
-  model: admin_capabilities.Model,
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_save_clicked(model, context) {
   run(
     model,
     admin_messages.MemberCapabilitiesSaveClicked,
@@ -133,28 +110,18 @@ fn handle_member_capabilities_save_clicked(
   )
 }
 
-fn handle_member_capabilities_fetched_ok(
-  model: admin_capabilities.Model,
-  result: member_capabilities.MemberCapabilities,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_fetched_ok(model, result) {
   run_default(model, admin_messages.MemberCapabilitiesFetched(Ok(result)))
 }
 
-fn handle_member_capabilities_fetched_error(
-  model: admin_capabilities.Model,
-  message: String,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_fetched_error(model, message) {
   run_default(
     model,
     admin_messages.MemberCapabilitiesFetched(Error(api_error(message))),
   )
 }
 
-fn handle_member_capabilities_saved_ok(
-  model: admin_capabilities.Model,
-  result: member_capabilities.MemberCapabilities,
-  feedback: capability_types.FeedbackContext(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_saved_ok(model, result, feedback) {
   run(
     model,
     admin_messages.MemberCapabilitiesSaved(Ok(result)),
@@ -164,21 +131,14 @@ fn handle_member_capabilities_saved_ok(
   )
 }
 
-fn handle_member_capabilities_saved_error(
-  model: admin_capabilities.Model,
-  message: String,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_member_capabilities_saved_error(model, message) {
   run_default(
     model,
     admin_messages.MemberCapabilitiesSaved(Error(api_error(message))),
   )
 }
 
-fn handle_capability_members_dialog_opened(
-  model: admin_capabilities.Model,
-  capability_id: Int,
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_dialog_opened(model, capability_id, context) {
   run(
     model,
     admin_messages.CapabilityMembersDialogOpened(capability_id),
@@ -188,17 +148,11 @@ fn handle_capability_members_dialog_opened(
   )
 }
 
-fn handle_capability_members_toggled(
-  model: admin_capabilities.Model,
-  user_id: Int,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_toggled(model, user_id) {
   run_default(model, admin_messages.CapabilityMembersToggled(user_id))
 }
 
-fn handle_capability_members_save_clicked(
-  model: admin_capabilities.Model,
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_save_clicked(model, context) {
   run(
     model,
     admin_messages.CapabilityMembersSaveClicked,
@@ -208,28 +162,18 @@ fn handle_capability_members_save_clicked(
   )
 }
 
-fn handle_capability_members_fetched_ok(
-  model: admin_capabilities.Model,
-  result: api_projects.CapabilityMembers,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_fetched_ok(model, result) {
   run_default(model, admin_messages.CapabilityMembersFetched(Ok(result)))
 }
 
-fn handle_capability_members_fetched_error(
-  model: admin_capabilities.Model,
-  message: String,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_fetched_error(model, message) {
   run_default(
     model,
     admin_messages.CapabilityMembersFetched(Error(api_error(message))),
   )
 }
 
-fn handle_capability_members_saved_ok(
-  model: admin_capabilities.Model,
-  result: api_projects.CapabilityMembers,
-  feedback: capability_types.FeedbackContext(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_saved_ok(model, result, feedback) {
   run(
     model,
     admin_messages.CapabilityMembersSaved(Ok(result)),
@@ -239,26 +183,18 @@ fn handle_capability_members_saved_ok(
   )
 }
 
-fn handle_capability_members_saved_error(
-  model: admin_capabilities.Model,
-  message: String,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_members_saved_error(model, message) {
   run_default(
     model,
     admin_messages.CapabilityMembersSaved(Error(api_error(message))),
   )
 }
 
-fn handle_capability_dialog_opened(
-  model: admin_capabilities.Model,
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_dialog_opened(model) {
   run_default(model, admin_messages.CapabilityCreateDialogOpened)
 }
 
-fn handle_capability_create_submitted(
-  model: admin_capabilities.Model,
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_create_submitted(model, context) {
   run(
     model,
     admin_messages.CapabilityCreateSubmitted,
@@ -268,11 +204,7 @@ fn handle_capability_create_submitted(
   )
 }
 
-fn handle_capability_created_ok(
-  model: admin_capabilities.Model,
-  capability: Capability,
-  feedback: capability_types.FeedbackContext(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_created_ok(model, capability, feedback) {
   run(
     model,
     admin_messages.CapabilityCreated(Ok(capability)),
@@ -282,10 +214,7 @@ fn handle_capability_created_ok(
   )
 }
 
-fn handle_capability_delete_submitted(
-  model: admin_capabilities.Model,
-  context: capability_types.Context(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_delete_submitted(model, context) {
   run(
     model,
     admin_messages.CapabilityDeleteSubmitted,
@@ -295,11 +224,7 @@ fn handle_capability_delete_submitted(
   )
 }
 
-fn handle_capability_deleted_ok(
-  model: admin_capabilities.Model,
-  deleted_id: Int,
-  feedback: capability_types.FeedbackContext(Nil),
-) -> #(admin_capabilities.Model, effect.Effect(Nil)) {
+fn handle_capability_deleted_ok(model, deleted_id, feedback) {
   run(
     model,
     admin_messages.CapabilityDeleted(Ok(deleted_id)),
