@@ -3137,6 +3137,33 @@ Estado de ejecucion:
   - total Gleam actual: `196.788` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.226` lineas;
   - deficit restante para `-20k`: `2.774` lineas.
+- Cuadragesimosegundo pase de helpers locales en Projects HTTP Test:
+  - cambio aplicado: extraido `project_context` para el bootstrap DB/handler
+    comun y helpers privados de rutas `project_path`, `project_members_path`,
+    `project_member_path` y `release_all_tasks_path` en
+    `projects_http_test.gleam`;
+  - codigo eliminado: destructurings repetidos de `fx.bootstrap`, concatenacion
+    local de rutas `/api/v1/projects/.../members...`, firmas privadas
+    redundantes e imports de tipos usados solo para documentar helpers
+    internos;
+  - limite deliberado: no se creo un DSL generico de rutas HTTP ni builders de
+    proyecto CRUD compartidos; los cuerpos JSON, asserts de permisos y
+    escenarios de rol siguen visibles dentro de cada test;
+  - delta adicional: `-108` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce setup y rutas
+    duplicadas en tests HTTP de proyectos sin cambiar cobertura ni aislar menos
+    la base de datos;
+  - verificacion:
+    - `cd apps/server && gleam format test/projects_http_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `cd apps/server && gleam format --check src test` sin incidencias;
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el cuadragesimosegundo pase:
+  - total Gleam actual: `196.680` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.334` lineas;
+  - deficit restante para `-20k`: `2.666` lineas.
 
 ## Orden recomendado de ejecucion
 

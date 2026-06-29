@@ -9,17 +9,18 @@ import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
-fn create_user_via_invite(
-  handler: fx.Handler,
-  db: pog.Connection,
-  email: String,
-  invite_token: String,
-) -> Int {
+fn project_context() {
+  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
+  let scrumbringer_server.App(db: db, ..) = app
+  #(db, handler, admin_session)
+}
+
+fn create_user_via_invite(handler, db, email, invite_token) {
   fx.create_member_user(handler, db, email, invite_token)
   |> expect.ok
 }
 
-fn promote_user_to_org_admin(db: pog.Connection, email: String) {
+fn promote_user_to_org_admin(db, email) {
   let assert Ok(_) =
     pog.query("update users set org_role = 'admin' where email = $1")
     |> pog.parameter(pog.text(email))
@@ -28,9 +29,24 @@ fn promote_user_to_org_admin(db: pog.Connection, email: String) {
   Nil
 }
 
+fn project_path(project_id) {
+  "/api/v1/projects/" <> int.to_string(project_id)
+}
+
+fn project_members_path(project_id) {
+  project_path(project_id) <> "/members"
+}
+
+fn project_member_path(project_id, user_id) {
+  project_members_path(project_id) <> "/" <> int.to_string(user_id)
+}
+
+fn release_all_tasks_path(project_id, user_id) {
+  project_member_path(project_id, user_id) <> "/release-all-tasks"
+}
+
 pub fn non_org_admin_cannot_create_project_test() {
-  let #(app, handler, _) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, _) = project_context()
 
   create_member_user(handler, db)
 
@@ -49,8 +65,7 @@ pub fn non_org_admin_cannot_create_project_test() {
 }
 
 pub fn project_create_returns_and_persists_card_depth_names_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let req =
     simulate.request(http.Post, "/api/v1/projects")
@@ -112,8 +127,7 @@ pub fn project_create_returns_and_persists_card_depth_names_test() {
 }
 
 pub fn project_create_persists_default_task_type_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let req =
     simulate.request(http.Post, "/api/v1/projects")
@@ -155,10 +169,7 @@ pub fn project_create_persists_default_task_type_test() {
 
   let create_task_res =
     handler(
-      simulate.request(
-        http.Post,
-        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
-      )
+      simulate.request(http.Post, project_path(project_id) <> "/tasks")
       |> fx.with_auth(admin_session)
       |> simulate.json_body(
         json.object([
@@ -175,8 +186,7 @@ pub fn project_create_persists_default_task_type_test() {
 }
 
 pub fn depth_reduction_preview_returns_affected_cards_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "Depth Preview")
@@ -195,9 +205,7 @@ pub fn depth_reduction_preview_returns_affected_cards_test() {
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/depth-reduction-preview",
+      project_path(project_id) <> "/depth-reduction-preview",
     )
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("new_max_depth", json.int(1))]))
@@ -227,8 +235,7 @@ pub fn depth_reduction_preview_returns_affected_cards_test() {
 }
 
 pub fn depth_reduction_marks_card_depth_rules_requires_review_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "Depth Rule Review")
@@ -253,10 +260,7 @@ pub fn depth_reduction_marks_card_depth_rules_requires_review_test() {
     insert_card_depth_rule(db, workflow_id, template_id, "Depth three", 3)
 
   let update_req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/" <> int.to_string(project_id),
-    )
+    simulate.request(http.Patch, project_path(project_id))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(project_update_json("Depth Rule Review", 2))
 
@@ -287,8 +291,7 @@ pub fn depth_reduction_marks_card_depth_rules_requires_review_test() {
 }
 
 pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let zulu_project_id =
     fx.create_project(handler, admin_session, "Zulu")
@@ -330,8 +333,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
 }
 
 pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "Core")
@@ -347,20 +349,14 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
     |> expect.ok
 
   let list_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Get, project_members_path(project_id))
     |> fx.with_auth(member_session)
 
   let list_res = handler(list_req)
   expect.expect_status(list_res, 403)
 
   let add_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Post, project_members_path(project_id))
     |> fx.with_auth(member_session)
     |> simulate.json_body(
       json.object([#("user_id", json.int(1)), #("role", json.string("member"))]),
@@ -370,13 +366,7 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
   expect.expect_status(add_res, 403)
 
   let del_req =
-    simulate.request(
-      http.Delete,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(1),
-    )
+    simulate.request(http.Delete, project_member_path(project_id, 1))
     |> fx.with_auth(member_session)
 
   let del_res = handler(del_req)
@@ -384,8 +374,7 @@ pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
 }
 
 pub fn org_admin_non_project_manager_can_list_members_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "CoreList")
@@ -399,10 +388,7 @@ pub fn org_admin_non_project_manager_can_list_members_test() {
     |> expect.ok
 
   let list_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Get, project_members_path(project_id))
     |> fx.with_auth(org_admin_session)
 
   let list_res = handler(list_req)
@@ -410,8 +396,7 @@ pub fn org_admin_non_project_manager_can_list_members_test() {
 }
 
 pub fn org_admin_non_project_manager_can_add_member_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "CoreAdd")
@@ -433,10 +418,7 @@ pub fn org_admin_non_project_manager_can_add_member_test() {
     |> expect.ok
 
   let add_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Post, project_members_path(project_id))
     |> fx.with_auth(org_admin_session)
     |> simulate.json_body(
       json.object([
@@ -458,8 +440,7 @@ pub fn org_admin_non_project_manager_can_add_member_test() {
 }
 
 pub fn org_admin_non_project_manager_can_remove_member_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "CoreRemove")
@@ -484,13 +465,7 @@ pub fn org_admin_non_project_manager_can_remove_member_test() {
     |> expect.ok
 
   let del_req =
-    simulate.request(
-      http.Delete,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(candidate_id),
-    )
+    simulate.request(http.Delete, project_member_path(project_id, candidate_id))
     |> fx.with_auth(org_admin_session)
 
   let del_res = handler(del_req)
@@ -506,8 +481,7 @@ pub fn org_admin_non_project_manager_can_remove_member_test() {
 }
 
 pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "CoreRelease")
@@ -534,11 +508,7 @@ pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
   let release_req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(candidate_id)
-        <> "/release-all-tasks",
+      release_all_tasks_path(project_id, candidate_id),
     )
     |> fx.with_auth(org_admin_session)
 
@@ -549,8 +519,7 @@ pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
 }
 
 pub fn project_manager_can_still_add_member_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "CorePM")
@@ -574,10 +543,7 @@ pub fn project_manager_can_still_add_member_test() {
     |> expect.ok
 
   let add_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Post, project_members_path(project_id))
     |> fx.with_auth(pm_session)
     |> simulate.json_body(
       json.object([
@@ -591,8 +557,7 @@ pub fn project_manager_can_still_add_member_test() {
 }
 
 pub fn adding_member_from_different_org_is_rejected_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "Core")
@@ -601,10 +566,7 @@ pub fn adding_member_from_different_org_is_rejected_test() {
   insert_other_org_user(db, 2, 200)
 
   let req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Post, project_members_path(project_id))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(
       json.object([
@@ -626,18 +588,14 @@ pub fn adding_member_from_different_org_is_rejected_test() {
 }
 
 pub fn cannot_remove_last_project_manager_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "Solo")
     |> expect.ok
 
   let req =
-    simulate.request(
-      http.Delete,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members/1",
-    )
+    simulate.request(http.Delete, project_member_path(project_id, 1))
     |> fx.with_auth(admin_session)
 
   let res = handler(req)
@@ -657,8 +615,7 @@ pub fn cannot_remove_last_project_manager_test() {
 // =============================================================================
 
 pub fn org_admin_can_change_member_to_manager_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "RoleTest")
@@ -671,13 +628,7 @@ pub fn org_admin_can_change_member_to_manager_test() {
 
   // Promote member to manager
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(member_id),
-    )
+    simulate.request(http.Patch, project_member_path(project_id, member_id))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
@@ -699,8 +650,7 @@ pub fn org_admin_can_change_member_to_manager_test() {
 }
 
 pub fn org_admin_can_change_manager_to_member_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "DemoteTest")
@@ -714,13 +664,7 @@ pub fn org_admin_can_change_manager_to_member_test() {
 
   // Demote to member (should work since there are 2 managers)
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(member_id),
-    )
+    simulate.request(http.Patch, project_member_path(project_id, member_id))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
@@ -733,8 +677,7 @@ pub fn org_admin_can_change_manager_to_member_test() {
 }
 
 pub fn cannot_demote_last_project_manager_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "LastManager")
@@ -742,10 +685,7 @@ pub fn cannot_demote_last_project_manager_test() {
 
   // Try to demote the only manager (user_id 1)
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members/1",
-    )
+    simulate.request(http.Patch, project_member_path(project_id, 1))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
@@ -767,8 +707,7 @@ pub fn cannot_demote_last_project_manager_test() {
 }
 
 pub fn project_manager_cannot_change_roles_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "PermTest")
@@ -786,10 +725,7 @@ pub fn project_manager_cannot_change_roles_test() {
 
   // Project manager tries to change role - should fail (403)
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members/1",
-    )
+    simulate.request(http.Patch, project_member_path(project_id, 1))
     |> fx.with_auth(member_session)
     |> simulate.json_body(json.object([#("role", json.string("member"))]))
 
@@ -798,8 +734,7 @@ pub fn project_manager_cannot_change_roles_test() {
 }
 
 pub fn change_role_user_not_member_returns_404_test() {
-  let #(app, handler, admin_session) = fx.bootstrap() |> expect.ok
-  let scrumbringer_server.App(db: db, ..) = app
+  let #(db, handler, admin_session) = project_context()
 
   let project_id =
     fx.create_project(handler, admin_session, "NotMemberTest")
@@ -809,13 +744,7 @@ pub fn change_role_user_not_member_returns_404_test() {
 
   // Try to change role for user who is not a member
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(member_id),
-    )
+    simulate.request(http.Patch, project_member_path(project_id, member_id))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
@@ -832,10 +761,7 @@ pub fn change_role_idempotent_test() {
 
   // Change to same role (manager -> manager)
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members/1",
-    )
+    simulate.request(http.Patch, project_member_path(project_id, 1))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("role", json.string("manager"))]))
 
@@ -855,10 +781,7 @@ pub fn change_role_invalid_value_returns_400_test() {
     |> expect.ok
 
   let req =
-    simulate.request(
-      http.Patch,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members/1",
-    )
+    simulate.request(http.Patch, project_member_path(project_id, 1))
     |> fx.with_auth(admin_session)
     |> simulate.json_body(json.object([#("role", json.string("admin"))]))
 
@@ -866,7 +789,7 @@ pub fn change_role_invalid_value_returns_400_test() {
   expect.expect_status(res, 400)
 }
 
-fn project_create_json(name: String) -> json.Json {
+fn project_create_json(name) {
   json.object([
     #("name", json.string(name)),
     #("healthy_pool_limit", json.int(20)),
@@ -884,7 +807,7 @@ fn project_create_json(name: String) -> json.Json {
   ])
 }
 
-fn project_update_json(name: String, max_depth: Int) -> json.Json {
+fn project_update_json(name, max_depth) {
   json.object([
     #("name", json.string(name)),
     #("healthy_pool_limit", json.int(20)),
@@ -895,7 +818,7 @@ fn project_update_json(name: String, max_depth: Int) -> json.Json {
   ])
 }
 
-fn depth_names_for_count(max_depth: Int) -> List(json.Json) {
+fn depth_names_for_count(max_depth) {
   case max_depth {
     1 -> [project_depth_name_json(1, "Initiative", "Initiatives")]
     2 -> [
@@ -910,11 +833,7 @@ fn depth_names_for_count(max_depth: Int) -> List(json.Json) {
   }
 }
 
-fn project_depth_name_json(
-  depth: Int,
-  singular_name: String,
-  plural_name: String,
-) -> json.Json {
+fn project_depth_name_json(depth, singular_name, plural_name) {
   json.object([
     #("depth", json.int(depth)),
     #("singular_name", json.string(singular_name)),
@@ -922,7 +841,7 @@ fn project_depth_name_json(
   ])
 }
 
-fn insert_other_org_user(db: pog.Connection, org_id: Int, user_id: Int) {
+fn insert_other_org_user(db, org_id, user_id) {
   let assert Ok(_) =
     pog.query("insert into organizations (id, name) values ($1, 'Other')")
     |> pog.parameter(pog.int(org_id))
@@ -940,26 +859,16 @@ fn insert_other_org_user(db: pog.Connection, org_id: Int, user_id: Int) {
   Nil
 }
 
-fn create_member_user(handler: fx.Handler, db: pog.Connection) -> Int {
+fn create_member_user(handler, db) {
   fx.create_member_user(handler, db, "member@example.com", "il_member")
   |> expect.ok
 }
 
-fn single_string(
-  db: pog.Connection,
-  sql: String,
-  params: List(pog.Value),
-) -> String {
+fn single_string(db, sql, params) {
   fx.require_query_string(db, sql, params)
 }
 
-fn insert_card(
-  db: pog.Connection,
-  project_id: Int,
-  user_id: Int,
-  title: String,
-  parent_card_id: Int,
-) -> Int {
+fn insert_card(db, project_id, user_id, title, parent_card_id) {
   fx.require_query_int(
     db,
     "insert into cards (project_id, title, description, created_by, parent_card_id) values ($1, $2, '', $3, case when $4 <= 0 then null else $4 end) returning id",
@@ -972,7 +881,7 @@ fn insert_card(
   )
 }
 
-fn set_card_active(db: pog.Connection, card_id: Int) {
+fn set_card_active(db, card_id) {
   let assert Ok(_) =
     pog.query("update cards set execution_state = 'active' where id = $1")
     |> pog.parameter(pog.int(card_id))
@@ -981,12 +890,7 @@ fn set_card_active(db: pog.Connection, card_id: Int) {
   Nil
 }
 
-fn insert_workflow(
-  db: pog.Connection,
-  project_id: Int,
-  user_id: Int,
-  name: String,
-) -> Int {
+fn insert_workflow(db, project_id, user_id, name) {
   fx.require_query_int(
     db,
     "insert into workflows (org_id, project_id, name, active, created_by) values (1, $1, $2, true, $3) returning id",
@@ -994,13 +898,7 @@ fn insert_workflow(
   )
 }
 
-fn insert_task_template(
-  db: pog.Connection,
-  project_id: Int,
-  task_type_id: Int,
-  user_id: Int,
-  name: String,
-) -> Int {
+fn insert_task_template(db, project_id, task_type_id, user_id, name) {
   fx.require_query_int(
     db,
     "insert into task_templates (org_id, project_id, name, type_id, priority, created_by) values (1, $1, $2, $3, 3, $4) returning id",
@@ -1013,13 +911,7 @@ fn insert_task_template(
   )
 }
 
-fn insert_card_depth_rule(
-  db: pog.Connection,
-  workflow_id: Int,
-  template_id: Int,
-  name: String,
-  card_depth: Int,
-) -> Int {
+fn insert_card_depth_rule(db, workflow_id, template_id, name, card_depth) {
   let rule_id =
     fx.require_query_int(
       db,
