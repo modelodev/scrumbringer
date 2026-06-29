@@ -3164,6 +3164,32 @@ Estado de ejecucion:
   - total Gleam actual: `196.680` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.334` lineas;
   - deficit restante para `-20k`: `2.666` lineas.
+- Cuadragesimotercer pase de helpers locales en Tasks HTTP Test:
+  - cambio aplicado: extraidos helpers privados de ruta para
+    `/api/v1/projects/:id/task-types`, miembros de proyecto, bulk release y
+    `/api/v1/tasks/:id` en `tasks_http_test.gleam`;
+  - codigo eliminado: concatenaciones locales repetidas de rutas de task
+    types, task patch y release-all, mas firmas privadas redundantes en
+    decoders, contadores de auditoria, queries auxiliares e inserciones de
+    fixtures locales;
+  - limite deliberado: no se movieron helpers a `fixtures.gleam` ni se
+    reescribieron los escenarios largos de lifecycle/auditoria; todavia no hay
+    suficiente evidencia para un DSL HTTP compartido sin ocultar contratos de
+    producto;
+  - delta adicional: `-20` lineas Gleam mantenidas netas;
+  - V/C/R: valor bajo-medio, complejidad baja, riesgo bajo. Mejora DRY local
+    en rutas y reduce ruido de tipos internos sin tocar endpoints ni coverage;
+  - verificacion:
+    - `cd apps/server && gleam format test/tasks_http_test.gleam && DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable SB_DB_POOL_SIZE=2 gleam test`
+      (`553 passed`);
+    - `cd apps/server && gleam format --check src test` sin incidencias;
+    - `git diff --check` sin incidencias;
+    - `rg "should\\." apps/client/src apps/client/test apps/server/src apps/server/test shared/src shared/test`
+      sin resultados.
+- Auditoria de contabilidad tras el cuadragesimotercer pase:
+  - total Gleam actual: `196.660` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.354` lineas;
+  - deficit restante para `-20k`: `2.646` lineas.
 
 ## Orden recomendado de ejecucion
 

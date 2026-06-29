@@ -11,6 +11,29 @@ import scrumbringer_server
 import support/assertions as expect
 import wisp/simulate
 
+fn project_path(project_id) {
+  "/api/v1/projects/" <> int.to_string(project_id)
+}
+
+fn task_types_path(project_id) {
+  project_path(project_id) <> "/task-types"
+}
+
+fn project_members_path(project_id) {
+  project_path(project_id) <> "/members"
+}
+
+fn project_member_release_all_tasks_path(project_id, user_id) {
+  project_members_path(project_id)
+  <> "/"
+  <> int.to_string(user_id)
+  <> "/release-all-tasks"
+}
+
+fn task_path(task_id) {
+  "/api/v1/tasks/" <> int.to_string(task_id)
+}
+
 pub fn task_types_list_sorted_by_name_test() {
   let #(_, handler, session, project_id) = fx.require_project_context("Core")
 
@@ -18,10 +41,7 @@ pub fn task_types_list_sorted_by_name_test() {
   fx.require_task_type(handler, session, project_id, "Alpha", "bolt")
 
   let req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
-    )
+    simulate.request(http.Get, task_types_path(project_id))
     |> fx.with_session_cookies(session)
 
   let res = handler(req)
@@ -48,10 +68,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   let member_session = fx.require_login_session(handler, "member@example.com")
 
   let member_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
-    )
+    simulate.request(http.Post, task_types_path(project_id))
     |> fx.with_auth(member_session)
     |> simulate.json_body(
       json.object([
@@ -64,10 +81,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   expect.expect_status(member_res, 403)
 
   let no_csrf_req =
-    simulate.request(
-      http.Post,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/task-types",
-    )
+    simulate.request(http.Post, task_types_path(project_id))
     |> fx.with_session_cookies(admin_session)
     |> simulate.json_body(
       json.object([
@@ -294,7 +308,7 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   count_audit_events_for_task(db, task_id) |> expect.equal(2)
 
   let patch_req =
-    simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
+    simulate.request(http.Patch, task_path(task_id))
     |> fx.with_auth(member_session)
     |> simulate.json_body(
       json.object([
@@ -419,7 +433,7 @@ pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
     fx.require_task(handler, session, project_id, "Editable", "", 3, type_id)
 
   let patch_req =
-    simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
+    simulate.request(http.Patch, task_path(task_id))
     |> fx.with_auth(session)
     |> simulate.json_body(
       json.object([
@@ -468,10 +482,7 @@ pub fn release_all_tasks_for_member_success_test() {
   |> expect.equal(200)
 
   let list_req =
-    simulate.request(
-      http.Get,
-      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
-    )
+    simulate.request(http.Get, project_members_path(project_id))
     |> fx.with_session_cookies(session)
 
   let list_res = handler(list_req)
@@ -493,11 +504,7 @@ pub fn release_all_tasks_for_member_success_test() {
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(member_id)
-        <> "/release-all-tasks",
+      project_member_release_all_tasks_path(project_id, member_id),
     )
     |> fx.with_auth(session)
 
@@ -544,11 +551,7 @@ pub fn release_all_tasks_for_member_forbidden_test() {
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(admin_id)
-        <> "/release-all-tasks",
+      project_member_release_all_tasks_path(project_id, admin_id),
     )
     |> fx.with_auth(member_session)
 
@@ -571,11 +574,7 @@ pub fn release_all_tasks_for_member_self_release_test() {
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/"
-        <> int.to_string(project_id)
-        <> "/members/"
-        <> int.to_string(admin_id)
-        <> "/release-all-tasks",
+      project_member_release_all_tasks_path(project_id, admin_id),
     )
     |> fx.with_auth(session)
 
@@ -1327,7 +1326,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 
   let patch_ok_res =
     handler(
-      simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
+      simulate.request(http.Patch, task_path(task_id))
       |> fx.with_auth(member_session)
       |> simulate.json_body(
         json.object([
@@ -1346,7 +1345,7 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
 
   let patch_other_res =
     handler(
-      simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
+      simulate.request(http.Patch, task_path(task_id))
       |> fx.with_auth(other_session)
       |> simulate.json_body(
         json.object([
@@ -1380,7 +1379,7 @@ pub fn patch_rejects_blank_title_test() {
 
   let res =
     handler(
-      simulate.request(http.Patch, "/api/v1/tasks/" <> int.to_string(task_id))
+      simulate.request(http.Patch, task_path(task_id))
       |> fx.with_auth(session)
       |> simulate.json_body(
         json.object([
@@ -1599,7 +1598,7 @@ pub fn me_work_session_clears_before_release_and_close_test() {
   |> expect.equal(option.None)
 }
 
-fn decode_work_session(body: String) -> #(option.Option(Int), String, Int) {
+fn decode_work_session(body) {
   let session_decoder = {
     use task_id <- decode.field("task_id", decode.int)
     use accumulated_s <- decode.field("accumulated_s", decode.int)
@@ -1623,12 +1622,12 @@ fn decode_work_session(body: String) -> #(option.Option(Int), String, Int) {
   fx.require_data(body, data_decoder)
 }
 
-fn decode_work_session_task_id(body: String) -> option.Option(Int) {
+fn decode_work_session_task_id(body) {
   let #(active_task_id, _, _) = decode_work_session(body)
   active_task_id
 }
 
-fn decode_work_session_accumulated_s(body: String) -> option.Option(Int) {
+fn decode_work_session_accumulated_s(body) {
   let #(active_task_id, _, accumulated_s) = decode_work_session(body)
 
   case active_task_id {
@@ -1637,16 +1636,16 @@ fn decode_work_session_accumulated_s(body: String) -> option.Option(Int) {
   }
 }
 
-fn decode_as_of(body: String) -> String {
+fn decode_as_of(body) {
   let #(_, as_of, _) = decode_work_session(body)
   as_of
 }
 
-fn is_iso8601_utc(value: String) -> Bool {
+fn is_iso8601_utc(value) {
   string.contains(value, "T") && string.ends_with(value, "Z")
 }
 
-fn task_claimed_by(db: pog.Connection, task_id: Int) -> Int {
+fn task_claimed_by(db, task_id) {
   fx.require_query_int(
     db,
     "select coalesce(claimed_by, 0) from tasks where id = $1",
@@ -1656,11 +1655,7 @@ fn task_claimed_by(db: pog.Connection, task_id: Int) -> Int {
   )
 }
 
-fn count_audit_events(
-  db: pog.Connection,
-  task_id: Int,
-  event_type: String,
-) -> Int {
+fn count_audit_events(db, task_id, event_type) {
   fx.require_query_int(
     db,
     "select count(*) from audit_events where task_id = $1 and event_type = $2",
@@ -1668,7 +1663,7 @@ fn count_audit_events(
   )
 }
 
-fn count_audit_events_for_task(db: pog.Connection, task_id: Int) -> Int {
+fn count_audit_events_for_task(db, task_id) {
   fx.require_query_int(
     db,
     "select count(*) from audit_events where task_id = $1",
@@ -1678,12 +1673,7 @@ fn count_audit_events_for_task(db: pog.Connection, task_id: Int) -> Int {
   )
 }
 
-fn count_audit_events_for_actor(
-  db: pog.Connection,
-  task_id: Int,
-  actor_user_id: Int,
-  event_type: String,
-) -> Int {
+fn count_audit_events_for_actor(db, task_id, actor_user_id, event_type) {
   fx.require_query_int(
     db,
     "select count(*) from audit_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
@@ -1691,7 +1681,7 @@ fn count_audit_events_for_actor(
   )
 }
 
-fn count_task_rows(db: pog.Connection, task_id: Int) -> Int {
+fn count_task_rows(db, task_id) {
   fx.require_query_int(db, "select count(*) from tasks where id = $1", [
     pog.int(task_id),
   ])
@@ -1726,14 +1716,14 @@ fn task_get_contract_fields_decoder() {
   decode.success(#(work_state, task_type, ongoing_by))
 }
 
-fn require_task_data(body: String, task_decoder: decode.Decoder(a)) -> a {
+fn require_task_data(body, task_decoder) {
   fx.require_data(body, {
     use task <- decode.field("task", task_decoder)
     decode.success(task)
   })
 }
 
-fn decode_task_titles(body: String) -> List(String) {
+fn decode_task_titles(body) {
   fx.require_data_string_list_field(body, "tasks", "title")
 }
 
@@ -1748,7 +1738,7 @@ fn expect_project_task_titles(handler, session, project_id, query, titles) {
   |> expect.equal(titles)
 }
 
-fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {
+fn set_task_created_at(db, task_id, created_at) {
   let sql =
     "update tasks set created_at = timestamptz '"
     <> created_at
@@ -1762,7 +1752,7 @@ fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {
   Nil
 }
 
-fn insert_capability(db: pog.Connection, project_id: Int, name: String) -> Int {
+fn insert_capability(db, project_id, name) {
   let assert Ok(pog.Returned(rows: [id, ..], ..)) =
     pog.query(
       "insert into capabilities (project_id, name) values ($1, $2) returning id",
@@ -1778,12 +1768,7 @@ fn insert_capability(db: pog.Connection, project_id: Int, name: String) -> Int {
   id
 }
 
-fn grant_capability(
-  db: pog.Connection,
-  project_id: Int,
-  user_id: Int,
-  capability_id: Int,
-) {
+fn grant_capability(db, project_id, user_id, capability_id) {
   let assert Ok(_) =
     pog.query(
       "insert into project_member_capabilities (project_id, user_id, capability_id) values ($1, $2, $3)",
@@ -1796,12 +1781,7 @@ fn grant_capability(
   Nil
 }
 
-fn insert_card_state(
-  db: pog.Connection,
-  project_id: Int,
-  title: String,
-  execution_state: String,
-) -> Int {
+fn insert_card_state(db, project_id, title, execution_state) {
   let assert Ok(pog.Returned(rows: [id, ..], ..)) =
     pog.query(
       "insert into cards (project_id, title, description, created_by, execution_state) values ($1, $2, '', 1, $3) returning id",
