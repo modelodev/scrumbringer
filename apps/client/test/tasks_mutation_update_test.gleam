@@ -4,14 +4,14 @@ import support/domain_fixtures
 
 import domain/api_error.{ApiError}
 import domain/remote
-import domain/task.{type Task, Task, with_state}
+import domain/task.{Task, with_state}
 import domain/task/state as task_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/tasks/mutation_update
 import scrumbringer_client/ui/toast
 
-fn mutation_context() -> mutation_update.MutationContext(Nil) {
+fn mutation_context() {
   mutation_update.MutationContext(
     current_user_id: Some(7),
     on_task_claimed: fn(_result) { Nil },
@@ -21,7 +21,7 @@ fn mutation_context() -> mutation_update.MutationContext(Nil) {
   )
 }
 
-fn success_context() -> mutation_update.Context(Nil) {
+fn success_context() {
   mutation_update.Context(
     task_claimed: "Claimed",
     task_released: "Released",
@@ -32,7 +32,7 @@ fn success_context() -> mutation_update.Context(Nil) {
   )
 }
 
-fn error_context() -> mutation_update.ErrorContext(Nil) {
+fn error_context() {
   mutation_update.ErrorContext(
     labels: labels(),
     on_warning_toast: fn(_) { effect.from(fn(_dispatch) { Nil }) },
@@ -40,7 +40,7 @@ fn error_context() -> mutation_update.ErrorContext(Nil) {
   )
 }
 
-fn dispatch_context() -> mutation_update.DispatchContext(Nil) {
+fn dispatch_context() {
   mutation_update.DispatchContext(
     mutation_context: mutation_context(),
     success_context: success_context(),
@@ -48,7 +48,7 @@ fn dispatch_context() -> mutation_update.DispatchContext(Nil) {
   )
 }
 
-fn sample_task(id: Int, state: task_state.TaskExecutionState) -> Task {
+fn sample_task(id, state) {
   Task(
     ..domain_fixtures.task(id, "Prepare release", 1),
     description: Some("Review checklist."),
@@ -59,7 +59,26 @@ fn sample_task(id: Int, state: task_state.TaskExecutionState) -> Task {
   )
 }
 
-fn pool_with_tasks(tasks: List(Task)) -> member_pool.Model {
+fn available_task() {
+  sample_task(42, task_state.Available)
+}
+
+fn blocked_available_task() {
+  Task(..available_task(), blocked_count: 1)
+}
+
+fn taken_task() {
+  sample_task(
+    42,
+    task_state.Claimed(
+      claimed_by: 7,
+      claimed_at: "2026-03-20T15:00:00Z",
+      mode: task_state.Taken,
+    ),
+  )
+}
+
+fn pool_with_tasks(tasks) {
   member_pool.Model(
     ..member_pool.default_model(),
     member_tasks: remote.Loaded(tasks),
@@ -67,7 +86,7 @@ fn pool_with_tasks(tasks: List(Task)) -> member_pool.Model {
 }
 
 pub fn try_update_claim_clicked_sets_local_policy_test() {
-  let task = sample_task(42, task_state.Available)
+  let task = available_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -87,7 +106,7 @@ pub fn try_update_claim_clicked_sets_local_policy_test() {
 pub fn try_update_release_success_requests_silent_member_refresh_test() {
   let model =
     member_pool.Model(
-      ..pool_with_tasks([sample_task(42, task_state.Available)]),
+      ..pool_with_tasks([available_task()]),
       member_task_mutation_in_flight: True,
       member_task_mutation_task_id: Some(42),
       member_tasks_snapshot: Some([]),
@@ -96,9 +115,7 @@ pub fn try_update_release_success_requests_silent_member_refresh_test() {
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
       model,
-      pool_messages.MemberTaskReleased(
-        Ok(sample_task(42, task_state.Available)),
-      ),
+      pool_messages.MemberTaskReleased(Ok(available_task())),
       dispatch_context(),
     )
 
@@ -106,14 +123,13 @@ pub fn try_update_release_success_requests_silent_member_refresh_test() {
   let assert False = next.member_task_mutation_in_flight
   let assert None = next.member_task_mutation_task_id
   let assert None = next.member_tasks_snapshot
-  let assert True =
-    next.member_tasks == remote.Loaded([sample_task(42, task_state.Available)])
+  let assert True = next.member_tasks == remote.Loaded([available_task()])
   let assert True = fx != effect.none()
 }
 
 pub fn try_update_error_checks_auth_after_rollback_test() {
   let err = ApiError(status: 500, code: "ERR", message: "boom")
-  let original = sample_task(42, task_state.Available)
+  let original = available_task()
   let model =
     member_pool.Model(
       ..pool_with_tasks([claimed_task(original, 7)]),
@@ -148,7 +164,7 @@ pub fn try_update_ignores_non_mutation_messages_test() {
 }
 
 pub fn local_claim_clicked_blocked_task_does_not_submit_test() {
-  let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
+  let task = blocked_available_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -165,7 +181,7 @@ pub fn local_claim_clicked_blocked_task_does_not_submit_test() {
 }
 
 pub fn local_claim_clicked_applies_optimistic_claim_test() {
-  let task = sample_task(42, task_state.Available)
+  let task = available_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -184,7 +200,7 @@ pub fn local_claim_clicked_applies_optimistic_claim_test() {
 }
 
 pub fn local_claim_dropped_marks_in_flight_without_optimistic_claim_test() {
-  let task = sample_task(42, task_state.Available)
+  let task = available_task()
 
   let #(next, fx) =
     mutation_update.handle_claim_dropped(
@@ -201,7 +217,7 @@ pub fn local_claim_dropped_marks_in_flight_without_optimistic_claim_test() {
 }
 
 pub fn local_claim_dropped_blocked_task_does_not_submit_test() {
-  let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
+  let task = blocked_available_task()
 
   let #(next, fx) =
     mutation_update.handle_claim_dropped(
@@ -217,15 +233,7 @@ pub fn local_claim_dropped_blocked_task_does_not_submit_test() {
 }
 
 pub fn local_release_clicked_applies_optimistic_release_test() {
-  let task =
-    sample_task(
-      42,
-      task_state.Claimed(
-        claimed_by: 7,
-        claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_state.Taken,
-      ),
-    )
+  let task = taken_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -235,22 +243,14 @@ pub fn local_release_clicked_applies_optimistic_release_test() {
     )
 
   let assert mutation_update.NoPolicy = policy
-  let expected = sample_task(42, task_state.Available)
+  let expected = available_task()
   let assert True = next.member_tasks == remote.Loaded([expected])
   let assert True = next.member_task_mutation_in_flight
   let assert True = fx != effect.none()
 }
 
 pub fn local_close_clicked_applies_optimistic_close_test() {
-  let task =
-    sample_task(
-      42,
-      task_state.Claimed(
-        claimed_by: 7,
-        claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_state.Taken,
-      ),
-    )
+  let task = taken_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -268,7 +268,7 @@ pub fn local_close_clicked_applies_optimistic_close_test() {
 }
 
 pub fn local_delete_clicked_available_task_applies_optimistic_delete_test() {
-  let task = sample_task(42, task_state.Available)
+  let task = available_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -287,15 +287,7 @@ pub fn local_delete_clicked_available_task_applies_optimistic_delete_test() {
 }
 
 pub fn local_delete_clicked_claimed_task_does_not_submit_test() {
-  let task =
-    sample_task(
-      42,
-      task_state.Claimed(
-        claimed_by: 7,
-        claimed_at: "2026-03-20T15:00:00Z",
-        mode: task_state.Taken,
-      ),
-    )
+  let task = taken_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -313,7 +305,7 @@ pub fn local_delete_clicked_claimed_task_does_not_submit_test() {
 }
 
 pub fn local_delete_clicked_blocked_task_does_not_submit_test() {
-  let task = Task(..sample_task(42, task_state.Available), blocked_count: 1)
+  let task = blocked_available_task()
 
   let assert Some(mutation_update.Update(next, fx, policy)) =
     mutation_update.try_update(
@@ -331,7 +323,7 @@ pub fn local_delete_clicked_blocked_task_does_not_submit_test() {
 }
 
 pub fn local_task_claimed_ok_reconciles_payload_and_clears_optimistic_state_test() {
-  let task = sample_task(42, task_state.Available)
+  let task = available_task()
   let claimed = claimed_task(task, 7)
   let model =
     member_pool.Model(
@@ -464,7 +456,7 @@ pub fn mutation_error_generic_uses_rollback_error_test() {
 }
 
 pub fn local_mutation_error_restores_snapshot_and_clears_state_test() {
-  let original = sample_task(42, task_state.Available)
+  let original = available_task()
   let optimistic = claimed_task(original, 7)
   let model =
     member_pool.Model(
@@ -491,7 +483,7 @@ pub fn local_mutation_error_restores_snapshot_and_clears_state_test() {
   let assert True = fx != effect.none()
 }
 
-fn labels() -> mutation_update.ErrorLabels {
+fn labels() {
   mutation_update.ErrorLabels(
     task_not_found: "Task not found",
     task_already_claimed: "Task already claimed",
@@ -502,7 +494,7 @@ fn labels() -> mutation_update.ErrorLabels {
   )
 }
 
-fn claimed_task(task: Task, user_id: Int) -> Task {
+fn claimed_task(task, user_id) {
   with_state(
     task,
     task_state.Claimed(

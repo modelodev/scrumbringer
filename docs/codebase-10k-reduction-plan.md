@@ -3116,6 +3116,27 @@ Estado de ejecucion:
   - total Gleam actual: `196.796` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.218` lineas;
   - deficit restante para `-20k`: `2.782` lineas.
+- Cuadragesimoprimer pase de helpers locales en Tasks Mutation Update:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados y
+    extraidos `available_task`, `blocked_available_task` y `taken_task` en
+    `tasks_mutation_update_test.gleam`;
+  - codigo eliminado: import de tipo usado solo por firmas privadas,
+    firmas repetitivas de contextos/fixtures y construcciones repetidas de la
+    misma task disponible, bloqueada o tomada;
+  - limite deliberado: no se creo un builder generico de mutaciones ni helper
+    para el caso `Closed`, porque ese estado aparece una sola vez y conviene
+    mantenerlo explicito;
+  - delta adicional: `-8` lineas Gleam mantenidas netas;
+  - V/C/R: valor bajo-medio, complejidad baja, riesgo bajo. Mejora DRY en
+    fixtures de task sin agrupar las aserciones de rollback, optimistic update
+    y feedback;
+  - verificacion:
+    - `cd apps/client && gleam format test/tasks_mutation_update_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el cuadragesimoprimer pase:
+  - total Gleam actual: `196.788` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.226` lineas;
+  - deficit restante para `-20k`: `2.774` lineas.
 
 ## Orden recomendado de ejecucion
 
