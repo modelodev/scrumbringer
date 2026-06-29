@@ -3074,6 +3074,28 @@ Estado de ejecucion:
   - total Gleam actual: `196.868` lineas;
   - reduccion real frente al baseline de `214.014`: `-17.146` lineas;
   - deficit restante para `-20k`: `2.854` lineas.
+- Trigesimonoveno pase de helpers locales en Plan Structure View:
+  - cambio aplicado: retiradas anotaciones redundantes de helpers privados y
+    extraidos `moving_config` y `dragging_config` para el bloque repetido de
+    movimiento inline en `plan_structure_view_test.gleam`;
+  - codigo eliminado: imports de tipos usados solo por firmas privadas,
+    firmas largas de fixtures/render helpers y construcciones repetidas de
+    `structure_view.Config(..base_config(), move_mode:
+    PlanMovingCard(3, ...))`;
+  - limite deliberado: no se creo un builder general de `Config` ni helpers
+    para cada filtro/scope del plan; solo se abstrajo el estado de movimiento
+    con multiples consumidores claros y las expectativas visuales siguen
+    explicitas en cada test;
+  - delta adicional: `-60` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Reduce ruido en tests de
+    drag/move sin cambiar los escenarios cubiertos;
+  - verificacion:
+    - `cd apps/client && gleam format test/plan_structure_view_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el trigesimonoveno pase:
+  - total Gleam actual: `196.808` lineas;
+  - reduccion real frente al baseline de `214.014`: `-17.206` lineas;
+  - deficit restante para `-20k`: `2.794` lineas.
 
 ## Orden recomendado de ejecucion
 

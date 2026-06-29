@@ -1,11 +1,11 @@
-import domain/card.{type Card, type CardPhase, Active, Card, Closed, Draft}
-import domain/task.{type Task, Task}
+import domain/card.{Active, Card, Closed, Draft}
+import domain/task.{Task}
 import domain/task/state as task_state
 import domain/task_status.{
-  type TaskPhase, Available, Claimed, Closed as TaskClosed, Ongoing, Taken,
+  Available, Claimed, Closed as TaskClosed, Ongoing, Taken,
 }
 import domain/task_type.{TaskTypeInline}
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/string
 import support/domain_fixtures
 import support/render_assertions
@@ -16,13 +16,13 @@ import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/plan/structure_view
 import scrumbringer_client/i18n/locale
 
-fn assert_before(text: String, first: String, second: String) {
+fn assert_before(text, first, second) {
   let assert Ok(#(_, after_first)) = string.split_once(text, first)
   let assert Ok(#(_, _)) = string.split_once(after_first, second)
   Nil
 }
 
-fn render(config: structure_view.Config(Int)) -> String {
+fn render(config) {
   structure_view.view(config) |> render_assertions.html
 }
 
@@ -361,13 +361,7 @@ pub fn normal_outline_does_not_repeat_move_action_per_row_test() {
 }
 
 pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-      ),
-    )
+  let html = render(moving_config(""))
 
   render_assertions.contains(html, "data-testid=\"plan-move-context\"")
   render_assertions.contains(html, "Moviendo: API Story")
@@ -381,31 +375,14 @@ pub fn inline_move_mode_marks_source_and_valid_destinations_test() {
 }
 
 pub fn inline_move_drag_marks_source_as_dragging_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-        move_drag_state: member_pool.PlanMoveDraggingCard(3, None),
-      ),
-    )
+  let html = render(dragging_config(None))
 
   render_assertions.contains(html, "is-dragging-source")
   render_assertions.contains(html, "Arrastrando")
 }
 
 pub fn inline_move_drag_over_valid_destination_shows_drop_hint_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-        move_drag_state: member_pool.PlanMoveDraggingCard(
-          3,
-          Some(move_target.InsideCard(8)),
-        ),
-      ),
-    )
+  let html = render(dragging_config(Some(move_target.InsideCard(8))))
 
   render_assertions.contains(html, "is-drop-active")
   render_assertions.contains(html, "data-testid=\"plan-drop-target-hint\"")
@@ -414,30 +391,14 @@ pub fn inline_move_drag_over_valid_destination_shows_drop_hint_test() {
 }
 
 pub fn inline_move_mode_shows_invalid_reason_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-      ),
-    )
+  let html = render(moving_config(""))
 
   render_assertions.contains(html, "data-testid=\"plan-move-invalid\"")
   render_assertions.contains(html, "Ya está dentro de esta tarjeta.")
 }
 
 pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-        move_drag_state: member_pool.PlanMoveDraggingCard(
-          3,
-          Some(move_target.InsideCard(2)),
-        ),
-      ),
-    )
+  let html = render(dragging_config(Some(move_target.InsideCard(2))))
 
   render_assertions.contains(html, "data-testid=\"plan-move-invalid\"")
   render_assertions.contains(html, "Ya está dentro de esta tarjeta.")
@@ -445,13 +406,7 @@ pub fn inline_move_drag_over_invalid_destination_does_not_show_drop_hint_test() 
 }
 
 pub fn click_to_move_fallback_still_renders_after_drag_support_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-      ),
-    )
+  let html = render(moving_config(""))
 
   render_assertions.contains(html, "data-testid=\"plan-move-here\"")
   render_assertions.contains(html, "Mover dentro")
@@ -462,13 +417,7 @@ pub fn click_to_move_fallback_still_renders_after_drag_support_test() {
 }
 
 pub fn mobile_move_mode_keeps_click_fallback_without_mobile_drag_handle_test() {
-  let html =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, ""),
-      ),
-    )
+  let html = render(moving_config(""))
 
   render_assertions.contains(html, "data-testid=\"plan-tree-mobile-list\"")
   render_assertions.contains(html, "data-testid=\"plan-tree-mobile-row\"")
@@ -477,27 +426,9 @@ pub fn mobile_move_mode_keeps_click_fallback_without_mobile_drag_handle_test() {
 }
 
 pub fn inline_move_destination_search_filters_by_title_path_and_id_test() {
-  let by_title =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, "Mobile"),
-      ),
-    )
-  let by_path =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, "Root Initiative"),
-      ),
-    )
-  let by_id =
-    render(
-      structure_view.Config(
-        ..base_config(),
-        move_mode: member_pool.PlanMovingCard(3, "#8"),
-      ),
-    )
+  let by_title = render(moving_config("Mobile"))
+  let by_path = render(moving_config("Root Initiative"))
+  let by_id = render(moving_config("#8"))
 
   render_assertions.contains(
     by_title,
@@ -526,7 +457,7 @@ pub fn root_cards_can_enter_move_mode_when_card_destinations_exist_test() {
   render_assertions.contains(html, "data-testid=\"plan-move-here\"")
 }
 
-fn base_config() -> structure_view.Config(Int) {
+fn base_config() {
   structure_view.Config(
     locale: locale.En,
     cards: cards(),
@@ -576,7 +507,21 @@ fn base_config() -> structure_view.Config(Int) {
   )
 }
 
-fn cards() -> List(Card) {
+fn moving_config(query) {
+  structure_view.Config(
+    ..base_config(),
+    move_mode: member_pool.PlanMovingCard(3, query),
+  )
+}
+
+fn dragging_config(target) {
+  structure_view.Config(
+    ..moving_config(""),
+    move_drag_state: member_pool.PlanMoveDraggingCard(3, target),
+  )
+}
+
+fn cards() {
   [
     card(1, None, "Root Initiative", Active),
     card(2, Some(1), "Portal Feature", Active),
@@ -589,12 +534,7 @@ fn cards() -> List(Card) {
   ]
 }
 
-fn card(
-  id: Int,
-  parent_card_id: Option(Int),
-  title: String,
-  state: CardPhase,
-) -> Card {
+fn card(id, parent_card_id, title, state) {
   Card(
     ..domain_fixtures.card(id, 1, title),
     parent_card_id: parent_card_id,
@@ -602,7 +542,7 @@ fn card(
   )
 }
 
-fn tasks() -> List(Task) {
+fn tasks() {
   [
     task(1, "Implement API", Some(3), Available),
     task(2, "Review API", Some(3), Claimed(Taken)),
@@ -610,7 +550,7 @@ fn tasks() -> List(Task) {
   ]
 }
 
-fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task {
+fn task(id, title, card_id, status) {
   let state = case status {
     Available -> task_state.Available
     Claimed(mode) ->
@@ -635,7 +575,7 @@ fn task(id: Int, title: String, card_id: Option(Int), status: TaskPhase) -> Task
   )
 }
 
-fn claim_mode(mode: task_status.ClaimedState) -> task_state.TaskClaimMode {
+fn claim_mode(mode) {
   case mode {
     Taken -> task_state.Taken
     Ongoing -> task_state.Ongoing
