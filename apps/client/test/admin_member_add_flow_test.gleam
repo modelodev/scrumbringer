@@ -131,18 +131,74 @@ fn members_config(
   )
 }
 
+fn render_members(model) {
+  members.view_members(members_config(model, opt.Some(sample_project())))
+  |> render_assertions.html
+}
+
+fn with_add_dialog(model) {
+  model
+  |> with_members_state(fn(members_state) {
+    admin_members.Model(
+      ..members_state,
+      members_add_dialog_mode: dialog_mode.DialogCreate,
+    )
+  })
+}
+
+fn with_selected_user(model, user) {
+  model
+  |> with_members_state(fn(members_state) {
+    admin_members.Model(
+      ..members_state,
+      members_add_selected_user: opt.Some(user),
+    )
+  })
+}
+
+fn with_search_loading(model, query, token) {
+  model
+  |> with_members_state(fn(members_state) {
+    admin_members.Model(
+      ..members_state,
+      org_users_search: admin_members.OrgUsersSearchLoading(query, token),
+    )
+  })
+}
+
+fn with_search_loaded(model, query, token, users) {
+  model
+  |> with_members_state(fn(members_state) {
+    admin_members.Model(
+      ..members_state,
+      org_users_search: admin_members.OrgUsersSearchLoaded(query, token, users),
+    )
+  })
+}
+
+fn expect_entity_button(html, label, variant) {
+  render_assertions.contains(html, label)
+  render_assertions.contains(html, variant)
+  render_assertions.contains(html, "btn-entity-action")
+}
+
+fn expect_loading_entity_button(html, label, variant) {
+  expect_entity_button(html, label, variant)
+  render_assertions.contains(html, "btn-loading")
+}
+
+fn assert_no_results(html) {
+  let has_no_results =
+    string.contains(html, "Sin resultados")
+    || string.contains(html, "No results")
+
+  let assert True = has_no_results
+}
+
 pub fn org_users_search_exact_email_auto_selects_user_test() {
   let model =
     base_model()
-    |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        org_users_search: admin_members.OrgUsersSearchLoading(
-          "qa@example.com",
-          2,
-        ),
-      )
-    })
+    |> with_search_loading("qa@example.com", 2)
 
   let users = [
     sample_user(3, "member@example.com"),
@@ -164,16 +220,8 @@ pub fn org_users_search_exact_email_auto_selects_user_test() {
 pub fn org_users_search_without_exact_match_clears_selection_test() {
   let model =
     base_model()
-    |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        members_add_selected_user: opt.Some(sample_user(9, "qa@example.com")),
-        org_users_search: admin_members.OrgUsersSearchLoading(
-          "qa@example.com",
-          3,
-        ),
-      )
-    })
+    |> with_selected_user(sample_user(9, "qa@example.com"))
+    |> with_search_loading("qa@example.com", 3)
 
   let users = [
     sample_user(3, "member@example.com"),
@@ -219,49 +267,29 @@ pub fn submit_without_selected_user_keeps_add_disabled_state_test() {
 pub fn members_dialog_shows_selected_user_feedback_test() {
   let model =
     base_model()
-    |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        members_add_dialog_mode: dialog_mode.DialogCreate,
-        members_add_selected_user: opt.Some(sample_user(9, "qa@example.com")),
-      )
-    })
+    |> with_add_dialog
+    |> with_selected_user(sample_user(9, "qa@example.com"))
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
   render_assertions.contains(html, "member-add-selected-user")
   render_assertions.contains(html, "qa@example.com")
-  render_assertions.contains(html, "Add member")
-  render_assertions.contains(html, "btn-primary")
-  render_assertions.contains(html, "btn-entity-action")
+  expect_entity_button(html, "Add member", "btn-primary")
   render_assertions.not_contains(html, "class=\"btn-primary\"")
 }
 
 pub fn members_dialog_search_result_uses_semantic_select_button_test() {
   let model =
     base_model()
-    |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        members_add_dialog_mode: dialog_mode.DialogCreate,
-        org_users_search: admin_members.OrgUsersSearchLoaded(
-          "qa@example.com",
-          4,
-          [sample_user(9, "qa@example.com")],
-        ),
-      )
-    })
+    |> with_add_dialog
+    |> with_search_loaded("qa@example.com", 4, [
+      sample_user(9, "qa@example.com"),
+    ])
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
   render_assertions.contains(html, "qa@example.com")
-  render_assertions.contains(html, "Select")
-  render_assertions.contains(html, "btn-secondary")
-  render_assertions.contains(html, "btn-entity-action")
+  expect_entity_button(html, "Select", "btn-secondary")
   render_assertions.contains(html, "btn-xs")
   render_assertions.not_contains(html, "class=\"btn btn-secondary btn-xs\"")
 }
@@ -269,23 +297,15 @@ pub fn members_dialog_search_result_uses_semantic_select_button_test() {
 pub fn members_dialog_add_submit_uses_semantic_loading_button_test() {
   let model =
     base_model()
+    |> with_add_dialog
+    |> with_selected_user(sample_user(9, "qa@example.com"))
     |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        members_add_dialog_mode: dialog_mode.DialogCreate,
-        members_add_selected_user: opt.Some(sample_user(9, "qa@example.com")),
-        members_add_in_flight: True,
-      )
+      admin_members.Model(..members_state, members_add_in_flight: True)
     })
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
-  render_assertions.contains(html, "Working")
-  render_assertions.contains(html, "btn-primary")
-  render_assertions.contains(html, "btn-entity-action")
-  render_assertions.contains(html, "btn-loading")
+  expect_loading_entity_button(html, "Working", "btn-primary")
   render_assertions.not_contains(html, "class=\"btn-loading\"")
 }
 
@@ -300,14 +320,9 @@ pub fn members_remove_dialog_uses_typed_danger_confirm_button_test() {
       )
     })
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
-  render_assertions.contains(html, "Remove")
-  render_assertions.contains(html, "btn-danger")
-  render_assertions.contains(html, "btn-entity-action")
-  render_assertions.contains(html, "btn-loading")
+  expect_loading_entity_button(html, "Remove", "btn-danger")
   render_assertions.not_contains(html, "class=\"btn-danger btn-loading\"")
 }
 
@@ -325,14 +340,9 @@ pub fn members_release_all_dialog_uses_typed_primary_confirm_button_test() {
       )
     })
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
-  render_assertions.contains(html, "Release")
-  render_assertions.contains(html, "btn-primary")
-  render_assertions.contains(html, "btn-entity-action")
-  render_assertions.contains(html, "btn-loading")
+  expect_loading_entity_button(html, "Release", "btn-primary")
   render_assertions.not_contains(html, "class=\"btn-primary btn-loading\"")
 }
 
@@ -354,69 +364,36 @@ pub fn members_capabilities_save_uses_semantic_loading_button_test() {
       )
     })
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
-  render_assertions.contains(html, "Saving")
-  render_assertions.contains(html, "btn-primary")
-  render_assertions.contains(html, "btn-entity-action")
-  render_assertions.contains(html, "btn-loading")
+  expect_loading_entity_button(html, "Saving", "btn-primary")
   render_assertions.not_contains(html, "class=\"btn-primary btn-loading\"")
 }
 
 pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
   let model =
     base_model()
-    |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        members_add_dialog_mode: dialog_mode.DialogCreate,
-        org_users_search: admin_members.OrgUsersSearchLoaded(
-          "qa@example.com",
-          4,
-          [],
-        ),
-      )
-    })
+    |> with_add_dialog
+    |> with_search_loaded("qa@example.com", 4, [])
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
-  let has_no_results =
-    string.contains(html, "Sin resultados")
-    || string.contains(html, "No results")
-
-  let assert True = has_no_results
+  assert_no_results(html)
 }
 
 pub fn members_dialog_filters_out_existing_project_members_from_search_results_test() {
   let model =
     base_model()
+    |> with_add_dialog
     |> with_members_state(fn(members_state) {
-      admin_members.Model(
-        ..members_state,
-        members_add_dialog_mode: dialog_mode.DialogCreate,
-        members: Loaded([sample_member(9)]),
-        org_users_search: admin_members.OrgUsersSearchLoaded(
-          "qa@example.com",
-          5,
-          [
-            sample_user(9, "qa@example.com"),
-          ],
-        ),
-      )
+      admin_members.Model(..members_state, members: Loaded([sample_member(9)]))
     })
+    |> with_search_loaded("qa@example.com", 5, [
+      sample_user(9, "qa@example.com"),
+    ])
 
-  let rendered =
-    members.view_members(members_config(model, opt.Some(sample_project())))
-  let html = render_assertions.html(rendered)
+  let html = render_members(model)
 
-  let has_no_results =
-    string.contains(html, "Sin resultados")
-    || string.contains(html, "No results")
-
-  let assert True = has_no_results
+  assert_no_results(html)
   render_assertions.not_contains(html, "Seleccionar")
 }

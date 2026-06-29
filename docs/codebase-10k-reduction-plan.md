@@ -2972,6 +2972,27 @@ Estado de ejecucion:
   - total Gleam actual: `197.126` lineas;
   - reduccion real frente al baseline de `214.014`: `-16.888` lineas;
   - deficit restante para `-20k`: `3.112` lineas.
+- Trigesimocuarto pase de helpers locales de member-add flow:
+  - extraidos en `admin_member_add_flow_test.gleam` helpers privados para
+    renderizar `view_members`, abrir el dialogo de alta, seleccionar usuarios y
+    fijar estados de busqueda loading/loaded;
+  - consolidadas expectativas repetidas de botones semanticos y feedback sin
+    resultados, manteniendo visibles las aserciones especificas de cada caso;
+  - codigo eliminado: setups repetidos de `members_add_dialog_mode`,
+    `members_add_selected_user`, `org_users_search` y renderizado HTML directo;
+  - limite deliberado: no se creo helper global de botones ni builder admin
+    compartido; el patron queda local porque el ahorro global todavia no esta
+    probado en mas ficheros;
+  - delta adicional: `-23` lineas Gleam mantenidas netas;
+  - V/C/R: valor medio, complejidad baja, riesgo bajo. Mejora DRY y
+    testeabilidad de fixtures Lustre sin ocultar comportamiento probado;
+  - verificacion:
+    - `cd apps/client && gleam format test/admin_member_add_flow_test.gleam && gleam test`
+      (`1777 passed`);
+- Auditoria de contabilidad tras el trigesimocuarto pase:
+  - total Gleam actual: `197.103` lineas;
+  - reduccion real frente al baseline de `214.014`: `-16.911` lineas;
+  - deficit restante para `-20k`: `3.089` lineas.
 
 ## Orden recomendado de ejecucion
 
