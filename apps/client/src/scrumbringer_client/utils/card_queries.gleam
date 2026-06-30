@@ -78,19 +78,24 @@ pub fn resolve_task_card_info(
   let Task(card_id: card_id, card_title: card_title, card_color: card_color, ..) =
     task
 
-  case card_title {
-    option.Some(ct) -> #(option.Some(ct), card_color)
-    option.None -> {
-      case card_id {
-        option.Some(cid) ->
-          case list.find(cards, fn(c) { c.id == cid }) {
-            Ok(card) -> #(option.Some(card.title), card.color)
-            Error(_) -> #(option.None, option.None)
-          }
-        option.None -> #(option.None, option.None)
-      }
-    }
+  let loaded_card = case card_id {
+    option.Some(cid) -> list.find(cards, fn(card) { card.id == cid })
+    option.None -> Error(Nil)
   }
+
+  let resolved_title = case card_title, loaded_card {
+    option.Some(title), _ -> option.Some(title)
+    option.None, Ok(card) -> option.Some(card.title)
+    option.None, Error(_) -> option.None
+  }
+
+  let resolved_color = case card_color, loaded_card {
+    option.Some(color), _ -> option.Some(color)
+    option.None, Ok(card) -> card.color
+    option.None, Error(_) -> option.None
+  }
+
+  #(resolved_title, resolved_color)
 }
 
 /// Return direct child cards for a parent card.

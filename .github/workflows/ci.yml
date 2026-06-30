@@ -28,7 +28,7 @@ jobs:
       DATABASE_URL: postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_test?sslmode=disable
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Erlang
         uses: erlef/setup-beam@v1

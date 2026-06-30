@@ -1,5 +1,6 @@
 import gleam/option.{None, Some}
 
+import domain/card
 import domain/task.{type Task, AutomationOrigin, Task, TaskDependency}
 import domain/task/state as task_state
 import domain/task_type.{TaskTypeInline}
@@ -198,6 +199,25 @@ pub fn task_card_renders_available_claim_action_test() {
   render_assertions.contains(html, "aria-label=\"Open task: Prepare release\"")
   render_assertions.not_contains(html, "class=\"task-card-primary-action\"")
   render_assertions.not_contains(html, "task-card-primary-label")
+}
+
+pub fn task_card_renders_card_color_identity_class_test() {
+  let html =
+    task_card.view(
+      task_card.Config(
+        ..config(
+          sample_task(),
+          x: 100,
+          age_days: 1,
+          touch_preview: False,
+          highlight_class: "",
+        ),
+        card_color: Some(card.Blue),
+      ),
+    )
+    |> render_assertions.html
+
+  render_assertions.contains(html, "task-card card-border-blue")
 }
 
 pub fn task_card_position_does_not_clamp_cards_into_overlap_test() {

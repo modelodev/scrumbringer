@@ -2,7 +2,7 @@ import gleam/int
 import gleam/option
 import support/domain_fixtures
 
-import domain/card.{type Card}
+import domain/card.{type Card, Blue, Card}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{type Task, Task}
 import domain/task_type.{TaskTypeInline}
@@ -63,6 +63,20 @@ pub fn get_project_cards_ignores_missing_ids_test() {
       NotAsked,
       option.Some(999),
     )
+}
+
+pub fn resolve_task_card_info_fills_missing_color_from_loaded_card_test() {
+  let loaded_card =
+    Card(..make_card(7, 10, "Loaded title"), color: option.Some(Blue))
+  let task =
+    Task(
+      ..make_task(1, 7),
+      card_title: option.Some("Task title snapshot"),
+      card_color: option.None,
+    )
+
+  let assert #(option.Some("Task title snapshot"), option.Some(Blue)) =
+    card_queries.resolve_task_card_info([loaded_card], task)
 }
 
 pub fn cards_for_project_scope_keeps_whole_tree_test() {
