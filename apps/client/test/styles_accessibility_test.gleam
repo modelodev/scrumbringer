@@ -80,12 +80,12 @@ pub fn left_sidebar_reserves_scrollbar_space_and_truncates_nav_labels_test() {
   render_assertions.contains(css, ".nav-link .nav-icon, .nav-link .badge")
 }
 
-pub fn pool_canvas_can_scroll_horizontally_without_collapsing_cards_test() {
+pub fn pool_canvas_hides_native_horizontal_scrollbar_test() {
   let css = styles.base_css()
 
-  render_assertions.contains(css, ".content.pool-main { overflow-x: auto")
+  render_assertions.contains(css, ".content.pool-main { overflow-x: hidden")
   render_assertions.contains(css, ".pool-main { flex: 1 1 auto")
-  render_assertions.contains(css, "overflow-x: auto; overflow-y: hidden")
+  render_assertions.contains(css, "overflow-x: hidden; overflow-y: hidden")
   render_assertions.contains(
     css,
     "width: 100% !important; min-width: 0 !important",

@@ -66,6 +66,16 @@ ARIA landmarks and data-testid attributes for E2E.
 | <= 1024px | Reduced panel density, right panel hidden when needed |
 | > 1024px | Full 3-panel layout |
 
+## Pool Canvas Overflow
+
+The pool canvas should not rely on native scrollbars in normal desktop use.
+Task cards keep their fixed visual size. If saved or legacy coordinates place a
+task outside the visible canvas envelope, only those out-of-view tasks should be
+relocated into free visible slots; tasks already visible should retain their
+positions. If there is no free visible slot, the layout may leave the remaining
+tasks at their original coordinates rather than shrinking cards or disturbing
+visible work.
+
 ## Drawer Navigation Flow
 
 ```mermaid

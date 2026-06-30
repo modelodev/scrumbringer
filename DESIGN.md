@@ -247,6 +247,10 @@ ScrumBringer uses a hybrid depth model: borders and tonal layers define most sur
 
 Task cards are the signature operational object. They use bordered compact surfaces, centered task titles, always-accessible action controls, visible drag affordances, and hover/focus previews. Priority and decay may change size or motion, but actions must remain usable even on small cards.
 
+### Pool Canvas
+
+The pool canvas should avoid native scrollbars in normal desktop use. Preserve task size and user-arranged positions whenever possible; when legacy or manual positions place tasks outside the visible pool area, only those out-of-viewport tasks should be visually relocated into free visible space. Do not disturb tasks that are already visible, and do not solve pool overflow by shrinking task cards.
+
 ### Dialog
 
 Dialogs use a fixed overlay, Panel White body, Raised Slate header/footer, 18px corner radius on desktop, and full-screen treatment on small screens. Dialogs are for confirmation and complex CRUD only; inline or progressive alternatives should be exhausted first.

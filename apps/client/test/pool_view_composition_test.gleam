@@ -36,6 +36,17 @@ pub fn pool_renders_header_control_bar_and_body_test() {
   render_assertions.not_contains(html, "My tasks")
 }
 
+pub fn pool_canvas_repositions_only_out_of_view_cards_test() {
+  let html =
+    pool_view.view_pool_main(main_config_with_positions())
+    |> render_assertions.html
+
+  render_assertions.contains(html, "width:100%; min-width:0; max-width:100%")
+  render_assertions.contains(html, "left:max(0px,12px)")
+  render_assertions.contains(html, "left:max(0px,172px)")
+  render_assertions.not_contains(html, "left:max(0px,900px)")
+}
+
 pub fn pool_list_mode_renders_task_rows_test() {
   let html =
     pool_view.view_pool_main(main_config(pool_prefs.List))
@@ -121,6 +132,26 @@ fn main_config_with(
     task_card_config: fn(task) { task_card_config(task) },
     task_row_config: fn(task) { task_row_config(task) },
   )
+}
+
+fn main_config_with_positions() -> pool_view.MainConfig(String) {
+  pool_view.MainConfig(
+    ..main_config_with(
+      pool_prefs.Canvas,
+      Loaded([sample_task(), Task(..sample_task(), id: 2, title: "Task 2")]),
+      AllOpen,
+    ),
+    task_card_config: fn(task) { positioned_task_card_config(task) },
+  )
+}
+
+fn positioned_task_card_config(task: Task) -> task_card.Config(String) {
+  let Task(id: id, ..) = task
+  let #(x, y) = case id {
+    1 -> #(12, 12)
+    _ -> #(900, 12)
+  }
+  task_card.Config(..task_card_config(task), x: x, y: y)
 }
 
 fn task_card_config(task: Task) -> task_card.Config(String) {

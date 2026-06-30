@@ -29,6 +29,7 @@ import scrumbringer_client/features/layout/work_surface
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/available_tasks
+import scrumbringer_client/features/pool/canvas_layout
 import scrumbringer_client/features/pool/chrome as pool_chrome
 import scrumbringer_client/features/pool/control_bar
 import scrumbringer_client/features/pool/my_tasks_dropzone
@@ -242,7 +243,10 @@ fn view_tasks_collection(
 }
 
 fn view_tasks_canvas(config: MainConfig(msg), tasks: List(Task)) -> Element(msg) {
-  let card_configs = list.map(tasks, config.task_card_config)
+  let card_configs =
+    tasks
+    |> list.map(config.task_card_config)
+    |> canvas_layout.fit_overflow_cards
 
   keyed.div(
     [
@@ -258,15 +262,9 @@ fn view_tasks_canvas(config: MainConfig(msg), tasks: List(Task)) -> Element(msg)
 }
 
 fn canvas_style(card_configs: List(task_card.Config(msg))) -> String {
-  "position: relative; min-height: 600px; min-width:"
-  <> int.to_string(canvas_min_width(card_configs))
-  <> "px; touch-action: none;"
-}
-
-fn canvas_min_width(card_configs: List(task_card.Config(msg))) -> Int {
-  list.fold(card_configs, 0, fn(width, card_config) {
-    int.max(width, card_config.x + 188)
-  })
+  "position: relative; min-height:"
+  <> int.to_string(canvas_layout.visible_height(list.length(card_configs)))
+  <> "px; width:100%; min-width:0; max-width:100%; touch-action: none;"
 }
 
 fn view_tasks_list(config: MainConfig(msg), tasks: List(Task)) -> Element(msg) {
