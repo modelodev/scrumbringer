@@ -1080,6 +1080,16 @@ pub fn translate(text: Text) -> String {
     // Card detail (member)
     text.CardAddTask -> "Añadir tarea"
     text.CardAddSubcard -> "Añadir subtarjeta"
+    text.CloseCard -> "Cerrar tarjeta"
+    text.CloseCardManagerOnly -> "Solo un manager puede cerrar tarjetas."
+    text.CloseCardConfirmTitle -> "Cerrar tarjeta"
+    text.CloseCardConfirmBody ->
+      "Se cerrará esta tarjeta y sus subtarjetas. Las tareas disponibles se cerrarán automáticamente. Las tareas ya cerradas no cambian."
+    text.CardClosed -> "Tarjeta cerrada"
+    text.CardCloseFailed -> "No se pudo cerrar la tarjeta"
+    text.CardReadyToCloseTitle -> "Trabajo ya completado"
+    text.CardReadyToCloseBody ->
+      "Todas las tareas directas están cerradas. Cierra la tarjeta en lugar de activarla."
     text.CardEmptyWorkTitle -> "Esta tarjeta todavía no tiene trabajo"
     text.CardEmptyWorkBody ->
       "Elige si esta tarjeta contendrá tareas o subtarjetas."

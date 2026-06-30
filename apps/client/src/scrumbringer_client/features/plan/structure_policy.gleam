@@ -6,6 +6,7 @@ import domain/task/state as task_execution_state
 import gleam/list
 import gleam/option.{None, Some}
 
+import scrumbringer_client/features/cards/lifecycle
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/plan/types
 import scrumbringer_client/utils/card_queries
@@ -51,11 +52,12 @@ pub fn action_availability(
       }
     }
     types.ActivateSubtree ->
-      case is_pm_or_admin, card.state {
-        False, _ -> types.Disabled("Solo managers pueden activar subárboles")
-        _, Draft -> types.Available
-        _, Active -> types.Disabled("Ya activo")
-        _, Closed -> types.Disabled("La tarjeta está cerrada")
+      case is_pm_or_admin, lifecycle.ready_to_close(card), card.state {
+        False, _, _ -> types.Disabled("Solo managers pueden activar subárboles")
+        _, True, _ -> types.Disabled("Todo el trabajo está cerrado")
+        _, _, Draft -> types.Available
+        _, _, Active -> types.Disabled("Ya activo")
+        _, _, Closed -> types.Disabled("La tarjeta está cerrada")
       }
     types.MoveCard ->
       case

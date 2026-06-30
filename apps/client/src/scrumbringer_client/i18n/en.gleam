@@ -1048,6 +1048,16 @@ pub fn translate(text: Text) -> String {
     // Card detail (member)
     text.CardAddTask -> "Add task"
     text.CardAddSubcard -> "Add subcard"
+    text.CloseCard -> "Close card"
+    text.CloseCardManagerOnly -> "Only managers can close cards."
+    text.CloseCardConfirmTitle -> "Close card"
+    text.CloseCardConfirmBody ->
+      "This will close this card and its subcards. Available tasks will be closed automatically. Tasks already closed will not change."
+    text.CardClosed -> "Card closed"
+    text.CardCloseFailed -> "Could not close card"
+    text.CardReadyToCloseTitle -> "Work already complete"
+    text.CardReadyToCloseBody ->
+      "All direct tasks are closed. Close the card instead of activating it."
     text.CardEmptyWorkTitle -> "This card has no work yet"
     text.CardEmptyWorkBody ->
       "Choose whether this card will contain tasks or subcards."

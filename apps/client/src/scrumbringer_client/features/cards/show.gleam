@@ -40,6 +40,7 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
+import scrumbringer_client/features/cards/lifecycle
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/cards/scoped_navigation
 import scrumbringer_client/features/cards/show/headline as card_headline
@@ -57,6 +58,7 @@ import scrumbringer_client/ui/button as ui_button
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
+import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/inspector_actions
@@ -113,6 +115,7 @@ pub type Model {
     activity_loading_more: Bool,
     tasks: Remote(List(Task)),
     activation_confirm_open: Bool,
+    close_confirm_open: Bool,
   )
 }
 
@@ -149,6 +152,9 @@ pub type Msg {
   ActivateCardClicked
   ActivateCardCancelled
   ActivateCardConfirmed
+  CloseCardClicked
+  CloseCardCancelled
+  CloseCardConfirmed
   MoveRequested
   DeleteCardClicked
   // Actions that emit events to parent
@@ -183,6 +189,7 @@ pub fn init_model() -> Model {
     activity_loading_more: False,
     tasks: NotAsked,
     activation_confirm_open: False,
+    close_confirm_open: False,
   )
 }
 
@@ -417,6 +424,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    CloseCardClicked -> #(
+      Model(..model, close_confirm_open: True),
+      effect.none(),
+    )
+
+    CloseCardCancelled -> #(
+      Model(..model, close_confirm_open: False),
+      effect.none(),
+    )
+
+    CloseCardConfirmed -> #(
+      Model(..model, close_confirm_open: False),
+      effect.none(),
+    )
+
     MoveRequested -> #(model, effect.none())
 
     DeleteCardClicked -> #(model, effect.none())
@@ -582,8 +604,31 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
         True -> view_activation_confirm_dialog(model, card)
         False -> element.none()
       },
+      case model.close_confirm_open {
+        True -> view_close_confirm_dialog(model)
+        False -> element.none()
+      },
     ],
   )
+}
+
+fn view_close_confirm_dialog(model: Model) -> Element(Msg) {
+  confirm_dialog.view(confirm_dialog.ConfirmConfig(
+    title: t(model.locale, i18n_text.CloseCardConfirmTitle),
+    body: [
+      div([attribute.class("card-close-confirm-body")], [
+        text(t(model.locale, i18n_text.CloseCardConfirmBody)),
+      ]),
+    ],
+    confirm_label: t(model.locale, i18n_text.CloseCard),
+    cancel_label: t(model.locale, i18n_text.Cancel),
+    on_confirm: CloseCardConfirmed,
+    on_cancel: CloseCardCancelled,
+    is_open: True,
+    is_loading: False,
+    error: option.None,
+    confirm_intent: ui_button.Primary,
+  ))
 }
 
 fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
@@ -661,19 +706,53 @@ fn view_activation_confirm_dialog(model: Model, card: Card) -> Element(Msg) {
 fn view_card_header(model: Model, card: Card) -> Element(Msg) {
   let meta = card_header_meta(model, card)
 
-  inspector_header.view(inspector_header.Config(
-    title: card.title,
-    title_id: "card-show-title",
-    state_line: option.Some(
-      card_headline.text(card_headline.Config(locale: model.locale, card: card)),
-    ),
-    context: option.Some(view_card_path(model, card)),
-    meta: meta,
-    actions: option.Some(view_card_inspector_actions(model, card)),
-    close_label: t(model.locale, i18n_text.Close),
-    on_close: CloseClicked,
-    extra_class: "card-inspector-header",
-  ))
+  div([attribute.class("card-inspector-header-stack")], [
+    inspector_header.view(inspector_header.Config(
+      title: card.title,
+      title_id: "card-show-title",
+      state_line: option.Some(
+        card_headline.text(card_headline.Config(
+          locale: model.locale,
+          card: card,
+        )),
+      ),
+      context: option.Some(view_card_path(model, card)),
+      meta: meta,
+      actions: option.Some(view_card_inspector_actions(model, card)),
+      close_label: t(model.locale, i18n_text.Close),
+      on_close: CloseClicked,
+      extra_class: "card-inspector-header",
+    )),
+    view_ready_to_close_signal(model, card),
+  ])
+}
+
+fn view_ready_to_close_signal(model: Model, card: Card) -> Element(Msg) {
+  case lifecycle.ready_to_close(card) {
+    True ->
+      div(
+        [
+          attribute.class(
+            "card-ready-to-close-signal card-summary-signal is-complete",
+          ),
+          attribute.attribute("data-testid", "card-ready-to-close-signal"),
+        ],
+        [
+          span([attribute.class("card-summary-signal-icon")], [
+            icons.nav_icon(icons.CheckCircle, icons.Small),
+          ]),
+          div([attribute.class("card-summary-signal-copy")], [
+            span([attribute.class("card-summary-signal-title")], [
+              text(t(model.locale, i18n_text.CardReadyToCloseTitle)),
+            ]),
+            span([attribute.class("card-summary-signal-body")], [
+              text(t(model.locale, i18n_text.CardReadyToCloseBody)),
+            ]),
+          ]),
+        ],
+      )
+    False -> element.none()
+  }
 }
 
 fn card_header_meta(model: Model, card: Card) -> Option(Element(Msg)) {
@@ -885,7 +964,11 @@ fn view_quick_create_action(
   policy: card_policy.Policy,
 ) -> Element(Msg) {
   case card.state {
-    Draft -> view_activate_card_action(model)
+    Draft ->
+      case lifecycle.ready_to_close(card) {
+        True -> view_close_card_action(model)
+        False -> view_activate_card_action(model)
+      }
     _ ->
       case policy.structure {
         card_policy.CardGroup -> view_create_card_action(model, policy)
@@ -914,6 +997,29 @@ fn view_activate_card_action(model: Model) -> Element(Msg) {
         icons.Play,
         "card-primary-activate-action",
         t(model.locale, i18n_text.ActivateHierarchyManagerOnly),
+      )
+  }
+}
+
+fn view_close_card_action(model: Model) -> Element(Msg) {
+  case model.can_manage_structure {
+    True ->
+      ui_button.icon_text(
+        t(model.locale, i18n_text.CloseCard),
+        CloseCardClicked,
+        icons.CheckCircle,
+        ui_button.Primary,
+        ui_button.EntityAction,
+      )
+      |> ui_button.with_testid("card-primary-close-action")
+      |> ui_button.view
+    False ->
+      blocked_action(
+        t(model.locale, i18n_text.CloseCard),
+        CloseCardClicked,
+        icons.CheckCircle,
+        "card-primary-close-action",
+        t(model.locale, i18n_text.CloseCardManagerOnly),
       )
   }
 }
@@ -979,6 +1085,7 @@ fn card_secondary_action_items(
 ) -> List(action_menu.Item(Msg)) {
   list.flatten([
     activate_action_items(model, card),
+    close_action_items(model, card),
     move_action_items(model, card),
     delete_action_items(model, policy),
   ])
@@ -991,6 +1098,28 @@ fn activate_action_items(
   case card.state, model.can_manage_structure {
     Draft, _ -> []
     _, _ -> []
+  }
+}
+
+fn close_action_items(model: Model, card: Card) -> List(action_menu.Item(Msg)) {
+  case card.state, lifecycle.ready_to_close(card), model.can_manage_structure {
+    Closed, _, _ -> []
+    _, True, _ -> []
+    _, _, True -> [
+      action_menu.item(
+        t(model.locale, i18n_text.CloseCard),
+        "card-secondary-close-action",
+        CloseCardClicked,
+      ),
+    ]
+    _, _, False -> [
+      action_menu.disabled_item(
+        t(model.locale, i18n_text.CloseCard),
+        "card-secondary-close-action",
+        t(model.locale, i18n_text.CloseCardManagerOnly),
+        CloseCardClicked,
+      ),
+    ]
   }
 }
 
@@ -1346,7 +1475,7 @@ fn view_task_group(
       _ ->
         div(
           [attribute.class("card-work-group-list")],
-          list.map(tasks, fn(task) { view_task_item(model.locale, task) }),
+          list.map(tasks, fn(task) { view_task_item(model.locale, group, task) }),
         )
     },
   ])
@@ -1378,7 +1507,11 @@ fn tasks_for_group(tasks: List(Task), group: TaskWorkGroup) -> List(Task) {
   list.filter(tasks, predicate)
 }
 
-fn view_task_item(locale: Locale, task: Task) -> Element(Msg) {
+fn view_task_item(
+  locale: Locale,
+  group: TaskWorkGroup,
+  task: Task,
+) -> Element(Msg) {
   task_item.view(
     task_item.Config(
       container_class: "card-task-item detail-item-row",
@@ -1391,7 +1524,7 @@ fn view_task_item(locale: Locale, task: Task) -> Element(Msg) {
       icon_class: option.None,
       title: task.title,
       title_class: option.Some("card-task-title"),
-      secondary: view_task_secondary(locale, task),
+      secondary: view_task_secondary(locale, group, task),
       actions: task_item.no_actions(),
       reserve_actions_slot: False,
       action_slot_class: option.None,
@@ -1402,18 +1535,30 @@ fn view_task_item(locale: Locale, task: Task) -> Element(Msg) {
   )
 }
 
-fn view_task_secondary(locale: Locale, task: Task) -> Element(Msg) {
-  let status_label =
-    task_status_utils.label(locale, task_state.to_status(task.state))
-  let owner = case claimed_by(task) {
-    option.Some(user_id) ->
-      " - " <> t(locale, i18n_text.ClaimedBy) <> " #" <> int.to_string(user_id)
-    option.None -> ""
-  }
+fn view_task_secondary(
+  locale: Locale,
+  group: TaskWorkGroup,
+  task: Task,
+) -> Element(Msg) {
+  case group {
+    ClosedWork -> task_item.empty_secondary()
+    _ -> {
+      let status_label =
+        task_status_utils.label(locale, task_state.to_status(task.state))
+      let owner = case claimed_by(task) {
+        option.Some(user_id) ->
+          " - "
+          <> t(locale, i18n_text.ClaimedBy)
+          <> " #"
+          <> int.to_string(user_id)
+        option.None -> ""
+      }
 
-  span([attribute.class("card-work-task-secondary")], [
-    text(status_label <> owner),
-  ])
+      span([attribute.class("card-work-task-secondary")], [
+        text(status_label <> owner),
+      ])
+    }
+  }
 }
 
 fn view_task_status(locale: Locale, task: Task) -> Element(Msg) {

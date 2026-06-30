@@ -868,6 +868,14 @@ pub type Text {
   // Card detail (member)
   CardAddTask
   CardAddSubcard
+  CloseCard
+  CloseCardManagerOnly
+  CloseCardConfirmTitle
+  CloseCardConfirmBody
+  CardClosed
+  CardCloseFailed
+  CardReadyToCloseTitle
+  CardReadyToCloseBody
   CardEmptyWorkTitle
   CardEmptyWorkBody
   CardSummaryNoWorkTitle

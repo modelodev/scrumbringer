@@ -29,9 +29,13 @@ fn context() -> card_show_update.Context(Nil) {
     on_card_activated: fn(_result: ApiResult(card_contracts.CardActionResponse)) {
       Nil
     },
+    on_card_closed: fn(_result: ApiResult(card_contracts.CardActionResponse)) {
+      Nil
+    },
     on_create_task: fn(_card_id) { Nil },
     on_create_card: fn(_card_id) { Nil },
     on_activate_card: fn(_card_id) { Nil },
+    on_close_card: fn(_card_id) { Nil },
     on_move_card: fn(_card_id) { Nil },
     on_delete_card: fn(_card_id) { Nil },
     on_close: Nil,
@@ -48,6 +52,8 @@ fn context() -> card_show_update.Context(Nil) {
       <> int.to_string(healthy_pool_limit)
     },
     hierarchy_activate_failed: "Could not activate hierarchy",
+    card_closed: "Card closed",
+    card_close_failed: "Could not close card",
   )
 }
 
@@ -119,6 +125,18 @@ pub fn card_show_update_activate_requested_submits_effect_test() {
   let assert False = fx == effect.none()
 }
 
+pub fn card_show_update_close_requested_submits_effect_test() {
+  let assert Some(#(next, fx)) =
+    card_show_update.try_update(
+      local_model(),
+      pool_messages.CardCloseRequested(7),
+      context(),
+    )
+
+  let assert True = next.pool == member_pool.default_model()
+  let assert False = fx == effect.none()
+}
+
 pub fn card_show_update_activated_ok_shows_feedback_test() {
   let response =
     card_contracts.CardActionResponse(
@@ -139,6 +157,26 @@ pub fn card_show_update_activated_ok_shows_feedback_test() {
   let assert False = fx == effect.none()
 }
 
+pub fn card_show_update_closed_ok_shows_feedback_test() {
+  let response =
+    card_contracts.CardActionResponse(
+      card_id: 7,
+      pool_impact: 0,
+      pool_open_after: 5,
+      healthy_pool_limit: 10,
+      pool_health: card_contracts.PoolWithinHealthyLimit,
+    )
+
+  let assert Some(#(_next, fx)) =
+    card_show_update.try_update(
+      local_model(),
+      pool_messages.CardClosed(Ok(response)),
+      context_with_toasts(),
+    )
+
+  let assert False = fx == effect.none()
+}
+
 pub fn card_show_update_try_update_handles_open_message_test() {
   let assert Some(#(next, fx)) =
     card_show_update.try_update(
@@ -148,6 +186,19 @@ pub fn card_show_update_try_update_handles_open_message_test() {
     )
 
   let assert Some(7) = next.card_show_open
+  let assert False = fx == effect.none()
+}
+
+pub fn card_show_close_card_confirm_dispatches_when_card_is_open_test() {
+  let model = card_show_update.Model(..local_model(), card_show_open: Some(7))
+
+  let assert Some(#(_next, fx)) =
+    card_show_update.try_update(
+      model,
+      pool_messages.CardShowMsg(card_show.CloseCardConfirmed),
+      context(),
+    )
+
   let assert False = fx == effect.none()
 }
 

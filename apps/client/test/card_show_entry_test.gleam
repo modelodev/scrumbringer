@@ -93,6 +93,10 @@ pub fn card_show_secondary_actions_render_as_menu_items_test() {
     html,
     "data-testid=\"card-secondary-activate-action\"",
   )
+  render_assertions.contains(
+    html,
+    "data-testid=\"card-secondary-close-action\"",
+  )
   render_assertions.contains(html, "data-testid=\"card-secondary-move-action\"")
   render_assertions.contains(
     html,
@@ -103,6 +107,27 @@ pub fn card_show_secondary_actions_render_as_menu_items_test() {
   render_assertions.not_contains(html, "data-testid=\"card-activate-action\"")
   render_assertions.not_contains(html, "data-testid=\"card-move-action\"")
   render_assertions.not_contains(html, "data-testid=\"card-delete-action\"")
+}
+
+pub fn card_show_ready_draft_uses_close_as_primary_action_test() {
+  let card = Card(..sample_card(), task_count: 2, closed_count: 2, state: Draft)
+
+  let html =
+    show_entry.view(config(Some(card)))
+    |> render_assertions.html
+
+  render_assertions.contains(html, "data-testid=\"card-ready-to-close-signal\"")
+  render_assertions.contains(html, "Work already complete")
+  render_assertions.contains(html, "data-testid=\"card-primary-close-action\"")
+  render_assertions.contains(html, "Close card")
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"card-primary-activate-action\"",
+  )
+  render_assertions.not_contains(
+    html,
+    "data-testid=\"card-secondary-close-action\"",
+  )
 }
 
 pub fn card_show_task_group_uses_single_header_create_action_test() {
@@ -116,6 +141,45 @@ pub fn card_show_task_group_uses_single_header_create_action_test() {
   render_assertions.contains(html, "Add task")
   render_assertions.not_contains(html, "Add subcard")
   render_assertions.not_contains(html, "New Card")
+}
+
+pub fn card_show_closed_group_does_not_repeat_closed_after_task_titles_test() {
+  let card =
+    Card(..sample_card(), task_count: 2, closed_count: 2, state: Active)
+  let images =
+    Task(
+      ..sample_task(1, Some(4)),
+      title: "Cargar imagenes",
+      state: task_state.Closed(
+        reason: task_state.ManuallyClosed,
+        closed_at: "2026-06-30T10:00:00Z",
+        closed_by: 8,
+      ),
+    )
+  let docs =
+    Task(
+      ..sample_task(2, Some(4)),
+      title: "Estilos doc",
+      state: task_state.Closed(
+        reason: task_state.ManuallyClosed,
+        closed_at: "2026-06-30T10:05:00Z",
+        closed_by: 8,
+      ),
+    )
+
+  let html =
+    show_entry.view(
+      show_entry.Config(..config(Some(card)), locale: locale.Es, tasks: [
+        images,
+        docs,
+      ]),
+    )
+    |> render_assertions.html
+
+  render_assertions.contains(html, "cerradas")
+  render_assertions.contains(html, "Cargar imagenes")
+  render_assertions.contains(html, "Estilos doc")
+  render_assertions.not_contains(html, "card-work-task-secondary\">cerrada")
 }
 
 pub fn card_show_header_renders_path_due_date_and_health_test() {

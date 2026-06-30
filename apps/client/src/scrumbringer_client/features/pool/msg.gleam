@@ -211,6 +211,8 @@ pub type Msg {
   CardShowMsg(card_show.Msg)
   CardActivateRequested(Int)
   CardActivated(ApiResult(card_contracts.CardActionResponse))
+  CardCloseRequested(Int)
+  CardClosed(ApiResult(card_contracts.CardActionResponse))
   EnginesProjectFetched(ApiResult(List(Workflow)))
   EnginesSearchChanged(String)
   EnginesStatusFilterChanged(String)

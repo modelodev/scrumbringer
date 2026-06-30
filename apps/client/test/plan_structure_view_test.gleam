@@ -331,6 +331,30 @@ pub fn row_actions_are_title_and_contextual_create_test() {
   render_assertions.not_contains(html, "role=\"menuitem\"")
 }
 
+pub fn ready_draft_row_offers_close_instead_of_activate_test() {
+  let card =
+    Card(
+      ..card(9, None, "Migrated Completed Draft", Draft),
+      task_count: 2,
+      closed_count: 2,
+    )
+  let html =
+    render(
+      structure_view.Config(..base_config(), cards: [card], tasks: [
+        task(91, "Closed import task", Some(9), TaskClosed),
+        task(92, "Closed imported task", Some(9), TaskClosed),
+      ]),
+    )
+
+  render_assertions.contains(html, "Migrated Completed Draft")
+  render_assertions.contains(
+    html,
+    "data-testid=\"plan-action-contextual-create\"",
+  )
+  render_assertions.contains(html, "Cerrar")
+  render_assertions.not_contains(html, "Activar subárbol")
+}
+
 pub fn detail_actions_hide_unavailable_close_and_delete_test() {
   let html =
     render(

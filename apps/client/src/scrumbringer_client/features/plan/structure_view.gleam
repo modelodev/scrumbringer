@@ -893,9 +893,13 @@ fn primary_create_action(
   case find_available_action(actions, types.ActivateSubtree) {
     Some(action) -> Some(action)
     None ->
-      case find_available_action(actions, types.CreateSubcard) {
+      case find_available_action(actions, types.CloseCard) {
         Some(action) -> Some(action)
-        None -> find_available_action(actions, types.CreateTask)
+        None ->
+          case find_available_action(actions, types.CreateSubcard) {
+            Some(action) -> Some(action)
+            None -> find_available_action(actions, types.CreateTask)
+          }
       }
   }
 }
@@ -905,6 +909,7 @@ fn contextual_action_style(
 ) -> #(icons.NavIcon, ui_button.Intent) {
   case action {
     types.ActivateSubtree -> #(icons.Play, ui_button.Primary)
+    types.CloseCard -> #(icons.CheckCircle, ui_button.Primary)
     _ -> #(icons.Plus, ui_button.Secondary)
   }
 }

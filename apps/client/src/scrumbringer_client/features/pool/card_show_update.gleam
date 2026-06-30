@@ -29,9 +29,12 @@ pub type Context(parent_msg) {
     on_card_show_msg: fn(card_show.Msg) -> parent_msg,
     on_card_activated: fn(ApiResult(card_contracts.CardActionResponse)) ->
       parent_msg,
+    on_card_closed: fn(ApiResult(card_contracts.CardActionResponse)) ->
+      parent_msg,
     on_create_task: fn(Int) -> parent_msg,
     on_create_card: fn(Int) -> parent_msg,
     on_activate_card: fn(Int) -> parent_msg,
+    on_close_card: fn(Int) -> parent_msg,
     on_move_card: fn(Int) -> parent_msg,
     on_delete_card: fn(Int) -> parent_msg,
     on_close: parent_msg,
@@ -41,6 +44,8 @@ pub type Context(parent_msg) {
     hierarchy_pool_impact: fn(Int) -> String,
     hierarchy_pool_saturated: fn(Int, Int) -> String,
     hierarchy_activate_failed: String,
+    card_closed: String,
+    card_close_failed: String,
   )
 }
 
@@ -61,6 +66,12 @@ pub fn try_update(
       option.Some(activated_ok(model, response, context))
     pool_messages.CardActivated(Error(err)) ->
       option.Some(activated_error(model, err, context))
+    pool_messages.CardCloseRequested(card_id) ->
+      option.Some(close_requested(model, card_id, context))
+    pool_messages.CardClosed(Ok(response)) ->
+      option.Some(closed_ok(model, response, context))
+    pool_messages.CardClosed(Error(err)) ->
+      option.Some(closed_error(model, err, context))
     _ -> option.None
   }
 }
@@ -135,6 +146,16 @@ fn child_updated(
         ]),
       )
     }
+    card_show.CloseCardConfirmed -> {
+      let #(show_model, show_fx) = card_show.update(model.card_show_model, msg)
+      #(
+        Model(..model, card_show_model: card_show_state.set_model(show_model)),
+        effect.batch([
+          show_fx |> effect.map(context.on_card_show_msg),
+          dispatch_card_action(model.card_show_open, context.on_close_card),
+        ]),
+      )
+    }
     _ -> {
       let #(show_model, show_fx) = card_show.update(model.card_show_model, msg)
       #(
@@ -161,6 +182,14 @@ fn activate_requested(
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
   #(model, api_cards.activate_card(card_id, context.on_card_activated))
+}
+
+fn close_requested(
+  model: Model,
+  card_id: Int,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  #(model, api_cards.close_card(card_id, context.on_card_closed))
 }
 
 fn activated_ok(
@@ -197,5 +226,24 @@ fn activated_error(
     context.on_error_toast(
       context.hierarchy_activate_failed <> ": " <> err.message,
     ),
+  )
+}
+
+fn closed_ok(
+  model: Model,
+  _response: card_contracts.CardActionResponse,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  #(model, context.on_success_toast(context.card_closed))
+}
+
+fn closed_error(
+  model: Model,
+  err: ApiError,
+  context: Context(parent_msg),
+) -> #(Model, Effect(parent_msg)) {
+  #(
+    model,
+    context.on_error_toast(context.card_close_failed <> ": " <> err.message),
   )
 }

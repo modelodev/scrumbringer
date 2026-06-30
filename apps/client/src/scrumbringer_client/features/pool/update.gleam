@@ -233,6 +233,9 @@ fn card_show_context(
     on_card_activated: fn(result) {
       client_state.pool_msg(pool_messages.CardActivated(result))
     },
+    on_card_closed: fn(result) {
+      client_state.pool_msg(pool_messages.CardClosed(result))
+    },
     on_create_task: fn(card_id) {
       client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
         card_id,
@@ -247,6 +250,9 @@ fn card_show_context(
     },
     on_activate_card: fn(card_id) {
       client_state.pool_msg(pool_messages.CardActivateRequested(card_id))
+    },
+    on_close_card: fn(card_id) {
+      client_state.pool_msg(pool_messages.CardCloseRequested(card_id))
     },
     on_move_card: fn(card_id) {
       client_state.pool_msg(pool_messages.MemberPlanMoveRequested(card_id))
@@ -279,6 +285,8 @@ fn card_show_context(
       model.ui.locale,
       i18n_text.HierarchyActivateFailed,
     ),
+    card_closed: i18n.t(model.ui.locale, i18n_text.CardClosed),
+    card_close_failed: i18n.t(model.ui.locale, i18n_text.CardCloseFailed),
   )
 }
 
@@ -410,6 +418,10 @@ fn apply_card_show_refresh(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case inner {
     pool_messages.CardActivated(Ok(_)) -> {
+      let #(refreshed, refresh_fx) = member_refresh(model)
+      #(refreshed, effect.batch([fx, refresh_fx]))
+    }
+    pool_messages.CardClosed(Ok(_)) -> {
       let #(refreshed, refresh_fx) = member_refresh(model)
       #(refreshed, effect.batch([fx, refresh_fx]))
     }
@@ -1127,7 +1139,9 @@ fn update_without_view_mode(
     | pool_messages.CloseCardShow
     | pool_messages.CardShowMsg(_)
     | pool_messages.CardActivateRequested(_)
-    | pool_messages.CardActivated(_) -> #(model, effect.none())
+    | pool_messages.CardActivated(_)
+    | pool_messages.CardCloseRequested(_)
+    | pool_messages.CardClosed(_) -> #(model, effect.none())
 
     // Handled by the automation engine admin adapter before this dispatch.
     pool_messages.EnginesProjectFetched(_)

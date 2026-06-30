@@ -178,6 +178,20 @@ pub fn activate_card(
   )
 }
 
+/// Close a card subtree and return the number of tasks removed from the Pool.
+pub fn close_card(
+  card_id: Int,
+  to_msg: fn(ApiResult(contracts.CardActionResponse)) -> msg,
+) -> Effect(msg) {
+  core.request(
+    core.Post,
+    "/api/v1/cards/" <> int.to_string(card_id) <> "/close",
+    option.Some(json.object([])),
+    card_action_response_decoder(),
+    to_msg,
+  )
+}
+
 /// Move a card under another card, or to the project root with `None`.
 pub fn move_card(
   card_id: Int,

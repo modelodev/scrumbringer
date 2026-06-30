@@ -45,6 +45,7 @@ fn make_model() -> Model {
     activity_loading_more: False,
     tasks: NotAsked,
     activation_confirm_open: False,
+    close_confirm_open: False,
   )
 }
 
