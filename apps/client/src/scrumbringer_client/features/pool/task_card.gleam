@@ -22,6 +22,7 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
@@ -115,6 +116,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           automation_origin_signal(config.locale, config.task.automation_origin),
           top_left_action,
         ]),
+        card_identity_badge(config.card_title, config.card_color),
         div([attribute.class("task-card-actions-right")], [
           drag_handle,
           close_action,
@@ -181,6 +183,20 @@ fn mobile_context(config: Config(msg)) -> Element(msg) {
     ]),
     description_context(config.task.description),
   ])
+}
+
+fn card_identity_badge(
+  card_title: Option(String),
+  card_color: Option(CardColor),
+) -> Element(msg) {
+  case card_title {
+    option.Some(title) ->
+      span([attribute.class("task-card-card-badge")], [
+        card_badge.view(title, card_color, option.Some(title)),
+      ])
+
+    option.None -> element.none()
+  }
 }
 
 fn task_accessible_label(config: Config(msg)) -> String {

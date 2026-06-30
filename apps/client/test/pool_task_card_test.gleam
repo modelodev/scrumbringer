@@ -218,6 +218,9 @@ pub fn task_card_renders_card_color_identity_class_test() {
     |> render_assertions.html
 
   render_assertions.contains(html, "task-card card-border-blue")
+  render_assertions.contains(html, "task-card-card-badge")
+  render_assertions.contains(html, "card-initials-badge card-initials-blue")
+  render_assertions.contains(html, ">RC<")
 }
 
 pub fn task_card_position_does_not_clamp_cards_into_overlap_test() {
