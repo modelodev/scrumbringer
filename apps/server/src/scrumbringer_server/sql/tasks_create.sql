@@ -10,11 +10,13 @@ with type_ok as (
   from cards c
   where c.id = $7
     and c.project_id = $2
+    and c.deleted_at is null
     and c.execution_state <> 'closed'
     and not exists (
       select 1
       from cards child
       where child.parent_card_id = c.id
+        and child.deleted_at is null
     )
 ), inserted as (
   insert into tasks (

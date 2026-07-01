@@ -134,6 +134,14 @@ pub fn projects_create_dialog_explains_structure_and_pool_limit_test() {
 
   render_assertions.contains(html, "data-testid=\"project-structure-settings\"")
   render_assertions.contains(html, "Elige cuánta profundidad")
+  render_assertions.contains(html, "data-testid=\"project-depth-orientation\"")
+  render_assertions.contains(
+    html,
+    "Los niveles van desde la tarjeta más general hasta la más cercana a las tareas.",
+  )
+  render_assertions.contains(html, "Nivel 1 · superior")
+  render_assertions.contains(html, "Nivel 3 · recibe tareas")
+  render_assertions.contains(html, "Tareas")
   render_assertions.contains(html, "Ejemplos: Tarjeta -&gt; Tarea")
   render_assertions.contains(html, "Este límite nunca bloquea")
   render_assertions.contains(html, "aria-label=\"Profundidad maxima\"")
@@ -281,7 +289,10 @@ pub fn projects_edit_dialog_localizes_structure_settings_to_spanish_test() {
   render_assertions.contains(html, "Profundidad maxima")
   render_assertions.contains(html, "Limite blando del Pool")
   render_assertions.contains(html, "Este límite nunca bloquea")
-  render_assertions.contains(html, "Nivel 1")
+  render_assertions.contains(html, "data-testid=\"project-depth-orientation\"")
+  render_assertions.contains(html, "Nivel 1 · superior")
+  render_assertions.contains(html, "Nivel 2 · recibe tareas")
+  render_assertions.contains(html, "Tareas")
   render_assertions.contains(html, "aria-label=\"Nombre singular del nivel 1\"")
   render_assertions.not_contains(html, "Structure and Pool")
   render_assertions.not_contains(html, "Pool soft limit")

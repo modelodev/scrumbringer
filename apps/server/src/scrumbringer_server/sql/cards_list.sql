@@ -19,10 +19,11 @@ SELECT
       else false
     end as has_new_notes
 FROM cards c
-LEFT JOIN tasks t ON t.card_id = c.id
+LEFT JOIN tasks t ON t.card_id = c.id AND t.deleted_at IS NULL
 LEFT JOIN card_notes cn ON cn.card_id = c.id
 LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
+  AND c.deleted_at IS NULL
 GROUP BY c.id, v.last_viewed_at
 ORDER BY c.created_at DESC;

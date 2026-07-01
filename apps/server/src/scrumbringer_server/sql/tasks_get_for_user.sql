@@ -48,7 +48,7 @@ select
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
-left join cards c on c.id = t.card_id
+left join cards c on c.id = t.card_id and c.deleted_at is null
 left join lateral (
   select
     re.id,
@@ -94,11 +94,13 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = t.id
 ) deps on true
 where t.id = $1
+  and t.deleted_at is null
+  and (t.card_id is null or c.id is not null)
   and exists(
     select 1
     from project_members pm

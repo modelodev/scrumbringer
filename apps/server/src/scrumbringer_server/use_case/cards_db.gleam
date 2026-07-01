@@ -46,9 +46,6 @@ pub type CardActionImpact {
 /// Errors for card operations.
 pub type CardError {
   CardNotFound
-  CardHasTasks(task_count: Int)
-  CardHasChildCards(child_count: Int)
-  CardHasOperationalHistory
   InvalidParentCard
   InvalidParentExecutionPhase(String)
   ParentCardClosed
@@ -387,14 +384,75 @@ fn record_card_due_date_change(
   }
 }
 
-/// Delete a card only when it has no child content or operational history.
-pub fn delete_card(db: pog.Connection, card_id: Int) -> Result(Nil, CardError) {
-  use _ <- result.try(validate_card_delete(db, card_id))
-
-  case sql.cards_delete(db, card_id) {
+/// Logically delete a card subtree and its direct tasks.
+pub fn delete_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(Nil, CardError) {
+  case logical_delete_card(db, card_id, user_id) {
     Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
+    Ok(pog.Returned(rows: [0, ..], ..)) -> Error(CardNotFound)
     Ok(_) -> Ok(Nil)
   }
+}
+
+fn logical_delete_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(pog.Returned(Int), pog.QueryError) {
+  pog.query(
+    "WITH RECURSIVE subtree AS (
+       SELECT id
+       FROM cards
+       WHERE id = $1
+         AND deleted_at IS NULL
+       UNION ALL
+       SELECT child.id
+       FROM cards child
+       JOIN subtree parent ON child.parent_card_id = parent.id
+       WHERE child.deleted_at IS NULL
+     ),
+     scoped_tasks AS (
+       SELECT id
+       FROM tasks
+       WHERE card_id IN (SELECT id FROM subtree)
+         AND deleted_at IS NULL
+     ),
+     stopped_sessions AS (
+       UPDATE user_task_work_session session
+       SET ended_at = now()
+       WHERE session.task_id IN (SELECT id FROM scoped_tasks)
+         AND session.ended_at IS NULL
+       RETURNING session.id
+     ),
+     deleted_tasks AS (
+       UPDATE tasks task
+       SET deleted_at = now(),
+           deleted_by = $2,
+           claimed_by = NULL,
+           claimed_mode = NULL,
+           last_entered_pool_at = NULL,
+           version = version + 1
+       WHERE task.id IN (SELECT id FROM scoped_tasks)
+       RETURNING task.id
+     ),
+     deleted_cards AS (
+       UPDATE cards card
+       SET deleted_at = now(),
+           deleted_by = $2
+       WHERE card.id IN (SELECT id FROM subtree)
+       RETURNING card.id
+     )
+     SELECT COUNT(*)::int
+     FROM deleted_cards",
+  )
+  |> pog.parameter(pog.int(card_id))
+  |> pog.parameter(pog.int(user_id))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
 }
 
 pub fn activate_card(
@@ -420,6 +478,7 @@ fn activate_open_card(
        FROM cards c
        JOIN projects p ON p.id = c.project_id
        WHERE c.id = $1
+         AND c.deleted_at IS NULL
      ),
      settings AS (
        SELECT COALESCE(ps.healthy_pool_limit, $3)::int AS healthy_pool_limit
@@ -431,6 +490,8 @@ fn activate_open_card(
        FROM tasks task
        LEFT JOIN cards card ON card.id = task.card_id
        WHERE task.project_id = (SELECT project_id FROM target)
+         AND task.deleted_at IS NULL
+         AND card.deleted_at IS NULL
          AND task.execution_state = 'available'
          AND card.execution_state = 'active'
      ),
@@ -438,10 +499,12 @@ fn activate_open_card(
        SELECT id
        FROM cards
        WHERE id IN (SELECT id FROM target)
+         AND deleted_at IS NULL
        UNION ALL
        SELECT child.id
        FROM cards child
        JOIN subtree parent ON child.parent_card_id = parent.id
+       WHERE child.deleted_at IS NULL
      ),
      impact AS (
        SELECT COUNT(*)::int AS opened_count
@@ -449,6 +512,7 @@ fn activate_open_card(
        JOIN cards card ON card.id = task.card_id
        JOIN subtree node ON node.id = card.id
        WHERE task.execution_state = 'available'
+         AND task.deleted_at IS NULL
          AND card.execution_state = 'draft'
      ),
      updated AS (
@@ -475,6 +539,7 @@ fn activate_open_card(
        UPDATE tasks
        SET last_entered_pool_at = COALESCE(last_entered_pool_at, NOW())
        WHERE card_id IN (SELECT id FROM updated)
+         AND deleted_at IS NULL
          AND execution_state = 'available'
        RETURNING id
      ),
@@ -548,6 +613,7 @@ fn close_open_card(
            FROM cards c
            JOIN projects p ON p.id = c.project_id
            WHERE c.id = $1
+             AND c.deleted_at IS NULL
          ),
          settings AS (
            SELECT COALESCE(ps.healthy_pool_limit, $3)::int AS healthy_pool_limit
@@ -559,6 +625,8 @@ fn close_open_card(
            FROM tasks task
            LEFT JOIN cards card ON card.id = task.card_id
            WHERE task.project_id = (SELECT project_id FROM target)
+             AND task.deleted_at IS NULL
+             AND card.deleted_at IS NULL
              AND task.execution_state = 'available'
              AND card.execution_state = 'active'
          ),
@@ -566,10 +634,12 @@ fn close_open_card(
            SELECT id
            FROM cards
            WHERE id IN (SELECT id FROM target)
+             AND deleted_at IS NULL
            UNION ALL
            SELECT child.id
            FROM cards child
            JOIN subtree parent ON child.parent_card_id = parent.id
+           WHERE child.deleted_at IS NULL
          ),
          pool_removed AS (
            SELECT COUNT(*)::int AS removed_count
@@ -577,6 +647,7 @@ fn close_open_card(
            JOIN cards card ON card.id = task.card_id
            JOIN subtree node ON node.id = task.card_id
            WHERE task.execution_state = 'available'
+             AND task.deleted_at IS NULL
              AND card.execution_state = 'active'
          ),
          closed_tasks AS (
@@ -592,6 +663,7 @@ fn close_open_card(
                last_entered_pool_at = NULL,
                version = version + 1
            WHERE card_id IN (SELECT id FROM subtree)
+             AND deleted_at IS NULL
              AND execution_state = 'available'
            RETURNING id
          ),
@@ -698,21 +770,34 @@ fn rollup_card_if_closable(
        FROM cards c
        JOIN projects p ON p.id = c.project_id
        WHERE c.id = $1
+         AND c.deleted_at IS NULL
          AND c.execution_state <> 'closed'
          AND (
-           EXISTS (SELECT 1 FROM tasks t WHERE t.card_id = c.id)
-           OR EXISTS (SELECT 1 FROM cards child WHERE child.parent_card_id = c.id)
+           EXISTS (
+             SELECT 1
+             FROM tasks t
+             WHERE t.card_id = c.id
+               AND t.deleted_at IS NULL
+           )
+           OR EXISTS (
+             SELECT 1
+             FROM cards child
+             WHERE child.parent_card_id = c.id
+               AND child.deleted_at IS NULL
+           )
          )
          AND NOT EXISTS (
            SELECT 1
            FROM tasks t
            WHERE t.card_id = c.id
+             AND t.deleted_at IS NULL
              AND t.execution_state <> 'closed'
          )
          AND NOT EXISTS (
            SELECT 1
            FROM cards child
            WHERE child.parent_card_id = c.id
+             AND child.deleted_at IS NULL
              AND child.execution_state <> 'closed'
          )
      ),
@@ -821,7 +906,12 @@ fn card_execution_state(
   db: pog.Connection,
   card_id: Int,
 ) -> Result(String, CardError) {
-  pog.query("SELECT execution_state FROM cards WHERE id = $1")
+  pog.query(
+    "SELECT execution_state
+     FROM cards
+     WHERE id = $1
+       AND deleted_at IS NULL",
+  )
   |> pog.parameter(pog.int(card_id))
   |> pog.returning(string_decoder())
   |> pog.execute(db)
@@ -832,97 +922,6 @@ fn card_execution_state(
       _ -> Error(CardNotFound)
     }
   })
-}
-
-fn validate_card_delete(
-  db: pog.Connection,
-  card_id: Int,
-) -> Result(Nil, CardError) {
-  use outcome <- result.try(card_delete_validation_outcome(db, card_id))
-  case outcome {
-    DeleteAllowed -> Ok(Nil)
-    DeleteNotFound -> Error(CardNotFound)
-    DeleteHasTasks(count) -> Error(CardHasTasks(count))
-    DeleteHasChildCards(count) -> Error(CardHasChildCards(count))
-    DeleteHasOperationalHistory -> Error(CardHasOperationalHistory)
-  }
-}
-
-type CardDeleteValidation {
-  DeleteAllowed
-  DeleteNotFound
-  DeleteHasTasks(Int)
-  DeleteHasChildCards(Int)
-  DeleteHasOperationalHistory
-}
-
-fn card_delete_validation_outcome(
-  db: pog.Connection,
-  card_id: Int,
-) -> Result(CardDeleteValidation, CardError) {
-  pog.query(
-    "WITH target AS (
-       SELECT id, execution_state
-       FROM cards
-       WHERE id = $1
-     ),
-     counts AS (
-       SELECT
-         (SELECT COUNT(*)::int FROM tasks WHERE card_id = $1) AS task_count,
-         (SELECT COUNT(*)::int FROM cards WHERE parent_card_id = $1) AS child_count,
-         EXISTS (
-           SELECT 1
-           FROM audit_events
-           WHERE card_id = $1
-         ) AS has_audit_events,
-         EXISTS (
-           SELECT 1
-           FROM card_notes
-           WHERE card_id = $1
-         ) AS has_notes
-     )
-     SELECT
-       CASE
-         WHEN NOT EXISTS (SELECT 1 FROM target) THEN 'not_found'
-         WHEN counts.task_count > 0 THEN 'tasks'
-         WHEN counts.child_count > 0 THEN 'children'
-         WHEN EXISTS (
-           SELECT 1
-           FROM target
-           WHERE execution_state <> 'draft'
-         ) THEN 'history'
-         WHEN counts.has_audit_events THEN 'history'
-         WHEN counts.has_notes THEN 'history'
-         ELSE 'ok'
-       END,
-       counts.task_count,
-       counts.child_count
-     FROM counts",
-  )
-  |> pog.parameter(pog.int(card_id))
-  |> pog.returning(card_delete_validation_decoder())
-  |> pog.execute(db)
-  |> result.map_error(DbError)
-  |> result.try(fn(returned) {
-    case returned.rows {
-      [outcome] -> Ok(outcome)
-      _ -> Error(CardNotFound)
-    }
-  })
-}
-
-fn card_delete_validation_decoder() {
-  use reason <- decode.field(0, decode.string)
-  use task_count <- decode.field(1, decode.int)
-  use child_count <- decode.field(2, decode.int)
-  case reason {
-    "ok" -> decode.success(DeleteAllowed)
-    "not_found" -> decode.success(DeleteNotFound)
-    "tasks" -> decode.success(DeleteHasTasks(task_count))
-    "children" -> decode.success(DeleteHasChildCards(child_count))
-    "history" -> decode.success(DeleteHasOperationalHistory)
-    _ -> decode.success(DeleteHasOperationalHistory)
-  }
 }
 
 fn validate_move_card(
@@ -953,21 +952,25 @@ fn move_validation_outcome(
        SELECT id, project_id, parent_card_id, execution_state
        FROM cards
        WHERE id = $1
+         AND deleted_at IS NULL
      ),
      destination AS (
        SELECT cards.id, cards.project_id, cards.parent_card_id, cards.execution_state
        FROM cards, current_card
        WHERE cards.id = $2
          AND cards.project_id = current_card.project_id
+         AND cards.deleted_at IS NULL
      ),
      subtree AS (
        SELECT id
        FROM cards
        WHERE id = $1
+         AND deleted_at IS NULL
        UNION ALL
        SELECT child.id
        FROM cards child
        JOIN subtree parent ON child.parent_card_id = parent.id
+       WHERE child.deleted_at IS NULL
      )
      SELECT CASE
        WHEN NOT EXISTS (SELECT 1 FROM current_card) THEN 'not_found'
@@ -981,7 +984,12 @@ fn move_validation_outcome(
          AND EXISTS (SELECT 1 FROM destination WHERE execution_state = 'closed')
          THEN 'dest_closed'
        WHEN $2 IS NOT NULL
-         AND EXISTS (SELECT 1 FROM tasks WHERE card_id = $2)
+         AND EXISTS (
+           SELECT 1
+           FROM tasks
+           WHERE card_id = $2
+             AND deleted_at IS NULL
+         )
          THEN 'dest_tasks'
        WHEN $2 IS NOT NULL
          AND EXISTS (SELECT 1 FROM subtree WHERE id = $2)
@@ -1011,15 +1019,18 @@ fn count_claimed_tasks(
        SELECT id
        FROM cards
        WHERE id = $1
+         AND deleted_at IS NULL
        UNION ALL
        SELECT child.id
        FROM cards child
        JOIN subtree parent ON child.parent_card_id = parent.id
+       WHERE child.deleted_at IS NULL
      )
      SELECT COUNT(*)::int
      FROM tasks task
      JOIN subtree node ON node.id = task.card_id
-     WHERE task.execution_state = 'claimed'",
+     WHERE task.execution_state = 'claimed'
+       AND task.deleted_at IS NULL",
   )
   |> pog.parameter(pog.int(card_id))
   |> pog.returning(int_decoder())
@@ -1142,6 +1153,7 @@ fn card_parent_validation_outcome(
        FROM cards
        WHERE id = $2
          AND project_id = $1
+         AND deleted_at IS NULL
      )
      SELECT CASE
        WHEN NOT EXISTS (SELECT 1 FROM parent) THEN 'not_found'
@@ -1149,7 +1161,10 @@ fn card_parent_validation_outcome(
          SELECT 1 FROM parent WHERE execution_state = 'closed'
        ) THEN 'closed'
        WHEN EXISTS (
-         SELECT 1 FROM tasks WHERE card_id = $2
+         SELECT 1
+         FROM tasks
+         WHERE card_id = $2
+           AND deleted_at IS NULL
        ) THEN 'has_tasks'
        ELSE 'ok'
      END",

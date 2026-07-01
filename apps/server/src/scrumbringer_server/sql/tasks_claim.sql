@@ -2,14 +2,17 @@ with recursive claim_target as (
   select id, card_id
   from tasks
   where id = $1
+    and deleted_at is null
 ), ancestors as (
   select c.id, c.parent_card_id, c.execution_state
   from cards c
   join claim_target target on target.card_id = c.id
+  where c.deleted_at is null
   union all
   select parent.id, parent.parent_card_id, parent.execution_state
   from cards parent
   join ancestors child on child.parent_card_id = parent.id
+  where parent.deleted_at is null
 ), updated as (
   update tasks
   set
@@ -24,6 +27,7 @@ with recursive claim_target as (
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
+    and deleted_at is null
     and execution_state = 'available'
     and version = $3
     and exists (
@@ -42,6 +46,7 @@ with recursive claim_target as (
       from task_dependencies d
       join tasks blocker on blocker.id = d.depends_on_task_id
       where d.task_id = tasks.id
+        and blocker.deleted_at is null
         and blocker.execution_state != 'closed'
     )
   returning

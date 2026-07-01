@@ -666,6 +666,18 @@ pub fn translate(text: Text) -> String {
     text.ProjectPoolSoftLimitHint ->
       "This limit never blocks. It helps avoid saturation and team frustration when too many tasks are available in the Pool."
     text.ProjectDepthLevel(depth) -> "Level " <> int.to_string(depth)
+    text.ProjectDepthLevelRole(depth, max_depth) -> {
+      let level = "Level " <> int.to_string(depth)
+      case depth == 1, depth == max_depth {
+        True, True -> level <> " · top, receives tasks"
+        True, False -> level <> " · top"
+        False, True -> level <> " · receives tasks"
+        False, False -> level
+      }
+    }
+    text.ProjectDepthOrientationHelp ->
+      "Levels run from the broadest card to the card closest to tasks."
+    text.ProjectDepthTasksEndpoint -> "Tasks"
     text.ProjectDepthLevelSingularName(depth) ->
       "Level " <> int.to_string(depth) <> " singular name"
     text.ProjectDepthLevelPluralName(depth) ->
@@ -750,9 +762,11 @@ pub fn translate(text: Text) -> String {
     text.CardCreated -> "Card created"
     text.CardUpdated -> "Card updated"
     text.CardDeleted -> "Card deleted"
-    text.CardDeleteBlocked -> "Cannot delete: has tasks"
+    text.CardDeleteBlocked -> "Could not delete this card"
     text.CardDeleteConfirm(card_title) ->
-      "Delete card \"" <> card_title <> "\"?"
+      "Delete card \""
+      <> card_title
+      <> "\"? Its subcards and tasks will be removed from operational views."
     text.NoCardsYet -> "No cards yet"
     text.KanbanEmptyDraft -> "No cards are waiting for work"
     text.KanbanEmptyActive -> "No active cards need attention"

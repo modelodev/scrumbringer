@@ -181,7 +181,7 @@ pub fn kanban_card_shows_notes_indicator_test() {
   render_assertions.contains(html, "card-notes-indicator")
 }
 
-pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
+pub fn kanban_in_progress_card_with_tasks_keeps_delete_available_test() {
   let config = base_config([available_task()])
   let card = case config.cards {
     [first, ..] -> card.Card(..first, state: Active)
@@ -194,10 +194,8 @@ pub fn kanban_in_progress_card_with_tasks_disables_delete_test() {
     |> render_assertions.html
 
   render_assertions.contains(html, "data-testid=\"kanban-card-delete-action\"")
-  render_assertions.contains(html, "btn-delete-blocked")
-  render_assertions.contains(html, "title=\"Cannot delete: has tasks\"")
-  render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
-  render_assertions.contains(html, "aria-disabled=\"true\"")
+  render_assertions.not_contains(html, "btn-delete-blocked")
+  render_assertions.not_contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {

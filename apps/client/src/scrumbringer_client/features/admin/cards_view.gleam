@@ -353,19 +353,9 @@ fn delete_card_action(config: Config(msg), card: Card) -> Element(msg) {
   action_buttons.delete_button_with_availability_and_testid(
     t(config, i18n_text.DeleteCard),
     config.on_delete_opened(card.id),
-    card_delete_availability(config, card),
+    action_buttons.Available,
     "card-delete-btn",
   )
-}
-
-fn card_delete_availability(
-  config: Config(msg),
-  card: Card,
-) -> action_buttons.Availability {
-  case card.task_count > 0 {
-    True -> action_buttons.Blocked(t(config, i18n_text.CardDeleteBlocked))
-    False -> action_buttons.Available
-  }
 }
 
 fn decode_card_created_event(config: Config(msg)) -> decode.Decoder(msg) {

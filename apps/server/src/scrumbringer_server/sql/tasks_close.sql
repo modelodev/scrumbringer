@@ -14,6 +14,7 @@ with updated as (
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
+    and deleted_at is null
     and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
@@ -103,7 +104,7 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = updated.id
 ) deps on true;

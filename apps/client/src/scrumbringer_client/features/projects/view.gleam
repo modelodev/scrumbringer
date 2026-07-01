@@ -559,11 +559,13 @@ fn view_project_create_structure_settings(
           attribute.required(True),
         ]),
       ),
+      view_depth_orientation(depth_names, config),
       div([attribute.class("project-structure-settings__levels")], {
         depth_names
         |> list.map(fn(depth_name) {
           view_depth_name(
             depth_name,
+            list.length(depth_names),
             config,
             config.on_create_depth_singular_changed,
             config.on_create_depth_plural_changed,
@@ -662,11 +664,13 @@ fn view_project_structure_settings(
           attribute.required(True),
         ]),
       ),
+      view_depth_orientation(depth_names, config),
       div([attribute.class("project-structure-settings__levels")], {
         depth_names
         |> list.map(fn(depth_name) {
           view_depth_name(
             depth_name,
+            list.length(depth_names),
             config,
             config.on_edit_depth_singular_changed,
             config.on_edit_depth_plural_changed,
@@ -838,8 +842,66 @@ fn view_depth_reduction_affected_card(
   ])
 }
 
+fn view_depth_orientation(
+  depth_names: List(ProjectDepthName),
+  config: Config(msg),
+) -> element.Element(msg) {
+  let max_depth = list.length(depth_names)
+  div(
+    [
+      attribute.class("project-structure-settings__orientation"),
+      attribute.attribute("data-testid", "project-depth-orientation"),
+    ],
+    [
+      p([attribute.class("project-structure-settings__orientation-help")], [
+        text(t(config, i18n_text.ProjectDepthOrientationHelp)),
+      ]),
+      ul([attribute.class("project-structure-settings__orientation-chain")], {
+        list.append(
+          depth_names
+            |> list.map(fn(depth_name) {
+              view_depth_orientation_step(depth_name, max_depth, config)
+            }),
+          [
+            li(
+              [attribute.class("project-structure-settings__orientation-step")],
+              [
+                span(
+                  [
+                    attribute.class(
+                      "project-structure-settings__orientation-marker",
+                    ),
+                  ],
+                  [text(t(config, i18n_text.ProjectDepthTasksEndpoint))],
+                ),
+              ],
+            ),
+          ],
+        )
+      }),
+    ],
+  )
+}
+
+fn view_depth_orientation_step(
+  depth_name: ProjectDepthName,
+  max_depth: Int,
+  config: Config(msg),
+) -> element.Element(msg) {
+  let ProjectDepthName(depth:, singular_name:, ..) = depth_name
+  li([attribute.class("project-structure-settings__orientation-step")], [
+    span([attribute.class("project-structure-settings__orientation-marker")], [
+      text(t(config, i18n_text.ProjectDepthLevelRole(depth, max_depth))),
+    ]),
+    span([attribute.class("project-structure-settings__orientation-name")], [
+      text(singular_name),
+    ]),
+  ])
+}
+
 fn view_depth_name(
   depth_name: ProjectDepthName,
+  max_depth: Int,
   config: Config(msg),
   on_singular_changed: fn(Int, String) -> msg,
   on_plural_changed: fn(Int, String) -> msg,
@@ -847,7 +909,7 @@ fn view_depth_name(
   let ProjectDepthName(depth:, singular_name:, plural_name:) = depth_name
   div([attribute.class("project-structure-settings__level")], [
     label([attribute.class("project-structure-settings__level-label")], [
-      text(t(config, i18n_text.ProjectDepthLevel(depth))),
+      text(t(config, i18n_text.ProjectDepthLevelRole(depth, max_depth))),
     ]),
     input([
       attribute.type_("text"),

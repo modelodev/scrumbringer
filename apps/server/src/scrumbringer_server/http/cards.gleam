@@ -26,7 +26,6 @@
 import api/cards/contracts as card_contracts
 import domain/card as domain_card
 import gleam/http
-import gleam/int
 import gleam/option.{Some}
 import pog
 import scrumbringer_server/http/api
@@ -110,11 +109,6 @@ fn card_error_response(error: cards_db.CardError) -> wisp.Response {
         "Cannot move card into its own subtree",
       )
     cards_db.DbError(_) -> api.error(500, "INTERNAL", "Database error")
-    cards_db.CardHasChildCards(_) ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    cards_db.CardHasOperationalHistory ->
-      api.error(500, "INTERNAL", "Unexpected error")
-    cards_db.CardHasTasks(_) -> api.error(500, "INTERNAL", "Unexpected error")
   }
 }
 
@@ -681,31 +675,17 @@ fn delete_card_in_project(
 
   case require_project_admin(db, user_id, card.project_id) {
     Error(resp) -> resp
-    Ok(Nil) -> delete_card_in_db(db, card.id)
+    Ok(Nil) -> delete_card_in_db(db, card.id, user_id)
   }
 }
 
-fn delete_card_in_db(db: pog.Connection, card_id: Int) -> wisp.Response {
-  case cards_db.delete_card(db, card_id) {
+fn delete_card_in_db(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case cards_db.delete_card(db, card_id, user_id) {
     Ok(Nil) -> wisp.no_content()
-    Error(cards_db.CardHasTasks(count)) ->
-      api.error(
-        409,
-        "CONFLICT_HAS_TASKS",
-        "Cannot delete card with " <> int.to_string(count) <> " tasks",
-      )
-    Error(cards_db.CardHasChildCards(count)) ->
-      api.error(
-        409,
-        "CONFLICT_HAS_CHILD_CARDS",
-        "Cannot delete card with " <> int.to_string(count) <> " child cards",
-      )
-    Error(cards_db.CardHasOperationalHistory) ->
-      api.error(
-        409,
-        "CARD_HAS_OPERATIONAL_HISTORY",
-        "Card has operational history and must be closed instead of deleted",
-      )
     Error(error) -> card_error_response(error)
   }
 }

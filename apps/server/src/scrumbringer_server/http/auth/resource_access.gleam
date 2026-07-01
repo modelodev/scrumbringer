@@ -97,7 +97,11 @@ fn task_project_id(
   task_id: String,
 ) -> Result(Option(Int), AccessError) {
   use id <- result.try(parse_id(task_id))
-  select_project_id(db, "select project_id from tasks where id = $1", id)
+  select_project_id(
+    db,
+    "select project_id from tasks where id = $1 and deleted_at is null",
+    id,
+  )
 }
 
 fn card_project_id(
@@ -105,7 +109,11 @@ fn card_project_id(
   card_id: String,
 ) -> Result(Option(Int), AccessError) {
   use id <- result.try(parse_id(card_id))
-  select_project_id(db, "select project_id from cards where id = $1", id)
+  select_project_id(
+    db,
+    "select project_id from cards where id = $1 and deleted_at is null",
+    id,
+  )
 }
 
 fn parse_id(value: String) -> Result(Int, AccessError) {

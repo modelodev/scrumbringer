@@ -559,10 +559,7 @@ fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
-  let error_msg = case err.status {
-    409 -> t(model.locale, i18n_text.CardDeleteBlocked)
-    _ -> err.message
-  }
+  let error_msg = err.message
   #(
     Model(
       ..model,

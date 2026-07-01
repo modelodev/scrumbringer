@@ -37,10 +37,7 @@ fn fetch_card_project_id(
 fn card_error_response(error: cards_db.CardError) -> wisp.Response {
   case error {
     cards_db.CardNotFound -> not_found_response()
-    cards_db.CardHasTasks(_)
-    | cards_db.CardHasChildCards(_)
-    | cards_db.CardHasOperationalHistory
-    | cards_db.InvalidParentCard
+    cards_db.InvalidParentCard
     | cards_db.InvalidParentExecutionPhase(_)
     | cards_db.ParentCardClosed
     | cards_db.ParentDoesNotAcceptCards

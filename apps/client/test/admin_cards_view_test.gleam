@@ -72,7 +72,7 @@ pub fn cards_view_renders_detail_button_test() {
   render_assertions.contains(html, "card-show-open")
 }
 
-pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
+pub fn cards_view_keeps_delete_available_for_cards_with_tasks_test() {
   let model =
     base_model()
     |> update_admin(fn(admin) {
@@ -88,9 +88,9 @@ pub fn cards_view_blocks_delete_for_cards_with_tasks_test() {
     |> render_assertions.html
 
   render_assertions.contains(html, "card-delete-btn")
-  render_assertions.contains(html, "btn-delete-blocked")
-  render_assertions.contains(html, "data-tooltip=\"Cannot delete: has tasks\"")
-  render_assertions.contains(html, "aria-disabled=\"true\"")
+  render_assertions.contains(html, "aria-label=\"Delete Card\"")
+  render_assertions.not_contains(html, "btn-delete-blocked")
+  render_assertions.not_contains(html, "aria-disabled=\"true\"")
 }
 
 pub fn cards_view_keeps_delete_available_for_empty_cards_test() {

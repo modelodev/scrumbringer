@@ -695,6 +695,18 @@ pub fn translate(text: Text) -> String {
     text.ProjectPoolSoftLimitHint ->
       "Este límite nunca bloquea. Sirve para evitar saturación y frustración del equipo cuando hay demasiadas tareas disponibles en el Pool."
     text.ProjectDepthLevel(depth) -> "Nivel " <> int.to_string(depth)
+    text.ProjectDepthLevelRole(depth, max_depth) -> {
+      let level = "Nivel " <> int.to_string(depth)
+      case depth == 1, depth == max_depth {
+        True, True -> level <> " · superior, recibe tareas"
+        True, False -> level <> " · superior"
+        False, True -> level <> " · recibe tareas"
+        False, False -> level
+      }
+    }
+    text.ProjectDepthOrientationHelp ->
+      "Los niveles van desde la tarjeta más general hasta la más cercana a las tareas."
+    text.ProjectDepthTasksEndpoint -> "Tareas"
     text.ProjectDepthLevelSingularName(depth) ->
       "Nombre singular del nivel " <> int.to_string(depth)
     text.ProjectDepthLevelPluralName(depth) ->
@@ -782,9 +794,11 @@ pub fn translate(text: Text) -> String {
     text.CardCreated -> "Tarjeta creada"
     text.CardUpdated -> "Tarjeta actualizada"
     text.CardDeleted -> "Tarjeta eliminada"
-    text.CardDeleteBlocked -> "No se puede eliminar: tiene tareas"
+    text.CardDeleteBlocked -> "No se pudo eliminar esta tarjeta"
     text.CardDeleteConfirm(card_title) ->
-      "¿Eliminar la tarjeta \"" <> card_title <> "\"?"
+      "¿Eliminar la tarjeta \""
+      <> card_title
+      <> "\"? Sus subtarjetas y tareas dejarán de aparecer en las vistas operativas."
     text.NoCardsYet -> "Aún no hay tarjetas"
     text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"

@@ -555,20 +555,9 @@ fn delete_card_action(
   action_buttons.delete_button_with_availability_and_testid(
     i18n.t(config.locale, i18n_text.DeleteCardTooltip),
     config.on_card_delete(card.id),
-    card_delete_availability(config, card),
+    action_buttons.Available,
     "kanban-card-delete-action",
   )
-}
-
-fn card_delete_availability(
-  config: KanbanConfig(msg),
-  card: Card,
-) -> action_buttons.Availability {
-  case card.task_count > 0 {
-    True ->
-      action_buttons.Blocked(i18n.t(config.locale, i18n_text.CardDeleteBlocked))
-    False -> action_buttons.Available
-  }
 }
 
 // =============================================================================

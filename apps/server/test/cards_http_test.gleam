@@ -866,13 +866,13 @@ pub fn delete_card_not_found_test() {
   string.contains(simulate.read_body(res), "NOT_FOUND") |> expect.is_true
 }
 
-pub fn delete_card_conflict_when_tasks_exist_test() {
+pub fn delete_card_with_tasks_soft_deletes_card_and_tasks_test() {
   let #(_db, handler, session, project_id, type_id) =
     fixtures.require_task_project("Core")
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Card")
 
-  let _ =
+  let assert Ok(task_id) =
     fixtures.create_task_with_card(
       handler,
       session,
@@ -882,23 +882,35 @@ pub fn delete_card_conflict_when_tasks_exist_test() {
       "Task",
     )
 
-  let res =
+  let delete_res =
     handler(
       simulate.request(http.Delete, "/api/v1/cards/" <> int.to_string(card_id))
       |> fixtures.with_auth(session),
     )
 
-  expect.expect_status(res, 409)
-  string.contains(simulate.read_body(res), "CONFLICT_HAS_TASKS")
-  |> expect.is_true
+  expect.expect_status(delete_res, 204)
+
+  let card_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(card_id))
+      |> fixtures.with_auth(session),
+    )
+  expect.expect_status(card_res, 404)
+
+  let task_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/tasks/" <> int.to_string(task_id))
+      |> fixtures.with_auth(session),
+    )
+  expect.expect_status(task_res, 404)
 }
 
-pub fn delete_card_conflict_when_child_cards_exist_test() {
+pub fn delete_card_with_child_cards_soft_deletes_subtree_test() {
   let #(_db, handler, session, project_id) =
     fixtures.require_project_context("Core")
   let assert Ok(parent_id) =
     fixtures.create_card(handler, session, project_id, "Parent")
-  let assert Ok(_child_id) =
+  let assert Ok(child_id) =
     fixtures.create_child_card(handler, session, project_id, parent_id, "Child")
 
   let res =
@@ -910,12 +922,24 @@ pub fn delete_card_conflict_when_child_cards_exist_test() {
       |> fixtures.with_auth(session),
     )
 
-  expect.expect_status(res, 409)
-  string.contains(simulate.read_body(res), "CONFLICT_HAS_CHILD_CARDS")
-  |> expect.is_true
+  expect.expect_status(res, 204)
+
+  let parent_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(parent_id))
+      |> fixtures.with_auth(session),
+    )
+  expect.expect_status(parent_res, 404)
+
+  let child_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(child_id))
+      |> fixtures.with_auth(session),
+    )
+  expect.expect_status(child_res, 404)
 }
 
-pub fn delete_card_conflict_when_operational_history_exists_test() {
+pub fn delete_closed_card_without_visible_content_soft_deletes_test() {
   let #(_db, handler, session, project_id) =
     fixtures.require_project_context("Core")
   let assert Ok(card_id) =
@@ -931,7 +955,12 @@ pub fn delete_card_conflict_when_operational_history_exists_test() {
       |> fixtures.with_auth(session),
     )
 
-  expect.expect_status(res, 409)
-  string.contains(simulate.read_body(res), "CARD_HAS_OPERATIONAL_HISTORY")
-  |> expect.is_true
+  expect.expect_status(res, 204)
+
+  let get_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/cards/" <> int.to_string(card_id))
+      |> fixtures.with_auth(session),
+    )
+  expect.expect_status(get_res, 404)
 }

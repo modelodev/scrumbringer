@@ -1120,11 +1120,12 @@ pub fn cards_get(
       else false
     end as has_new_notes
 FROM cards c
-LEFT JOIN tasks t ON t.card_id = c.id
+LEFT JOIN tasks t ON t.card_id = c.id AND t.deleted_at IS NULL
 LEFT JOIN card_notes cn ON cn.card_id = c.id
 LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.id = $1
+  AND c.deleted_at IS NULL
 GROUP BY c.id, v.last_viewed_at;
 "
   |> pog.query
@@ -1224,11 +1225,12 @@ pub fn cards_list(
       else false
     end as has_new_notes
 FROM cards c
-LEFT JOIN tasks t ON t.card_id = c.id
+LEFT JOIN tasks t ON t.card_id = c.id AND t.deleted_at IS NULL
 LEFT JOIN card_notes cn ON cn.card_id = c.id
 LEFT JOIN notes n ON n.id = cn.note_id
 LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
+  AND c.deleted_at IS NULL
 GROUP BY c.id, v.last_viewed_at
 ORDER BY c.created_at DESC;
 "
@@ -5748,7 +5750,10 @@ pub fn task_positions_list_for_user(
   to_char(tp.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at
 from task_positions tp
 join tasks t on t.id = tp.task_id
+left join cards c on c.id = t.card_id and c.deleted_at is null
 where tp.user_id = $1
+  and t.deleted_at is null
+  and (t.card_id is null or c.id is not null)
   and ($2 = 0 or t.project_id = $2)
   and exists(
     select 1
@@ -6771,14 +6776,17 @@ pub fn tasks_claim(
   select id, card_id
   from tasks
   where id = $1
+    and deleted_at is null
 ), ancestors as (
   select c.id, c.parent_card_id, c.execution_state
   from cards c
   join claim_target target on target.card_id = c.id
+  where c.deleted_at is null
   union all
   select parent.id, parent.parent_card_id, parent.execution_state
   from cards parent
   join ancestors child on child.parent_card_id = parent.id
+  where parent.deleted_at is null
 ), updated as (
   update tasks
   set
@@ -6793,6 +6801,7 @@ pub fn tasks_claim(
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
+    and deleted_at is null
     and execution_state = 'available'
     and version = $3
     and exists (
@@ -6811,6 +6820,7 @@ pub fn tasks_claim(
       from task_dependencies d
       join tasks blocker on blocker.id = d.depends_on_task_id
       where d.task_id = tasks.id
+        and blocker.deleted_at is null
         and blocker.execution_state != 'closed'
     )
   returning
@@ -7058,6 +7068,7 @@ pub fn tasks_close(
     last_entered_pool_at = null,
     version = version + 1
   where id = $1
+    and deleted_at is null
     and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
@@ -7147,7 +7158,7 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = updated.id
 ) deps on true;
@@ -7308,11 +7319,13 @@ with type_ok as (
   from cards c
   where c.id = $7
     and c.project_id = $2
+    and c.deleted_at is null
     and c.execution_state <> 'closed'
     and not exists (
       select 1
       from cards child
       where child.parent_card_id = c.id
+        and child.deleted_at is null
     )
 ), inserted as (
   insert into tasks (
@@ -7660,7 +7673,7 @@ pub fn tasks_get_for_user(
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
-left join cards c on c.id = t.card_id
+left join cards c on c.id = t.card_id and c.deleted_at is null
 left join lateral (
   select
     re.id,
@@ -7706,11 +7719,13 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = t.id
 ) deps on true
 where t.id = $1
+  and t.deleted_at is null
+  and (t.card_id is null or c.id is not null)
   and exists(
     select 1
     from project_members pm
@@ -7930,7 +7945,7 @@ pub fn tasks_list(
   deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
-left join cards c on c.id = t.card_id
+left join cards c on c.id = t.card_id and c.deleted_at is null
 left join lateral (
   select
     re.id,
@@ -7976,11 +7991,13 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = t.id
 ) deps on true
 where t.project_id = $1
+  and t.deleted_at is null
+  and (t.card_id is null or c.id is not null)
   and (
     t.execution_state = 'closed'
     or c.execution_state = 'active'
@@ -8174,6 +8191,7 @@ pub fn tasks_release(
     last_entered_pool_at = now(),
     version = version + 1
   where id = $1
+    and deleted_at is null
     and execution_state = 'claimed'
     and claimed_by = $2
     and version = $3
@@ -8263,7 +8281,7 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = updated.id
 ) deps on true;
@@ -8477,6 +8495,7 @@ set
   end,
   version = version + 1
 where id = $1
+  and deleted_at is null
   and (
     execution_state = 'available'
     or (execution_state = 'claimed' and claimed_by = $2)
@@ -8568,7 +8587,7 @@ left join lateral (
     ) as dependencies,
     coalesce(count(*) filter (where dt.execution_state != 'closed'), 0) as blocked_count
   from task_dependencies d
-  join tasks dt on dt.id = d.depends_on_task_id
+  join tasks dt on dt.id = d.depends_on_task_id and dt.deleted_at is null
   left join users u on u.id = dt.claimed_by
   where d.task_id = updated.id
 ) deps on true;

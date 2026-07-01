@@ -14,7 +14,6 @@ pub type CardStructure {
 
 pub type DisabledReason {
   ClosedCardCannotReceiveChildren
-  CardHasOperationalHistory
 }
 
 pub type MoveBlockedReason {
@@ -72,12 +71,8 @@ pub fn policy_for(
       EmptyCard | TaskGroup -> True
       CardGroup -> False
     }
-  let can_delete =
-    !has_operational_history(card, direct_child_cards, direct_tasks)
-  let delete_disabled_reason = case can_delete {
-    True -> None
-    False -> Some(CardHasOperationalHistory)
-  }
+  let can_delete = True
+  let delete_disabled_reason = None
 
   Policy(
     structure: structure,
@@ -255,18 +250,6 @@ fn do_card_depth(card: Card, cards: List(Card), seen: List(Int)) -> Int {
           }
       }
   }
-}
-
-fn has_operational_history(
-  card: Card,
-  direct_child_cards: List(Card),
-  direct_tasks: List(Task),
-) -> Bool {
-  card.task_count > 0
-  || card.closed_count > 0
-  || card.has_new_notes
-  || !list.is_empty(direct_child_cards)
-  || !list.is_empty(direct_tasks)
 }
 
 fn accepts_child_cards(card: Card, cards: List(Card), tasks: List(Task)) -> Bool {

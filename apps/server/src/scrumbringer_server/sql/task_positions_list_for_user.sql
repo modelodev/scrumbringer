@@ -6,7 +6,10 @@ select
   to_char(tp.updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
 from task_positions tp
 join tasks t on t.id = tp.task_id
+left join cards c on c.id = t.card_id and c.deleted_at is null
 where tp.user_id = $1
+  and t.deleted_at is null
+  and (t.card_id is null or c.id is not null)
   and ($2 = 0 or t.project_id = $2)
   and exists(
     select 1

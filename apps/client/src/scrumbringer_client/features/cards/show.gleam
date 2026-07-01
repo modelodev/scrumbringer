@@ -1236,8 +1236,6 @@ fn disabled_reason_label(
   case reason {
     card_policy.ClosedCardCannotReceiveChildren ->
       t(model.locale, i18n_text.CardClosedCannotReceiveChildren)
-    card_policy.CardHasOperationalHistory ->
-      t(model.locale, i18n_text.CardHasOperationalHistory)
   }
 }
 

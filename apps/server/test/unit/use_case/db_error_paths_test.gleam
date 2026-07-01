@@ -35,7 +35,7 @@ pub fn cards_db_delete_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case cards_db.delete_card(db, 999_999) {
+  case cards_db.delete_card(db, 999_999, 1) {
     Ok(_) -> expect.fail()
     Error(cards_db.CardNotFound) -> Nil
     Error(_) -> expect.fail()

@@ -573,6 +573,9 @@ pub type Text {
   ProjectStructureExamples
   ProjectPoolSoftLimitHint
   ProjectDepthLevel(depth: Int)
+  ProjectDepthLevelRole(depth: Int, max_depth: Int)
+  ProjectDepthOrientationHelp
+  ProjectDepthTasksEndpoint
   ProjectDepthLevelSingularName(depth: Int)
   ProjectDepthLevelPluralName(depth: Int)
   ProjectDepthReductionHidden

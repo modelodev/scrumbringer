@@ -158,7 +158,7 @@ pub fn move_card_dialog_lists_valid_destinations_across_depths_test() {
   let assert 4 = second.id
 }
 
-pub fn delete_disabled_when_card_has_operational_history_test() {
+pub fn delete_enabled_when_card_has_operational_history_test() {
   let policy =
     card_policy.policy_for(
       Card(..card(1, opt.None, Draft), task_count: 1),
@@ -168,9 +168,8 @@ pub fn delete_disabled_when_card_has_operational_history_test() {
       True,
     )
 
-  let assert False = policy.can_delete
-  let assert opt.Some(card_policy.CardHasOperationalHistory) =
-    policy.delete_disabled_reason
+  let assert True = policy.can_delete
+  let assert opt.None = policy.delete_disabled_reason
 }
 
 pub fn closed_card_show_disables_create_actions_with_reason_test() {
