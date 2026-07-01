@@ -164,6 +164,12 @@ pub fn card_in_subtree(
   }
 }
 
+/// Return the ancestor card and all cards below it, preserving input order.
+pub fn cards_in_subtree(ancestor_id: Int, cards: List(Card)) -> List(Card) {
+  cards
+  |> list.filter(fn(card) { card_in_subtree(card.id, ancestor_id, cards) })
+}
+
 /// Returns true when the task belongs to a card subtree.
 pub fn task_in_card_subtree(
   task: Task,
@@ -194,10 +200,7 @@ pub fn cards_for_scope(
     member_pool.PlanScopeCard ->
       case selected_card_id {
         option.None -> cards
-        option.Some(card_id) ->
-          list.filter(cards, fn(card) {
-            card_in_subtree(card.id, card_id, cards)
-          })
+        option.Some(card_id) -> cards_in_subtree(card_id, cards)
       }
   }
 }

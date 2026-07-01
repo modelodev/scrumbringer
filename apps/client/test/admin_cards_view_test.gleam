@@ -12,7 +12,7 @@ import lustre/element.{type Element}
 import lustre/vdom/vattr
 import lustre/vdom/vnode
 import scrumbringer_client/client_state.{
-  type Model, default_model, update_admin, update_member,
+  type Model, CoreModel, default_model, update_admin, update_core, update_member,
 }
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
@@ -23,6 +23,9 @@ import scrumbringer_client/state/normalized_store
 
 fn base_model() -> Model {
   default_model()
+  |> update_core(fn(core) {
+    CoreModel(..core, selected_project_id: opt.Some(1))
+  })
 }
 
 fn sample_project() {
@@ -45,6 +48,25 @@ fn card_crud_dialog_has_card_property(view: Element(msg), title: String) -> Bool
         }
       })
     vnode.Map(child:, ..) -> card_crud_dialog_has_card_property(child, title)
+    _ -> False
+  }
+}
+
+fn card_crud_dialog_has_attribute(
+  view: Element(msg),
+  name: String,
+  value: String,
+) -> Bool {
+  case view {
+    vnode.Element(tag: "card-crud-dialog", attributes:, ..) ->
+      list.any(attributes, fn(attribute) {
+        case attribute {
+          vattr.Attribute(name: attr_name, value: attr_value, ..) ->
+            attr_name == name && attr_value == value
+          _ -> False
+        }
+      })
+    vnode.Map(child:, ..) -> card_crud_dialog_has_attribute(child, name, value)
     _ -> False
   }
 }
@@ -172,6 +194,36 @@ pub fn card_crud_delete_dialog_uses_member_card_cache_when_admin_cards_are_not_l
   render_assertions.contains(html, "card-crud-dialog")
   render_assertions.contains(html, "mode=\"delete\"")
   let assert True = card_crud_dialog_has_card_property(view, "Playwright Card")
+}
+
+pub fn card_crud_delete_dialog_passes_delete_impact_counts_test() {
+  let parent = Card(..sample_card(), task_count: 3)
+  let child =
+    Card(
+      ..domain_fixtures.card(2, 1, "Child Card"),
+      parent_card_id: opt.Some(parent.id),
+      task_count: 4,
+    )
+  let model =
+    base_model()
+    |> update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(
+          ..cards,
+          cards: Loaded([parent, child]),
+          cards_dialog_mode: opt.Some(admin_cards.CardDialogDelete(parent.id)),
+        ),
+      )
+    })
+
+  let html = admin_view.view_card_crud_dialog(model, 1)
+
+  let assert True =
+    card_crud_dialog_has_attribute(html, "delete-task-count", "7")
+  let assert True =
+    card_crud_dialog_has_attribute(html, "delete-subcard-count", "1")
 }
 
 pub fn cards_view_renders_detail_modal_when_open_test() {

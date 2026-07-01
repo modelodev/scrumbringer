@@ -43,7 +43,7 @@ pub fn css() -> List(String) {
     // Admin section header with action button (Story 4.8 UX: consistent height)
     ".admin-section-header-wrapper { margin-bottom: 16px; }",
     ".admin-section-header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding-bottom: 12px; border-bottom: 1px solid var(--sb-border); }",
-    ".admin-section-title { display: flex; align-items: center; gap: 8px; font-size: var(--sb-font-sm); font-weight: var(--sb-weight-bold); text-transform: uppercase; letter-spacing: var(--sb-letter-label); color: var(--sb-muted-strong); }",
+    ".admin-section-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--sb-font-2xl); font-weight: var(--sb-weight-semibold); line-height: var(--sb-line-title); color: var(--sb-text-strong); letter-spacing: 0; }",
     ".admin-section-icon { font-size: 16px; }",
     ".admin-section-action { display: flex; align-items: center; }",
     ".admin-section-subtitle { margin: 12px 0 0 0; padding: 10px 14px; font-size: var(--sb-font-base); line-height: var(--sb-line-body); color: var(--sb-muted); background: color-mix(in oklab, var(--sb-primary) 4%, var(--sb-elevated)); border-radius: 8px; border: 1px solid color-mix(in oklab, var(--sb-primary) 24%, var(--sb-border)); }",

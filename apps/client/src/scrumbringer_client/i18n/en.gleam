@@ -762,11 +762,11 @@ pub fn translate(text: Text) -> String {
     text.CardCreated -> "Card created"
     text.CardUpdated -> "Card updated"
     text.CardDeleted -> "Card deleted"
-    text.CardDeleteBlocked -> "Could not delete this card"
-    text.CardDeleteConfirm(card_title) ->
+    text.CardDeleteConfirm(card_title, task_count, subcard_count) ->
       "Delete card \""
       <> card_title
-      <> "\"? Its subcards and tasks will be removed from operational views."
+      <> "\"? "
+      <> card_delete_impact_copy(task_count, subcard_count)
     text.NoCardsYet -> "No cards yet"
     text.KanbanEmptyDraft -> "No cards are waiting for work"
     text.KanbanEmptyActive -> "No active cards need attention"
@@ -1186,5 +1186,32 @@ pub fn translate(text: Text) -> String {
     text.BackToAutomations -> "← Back to Automations"
     text.RuleMetricsNoExecutions ->
       "No automation executions found in the selected range."
+  }
+}
+
+fn card_delete_impact_copy(task_count: Int, subcard_count: Int) -> String {
+  case task_count, subcard_count {
+    0, 0 -> "This card will be removed from operational views."
+    0, _ ->
+      "This will remove this card and "
+      <> count_label(subcard_count, "subcard", "subcards")
+      <> " from operational views."
+    _, 0 ->
+      "This will remove this card and "
+      <> count_label(task_count, "task", "tasks")
+      <> " from operational views."
+    _, _ ->
+      "This will remove this card, "
+      <> count_label(subcard_count, "subcard", "subcards")
+      <> " and "
+      <> count_label(task_count, "task", "tasks")
+      <> " from operational views."
+  }
+}
+
+fn count_label(count: Int, singular: String, plural: String) -> String {
+  case count {
+    1 -> "1 " <> singular
+    _ -> int.to_string(count) <> " " <> plural
   }
 }

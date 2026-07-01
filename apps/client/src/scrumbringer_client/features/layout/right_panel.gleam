@@ -21,7 +21,10 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h4, label, option, select, span, text}
+import lustre/element/html.{
+  button, div, h3, h4, label, option, select, span, text,
+}
+import lustre/element/keyed
 import lustre/event
 
 import domain/card
@@ -139,7 +142,7 @@ fn view_active_tasks_section(config: RightPanelConfig(msg)) -> Element(msg) {
       attribute.attribute("data-testid", "active-task"),
     ],
     [
-      h4([attribute.class("section-title section-title-with-icon")], [
+      h3([attribute.class("section-title section-title-with-icon")], [
         icons.nav_icon(icons.Play, icons.Small),
         text(header_text),
       ]),
@@ -149,9 +152,14 @@ fn view_active_tasks_section(config: RightPanelConfig(msg)) -> Element(msg) {
             text(i18n.t(config.locale, i18n_text.NoTasksInProgressHint)),
           ])
         tasks ->
-          div(
+          keyed.div(
             [attribute.class("active-tasks-list")],
-            list.map(tasks, fn(active) { view_active_task_card(config, active) }),
+            list.map(tasks, fn(active) {
+              #(
+                int.to_string(active.task_id),
+                view_active_task_card(config, active),
+              )
+            }),
           )
       },
     ],
@@ -258,7 +266,7 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
           ])
         False -> element.none()
       },
-      h4([attribute.class("section-title section-title-with-icon")], [
+      h3([attribute.class("section-title section-title-with-icon")], [
         icons.nav_icon(icons.ClipboardDoc, icons.Small),
         text(i18n.t(config.locale, i18n_text.MyTasks)),
         case is_empty {
@@ -278,9 +286,11 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
             text(i18n.t(config.locale, i18n_text.NoTasksClaimedHint)),
           ])
         tasks ->
-          div(
+          keyed.div(
             [attribute.class("task-list")],
-            list.map(tasks, fn(task) { view_my_task_item(config, task) }),
+            list.map(tasks, fn(task) {
+              #(int.to_string(task.id), view_my_task_item(config, task))
+            }),
           )
       },
     ],
@@ -295,8 +305,8 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
 
   task_item.view(
     task_item.Config(
-      container_class: "task-item " <> border_class,
-      content_class: "task-title-button",
+      container_class: "right-panel-task-row " <> border_class,
+      content_class: "right-panel-task-button",
       leading: Some(view_task_card_swatch()),
       on_click: Some(config.on_task_click(task.id)),
       content_title: Some(task.title),
@@ -365,7 +375,7 @@ fn view_my_cards(config: RightPanelConfig(msg)) -> Element(msg) {
       attribute.attribute("data-testid", "my-cards"),
     ],
     [
-      h4([attribute.class("section-title section-title-with-icon")], [
+      h3([attribute.class("section-title section-title-with-icon")], [
         icons.nav_icon(icons.Cards, icons.Small),
         text(i18n.t(config.locale, i18n_text.MyCards)),
         case is_empty {
@@ -385,9 +395,11 @@ fn view_my_cards(config: RightPanelConfig(msg)) -> Element(msg) {
             text(i18n.t(config.locale, i18n_text.NoCardsAssignedHint)),
           ])
         cards ->
-          div(
+          keyed.div(
             [attribute.class("my-cards-list")],
-            list.map(cards, fn(card) { view_my_card_item(config, card) }),
+            list.map(cards, fn(card) {
+              #(int.to_string(card.card_id), view_my_card_item(config, card))
+            }),
           )
       },
     ],

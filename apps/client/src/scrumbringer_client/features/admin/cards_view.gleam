@@ -32,6 +32,7 @@ import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
+import scrumbringer_client/utils/card_queries
 
 pub type Config(msg) {
   Config(
@@ -80,7 +81,14 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
   case config.model.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
-      let #(mode_str, card_json, parent_card_attr) = case mode {
+      let project_cards = card_read_model.project_cards(config.cards)
+      let #(
+        mode_str,
+        card_json,
+        parent_card_attr,
+        delete_task_count,
+        delete_subcard_count,
+      ) = case mode {
         admin_cards.CardDialogCreate(parent_card_id) -> #(
           "create",
           attribute.none(),
@@ -88,6 +96,8 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
             "parent-card-id",
             parent_card_id_attribute(parent_card_id),
           ),
+          0,
+          0,
         )
         admin_cards.CardDialogEdit(card_id) ->
           case card_read_model.find_card(config.cards, card_id) {
@@ -95,24 +105,39 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
               "edit",
               attribute.property("card", card_to_property_json(card, "edit")),
               attribute.attribute("parent-card-id", "0"),
+              0,
+              0,
             )
             opt.None -> #(
               "edit",
               attribute.none(),
               attribute.attribute("parent-card-id", "0"),
+              0,
+              0,
             )
           }
         admin_cards.CardDialogDelete(card_id) ->
           case card_read_model.find_card(config.cards, card_id) {
-            opt.Some(card) -> #(
-              "delete",
-              attribute.property("card", card_to_property_json(card, "delete")),
-              attribute.attribute("parent-card-id", "0"),
-            )
+            opt.Some(card) -> {
+              let #(task_count, subcard_count) =
+                card_delete_impact(card, project_cards)
+              #(
+                "delete",
+                attribute.property(
+                  "card",
+                  card_to_property_json(card, "delete"),
+                ),
+                attribute.attribute("parent-card-id", "0"),
+                task_count,
+                subcard_count,
+              )
+            }
             opt.None -> #(
               "delete",
               attribute.none(),
               attribute.attribute("parent-card-id", "0"),
+              0,
+              0,
             )
           }
       }
@@ -125,6 +150,14 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
           attribute.attribute("mode", mode_str),
           parent_card_attr,
           card_json,
+          attribute.attribute(
+            "delete-task-count",
+            int.to_string(delete_task_count),
+          ),
+          attribute.attribute(
+            "delete-subcard-count",
+            int.to_string(delete_subcard_count),
+          ),
           event.on("card-created", decode_card_created_event(config)),
           event.on("card-updated", decode_card_updated_event(config)),
           event.on("card-deleted", decode_card_deleted_event(config)),
@@ -378,14 +411,24 @@ fn decode_card_deleted_event(config: Config(msg)) -> decode.Decoder(msg) {
 }
 
 fn card_to_property_json(c: Card, mode: String) -> json.Json {
+  let fields = card_to_json_fields(c)
+  json.object([#("_mode", json.string(mode)), ..fields])
+}
+
+fn card_to_json_fields(c: Card) -> List(#(String, json.Json)) {
   let color_field = case c.color {
     opt.Some(color) -> json.string(card.color_to_string(color))
     opt.None -> json.null()
   }
-  json.object([
+  let parent_card_field = case c.parent_card_id {
+    opt.Some(parent_card_id) -> json.int(parent_card_id)
+    opt.None -> json.null()
+  }
+
+  [
     #("id", json.int(c.id)),
     #("project_id", json.int(c.project_id)),
-    #("parent_card_id", json.null()),
+    #("parent_card_id", parent_card_field),
     #("title", json.string(c.title)),
     #("description", json.string(c.description)),
     #("color", color_field),
@@ -394,8 +437,24 @@ fn card_to_property_json(c: Card, mode: String) -> json.Json {
     #("closed_count", json.int(c.closed_count)),
     #("created_by", json.int(c.created_by)),
     #("created_at", json.string(c.created_at)),
-    #("_mode", json.string(mode)),
-  ])
+  ]
+}
+
+fn card_delete_impact(card: Card, cards: List(Card)) -> #(Int, Int) {
+  let subtree = card_subtree(card, cards)
+  let subcard_count = int.max(0, list.length(subtree) - 1)
+  let task_count =
+    subtree
+    |> list.fold(0, fn(total, card) { total + card.task_count })
+
+  #(task_count, subcard_count)
+}
+
+fn card_subtree(card: Card, cards: List(Card)) -> List(Card) {
+  case cards {
+    [] -> [card]
+    loaded_cards -> card_queries.cards_in_subtree(card.id, loaded_cards)
+  }
 }
 
 fn t(config: Config(msg), key: i18n_text.Text) -> String {

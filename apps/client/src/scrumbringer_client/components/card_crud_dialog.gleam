@@ -87,6 +87,8 @@ pub type Model {
     edit_in_flight: Bool,
     edit_error: Option(String),
     // Delete dialog fields
+    delete_task_count: Int,
+    delete_subcard_count: Int,
     delete_in_flight: Bool,
     delete_error: Option(String),
   )
@@ -99,6 +101,8 @@ pub type Msg {
   ProjectIdReceived(Int)
   ParentCardIdReceived(Option(Int))
   ModeReceived(DialogMode)
+  DeleteTaskCountReceived(Int)
+  DeleteSubcardCountReceived(Int)
   // Create form
   CreateTitleChanged(String)
   CreateDescriptionChanged(String)
@@ -144,6 +148,11 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
     component.on_attribute_change("parent-card-id", decode_parent_card_id),
     component.on_attribute_change("mode", decode_mode),
     component.on_attribute_change("card-id", decode_card_id),
+    component.on_attribute_change("delete-task-count", decode_delete_task_count),
+    component.on_attribute_change(
+      "delete-subcard-count",
+      decode_delete_subcard_count,
+    ),
     component.on_property_change("card", card_property_decoder()),
     component.adopt_styles(True),
   ]
@@ -177,6 +186,14 @@ fn decode_mode(value: String) -> Result(Msg, Nil) {
 fn decode_card_id(_value: String) -> Result(Msg, Nil) {
   // Card ID is used with the card property, so we don't process it here
   Error(Nil)
+}
+
+fn decode_delete_task_count(value: String) -> Result(Msg, Nil) {
+  crud_dialog_base.decode_int_attribute(value, DeleteTaskCountReceived)
+}
+
+fn decode_delete_subcard_count(value: String) -> Result(Msg, Nil) {
+  crud_dialog_base.decode_int_attribute(value, DeleteSubcardCountReceived)
 }
 
 fn card_property_decoder() -> Decoder(Msg) {
@@ -219,6 +236,8 @@ fn default_model() -> Model {
     edit_color_open: False,
     edit_in_flight: False,
     edit_error: option.None,
+    delete_task_count: 0,
+    delete_subcard_count: 0,
     delete_in_flight: False,
     delete_error: option.None,
   )
@@ -243,6 +262,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     ModeReceived(mode) -> handle_mode_received(model, mode)
+
+    DeleteTaskCountReceived(count) -> #(
+      Model(..model, delete_task_count: int.max(0, count)),
+      effect.none(),
+    )
+
+    DeleteSubcardCountReceived(count) -> #(
+      Model(..model, delete_subcard_count: int.max(0, count)),
+      effect.none(),
+    )
 
     // Create form handlers
     CreateTitleChanged(title) -> #(
@@ -404,6 +433,8 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
       Model(
         ..model,
         mode: crud_dialog_base.Deleting(card),
+        delete_task_count: card.task_count,
+        delete_subcard_count: 0,
         delete_in_flight: False,
         delete_error: option.None,
       ),
@@ -873,12 +904,20 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
     model.locale,
     t(model.locale, i18n_text.DeleteCard),
     icons.nav_icon(icons.Trash, icons.Medium),
-    t(model.locale, i18n_text.CardDeleteConfirm(card.title)),
+    t(model.locale, card_delete_confirm_text(model, card)),
     model.delete_error,
     model.delete_in_flight,
     DeleteCancelled,
     DeleteConfirmed,
     t(model.locale, i18n_text.Removing),
+  )
+}
+
+fn card_delete_confirm_text(model: Model, card: Card) -> i18n_text.Text {
+  i18n_text.CardDeleteConfirm(
+    card.title,
+    model.delete_task_count,
+    model.delete_subcard_count,
   )
 }
 
@@ -899,6 +938,23 @@ pub fn view_edit_dialog_for_test(locale: Locale, card: Card) -> Element(Msg) {
       edit_color: option.map(card.color, color_to_string),
     )
   view_edit_dialog(model)
+}
+
+pub fn view_delete_dialog_for_test(
+  locale: Locale,
+  card: Card,
+  task_count: Int,
+  subcard_count: Int,
+) -> Element(Msg) {
+  let model =
+    Model(
+      ..default_model(),
+      locale: locale,
+      mode: crud_dialog_base.Deleting(card),
+      delete_task_count: task_count,
+      delete_subcard_count: subcard_count,
+    )
+  view_delete_dialog(model, card)
 }
 
 // =============================================================================

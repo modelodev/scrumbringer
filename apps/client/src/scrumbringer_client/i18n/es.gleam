@@ -794,11 +794,11 @@ pub fn translate(text: Text) -> String {
     text.CardCreated -> "Tarjeta creada"
     text.CardUpdated -> "Tarjeta actualizada"
     text.CardDeleted -> "Tarjeta eliminada"
-    text.CardDeleteBlocked -> "No se pudo eliminar esta tarjeta"
-    text.CardDeleteConfirm(card_title) ->
+    text.CardDeleteConfirm(card_title, task_count, subcard_count) ->
       "¿Eliminar la tarjeta \""
       <> card_title
-      <> "\"? Sus subtarjetas y tareas dejarán de aparecer en las vistas operativas."
+      <> "\"? "
+      <> card_delete_impact_copy(task_count, subcard_count)
     text.NoCardsYet -> "Aún no hay tarjetas"
     text.KanbanEmptyDraft -> "No hay tarjetas esperando trabajo"
     text.KanbanEmptyActive -> "No hay tarjetas activas que revisar"
@@ -1218,5 +1218,32 @@ pub fn translate(text: Text) -> String {
     text.BackToAutomations -> "← Volver a Automatizaciones"
     text.RuleMetricsNoExecutions ->
       "No se encontraron ejecuciones de automatizaciones en el rango seleccionado."
+  }
+}
+
+fn card_delete_impact_copy(task_count: Int, subcard_count: Int) -> String {
+  case task_count, subcard_count {
+    0, 0 -> "Esta tarjeta dejará de aparecer en las vistas operativas."
+    0, _ ->
+      "Esta acción retirará esta tarjeta y "
+      <> count_label(subcard_count, "subtarjeta", "subtarjetas")
+      <> " de las vistas operativas."
+    _, 0 ->
+      "Esta acción retirará esta tarjeta y "
+      <> count_label(task_count, "tarea", "tareas")
+      <> " de las vistas operativas."
+    _, _ ->
+      "Esta acción retirará esta tarjeta, "
+      <> count_label(subcard_count, "subtarjeta", "subtarjetas")
+      <> " y "
+      <> count_label(task_count, "tarea", "tareas")
+      <> " de las vistas operativas."
+  }
+}
+
+fn count_label(count: Int, singular: String, plural: String) -> String {
+  case count {
+    1 -> "1 " <> singular
+    _ -> int.to_string(count) <> " " <> plural
   }
 }

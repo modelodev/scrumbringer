@@ -74,6 +74,23 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
   render_assertions.not_contains(html, "aria-label=\"Complete\"")
 }
 
+pub fn right_panel_activity_sections_use_level_three_headings_test() {
+  let html =
+    base_config([], [], [])
+    |> right_panel.view
+    |> render_assertions.html
+
+  render_assertions.occurs(
+    html,
+    "<h3 class=\"section-title section-title-with-icon\">",
+    3,
+  )
+  render_assertions.not_contains(
+    html,
+    "<h4 class=\"section-title section-title-with-icon\">",
+  )
+}
+
 pub fn right_panel_my_task_renders_border_and_actions_test() {
   let task =
     sample_task(task_state.Claimed(
@@ -87,8 +104,10 @@ pub fn right_panel_my_task_renders_border_and_actions_test() {
     |> right_panel.view
     |> render_assertions.html
 
-  render_assertions.contains(html, "task-item card-border-blue")
+  render_assertions.contains(html, "right-panel-task-row card-border-blue")
+  render_assertions.not_contains(html, "task-item card-border-blue")
   render_assertions.contains(html, "task-card-identity-swatch")
+  render_assertions.contains(html, "right-panel-task-button")
   render_assertions.contains(html, "my-task-start-btn")
   render_assertions.contains(html, "my-task-release-btn")
   render_assertions.contains(html, "task-type-icon")

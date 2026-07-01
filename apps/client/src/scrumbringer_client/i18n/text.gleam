@@ -629,8 +629,7 @@ pub type Text {
   CardCreated
   CardUpdated
   CardDeleted
-  CardDeleteBlocked
-  CardDeleteConfirm(card_title: String)
+  CardDeleteConfirm(card_title: String, task_count: Int, subcard_count: Int)
   NoCardsYet
   KanbanEmptyDraft
   KanbanEmptyActive

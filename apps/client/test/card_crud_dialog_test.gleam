@@ -10,7 +10,8 @@ import gleam/option
 import scrumbringer_client/components/card_crud_dialog.{
   type Model, CreateActivationResult, CreateAndActivatePending,
   CreateAndActivateSubmitted, CreateResult, Model, update_for_test,
-  view_create_dialog_for_test, view_edit_dialog_for_test,
+  view_create_dialog_for_test, view_delete_dialog_for_test,
+  view_edit_dialog_for_test,
 }
 import scrumbringer_client/components/crud_dialog_base.{Closed, Creating}
 import scrumbringer_client/i18n/locale.{En}
@@ -35,6 +36,8 @@ pub fn create_error_keeps_dialog_open_for_retry_test() {
       edit_color_open: False,
       edit_in_flight: False,
       edit_error: option.None,
+      delete_task_count: 0,
+      delete_subcard_count: 0,
       delete_in_flight: False,
       delete_error: option.None,
     )
@@ -77,6 +80,8 @@ pub fn create_and_activate_submit_marks_activation_pending_test() {
       edit_color_open: False,
       edit_in_flight: False,
       edit_error: option.None,
+      delete_task_count: 0,
+      delete_subcard_count: 0,
       delete_in_flight: False,
       delete_error: option.None,
     )
@@ -161,6 +166,36 @@ pub fn edit_dialog_renders_shared_card_fields_test() {
   render_assertions.contains(html, "Blue")
 }
 
+pub fn delete_dialog_for_empty_card_uses_empty_impact_copy_test() {
+  let html =
+    view_delete_dialog_for_test(
+      En,
+      Card(..make_test_card(), task_count: 0),
+      0,
+      0,
+    )
+    |> render_assertions.html
+
+  render_assertions.contains(
+    html,
+    "This card will be removed from operational views.",
+  )
+  render_assertions.not_contains(html, "subcards and tasks")
+}
+
+pub fn delete_dialog_with_tasks_and_subcards_summarises_impact_test() {
+  let card = Card(..make_test_card(), task_count: 3)
+
+  let html =
+    view_delete_dialog_for_test(En, card, 7, 1)
+    |> render_assertions.html
+
+  render_assertions.contains(
+    html,
+    "This will remove this card, 1 subcard and 7 tasks from operational views.",
+  )
+}
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -202,6 +237,8 @@ fn creating_and_activating_model() -> Model {
     edit_color_open: False,
     edit_in_flight: False,
     edit_error: option.None,
+    delete_task_count: 0,
+    delete_subcard_count: 0,
     delete_in_flight: False,
     delete_error: option.None,
   )

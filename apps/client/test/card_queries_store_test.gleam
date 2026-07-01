@@ -112,6 +112,17 @@ pub fn cards_for_card_scope_keeps_selected_subtree_test() {
     == [feature, story]
 }
 
+pub fn cards_in_subtree_keeps_ancestor_and_descendants_test() {
+  let root = make_card(1, 10, "Root")
+  let feature = make_child_card(2, 1, "Feature")
+  let story = make_child_card(3, 2, "Story")
+  let sibling = make_child_card(4, 1, "Sibling")
+
+  let assert True =
+    card_queries.cards_in_subtree(2, [root, feature, story, sibling])
+    == [feature, story]
+}
+
 pub fn row_cards_for_card_scope_prefers_direct_children_test() {
   let root = make_card(1, 10, "Root")
   let feature = make_child_card(2, 1, "Feature")
