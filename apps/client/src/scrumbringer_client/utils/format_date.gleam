@@ -15,6 +15,8 @@
 import gleam/int
 import gleam/string
 
+import scrumbringer_client/i18n/locale.{type Locale, En, Es}
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -88,6 +90,14 @@ pub fn short_date(iso_timestamp: String) -> String {
   }
 }
 
+/// Format a timestamp as a short date string for a locale.
+pub fn short_date_for_locale(locale: Locale, iso_timestamp: String) -> String {
+  case string.split(iso_timestamp, "T") {
+    [date_part, ..] -> format_date_part_for_locale(locale, date_part)
+    _ -> iso_timestamp
+  }
+}
+
 /// Format a timestamp as a full date string for tooltips.
 ///
 /// Format: "21 de enero de 2026, 21:01"
@@ -105,6 +115,19 @@ pub fn full_date(iso_timestamp: String) -> String {
       formatted_date <> ", " <> formatted_time
     }
     [date_part] -> format_date_part_full(date_part)
+    _ -> iso_timestamp
+  }
+}
+
+/// Format a timestamp as a full date string for tooltips in a locale.
+pub fn full_date_for_locale(locale: Locale, iso_timestamp: String) -> String {
+  case string.split(iso_timestamp, "T") {
+    [date_part, time_part, ..] -> {
+      let formatted_date = format_date_part_full_for_locale(locale, date_part)
+      let formatted_time = format_time_part(time_part)
+      formatted_date <> ", " <> formatted_time
+    }
+    [date_part] -> format_date_part_full_for_locale(locale, date_part)
     _ -> iso_timestamp
   }
 }
@@ -171,10 +194,14 @@ fn pad_zero(n: Int) -> String {
 }
 
 fn format_date_part(date_part: String) -> String {
+  format_date_part_for_locale(Es, date_part)
+}
+
+fn format_date_part_for_locale(locale: Locale, date_part: String) -> String {
   case string.split(date_part, "-") {
     [year, month, day] -> {
       let day_str = trim_leading_zero(day)
-      let month_short = month_to_short_name(month)
+      let month_short = month_to_short_name(locale, month)
       day_str <> " " <> month_short <> " " <> year
     }
     _ -> date_part
@@ -182,11 +209,23 @@ fn format_date_part(date_part: String) -> String {
 }
 
 fn format_date_part_full(date_part: String) -> String {
+  format_date_part_full_for_locale(Es, date_part)
+}
+
+fn format_date_part_full_for_locale(locale: Locale, date_part: String) -> String {
   case string.split(date_part, "-") {
     [year, month, day] -> {
       let day_str = trim_leading_zero(day)
-      let month_full = month_to_full_name(month)
-      day_str <> " de " <> month_full <> " de " <> year
+      case locale {
+        Es -> {
+          let month_full = month_to_full_name(locale, month)
+          day_str <> " de " <> month_full <> " de " <> year
+        }
+        En -> {
+          let month_full = month_to_full_name(locale, month)
+          month_full <> " " <> day_str <> ", " <> year
+        }
+      }
     }
     _ -> date_part
   }
@@ -207,7 +246,21 @@ fn format_time_part(time_part: String) -> String {
   }
 }
 
-fn month_to_short_name(month: String) -> String {
+fn month_to_short_name(locale: Locale, month: String) -> String {
+  case locale {
+    Es -> month_to_short_name_es(month)
+    En -> month_to_short_name_en(month)
+  }
+}
+
+fn month_to_full_name(locale: Locale, month: String) -> String {
+  case locale {
+    Es -> month_to_full_name_es(month)
+    En -> month_to_full_name_en(month)
+  }
+}
+
+fn month_to_short_name_es(month: String) -> String {
   case month {
     "01" -> "ene"
     "02" -> "feb"
@@ -225,7 +278,25 @@ fn month_to_short_name(month: String) -> String {
   }
 }
 
-fn month_to_full_name(month: String) -> String {
+fn month_to_short_name_en(month: String) -> String {
+  case month {
+    "01" -> "Jan"
+    "02" -> "Feb"
+    "03" -> "Mar"
+    "04" -> "Apr"
+    "05" -> "May"
+    "06" -> "Jun"
+    "07" -> "Jul"
+    "08" -> "Aug"
+    "09" -> "Sep"
+    "10" -> "Oct"
+    "11" -> "Nov"
+    "12" -> "Dec"
+    _ -> month
+  }
+}
+
+fn month_to_full_name_es(month: String) -> String {
   case month {
     "01" -> "enero"
     "02" -> "febrero"
@@ -239,6 +310,24 @@ fn month_to_full_name(month: String) -> String {
     "10" -> "octubre"
     "11" -> "noviembre"
     "12" -> "diciembre"
+    _ -> month
+  }
+}
+
+fn month_to_full_name_en(month: String) -> String {
+  case month {
+    "01" -> "January"
+    "02" -> "February"
+    "03" -> "March"
+    "04" -> "April"
+    "05" -> "May"
+    "06" -> "June"
+    "07" -> "July"
+    "08" -> "August"
+    "09" -> "September"
+    "10" -> "October"
+    "11" -> "November"
+    "12" -> "December"
     _ -> month
   }
 }

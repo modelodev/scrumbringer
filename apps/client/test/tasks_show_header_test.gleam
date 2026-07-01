@@ -24,6 +24,9 @@ pub fn task_show_header_renders_loaded_task_test() {
   render_assertions.contains(html, "Prepare release")
   render_assertions.contains(html, "Release card")
   render_assertions.contains(html, "Ready to claim")
+  render_assertions.contains(html, "data-testid=\"task-header-created-at\"")
+  render_assertions.contains(html, "Created 1 Jan 2026")
+  render_assertions.contains(html, "title=\"January 1, 2026, 00:00\"")
   render_assertions.contains(html, "task-show-title")
   render_assertions.not_contains(html, "Available")
   render_assertions.not_contains(html, "Feature")
@@ -93,6 +96,7 @@ pub fn task_show_header_localizes_close_label_test() {
     |> render_assertions.html
 
   render_assertions.contains(html, "aria-label=\"Cerrar\"")
+  render_assertions.contains(html, "Creado 1 ene 2026")
 }
 
 pub fn task_show_header_renders_due_date_and_loaded_blockers_test() {

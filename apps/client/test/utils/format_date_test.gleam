@@ -1,7 +1,9 @@
 //// Tests for date formatting utilities.
 
+import scrumbringer_client/i18n/locale
 import scrumbringer_client/utils/format_date.{
-  full_date, relative_date_from_ms, short_date,
+  full_date, full_date_for_locale, relative_date_from_ms, short_date,
+  short_date_for_locale,
 }
 
 // =============================================================================
@@ -122,6 +124,16 @@ pub fn short_date_february_test() {
   let assert "14 feb 2026" = short_date("2026-02-14T12:00:00Z")
 }
 
+pub fn short_date_for_english_locale_test() {
+  let assert "14 Feb 2026" =
+    short_date_for_locale(locale.En, "2026-02-14T12:00:00Z")
+}
+
+pub fn short_date_for_spanish_locale_test() {
+  let assert "14 feb 2026" =
+    short_date_for_locale(locale.Es, "2026-02-14T12:00:00Z")
+}
+
 // =============================================================================
 // full_date tests
 // =============================================================================
@@ -142,4 +154,9 @@ pub fn full_date_midnight_test() {
 pub fn full_date_with_milliseconds_test() {
   let assert "20 de junio de 2026, 14:45" =
     full_date("2026-06-20T14:45:30.123Z")
+}
+
+pub fn full_date_for_english_locale_test() {
+  let assert "June 20, 2026, 14:45" =
+    full_date_for_locale(locale.En, "2026-06-20T14:45:30.123Z")
 }

@@ -64,6 +64,7 @@ import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/inspector_actions
 import scrumbringer_client/ui/inspector_header
+import scrumbringer_client/ui/inspector_meta
 import scrumbringer_client/ui/inspector_shell
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
@@ -827,25 +828,18 @@ fn view_ready_to_close_signal(model: Model, card: Card) -> Element(Msg) {
 fn card_header_meta(model: Model, card: Card) -> Option(Element(Msg)) {
   let status_signals = card_header_status_signals(model, card)
   let metric_signals = card_header_metrics(model, card)
+  let created_signal =
+    inspector_meta.created_at(
+      model.locale,
+      card.created_at,
+      "card-header-created-at",
+    )
 
-  let groups = case status_signals, metric_signals {
-    [], [] -> []
-    _, [] -> [detail_meta_group(status_signals)]
-    [], _ -> [detail_meta_group(metric_signals)]
-    _, _ -> [
-      detail_meta_group(status_signals),
-      detail_meta_group(metric_signals),
-    ]
-  }
-
-  case groups {
-    [] -> option.None
-    _ -> option.Some(div([attribute.class("detail-meta")], groups))
-  }
-}
-
-fn detail_meta_group(children: List(Element(Msg))) -> Element(Msg) {
-  div([attribute.class("detail-meta-group")], children)
+  []
+  |> append_optional_element(inspector_meta.group(status_signals))
+  |> append_optional_element(inspector_meta.group(metric_signals))
+  |> append_optional_element(inspector_meta.group([created_signal]))
+  |> inspector_meta.container
 }
 
 fn card_header_status_signals(model: Model, card: Card) -> List(Element(Msg)) {

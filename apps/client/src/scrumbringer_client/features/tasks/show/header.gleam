@@ -12,6 +12,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/inspector_header
+import scrumbringer_client/ui/inspector_meta
 
 pub type Config(msg) {
   Config(
@@ -36,10 +37,16 @@ pub fn view(config: Config(msg)) -> Element(msg) {
         config,
         task.title,
         opt.Some(headline.text(headline_config(config, task))),
+        opt.Some(task_header_meta(config, task)),
       )
 
     opt.None ->
-      render_header(config, t(config, i18n_text.LoadingEllipsis), opt.None)
+      render_header(
+        config,
+        t(config, i18n_text.LoadingEllipsis),
+        opt.None,
+        opt.None,
+      )
   }
 }
 
@@ -47,18 +54,32 @@ fn render_header(
   config: Config(msg),
   title: String,
   state_line: opt.Option(String),
+  meta: opt.Option(Element(msg)),
 ) -> Element(msg) {
   inspector_header.view(inspector_header.Config(
     title: title,
     title_id: "task-show-title",
     state_line: state_line,
     context: opt.None,
-    meta: opt.None,
+    meta: meta,
     actions: config.actions,
     close_label: t(config, i18n_text.Close),
     on_close: config.on_close,
     extra_class: "task-inspector-header",
   ))
+}
+
+fn task_header_meta(config: Config(msg), task: domain_task.Task) -> Element(msg) {
+  let created_signal =
+    inspector_meta.created_at(
+      config.locale,
+      task.created_at,
+      "task-header-created-at",
+    )
+
+  inspector_meta.container_required([
+    inspector_meta.group_required([created_signal]),
+  ])
 }
 
 fn headline_config(
