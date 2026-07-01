@@ -293,3 +293,59 @@ pub fn card_crud_deleted_syncs_member_card_store_test() {
   let assert Loaded([loaded_remaining]) = next.member.pool.member_cards
   let assert 2 = loaded_remaining.id
 }
+
+pub fn card_crud_deleted_closes_card_show_when_deleted_card_is_open_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a, card_b], card_id)
+
+  let model =
+    base_model_with_store(store)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards: Loaded([card_a, card_b])),
+        card_show_open: option.Some(1),
+      )
+    })
+
+  let #(next, _fx) =
+    client_update.update(
+      model,
+      client_state.pool_msg(pool_messages.CardCrudDeleted(1)),
+    )
+
+  let assert option.None = next.member.card_show_open
+}
+
+pub fn card_crud_deleted_keeps_card_show_open_when_different_card_is_deleted_test() {
+  let card_a = make_card(1, 10, "A")
+  let card_b = make_card(2, 10, "B")
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(10, [card_a, card_b], card_id)
+
+  let model =
+    base_model_with_store(store)
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards: Loaded([card_a, card_b])),
+        card_show_open: option.Some(2),
+      )
+    })
+
+  let #(next, _fx) =
+    client_update.update(
+      model,
+      client_state.pool_msg(pool_messages.CardCrudDeleted(1)),
+    )
+
+  let assert option.Some(2) = next.member.card_show_open
+}

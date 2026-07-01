@@ -16,6 +16,7 @@ import domain/card/card_codec
 import domain/remote.{type Remote, Loaded}
 
 import scrumbringer_client/client_state/admin/cards as admin_cards
+import scrumbringer_client/features/cards/read_model as card_read_model
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -39,6 +40,7 @@ pub type Config(msg) {
     project_name: String,
     model: admin_cards.Model,
     detail_modal: Element(msg),
+    cards: card_read_model.ReadModel,
     on_create_opened: msg,
     on_search_changed: fn(String) -> msg,
     on_state_filter_changed: fn(String) -> msg,
@@ -88,7 +90,7 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
           ),
         )
         admin_cards.CardDialogEdit(card_id) ->
-          case find_card(config.model.cards, card_id) {
+          case card_read_model.find_card(config.cards, card_id) {
             opt.Some(card) -> #(
               "edit",
               attribute.property("card", card_to_property_json(card, "edit")),
@@ -101,7 +103,7 @@ pub fn view_crud_dialog(config: Config(msg)) -> Element(msg) {
             )
           }
         admin_cards.CardDialogDelete(card_id) ->
-          case find_card(config.model.cards, card_id) {
+          case card_read_model.find_card(config.cards, card_id) {
             opt.Some(card) -> #(
               "delete",
               attribute.property("card", card_to_property_json(card, "delete")),
@@ -363,15 +365,6 @@ fn card_delete_availability(
   case card.task_count > 0 {
     True -> action_buttons.Blocked(t(config, i18n_text.CardDeleteBlocked))
     False -> action_buttons.Available
-  }
-}
-
-fn find_card(cards: Remote(List(Card)), id: Int) -> opt.Option(Card) {
-  case cards {
-    Loaded(items) ->
-      list.find(items, fn(c) { c.id == id })
-      |> opt.from_result
-    _ -> opt.None
   }
 }
 

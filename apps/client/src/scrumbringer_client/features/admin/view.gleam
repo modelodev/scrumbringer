@@ -45,9 +45,9 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/org_settings_view
 import scrumbringer_client/features/admin/task_types_view
 import scrumbringer_client/features/admin/views/members as members_view
+import scrumbringer_client/features/cards/read_model as card_read_model
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/utils/card_queries
 
 import scrumbringer_client/client_state/selectors as state_selectors
 import scrumbringer_client/i18n/i18n
@@ -362,6 +362,7 @@ fn cards_config(
     project_name: project_name,
     model: model.admin.cards,
     detail_modal: detail_modal,
+    cards: cards_read_model(model),
     on_create_opened: pool_msg(
       pool_messages.OpenCardDialog(admin_cards.CardDialogCreate(opt.None)),
     ),
@@ -427,13 +428,18 @@ fn admin_cards_list(model: Model) -> List(domain_card.Card) {
 fn selected_show_card(model: Model) -> opt.Option(domain_card.Card) {
   case model.member.card_show_open {
     opt.Some(card_id) ->
-      card_queries.find_card(
-        model.member.pool.member_cards_store,
-        model.admin.cards.cards,
-        card_id,
-      )
+      cards_read_model(model)
+      |> card_read_model.find_card(card_id)
     opt.None -> opt.None
   }
+}
+
+fn cards_read_model(model: Model) -> card_read_model.ReadModel {
+  card_read_model.from_sources(
+    model.member.pool.member_cards_store,
+    model.admin.cards.cards,
+    model.core.selected_project_id,
+  )
 }
 
 fn selected_show_card_tasks(model: Model) -> List(domain_task.Task) {

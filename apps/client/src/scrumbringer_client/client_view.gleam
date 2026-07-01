@@ -78,6 +78,7 @@ import scrumbringer_client/features/automations/template_library
 import scrumbringer_client/features/automations/template_library_config
 import scrumbringer_client/features/capability_board/view as capability_board_view
 import scrumbringer_client/features/cards/policy as card_policy
+import scrumbringer_client/features/cards/read_model as card_read_model
 import scrumbringer_client/features/cards/show_entry
 import scrumbringer_client/features/hierarchy/scope_view
 import scrumbringer_client/features/invites/view as invites_view
@@ -2174,15 +2175,19 @@ fn can_execute_card_work(
 }
 
 fn find_card(model: client_state.Model, card_id: Int) -> opt.Option(Card) {
-  card_queries.find_card(
-    model.member.pool.member_cards_store,
-    model.admin.cards.cards,
-    card_id,
-  )
+  model
+  |> cards_read_model
+  |> card_read_model.find_card(card_id)
 }
 
 fn project_cards(model: client_state.Model) -> List(Card) {
-  card_queries.get_project_cards(
+  model
+  |> cards_read_model
+  |> card_read_model.project_cards
+}
+
+fn cards_read_model(model: client_state.Model) -> card_read_model.ReadModel {
+  card_read_model.from_sources(
     model.member.pool.member_cards_store,
     model.admin.cards.cards,
     model.core.selected_project_id,

@@ -11,12 +11,14 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin/rules as admin_rules
 import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
 import scrumbringer_client/client_state/admin/workflows as admin_workflows
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/task_templates as task_templates_workflow
 import scrumbringer_client/features/admin/workflows as automations_update
 import scrumbringer_client/features/automations/focus_target as automation_focus
 import scrumbringer_client/features/cards/cache as card_cache
+import scrumbringer_client/features/pool/card_show_state
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/root
 import scrumbringer_client/features/route_support
@@ -110,6 +112,26 @@ fn sync_member_card_cache(
         model,
         card_cache.deleted(model.member.pool, card_id),
       )
+      |> close_card_show_if_deleted(card_id)
+    _ -> model
+  }
+}
+
+fn close_card_show_if_deleted(
+  model: client_state.Model,
+  deleted_card_id: Int,
+) -> client_state.Model {
+  case model.member.card_show_open {
+    opt.Some(open_card_id) if open_card_id == deleted_card_id -> {
+      let #(card_show_open, card_show_model) = card_show_state.handle_closed()
+      client_state.update_member(model, fn(member) {
+        member_state.MemberModel(
+          ..member,
+          card_show_open: card_show_open,
+          card_show_model: card_show_model,
+        )
+      })
+    }
     _ -> model
   }
 }

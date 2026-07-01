@@ -1,17 +1,25 @@
+import gleam/json
+import gleam/list
 import gleam/option as opt
+import gleam/string
 import support/domain_fixtures
 import support/render_assertions
 
 import domain/card.{Card}
 import domain/project.{Project}
 import domain/remote.{Loaded}
+import lustre/element.{type Element}
+import lustre/vdom/vattr
+import lustre/vdom/vnode
 import scrumbringer_client/client_state.{
   type Model, default_model, update_admin, update_member,
 }
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/admin/view as admin_view
+import scrumbringer_client/state/normalized_store
 
 fn base_model() -> Model {
   default_model()
@@ -23,6 +31,22 @@ fn sample_project() {
 
 fn sample_card() {
   Card(..domain_fixtures.card(1, 1, "Playwright Card"), task_count: 1)
+}
+
+fn card_crud_dialog_has_card_property(view: Element(msg), title: String) -> Bool {
+  case view {
+    vnode.Element(tag: "card-crud-dialog", attributes:, ..) ->
+      list.any(attributes, fn(attribute) {
+        case attribute {
+          vattr.Property(name: "card", value:, ..) ->
+            json.to_string(value)
+            |> string.contains("\"title\":\"" <> title <> "\"")
+          _ -> False
+        }
+      })
+    vnode.Map(child:, ..) -> card_crud_dialog_has_card_property(child, title)
+    _ -> False
+  }
 }
 
 pub fn cards_view_renders_detail_button_test() {
@@ -114,6 +138,40 @@ pub fn card_crud_dialog_passes_parent_card_for_child_creation_test() {
 
   render_assertions.contains(html, "mode=\"create\"")
   render_assertions.contains(html, "parent-card-id=\"42\"")
+}
+
+pub fn card_crud_delete_dialog_uses_member_card_cache_when_admin_cards_are_not_loaded_test() {
+  let card = Card(..sample_card(), task_count: 0)
+  let store =
+    normalized_store.new()
+    |> normalized_store.upsert(1, [card], domain_fixtures.card_id)
+
+  let model =
+    base_model()
+    |> update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(
+          ..cards,
+          cards_dialog_mode: opt.Some(admin_cards.CardDialogDelete(1)),
+        ),
+      )
+    })
+    |> update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards_store: store),
+      )
+    })
+
+  let view = admin_view.view_card_crud_dialog(model, 1)
+  let html = render_assertions.html(view)
+
+  render_assertions.contains(html, "card-crud-dialog")
+  render_assertions.contains(html, "mode=\"delete\"")
+  let assert True = card_crud_dialog_has_card_property(view, "Playwright Card")
 }
 
 pub fn cards_view_renders_detail_modal_when_open_test() {
