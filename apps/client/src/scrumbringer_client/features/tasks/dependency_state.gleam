@@ -19,6 +19,7 @@ pub fn candidate_filters() -> task_operations.TaskFilters {
     capability_id: opt.None,
     q: opt.None,
     blocked: opt.None,
+    card_id: opt.None,
   )
 }
 

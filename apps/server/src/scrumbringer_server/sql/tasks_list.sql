@@ -153,4 +153,5 @@ where t.project_id = $1
     or ($7 = 'true' and deps.blocked_count > 0)
     or ($7 = 'false' and deps.blocked_count = 0)
   )
+  and ($8 <= 0 or t.card_id = $8)
 order by t.created_at desc;

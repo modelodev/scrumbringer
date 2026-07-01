@@ -1708,6 +1708,7 @@ fn fetch_right_panel_data(
             capability_id: opt.None,
             q: opt.None,
             blocked: opt.None,
+            card_id: opt.None,
           ),
           fn(result) {
             client_state.pool_msg(pool_messages.MemberProjectTasksFetched(

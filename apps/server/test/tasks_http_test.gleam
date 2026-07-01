@@ -175,6 +175,44 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   |> expect.is_true
 }
 
+pub fn tasks_list_filters_by_card_id_test() {
+  let #(_, handler, session, project_id, type_id) =
+    fx.require_task_project("Core")
+
+  let card_a = fx.require_card(handler, session, project_id, "Card A")
+  let card_b = fx.require_card(handler, session, project_id, "Card B")
+  expect.expect_status(fx.activate_card_response(handler, session, card_a), 200)
+  expect.expect_status(fx.activate_card_response(handler, session, card_b), 200)
+
+  fx.create_task_with_card(
+    handler,
+    session,
+    project_id,
+    type_id,
+    card_a,
+    "Card A task",
+  )
+  |> expect.ok
+  fx.create_task_with_card(
+    handler,
+    session,
+    project_id,
+    type_id,
+    card_b,
+    "Card B task",
+  )
+  |> expect.ok
+  fx.require_task(handler, session, project_id, "Pool task", "", 3, type_id)
+
+  expect_project_task_titles(
+    handler,
+    session,
+    project_id,
+    "card_id=" <> int.to_string(card_a),
+    ["Card A task"],
+  )
+}
+
 pub fn tasks_list_includes_task_contract_fields_test() {
   let #(_, handler, session, project_id, type_id) =
     fx.require_task_project("Core")

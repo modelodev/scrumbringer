@@ -50,12 +50,14 @@ pub fn parse_task_filters(
   use capability_id <- result.try(parse_capability_filter(query))
   use q <- result.try(parse_string_filter(query, "q"))
   use blocked <- result.try(parse_blocked_filter(query))
+  use card_id <- result.try(parse_int_filter(query, "card_id"))
   Ok(workflow_types.TaskFilters(
     status: status,
     type_id: type_id,
     capability_id: capability_id,
     q: q,
     blocked: blocked,
+    card_id: card_id,
   ))
 }
 

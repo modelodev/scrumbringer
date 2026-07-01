@@ -273,6 +273,7 @@ fn handle_list_tasks(
       filters.capability_id,
       filters.q,
       filters.blocked,
+      filters.card_id,
     )
   {
     Ok(tasks) -> Ok(TasksList(tasks))

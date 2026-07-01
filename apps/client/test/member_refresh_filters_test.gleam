@@ -12,6 +12,7 @@ pub fn people_refresh_ignores_pool_filters_test() {
     capability_id: opt.None,
     q: opt.None,
     blocked: opt.None,
+    card_id: opt.None,
   ) =
     member_refresh_filters.task_filters(
       member_refresh_filters.PeopleRefresh,
@@ -28,6 +29,7 @@ pub fn pool_refresh_keeps_pool_filters_test() {
     capability_id: opt.Some(7),
     q: opt.Some("rollout"),
     blocked: opt.None,
+    card_id: opt.None,
   ) =
     member_refresh_filters.task_filters(
       member_refresh_filters.PoolRefresh,
@@ -44,6 +46,7 @@ pub fn capabilities_refresh_keeps_work_filters_test() {
     capability_id: opt.Some(7),
     q: opt.Some("rollout"),
     blocked: opt.None,
+    card_id: opt.None,
   ) =
     member_refresh_filters.task_filters(
       member_refresh_filters.CapabilitiesRefresh,
@@ -60,6 +63,7 @@ pub fn plan_kanban_refresh_keeps_work_filters_test() {
     capability_id: opt.Some(7),
     q: opt.Some("rollout"),
     blocked: opt.None,
+    card_id: opt.None,
   ) =
     member_refresh_filters.task_filters(
       member_refresh_filters.PlanKanbanRefresh,
@@ -76,6 +80,7 @@ pub fn plan_structure_refresh_ignores_invisible_work_filters_test() {
     capability_id: opt.None,
     q: opt.None,
     blocked: opt.None,
+    card_id: opt.None,
   ) =
     member_refresh_filters.task_filters(
       member_refresh_filters.PlanStructureRefresh,
@@ -142,6 +147,7 @@ pub fn task_filters_for_pool_uses_pool_work_filters_test() {
     capability_id: opt.Some(7),
     q: opt.Some("rollout"),
     blocked: opt.None,
+    card_id: opt.None,
   ) =
     member_refresh_filters.task_filters_for_pool(
       member_refresh_filters.PlanKanbanRefresh,

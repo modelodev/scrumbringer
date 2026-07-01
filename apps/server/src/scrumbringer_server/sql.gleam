@@ -7786,6 +7786,7 @@ pub fn tasks_list(
   arg_5: String,
   arg_6: Int,
   arg_7: String,
+  arg_8: Int,
 ) -> Result(pog.Returned(TasksListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -8017,6 +8018,7 @@ where t.project_id = $1
     or ($7 = 'true' and deps.blocked_count > 0)
     or ($7 = 'false' and deps.blocked_count = 0)
   )
+  and ($8 <= 0 or t.card_id = $8)
 order by t.created_at desc;
 "
   |> pog.query
@@ -8027,6 +8029,7 @@ order by t.created_at desc;
   |> pog.parameter(pog.text(arg_5))
   |> pog.parameter(pog.int(arg_6))
   |> pog.parameter(pog.text(arg_7))
+  |> pog.parameter(pog.int(arg_8))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

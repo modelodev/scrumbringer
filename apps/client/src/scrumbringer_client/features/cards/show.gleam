@@ -29,7 +29,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{type Card, Active, Closed, Draft}
+import domain/card.{type Card, Active, Card, Closed, Draft}
 import domain/note/entity.{type Note}
 import domain/note/id as note_ids
 import domain/task.{type Task, claimed_by}
@@ -40,6 +40,7 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/activity as api_activity
 import scrumbringer_client/api/cards as api_cards
+import scrumbringer_client/api/tasks/operations as api_tasks
 import scrumbringer_client/features/cards/lifecycle
 import scrumbringer_client/features/cards/policy as card_policy
 import scrumbringer_client/features/cards/scoped_navigation
@@ -122,7 +123,7 @@ pub type Model {
 /// Internal messages - not exposed to parent.
 pub type Msg {
   // From attributes/properties
-  CardIdReceived(Int)
+  CardIdReceived(Int, Option(Int))
   CardReceived(Card)
   CardsReceived(List(Card))
   LocaleReceived(Locale)
@@ -133,7 +134,7 @@ pub type Msg {
   CanExecuteWorkReceived(Bool)
   NotesReceived(ApiResult(List(Note)))
   ActivityReceived(ApiResult(api_activity.ActivityPage))
-  TasksReceived(List(Task))
+  TasksReceived(Int, ApiResult(List(Task)))
   // AC21: Tab navigation
   TabClicked(show_tabs.CardShowTab)
   // Note dialog
@@ -198,7 +199,14 @@ pub fn init(_: Nil) -> #(Model, Effect(Msg)) {
 }
 
 pub fn open(card_id: Int) -> #(Model, Effect(Msg)) {
-  update(init_model(), CardIdReceived(card_id))
+  open_in_project(card_id, option.None)
+}
+
+pub fn open_in_project(
+  card_id: Int,
+  project_id: Option(Int),
+) -> #(Model, Effect(Msg)) {
+  update(init_model(), CardIdReceived(card_id, project_id))
 }
 
 pub fn reset() -> Model {
@@ -227,8 +235,24 @@ pub fn hydrate(
     can_manage_notes: can_manage_notes,
     can_manage_structure: can_manage_structure,
     can_execute_work: can_execute_work,
-    tasks: Loaded(tasks),
+    tasks: hydrated_tasks(model.tasks, tasks, card.task_count),
   )
+}
+
+fn hydrated_tasks(
+  current: Remote(List(Task)),
+  fallback: List(Task),
+  card_task_count: Int,
+) -> Remote(List(Task)) {
+  case current {
+    NotAsked ->
+      case list.is_empty(fallback), card_task_count {
+        True, 0 -> Loaded([])
+        True, _ -> NotAsked
+        False, _ -> Loaded(fallback)
+      }
+    Loading | Loaded(_) | Failed(_) -> current
+  }
 }
 
 // =============================================================================
@@ -237,17 +261,30 @@ pub fn hydrate(
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    CardIdReceived(id) -> #(
-      Model(
-        ..model,
-        card_id: option.Some(id),
-        notes: Loading,
-        activity: Loading,
-        activity_total: 0,
-        activity_loading_more: False,
-      ),
-      effect.batch([fetch_notes(id), fetch_activity(id)]),
-    )
+    CardIdReceived(id, project_id) -> {
+      let tasks = case project_id {
+        option.Some(_) -> Loading
+        option.None -> model.tasks
+      }
+      let task_fx = case project_id {
+        option.Some(pid) -> [fetch_tasks(pid, id)]
+        option.None -> []
+      }
+
+      #(
+        Model(
+          ..model,
+          card_id: option.Some(id),
+          project_id: project_id,
+          notes: Loading,
+          activity: Loading,
+          activity_total: 0,
+          activity_loading_more: False,
+          tasks: tasks,
+        ),
+        effect.batch([fetch_notes(id), fetch_activity(id), ..task_fx]),
+      )
+    }
 
     CardReceived(card) -> #(
       Model(..model, card: option.Some(card)),
@@ -316,10 +353,23 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    TasksReceived(tasks) -> #(
-      Model(..model, tasks: Loaded(tasks)),
-      effect.none(),
-    )
+    TasksReceived(card_id, Ok(tasks)) ->
+      case model.card_id {
+        option.Some(current_id) if current_id == card_id -> #(
+          Model(..model, tasks: Loaded(tasks)),
+          effect.none(),
+        )
+        _ -> #(model, effect.none())
+      }
+
+    TasksReceived(card_id, Error(err)) ->
+      case model.card_id {
+        option.Some(current_id) if current_id == card_id -> #(
+          Model(..model, tasks: Failed(err)),
+          effect.none(),
+        )
+        _ -> #(model, effect.none())
+      }
 
     // AC21: Tab navigation
     TabClicked(tab) -> #(Model(..model, active_tab: tab), effect.none())
@@ -458,6 +508,12 @@ fn fetch_activity(card_id: Int) -> Effect(Msg) {
   api_activity.list_card_activity(card_id, ActivityReceived)
 }
 
+fn fetch_tasks(project_id: Int, card_id: Int) -> Effect(Msg) {
+  api_tasks.list_card_tasks(project_id, card_id, fn(result) {
+    TasksReceived(card_id, result)
+  })
+}
+
 fn load_more_activity(model: Model) -> #(Model, Effect(Msg)) {
   case model.activity_loading_more, model.card_id, model.activity {
     False, option.Some(card_id), Loaded(events) -> {
@@ -560,6 +616,7 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn view_modal(model: Model, card: Card) -> Element(Msg) {
+  let card = card_with_loaded_task_counts(model, card)
   let border_class = task_color.card_border_class(card.color)
 
   // AC21: Calculate notes count for tab display
@@ -610,6 +667,18 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
       },
     ],
   )
+}
+
+fn card_with_loaded_task_counts(model: Model, card: Card) -> Card {
+  case model.tasks {
+    Loaded(tasks) ->
+      Card(
+        ..card,
+        task_count: list.length(tasks),
+        closed_count: list.count(tasks, task_rollup.is_closed),
+      )
+    _ -> card
+  }
 }
 
 fn view_close_confirm_dialog(model: Model) -> Element(Msg) {

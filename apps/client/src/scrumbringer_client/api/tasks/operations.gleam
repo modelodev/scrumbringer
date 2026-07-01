@@ -38,6 +38,7 @@ pub type TaskFilters {
     capability_id: option.Option(Int),
     q: option.Option(String),
     blocked: option.Option(Bool),
+    card_id: option.Option(Int),
   )
 }
 
@@ -107,6 +108,7 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
     capability_id: capability_id,
     q: q,
     blocked: blocked,
+    card_id: card_id,
   ) = filters
 
   let status_param = option.map(status, task_status.task_status_to_string)
@@ -118,8 +120,24 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
     |> add_param_int("capability_id", capability_id)
     |> add_param_string("q", q)
     |> add_param_bool("blocked", blocked)
+    |> add_param_int("card_id", card_id)
 
   "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks" <> params
+}
+
+pub fn unfiltered_task_filters() -> TaskFilters {
+  TaskFilters(
+    status: option.None,
+    type_id: option.None,
+    capability_id: option.None,
+    q: option.None,
+    blocked: option.None,
+    card_id: option.None,
+  )
+}
+
+pub fn card_task_filters(card_id: Int) -> TaskFilters {
+  TaskFilters(..unfiltered_task_filters(), card_id: option.Some(card_id))
 }
 
 // =============================================================================
@@ -138,6 +156,14 @@ pub fn list_project_tasks(
     decode.field("tasks", decode.list(decoders.task_decoder()), decode.success)
 
   core.request(core.Get, url, option.None, decoder, to_msg)
+}
+
+pub fn list_card_tasks(
+  project_id: Int,
+  card_id: Int,
+  to_msg: fn(ApiResult(List(Task))) -> msg,
+) -> Effect(msg) {
+  list_project_tasks(project_id, card_task_filters(card_id), to_msg)
 }
 
 /// Create a new task in a project.

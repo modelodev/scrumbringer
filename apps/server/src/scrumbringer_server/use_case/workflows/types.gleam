@@ -106,6 +106,7 @@ pub type TaskFilters {
     capability_id: Option(Int),
     q: Option(String),
     blocked: Option(Bool),
+    card_id: Option(Int),
   )
 }
 

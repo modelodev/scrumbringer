@@ -74,7 +74,7 @@ pub fn css() -> List(String) {
     ".btn-ghost { background: transparent; border-color: transparent; color: var(--sb-text); }",
     ".btn-ghost:hover { background: var(--sb-elevated); border-color: var(--sb-border); }",
     ".btn-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; line-height: 1; }",
-    ".btn[data-tooltip]::after { content: attr(data-tooltip); display: none; position: absolute; right: 0; top: -28px; z-index: 40; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 999px; padding: 2px 8px; font-size: var(--sb-font-sm); color: var(--sb-text); white-space: nowrap; box-shadow: var(--sb-shadow-sm); }",
+    ".btn[data-tooltip]::after { content: attr(data-tooltip); display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: max-content; max-width: min(240px, calc(100vw - 32px)); background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-md); padding: 5px 8px; font-size: var(--sb-font-sm); line-height: var(--sb-line-tight); color: var(--sb-text); text-align: left; white-space: normal; overflow-wrap: break-word; box-shadow: var(--sb-shadow-sm); }",
     ".btn[data-tooltip]:hover::after, .btn[data-tooltip]:focus-visible::after { display: inline-flex; }",
     ".btn-delete-blocked::before { content: ''; position: absolute; width: 18px; height: 2px; border-radius: 999px; background: currentColor; transform: rotate(-35deg); opacity: 0.9; pointer-events: none; }",
     "button:hover { border-color: var(--sb-primary); }",

@@ -13,6 +13,7 @@ import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/cards/show as card_show
 import scrumbringer_client/features/pool/card_show_state
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/utils/card_queries
 
 pub type Model {
   Model(
@@ -81,7 +82,8 @@ fn opened(
   card_id: Int,
   context: Context(parent_msg),
 ) -> #(Model, Effect(parent_msg)) {
-  let #(show_model, show_fx) = card_show.open(card_id)
+  let #(show_model, show_fx) =
+    card_show.open_in_project(card_id, opened_card_project_id(model, card_id))
   let #(card_show_open, _) = card_show_state.handle_opened(card_id)
 
   #(
@@ -96,6 +98,19 @@ fn opened(
       show_fx |> effect.map(context.on_card_show_msg),
     ]),
   )
+}
+
+fn opened_card_project_id(model: Model, card_id: Int) -> option.Option(Int) {
+  case
+    card_queries.find_card(
+      model.pool.member_cards_store,
+      model.cards.cards,
+      card_id,
+    )
+  {
+    option.Some(card) -> option.Some(card.project_id)
+    option.None -> option.None
+  }
 }
 
 fn closed(model: Model) -> #(Model, Effect(parent_msg)) {

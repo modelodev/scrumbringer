@@ -68,6 +68,7 @@ pub fn list_tasks_for_project(
   capability_id: Option(Int),
   q: Option(String),
   blocked: Option(Bool),
+  card_id: Option(Int),
 ) -> Result(List(Task), service_error.ServiceError) {
   use returned <- result.try(
     sql.tasks_list(
@@ -79,6 +80,7 @@ pub fn list_tasks_for_project(
       search_filter_value(q),
       user_id,
       blocked_filter_to_db(blocked),
+      optional_id_filter_value(card_id),
     )
     |> result.map_error(service_error.DbError),
   )

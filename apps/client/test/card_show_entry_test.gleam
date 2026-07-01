@@ -195,7 +195,15 @@ pub fn card_show_header_renders_path_due_date_and_health_test() {
       closed_count: 1,
       due_date: Some("2026-06-24"),
     )
-  let ready = sample_task(1, Some(4))
+  let ready =
+    Task(
+      ..sample_task(1, Some(4)),
+      state: task_state.Closed(
+        reason: task_state.ManuallyClosed,
+        closed_at: "2026-06-20T09:00:00Z",
+        closed_by: 8,
+      ),
+    )
   let claimed =
     Task(
       ..sample_task(2, Some(4)),
@@ -305,6 +313,47 @@ pub fn card_show_summary_uses_diagnostic_summary_without_raw_fractions_test() {
   render_assertions.not_contains(html, "Tasks0")
   render_assertions.not_contains(html, "Progress0%")
   render_assertions.not_contains(html, forbidden_fragment(["0", "/", "0"]))
+}
+
+pub fn card_show_entry_keeps_loaded_card_tasks_when_pool_cache_is_empty_test() {
+  let card = Card(..sample_card(), task_count: 1, state: Active)
+  let task = Task(..sample_task(42, Some(4)), title: "Visible direct task")
+  let model =
+    card_show.Model(
+      ..card_show.init_model(),
+      active_tab: show_tabs.CardWorkTab,
+      tasks: Loaded([task]),
+    )
+
+  let html =
+    show_entry.view(
+      show_entry.Config(..config(Some(card)), model: model, tasks: []),
+    )
+    |> render_assertions.html
+
+  render_assertions.contains(html, "Visible direct task")
+  render_assertions.not_contains(html, "This card has no work yet")
+}
+
+pub fn card_show_summary_uses_loaded_task_counts_when_card_counts_are_stale_test() {
+  let card =
+    Card(..sample_card(), task_count: 0, closed_count: 0, state: Active)
+  let task = Task(..sample_task(42, Some(4)), title: "Visible direct task")
+  let model =
+    card_show.Model(
+      ..card_show.init_model(),
+      active_tab: show_tabs.CardSummaryTab,
+      tasks: Loaded([task]),
+    )
+
+  let html =
+    show_entry.view(
+      show_entry.Config(..config(Some(card)), model: model, tasks: []),
+    )
+    |> render_assertions.html
+
+  render_assertions.contains(html, "0 closed - 1 Tasks")
+  render_assertions.not_contains(html, "Define the work")
 }
 
 pub fn card_show_entry_omits_missing_card_test() {

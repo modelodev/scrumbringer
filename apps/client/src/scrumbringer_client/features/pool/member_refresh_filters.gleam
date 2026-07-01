@@ -46,6 +46,7 @@ pub fn task_filters(
         capability_id: capability_id,
         q: helpers_options.search_to_opt(search),
         blocked: opt.None,
+        card_id: opt.None,
       )
   }
 }
@@ -89,5 +90,6 @@ fn unfiltered() -> task_operations_api.TaskFilters {
     capability_id: opt.None,
     q: opt.None,
     blocked: opt.None,
+    card_id: opt.None,
   )
 }
